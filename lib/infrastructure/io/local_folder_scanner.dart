@@ -1,0 +1,83 @@
+// ignore_for_file: prefer_initializing_formals — private fields stay private; named params stay public.
+import 'dart:convert';
+import 'dart:io';
+
+import '../../application/ports/folder_scanner.dart';
+import '../../domain/library/hidden_folders.dart';
+import '../../domain/library/library_builder.dart';
+import '../../domain/library/markdown_file.dart';
+import 'local_folder.dart';
+import 'local_markdown.dart';
+import 'scoped_access.dart';
+
+/// Adapter: reads markdown files out of folders on the local filesystem.
+/// Like the browser scanner, it only reads what the domain would keep.
+final class LocalFolderScanner implements FolderScanner {
+  final LocalFolderRegistry _registry;
+  final ScopedAccess _access;
+
+  const LocalFolderScanner(
+    this._registry, {
+    ScopedAccess access = const OpenAccess(),
+  }) : _access = access;
+
+  @override
+  Future<ScannedFolder> scan(FolderRef ref) async {
+    final folder = _registry.lookup(ref);
+    if (folder == null) throw FolderUnavailable(ref);
+
+    try {
+      final files = <FileEntry>[];
+      switch (folder) {
+        case LocalDirectory(:final path, :final bookmark):
+          await _access.within(
+            bookmark,
+            () => _walk(Directory(path), '', files),
+          );
+        case LocalFiles(files: final loose):
+          for (final (path, bookmark) in loose) {
+            final name = baseName(path);
+            if (!MarkdownFile.isMarkdown(name)) continue;
+            files.add(
+              FileEntry(
+                name,
+                await _access.within(bookmark, () => _read(File(path))),
+                sourceId: localDocumentSourceId(path),
+              ),
+            );
+          }
+      }
+      return ScannedFolder(name: folder.name, files: files);
+    } on FileSystemException {
+      throw FolderUnavailable(ref);
+    }
+  }
+
+  Future<void> _walk(
+    Directory directory,
+    String prefix,
+    List<FileEntry> out,
+  ) async {
+    final entries = await directory.list(followLinks: false).toList();
+    for (final entry in entries) {
+      final name = baseName(entry.path);
+      final path = '$prefix$name';
+      if (entry is Directory) {
+        if (HiddenFolders.isHidden(name)) continue;
+        await _walk(entry, '$path/', out);
+      } else if (entry is File && MarkdownFile.isMarkdown(name)) {
+        out.add(
+          FileEntry(
+            path,
+            await _read(entry),
+            sourceId: localDocumentSourceId(entry.path),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Markdown is text; a stray invalid byte should not sink the whole library.
+  static Future<String> _read(File file) async =>
+      utf8.decode(await file.readAsBytes(), allowMalformed: true);
+}

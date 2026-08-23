@@ -1,0 +1,125 @@
+import 'dart:io';
+
+import 'package:flutter/widgets.dart';
+import 'package:window_manager/window_manager.dart';
+
+import '../../application/ports/folder_scanner.dart';
+import '../../application/ports/markdown_scanner.dart';
+import '../../application/ports/workspace_files.dart';
+import '../../application/ports/workspace_source_access.dart';
+import '../io/desktop_folder_drop.dart';
+import '../io/desktop_commands.dart';
+import '../io/desktop_folder_picker.dart';
+import '../io/desktop_links.dart';
+import '../io/desktop_markdown_picker.dart';
+import '../io/desktop_security_scope.dart';
+import '../io/desktop_workspace_files.dart';
+import '../io/desktop_workspace_source_access.dart';
+import '../io/local_folder.dart';
+import '../io/local_folder_scanner.dart';
+import '../io/local_markdown.dart';
+import '../io/local_markdown_scanner.dart';
+import '../io/reader_files.dart';
+import 'platform_adapters.dart';
+import 'platform_command.dart';
+
+Future<PlatformAdapters> createPlatformAdapters() async {
+  var topBar = plainTopBar;
+  if (Platform.isMacOS) {
+    // MainFlutterWindow.swift hides the system title bar; the traffic lights
+    // remain at the top left, so the top bar grows to their height and
+    // starts to their right.
+    await windowManager.ensureInitialized();
+    final titleBar = (await windowManager.getTitleBarHeight()).toDouble();
+    topBar = (height: titleBar > 0 ? titleBar : 52.0, leadingInset: 84.0);
+  }
+  return _DesktopAdapters(topBar, await ReaderFiles.locate());
+}
+
+final class _DesktopAdapters implements PlatformAdapters {
+  @override
+  final ({double height, double leadingInset}) topBar;
+  final _registry = LocalFolderRegistry('local');
+  final _markdownRegistry = LocalMarkdownRegistry('local-markdown');
+  final ReaderFiles _files;
+
+  _DesktopAdapters(this.topBar, this._files);
+  late final _drop = DesktopFolderDrop(_registry, _markdownRegistry);
+  late final _picker = DesktopFolderPicker(_registry);
+  late final _markdownPicker = DesktopMarkdownPicker(_markdownRegistry);
+  late final _commands = DesktopCommands();
+
+  @override
+  late final FolderScanner folderScanner = LocalFolderScanner(
+    _registry,
+    access: const DesktopSecurityScope(),
+  );
+
+  @override
+  late final MarkdownScanner markdownScanner = LocalMarkdownScanner(
+    _markdownRegistry,
+    access: const DesktopSecurityScope(),
+  );
+
+  @override
+  final WorkspaceFiles workspaceFiles = const DesktopWorkspaceFiles();
+
+  @override
+  late final WorkspaceSourceAccess workspaceSourceAccess =
+      DesktopWorkspaceSourceAccess(_registry, _markdownRegistry, _files);
+
+  @override
+  Future<FolderRef?> pickFolder() => _picker.pick();
+
+  @override
+  Future<MarkdownRef?> pickMarkdown() => _markdownPicker.pick();
+
+  @override
+  Stream<FolderRef> get folderDrops => _drop.drops;
+
+  @override
+  Stream<MarkdownRef> get markdownDrops => _drop.markdownDrops;
+
+  @override
+  Stream<bool> get dragging => _drop.dragging;
+
+  @override
+  Stream<PlatformCommand> get commands => _commands.stream;
+
+  @override
+  void openExternal(String url) => openWithSystem(url);
+
+  @override
+  Map<String, String> get launchOptions => const {};
+
+  @override
+  Widget dropRegion(Widget child) => _drop.wrap(child);
+
+  @override
+  Widget windowDragRegion(Widget child) {
+    if (!Platform.isMacOS) return child; // the system title bar is still there
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onDoubleTap: () async {
+        await windowManager.isMaximized()
+            ? windowManager.unmaximize()
+            : windowManager.maximize();
+      },
+      child: DragToMoveArea(child: child),
+    );
+  }
+
+  @override
+  Future<String?> readPreference(String key) => _files.readPreference(key);
+
+  @override
+  Future<void> writePreference(String key, String value) =>
+      _files.writePreference(key, value);
+
+  @override
+  Future<List<({String origin, String json})>> readThemeDocuments() =>
+      _files.readThemeDocuments();
+
+  @override
+  String? get themesLocation => _files.themesDirectory.path;
+}

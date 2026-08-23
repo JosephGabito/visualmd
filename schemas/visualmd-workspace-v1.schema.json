@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://visualmd.app/schemas/visualmd-workspace-v1.schema.json",
+  "title": "Visual MD Workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "workspaceId",
+    "documentRootAbsolutePath",
+    "theme",
+    "library",
+    "activeDocument"
+  ],
+  "properties": {
+    "format": { "const": "visualmd-workspace" },
+    "version": { "const": 1 },
+    "workspaceId": { "$ref": "#/$defs/nonEmptyString" },
+    "documentRootAbsolutePath": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:/)"
+        }
+      ]
+    },
+    "theme": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "theme"],
+          "properties": {
+            "mode": { "const": "fixed" },
+            "theme": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "light", "dark"],
+          "properties": {
+            "mode": { "const": "system" },
+            "light": { "$ref": "#/$defs/nonEmptyString" },
+            "dark": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      ]
+    },
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["markdowns", "folders"],
+      "properties": {
+        "markdowns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "folders": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/source" }
+        }
+      }
+    },
+    "activeDocument": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sourceId", "relativePath"],
+          "properties": {
+            "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+            "relativePath": { "$ref": "#/$defs/relativePath" }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?:\\.|(?!/)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*//)(?!.*\\\\).+)$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "relativePath"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "displayName": { "$ref": "#/$defs/nonEmptyString" },
+        "relativePath": { "$ref": "#/$defs/relativePath" }
+      }
+    }
+  }
+}
