@@ -1,0 +1,136 @@
+import '../../application/ports/folder_scanner.dart';
+import '../../domain/library/library_builder.dart';
+
+/// Adapter: a small bundled library so the reader is never empty-handed.
+final class SampleFolderScanner implements FolderScanner {
+  static const ref = FolderRef(id: 'sample', name: 'Welcome');
+
+  @override
+  Future<ScannedFolder> scan(FolderRef ref) async {
+    if (ref != SampleFolderScanner.ref) throw FolderUnavailable(ref);
+    return ScannedFolder(name: ref.name, files: _files);
+  }
+
+  static const _files = [
+    FileEntry('README.md', '''
+# Welcome to Visual MD
+
+The last markdown reader you need. Drop a folder, and every markdown file in
+it is on the shelf to your left — instantly, nested folders and all.
+
+## How it works
+
+1. **Drop a folder** anywhere on this window, or use *Open a folder*.
+2. Pick a document from the shelf.
+3. Use the **outline** on the right to move through long documents.
+
+Nothing leaves your machine. Files are read in the browser and never uploaded.
+
+## What you're looking at
+
+This sample library lives inside the app. It has a few documents and a nested
+folder so you can see how a real one feels before you bring your own.
+
+> Take a seat. The reading chair is the comfortable one.
+
+"Quotation marks are mostly white space," a typographer will tell you, and a
+mark left sitting in the column carves a notch out of the left edge. Notice
+that the words above begin exactly where these ones do -- the mark hangs
+outside the column, where it belongs.
+
+## Keyboard
+
+| Keys | Does |
+|------|------|
+| `⌘` / `Ctrl` + `B` | Toggle the shelf |
+| `⌘` / `Ctrl` + `.` | Toggle the outline |
+
+## A bit of code, for good measure
+
+```dart
+final library = LibraryBuilder.build(name: 'notes', files: files);
+print(library.openingDocument?.title); // "Welcome to Visual MD"
+```
+
+Now go drop something.
+'''),
+    FileEntry('guide/01-the-shelf.md', '''
+---
+title: The Shelf
+---
+
+# The Shelf
+
+Folders become shelves, documents become books. A few things the shelf does for you:
+
+- Folders with no markdown in them are left out, so the tree stays clean.
+- Names sort the way you'd expect: `2-setup` before `10-deploy`.
+- A `README` always sits first on its shelf, and the root one opens first.
+
+## Titles
+
+A document is shown by its title — the first `# Heading` or a `title:` in its
+front matter. No title? The file name does the job.
+
+## Hidden folders
+
+Dot-prefixed tooling and dependency trees such as `node_modules`, `vendor`,
+`venv`, and `Pods` stay out of sight.
+'''),
+    FileEntry('guide/02-the-outline.md', '''
+# The Outline
+
+Every heading in a document lands in the outline on the right. Click one to
+go there. As you scroll, the outline follows along.
+
+## Levels
+
+Headings are indented relative to the shallowest level in the document, so a
+file that starts at `##` still reads cleanly.
+
+### Deeper
+
+Up to six levels, like markdown itself.
+
+#### And deeper
+
+You get the idea.
+
+## Anchors
+
+Anchors are GitHub-style, so links like `[Levels](#levels)` behave.
+'''),
+    FileEntry('guide/advanced/reference-links.md', '''
+# Reference Links
+
+Some writers keep their links at the bottom of the file, [like this][docs].
+They keep working here, from any section.
+
+## Why mention it?
+
+Because the reader cuts documents into sections at each heading so the
+outline can scroll precisely — and it makes sure link definitions travel
+with every section.
+
+[docs]: https://commonmark.org/help/
+'''),
+    FileEntry('notes/colophon.md', '''
+# Colophon
+
+Set in a serif face for reading and a quiet sans for the furniture.
+
+Paper by day, lamplight by night — that pair follows your system, and the
+swatch in the top bar swaps it for something else: Catppuccin, Nord, Gruvbox.
+
+## Bring your own
+
+A theme is a small JSON file — nine colours and three typefaces, no code. Drop
+one in the app's themes folder, named in the theme menu, and it appears
+alongside the rest. Give it the same `id` as a built-in and it replaces it.
+
+*Built with Flutter, shaped with a hexagonal architecture: domain at the
+center, use cases around it, adapters at the edge, and a presentation ring in
+between holding the contracts a theme is written against.*
+'''),
+  ];
+}

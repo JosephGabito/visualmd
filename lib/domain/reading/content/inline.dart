@@ -1,0 +1,86 @@
+/// The run-level content of a document: what a line of text is made of.
+///
+/// Pure text, exactly as the author wrote it. How it is *set* — which quote
+/// marks, which figures, which face — is a presentation decision made later.
+sealed class Inline {
+  const Inline();
+
+  /// The plain text of this run and everything inside it, for outlines,
+  /// search and anything else that needs words without decoration.
+  String get text;
+}
+
+final class TextRun extends Inline {
+  @override
+  final String text;
+
+  const TextRun(this.text);
+
+  @override
+  bool operator ==(Object other) => other is TextRun && other.text == text;
+
+  @override
+  int get hashCode => text.hashCode;
+
+  @override
+  String toString() => 'TextRun("$text")';
+}
+
+/// Verbatim: never re-set, never re-punctuated, never re-wrapped.
+final class CodeRun extends Inline {
+  @override
+  final String text;
+
+  const CodeRun(this.text);
+
+  @override
+  bool operator ==(Object other) => other is CodeRun && other.text == text;
+
+  @override
+  int get hashCode => text.hashCode;
+}
+
+/// A run that carries a mark — emphasis, strength, a strikethrough — over
+/// the runs inside it.
+final class MarkedRun extends Inline {
+  final InlineMark mark;
+  final List<Inline> children;
+
+  const MarkedRun(this.mark, this.children);
+
+  @override
+  String get text => children.map((c) => c.text).join();
+}
+
+enum InlineMark { emphasis, strong, strikethrough }
+
+final class LinkRun extends Inline {
+  final String href;
+  final String? title;
+  final List<Inline> children;
+
+  const LinkRun({required this.href, this.title, required this.children});
+
+  @override
+  String get text => children.map((c) => c.text).join();
+}
+
+final class ImageRun extends Inline {
+  final String source;
+  final String? title;
+  final String alt;
+
+  const ImageRun({required this.source, this.title, required this.alt});
+
+  @override
+  String get text => alt;
+}
+
+/// A break the author asked for, with two spaces or a backslash. A single
+/// newline is not one of these: it is a space.
+final class LineBreakRun extends Inline {
+  const LineBreakRun();
+
+  @override
+  String get text => '\n';
+}

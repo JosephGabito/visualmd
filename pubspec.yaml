@@ -1,0 +1,58 @@
+name: visualmd
+description: "A local-first reader for folders of Markdown files."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  web: ^1.1.0
+  google_fonts: ^6.2.1
+  desktop_drop: ^0.8.0
+  file_selector: ^1.1.0
+  window_manager: ^0.5.2
+  path_provider: ^2.1.6
+  markdown: ^7.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/brand/visual-md-logo.png
+    # Shipped so the OFL notices travel with the fonts and can be shown in
+    # the app's licence page.
+    - assets/fonts/LICENSE-Literata.txt
+    - assets/fonts/LICENSE-Inter.txt
+    - assets/fonts/LICENSE-JetBrainsMono.txt
+    - assets/fonts/LICENSE-Alegreya.txt
+
+  # Bundled rather than fetched: a reader should draw text with no network,
+  # with no flash of a fallback face, and with metrics we can measure in a
+  # test. All four are SIL Open Font License 1.1, no reserved font names.
+  fonts:
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata.ttf
+        - asset: assets/fonts/Literata-Italic.ttf
+          style: italic
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+        - asset: assets/fonts/Inter-Italic.ttf
+          style: italic
+    - family: Alegreya
+      fonts:
+        - asset: assets/fonts/Alegreya.ttf
+        - asset: assets/fonts/Alegreya-Italic.ttf
+          style: italic
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono.ttf

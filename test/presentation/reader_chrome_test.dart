@@ -1,0 +1,405 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/api/reader_controller.dart';
+import 'package:visualmd/api/layout/panel_widths.dart';
+import 'package:visualmd/api/theme/library_theme.dart';
+import 'package:visualmd/api/widgets/collapsible_panel.dart';
+import 'package:visualmd/api/widgets/error_notice.dart';
+import 'package:visualmd/api/widgets/outline_panel.dart';
+import 'package:visualmd/api/widgets/panel_resize_handle.dart';
+import 'package:visualmd/api/widgets/pressable.dart';
+import 'package:visualmd/api/widgets/reading_pane.dart';
+import 'package:visualmd/api/widgets/search_view.dart';
+import 'package:visualmd/api/widgets/shelf_panel.dart';
+import 'package:visualmd/api/screens/reader_screen.dart';
+import 'package:visualmd/application/ports/folder_scanner.dart';
+import 'package:visualmd/application/ports/markdown_scanner.dart';
+import 'package:visualmd/application/library_mutation_queue.dart';
+import 'package:visualmd/application/use_cases/add_folder.dart';
+import 'package:visualmd/application/use_cases/add_markdown.dart';
+import 'package:visualmd/application/use_cases/move_folder.dart';
+import 'package:visualmd/domain/library/library_builder.dart';
+import 'package:visualmd/application/use_cases/read_document.dart';
+import 'package:visualmd/application/use_cases/remove_folder.dart';
+import 'package:visualmd/application/use_cases/remove_markdown.dart';
+import 'package:visualmd/application/use_cases/search_documents.dart';
+import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
+import 'package:visualmd/infrastructure/memory/in_memory_library_repository.dart';
+import 'package:visualmd/infrastructure/search/literal_document_search.dart';
+import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/theme/theme_registry.dart';
+
+const _library = ScannedFolder(
+  name: 'notes',
+  files: [
+    FileEntry(
+      'README.md',
+      '# Notes\n\n## First\n\ntext\n\n## Second\n\nmore\n',
+    ),
+    FileEntry('other.md', '# Other\n'),
+  ],
+);
+
+final class _Scanner implements FolderScanner {
+  @override
+  Future<ScannedFolder> scan(FolderRef ref) async => _library;
+}
+
+final class _MarkdownScanner implements MarkdownScanner {
+  @override
+  Future<ScannedMarkdown> scan(MarkdownRef ref) =>
+      throw MarkdownUnavailable(ref);
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    for (final entry in {
+      'Alegreya': 'assets/fonts/Alegreya.ttf',
+      'Literata': 'assets/fonts/Literata.ttf',
+      'Inter': 'assets/fonts/Inter.ttf',
+      'JetBrains Mono': 'assets/fonts/JetBrainsMono.ttf',
+    }.entries) {
+      await (FontLoader(
+        entry.key,
+      )..addFont(rootBundle.load(entry.value))).load();
+    }
+  });
+
+  late ReaderController controller;
+  late List<(String, String)> saved;
+
+  Future<void> pumpReader(
+    WidgetTester tester, {
+    Size size = const Size(1280, 800),
+    PanelWidths? panelWidths,
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    saved = [];
+    final repository = InMemoryLibraryRepository();
+    final mutations = LibraryMutationQueue();
+    const parser = MarkdownDocumentParser();
+    controller = ReaderController(
+      addFolder: AddFolder(
+        scanner: _Scanner(),
+        repository: repository,
+        mutations: mutations,
+      ),
+      addMarkdown: AddMarkdown(
+        scanner: _MarkdownScanner(),
+        repository: repository,
+        mutations: mutations,
+      ),
+      removeFolder: RemoveFolder(repository: repository, mutations: mutations),
+      removeMarkdown: RemoveMarkdown(
+        repository: repository,
+        mutations: mutations,
+      ),
+      moveFolder: MoveFolder(repository: repository, mutations: mutations),
+      readDocument: ReadDocument(repository: repository, parser: parser),
+      searchDocuments: SearchDocuments(
+        repository: repository,
+        search: LiteralDocumentSearch(parser: parser),
+      ),
+      pickFolder: () async => null,
+      sampleFolder: const FolderRef(id: 'sample', name: 'notes'),
+      themes: ThemeRegistry(),
+      panelWidths: panelWidths,
+      savePreference: (key, value) async => saved.add((key, value)),
+    );
+    await controller.openSampleLibrary();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(BuiltInThemes.paper),
+        home: ReaderScreen(controller: controller, openExternal: (_) {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  /// The width the panel wrapping [panel] currently occupies.
+  double panelWidth(WidgetTester tester, Type panel) {
+    final collapsible = find.ancestor(
+      of: find.byType(panel),
+      matching: find.byType(CollapsiblePanel),
+    );
+    return tester.getSize(collapsible.first).width;
+  }
+
+  Finder barButton(WidgetTester tester, String tooltipStartsWith) =>
+      find.byWidgetPredicate(
+        (w) =>
+            w is Pressable &&
+            (w.tooltip?.startsWith(tooltipStartsWith) ?? false),
+      );
+
+  Future<void> pressFind(WidgetTester tester, {bool library = false}) async {
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    if (library) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    if (library) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the shelf toggles on the press, not the release', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    expect(panelWidth(tester, ShelfPanel), greaterThan(200));
+
+    final press = await tester.startGesture(
+      tester.getCenter(barButton(tester, 'Hide shelf')),
+    );
+    await tester.pump(); // still holding
+    expect(
+      controller.shelfVisible,
+      isFalse,
+      reason: 'acted before the release',
+    );
+
+    await press.up();
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsNothing);
+  });
+
+  testWidgets('the shelf slides out rather than vanishing', (tester) async {
+    await pumpReader(tester);
+    final open = panelWidth(tester, ShelfPanel);
+
+    await tester.tap(barButton(tester, 'Hide shelf'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+
+    final midway = panelWidth(tester, ShelfPanel);
+    expect(midway, lessThan(open));
+    expect(midway, greaterThan(0));
+
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsNothing);
+  });
+
+  testWidgets('a failed drop remains visible over an open library', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    final openDocument = controller.reading?.document.id;
+
+    await controller.addMarkdown(
+      const MarkdownRef(id: 'missing', name: 'missing.md'),
+    );
+    await tester.pump();
+
+    expect(find.byType(ErrorNotice), findsOneWidget);
+    expect(find.text('Couldn\'t open “missing.md”.'), findsOneWidget);
+    expect(find.byType(ShelfPanel), findsOneWidget);
+    expect(controller.reading?.document.id, openDocument);
+
+    expect(find.byTooltip('Dismiss'), findsOneWidget);
+    final dismiss = find.ancestor(
+      of: find.byIcon(Icons.close),
+      matching: find.byType(IconButton),
+    );
+    tester.widget<IconButton>(dismiss).onPressed!();
+    await tester.pump();
+
+    expect(find.byType(ErrorNotice), findsNothing);
+    expect(controller.error, isNull);
+  });
+
+  testWidgets(
+    'the panel keeps its own width while it leaves, so it never squashes',
+    (tester) async {
+      await pumpReader(tester);
+      final shelfWidth = tester.getSize(find.byType(ShelfPanel)).width;
+
+      await tester.tap(barButton(tester, 'Hide shelf'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 90));
+
+      expect(
+        tester.getSize(find.byType(ShelfPanel)).width,
+        shelfWidth,
+        reason: 'contents must not reflow mid-flight',
+      );
+    },
+  );
+
+  testWidgets('command-f finds and counts text in the open document', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    await pressFind(tester);
+    expect(find.byType(DocumentFindBar), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('document-search-field')),
+      'text',
+    );
+    await tester.pump(const Duration(milliseconds: 130));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 of 1'), findsOneWidget);
+  });
+
+  testWidgets('command-shift-f searches the library and opens a result', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    await pressFind(tester, library: true);
+    expect(find.byType(LibrarySearchPanel), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('library-search-field')),
+      'Other',
+    );
+    await tester.pump(const Duration(milliseconds: 130));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 match in 1 document'), findsOneWidget);
+    await tester.tap(find.text('other.md'));
+    await tester.pumpAndSettle();
+
+    expect(controller.reading?.document.id.path, 'other.md');
+    expect(find.byType(DocumentFindBar), findsOneWidget);
+    expect(find.text('1 of 1'), findsOneWidget);
+  });
+
+  testWidgets('the outline toggles the same way', (tester) async {
+    await pumpReader(tester);
+    expect(panelWidth(tester, OutlinePanel), greaterThan(200));
+
+    final press = await tester.startGesture(
+      tester.getCenter(barButton(tester, 'Hide outline')),
+    );
+    await tester.pump();
+    expect(controller.outlineVisible, isFalse);
+
+    await press.up();
+    await tester.pumpAndSettle();
+    expect(find.byType(OutlinePanel), findsNothing);
+
+    await tester.tap(barButton(tester, 'Show outline'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OutlinePanel), findsOneWidget);
+  });
+
+  testWidgets('each wide panel follows its own resize seam and remembers it', (
+    tester,
+  ) async {
+    await pumpReader(tester, size: const Size(1800, 900));
+
+    final shelfHandle = find.byKey(const ValueKey('shelf-resize-handle'));
+    final outlineHandle = find.byKey(const ValueKey('outline-resize-handle'));
+    expect(shelfHandle, findsOneWidget);
+    expect(outlineHandle, findsOneWidget);
+
+    await tester.drag(shelfHandle, const Offset(60, 0));
+    await tester.pumpAndSettle();
+    expect(panelWidth(tester, ShelfPanel), closeTo(340, 1));
+    expect(saved, contains((shelfWidthPreference, '340.0')));
+
+    await tester.drag(outlineHandle, const Offset(-40, 0));
+    await tester.pumpAndSettle();
+    expect(panelWidth(tester, OutlinePanel), closeTo(280, 1));
+    expect(saved, contains((outlineWidthPreference, '280.0')));
+  });
+
+  testWidgets('the resize seam resets on double-click and moves by keyboard', (
+    tester,
+  ) async {
+    await pumpReader(
+      tester,
+      size: const Size(1800, 900),
+      panelWidths: const PanelWidths(shelf: 360),
+    );
+    final handle = find.byKey(const ValueKey('shelf-resize-handle'));
+
+    await tester.tap(handle);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(panelWidth(tester, ShelfPanel), closeTo(376, 1));
+
+    await tester.tap(handle);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(handle);
+    await tester.pumpAndSettle();
+    expect(panelWidth(tester, ShelfPanel), closeTo(280, 1));
+    expect(saved, contains((shelfWidthPreference, '280.0')));
+  });
+
+  testWidgets('large preferences yield before they squeeze the reading pane', (
+    tester,
+  ) async {
+    await pumpReader(
+      tester,
+      panelWidths: const PanelWidths(shelf: 520, outline: 440),
+    );
+
+    expect(tester.getSize(find.byType(ReadingPane)).width, greaterThan(650));
+  });
+
+  testWidgets('a resize seam stops rather than moving the opposite panel', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    final outlineBefore = panelWidth(tester, OutlinePanel);
+
+    await tester.drag(
+      find.byKey(const ValueKey('shelf-resize-handle')),
+      const Offset(200, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(panelWidth(tester, OutlinePanel), closeTo(outlineBefore, 0.01));
+    expect(tester.getSize(find.byType(ReadingPane)).width, greaterThan(650));
+  });
+
+  testWidgets('reduce motion swaps the panels at once', (tester) async {
+    await pumpReader(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(BuiltInThemes.paper),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
+        ),
+        home: ReaderScreen(controller: controller, openExternal: (_) {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(barButton(tester, 'Hide shelf'));
+    await tester.pump();
+    expect(find.byType(ShelfPanel), findsNothing);
+  });
+
+  testWidgets(
+    'a compact window opens on the page and uses one panel as an overlay',
+    (tester) async {
+      await pumpReader(tester);
+      tester.view.physicalSize = const Size(720, 480);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReadingPane), findsOneWidget);
+      expect(find.byType(ShelfPanel), findsNothing);
+      expect(find.byType(OutlinePanel), findsNothing);
+      expect(find.byType(PanelResizeHandle), findsNothing);
+
+      await tester.tap(barButton(tester, 'Show shelf'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ShelfPanel), findsOneWidget);
+      expect(find.byType(OutlinePanel), findsNothing);
+
+      await tester.tap(barButton(tester, 'Show outline'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ShelfPanel), findsNothing);
+      expect(find.byType(OutlinePanel), findsOneWidget);
+    },
+  );
+}
