@@ -68,9 +68,9 @@ Proposed constraints:
 This record describes a direction; there is no plugin code to cite. The
 places the first plugins will attach are visible today:
 
-- Where an `EventPublisher` port will sit alongside the existing ports: `lib/application/ports/folder_scanner.dart:30-32`, `lib/application/ports/library_repository.dart:4-7`.
+- Where an `EventPublisher` port will sit alongside the existing ports: `lib/application/ports/folder_scanner.dart`, `lib/application/ports/library_repository.dart`.
 - The use cases that will publish folder-mutation and `DocumentOpened` events:
-  `lib/application/use_cases/add_folder.dart:40-53`,
-  `lib/application/use_cases/read_document.dart:37-43`.
-- The precedent for typed capabilities crossing the composition root: `lib/api/app.dart:9-33`, `lib/main.dart:67-74`.
+  `lib/application/use_cases/add_folder.dart`,
+  `lib/application/use_cases/read_document.dart`.
+- The precedent for typed capabilities crossing the composition root: `lib/api/app.dart`, `lib/main.dart`.
 - The written plan: [Plugin Architecture](../07-roadmap/01-plugin-architecture.md).

@@ -6,29 +6,29 @@ Source synchronization keeps an open Library aligned with Markdown changed by
 another process. The application owns ordering, coalescing and the atomic
 Library replacement; platform adapters own only the signal and the fresh read.
 The contract is expressed by `SourceChangeMonitor` and
-`FolderDocumentScanner` (`lib/application/ports/source_change_monitor.dart:4-44`,
-`lib/application/ports/folder_document_scanner.dart:4-25`).
+`FolderDocumentScanner` (`lib/application/ports/source_change_monitor.dart`,
+`lib/application/ports/folder_document_scanner.dart`).
 
 Platform events are invalidations, never file contents. This matters because an
 older event can arrive late: the application rereads after the event instead of
 allowing stale bytes to travel through the event stream
-(`lib/application/ports/source_change_monitor.dart:4-8`).
+(`lib/application/ports/source_change_monitor.dart`).
 
 ## Present wiring
 
 `SourceWatchCoordinator` owns one watch per open folder or standalone Markdown,
 waits for 250 milliseconds of quiet, merges repeated folder paths, and lets a
-full rescan supersede targeted paths (`lib/application/source_watch_coordinator.dart:28-46`,
-`:121-165`). When a source is removed, absorbed, or replaced, its watch is
-cancelled (`lib/application/source_watch_coordinator.dart:79-119`).
+full rescan supersede targeted paths (`lib/application/source_watch_coordinator.dart`,
+`lib/application/source_watch_coordinator.dart`). When a source is removed, absorbed, or replaced, its watch is
+cancelled (`lib/application/source_watch_coordinator.dart`).
 
 `RefreshSource` then runs inside the same `LibraryMutationQueue` as manual
 source changes. A targeted folder change reads only its invalidated documents;
 a coarse event rebuilds the root; a standalone change replaces that document
-under the same identity (`lib/application/use_cases/refresh_source.dart:32-103`,
-`:105-214`). A cancelled watch is checked both before and after its asynchronous
+under the same identity (`lib/application/use_cases/refresh_source.dart`,
+`lib/application/use_cases/refresh_source.dart`). A cancelled watch is checked both before and after its asynchronous
 read, so it cannot commit after a source has been rebound
-(`lib/application/use_cases/refresh_source.dart:32-103`).
+(`lib/application/use_cases/refresh_source.dart`).
 
 ## Inputs and outputs
 
@@ -41,9 +41,9 @@ read, so it cannot commit after a source has been rebound
 
 `RefreshedSource` returns the new Library, the surviving active document, and
 the exact document identities whose bytes or membership changed
-(`lib/application/use_cases/refresh_source.dart:17-30`). The coordinator emits
+(`lib/application/use_cases/refresh_source.dart`). The coordinator emits
 either `SourceSynchronized` or `SourceSynchronizationFailed` to the API ring
-(`lib/application/source_watch_coordinator.dart:12-26`).
+(`lib/application/source_watch_coordinator.dart`).
 
 ## Events
 
@@ -56,21 +56,21 @@ and reason. Neither changes the Library by itself.
 The composition root creates one coordinator for the reader. Adding a source
 starts its watch; opening a Workspace replaces the complete watch set; removing
 or absorbing a source releases its watch. Disposing the controller closes every
-subscription and timer (`lib/application/source_watch_coordinator.dart:50-119`,
-`:174-191`).
+subscription and timer (`lib/application/source_watch_coordinator.dart`,
+`lib/application/source_watch_coordinator.dart`).
 
 The coordinator serializes refreshes per source. If another invalidation arrives
 while a read is running, it records a second pass and rereads after the first
 commit rather than dropping the newer signal
-(`lib/application/source_watch_coordinator.dart:139-164`).
+(`lib/application/source_watch_coordinator.dart`).
 
 ## Failure and recovery
 
 A read or watcher failure leaves the last good Library intact and becomes a
 visible controller error. A later successful refresh clears that synchronization
-error (`lib/api/reader_controller.dart:568-595`). A deleted selected document
+error (`lib/api/reader_controller.dart`). A deleted selected document
 moves reading first to the same root's opening document, then to the Library's
-opening document (`lib/application/use_cases/refresh_source.dart:241-244`).
+opening document (`lib/application/use_cases/refresh_source.dart`).
 
 The recurrence tests cover quiet-period coalescing, invalidation during a
 running refresh, and cancellation before commit

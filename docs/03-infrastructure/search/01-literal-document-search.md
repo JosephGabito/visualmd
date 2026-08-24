@@ -5,7 +5,7 @@
 `LiteralDocumentSearch` implements the
 [Document Search Port](../../02-application/06-document-search-port.md) with
 Dart's built-in `RegExp` engine
-(`lib/infrastructure/search/literal_document_search.dart:7-19`). It owns text
+(`lib/infrastructure/search/literal_document_search.dart`). It owns text
 preparation, literal matching, and excerpts. It does not choose scope or know
 which result is active on screen.
 
@@ -13,22 +13,22 @@ which result is active on screen.
 
 For each document, the injected `DocumentParser` produces
 `DocumentContent.text`; the result is cached by document identity
-(`lib/infrastructure/search/literal_document_search.dart:26-30`). Searching
+(`lib/infrastructure/search/literal_document_search.dart`). Searching
 therefore ignores Markdown markers and link destinations that the page does
 not show.
 
 The query goes through `RegExp.escape`, then a case-insensitive Unicode
-expression (`lib/infrastructure/search/literal_document_search.dart:20-38`).
+expression (`lib/infrastructure/search/literal_document_search.dart`).
 `allMatches` supplies ordered, non-overlapping offsets, which become
-`TextMatch` values (`:31-38`). Documents with no occurrence are omitted while
-the input order is retained (`:39-43`).
+`TextMatch` values (`lib/infrastructure/search/literal_document_search.dart`). Documents with no occurrence are omitted while
+the input order is retained (`lib/infrastructure/search/literal_document_search.dart`).
 
 ## Inputs and outputs
 
 In: a `SearchQuery` and application-scoped documents. Out: grouped
 `DocumentSearchResult`s. Each excerpt takes up to 46 code units on either side,
 folds whitespace for the shelf, and marks clipped edges with an ellipsis
-(`lib/infrastructure/search/literal_document_search.dart:46-54`).
+(`lib/infrastructure/search/literal_document_search.dart`).
 
 ## Events
 

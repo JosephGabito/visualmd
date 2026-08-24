@@ -13,27 +13,27 @@ access.
 
 | Document | What it introduces | Source |
 |----------|--------------------|--------|
-| [In-Memory Repository and Routing Scanner](01-in-memory-repository.md) | Session library state and one `FolderScanner` over several sources | `lib/infrastructure/memory/in_memory_library_repository.dart:5`, `lib/infrastructure/routing_folder_scanner.dart:5` |
-| [Sample Library](02-sample-library.md) | The bundled “Welcome” folder available on every platform | `lib/infrastructure/memory/sample_folder_scanner.dart:5` |
+| [In-Memory Repository and Routing Scanner](01-in-memory-repository.md) | Session library state and one `FolderScanner` over several sources | `lib/infrastructure/memory/in_memory_library_repository.dart`, `lib/infrastructure/routing_folder_scanner.dart` |
+| [Sample Library](02-sample-library.md) | The bundled “Welcome” folder available on every platform | `lib/infrastructure/memory/sample_folder_scanner.dart` |
 
 The composition root shares one `InMemoryLibraryRepository` across the folder
-mutation use cases and `ReadDocument` (`lib/main.dart:60-121`). It also places
+mutation use cases and `ReadDocument` (`lib/main.dart`). It also places
 `SampleFolderScanner` first in the routing list, so the sample's constant
 reference is handled before the active platform scanner is consulted
-(`lib/main.dart:49-63`).
+(`lib/main.dart`).
 
 | Adapter | Application port | Declaration |
 |---------|------------------|-------------|
-| `InMemoryLibraryRepository` | `LibraryRepository` | `lib/application/ports/library_repository.dart:4-7` |
-| `RoutingFolderScanner` | `FolderScanner` | `lib/application/ports/folder_scanner.dart:30-32` |
-| `SampleFolderScanner` | `FolderScanner` | `lib/application/ports/folder_scanner.dart:30-32` |
+| `InMemoryLibraryRepository` | `LibraryRepository` | `lib/application/ports/library_repository.dart` |
+| `RoutingFolderScanner` | `FolderScanner` | `lib/application/ports/folder_scanner.dart` |
+| `SampleFolderScanner` | `FolderScanner` | `lib/application/ports/folder_scanner.dart` |
 
 ## Why each part exists
 
 The repository keeps the use cases focused on library behavior rather than a
 storage technology. Application tests still use a smaller fake repository so
 they describe the use case contract directly
-(`test/application/use_cases_test.dart:19-27`).
+(`test/application/use_cases_test.dart`).
 
 The sample library gives every target a real document to render before a reader
 opens local content. It is especially useful when working on typography or the

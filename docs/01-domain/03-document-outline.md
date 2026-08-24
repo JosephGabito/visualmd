@@ -5,8 +5,8 @@
 `DocumentOutline.parse` reads a markdown string and returns the structure a
 reader navigates by: front matter set aside, a `TableOfContents` of
 `Heading`s, and the document cut into `Section`s at each heading
-(`lib/domain/reading/document_outline.dart:6-18`,
-`lib/domain/reading/document_outline.dart:45`). It does **not** render
+(`lib/domain/reading/document_outline.dart`,
+`lib/domain/reading/document_outline.dart`). It does **not** render
 markdown; rendering is the reading pane's job in
 [API](../05-api/04-reading-pane.md). The outline exists so the table of
 contents and the scroll targets come from one parse and always agree
@@ -15,40 +15,40 @@ contents and the scroll targets come from one parse and always agree
 ## Present wiring
 
 The private `_Parser` works line by line
-(`lib/domain/reading/document_outline.dart:48-192`):
+(`lib/domain/reading/document_outline.dart`):
 
 - **Line endings.** `\r\n` and lone `\r` are normalised to `\n` before
-  splitting (`lib/domain/reading/document_outline.dart:52-56`).
+  splitting (`lib/domain/reading/document_outline.dart`).
 - **Front matter.** If the first line is `---`, everything up to the next
   `---` or `...` line is front matter; the body starts after it. No closing
-  fence means no front matter (`lib/domain/reading/document_outline.dart:135-145`).
+  fence means no front matter (`lib/domain/reading/document_outline.dart`).
 - **Fenced code is skipped.** A fence opens with three or more backticks or
   tildes after up to three spaces; it closes only on a fence of the same
   character at least as long, so a four-backtick fence may contain a
-  three-backtick fence (`lib/domain/reading/document_outline.dart:58`, `:80-95`).
+  three-backtick fence (`lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`).
 - **ATX headings.** One to six `#` followed by whitespace; trailing closing
   hashes are stripped, and a heading of only hashes has empty text
-  (`lib/domain/reading/document_outline.dart:59-60`, `:99-106`, `:147-159`).
+  (`lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`).
 - **Setext headings.** A non-blank line followed by a line of `=` (h1) or
   `-` (h2) — unless the first line looks like a heading, blockquote, table
   row, list item, ordered item or fence
-  (`lib/domain/reading/document_outline.dart:61-66`, `:108-124`). This
+  (`lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`). This
   is what keeps `---` rules, `|---|` table separators and `- item` lists out
   of the outline.
 - **Inline cleanup.** Heading text drops images (keeping alt), links (keeping
   text), HTML tags, backticks, `**`, `__`, `*`, `~~`, and collapses
-  whitespace (`lib/domain/reading/document_outline.dart:161-169`).
+  whitespace (`lib/domain/reading/document_outline.dart`).
 - **Anchors.** GitHub style: lowercase, keep letters, digits, spaces and
   hyphens, spaces to hyphens. Duplicates get `-1`, `-2`, …; an empty slug
   becomes `section`. The rule is not this parser's own — it lives in
-  `HeadingAnchors` (`lib/domain/reading/heading_anchor.dart:7-29`), and the
+  `HeadingAnchors` (`lib/domain/reading/heading_anchor.dart`), and the
   outline takes one counter per parse from it
-  (`lib/domain/reading/document_outline.dart:50`,
-  `lib/domain/reading/document_outline.dart:156`). The
+  (`lib/domain/reading/document_outline.dart`,
+  `lib/domain/reading/document_outline.dart`). The
   [content model](05-document-content.md) takes its anchors from the same
   rule, which is what makes a link found in the outline resolve on the page.
 - **Reference definitions** (`[id]: url`) are collected outside fences
-  (`lib/domain/reading/document_outline.dart:63`, `:97`).
+  (`lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`).
 - **Sections.** Each heading starts a section that includes its own heading
   line; text before the first heading is a heading-less section unless blank.
   Sections are no longer what the page renders — see
@@ -56,14 +56,14 @@ The private `_Parser` works line by line
   parser still produces them and they are still tested.
   When there is more than one section and any reference definitions exist,
   the definitions are appended to every section so links resolve wherever
-  they appear (`lib/domain/reading/document_outline.dart:171-190`).
+  they appear (`lib/domain/reading/document_outline.dart`).
 - **Title.** `title:` in front matter (quotes stripped), else the first h1,
-  else `null` (`lib/domain/reading/document_outline.dart:21-39`).
+  else `null` (`lib/domain/reading/document_outline.dart`).
 
 `Heading` carries `level`, `text`, `anchor` and the zero-based source `line`
-(`lib/domain/reading/heading.dart:2-24`). `TableOfContents` adds `baseLevel`
+(`lib/domain/reading/heading.dart`). `TableOfContents` adds `baseLevel`
 (shallowest level present) and `byAnchor`
-(`lib/domain/reading/table_of_contents.dart:3-22`).
+(`lib/domain/reading/table_of_contents.dart`).
 
 ## Inputs and outputs
 
@@ -76,7 +76,7 @@ The private `_Parser` works line by line
 | `---` / `title: "From Front Matter"` / `---` / `# Body Heading` | Body Heading at line 5 | one, without `tags:` | `From Front Matter` |
 | empty string | none | none | `null` |
 
-Each row is a fixture in `test/domain/document_outline_test.dart:10-138`.
+Each row is a fixture in `test/domain/document_outline_test.dart`.
 
 ## Events
 
@@ -87,7 +87,7 @@ which owns the completed reading operation.
 ## Lifecycle
 
 Invoked lazily by `Document.outline` and cached on the document
-(`lib/domain/library/document.dart:22-24`). A document is parsed at most once
+(`lib/domain/library/document.dart`). A document is parsed at most once
 per library build.
 
 ## Failure and recovery
@@ -99,7 +99,7 @@ per library build.
   not headings, matching CommonMark.
 - Splitting at headings can separate a construct from its context; reference
   definitions are the one case handled explicitly
-  (`test/domain/document_outline_test.dart:107-114`).
+  (`test/domain/document_outline_test.dart`).
 
 ## Transition
 

@@ -16,49 +16,53 @@ of this document:
 ## Present wiring
 
 **Native.** `MainFlutterWindow.awakeFromNib` sets the window up before the
-first frame (`macos/Runner/MainFlutterWindow.swift:22-43`):
+first frame (`macos/Runner/MainFlutterWindow.swift`):
 
 | Setting | Effect | Evidence |
 |---------|--------|----------|
-| `titleVisibility = .hidden` | no title text | `macos/Runner/MainFlutterWindow.swift:31` |
-| `titlebarAppearsTransparent = true` | no title-bar background | `:32` |
-| `styleMask.insert(.fullSizeContentView)` | Flutter's view extends under the title-bar zone | `:33` |
-| `titlebarSeparatorStyle = .none` | no hairline between zone and content | `:34` |
-| `toolbarStyle = .unified` + an empty `NSToolbar` | the zone grows to toolbar height and macOS centres the traffic lights in it | `:37-40` |
-| `minSize = 720 × 480` | preserves a usable three-pane layout | `:41` |
+| `titleVisibility = .hidden` | no title text | `macos/Runner/MainFlutterWindow.swift` |
+| `titlebarAppearsTransparent = true` | no title-bar background | `macos/Runner/MainFlutterWindow.swift` |
+| `styleMask.insert(.fullSizeContentView)` | Flutter's view extends under the title-bar zone | `macos/Runner/MainFlutterWindow.swift` |
+| `titlebarSeparatorStyle = .none` | no hairline between zone and content | `macos/Runner/MainFlutterWindow.swift` |
+| `toolbarStyle = .unified` + an empty `NSToolbar` | the zone grows to toolbar height and macOS centres the traffic lights in it | `macos/Runner/MainFlutterWindow.swift` |
+| fullscreen notifications | hide that empty toolbar while no persistent traffic lights need it | `macos/Runner/MainFlutterWindow.swift` |
+| `minSize = 720 × 480` | preserves a usable three-pane layout | `macos/Runner/MainFlutterWindow.swift` |
 
 The empty toolbar is the trick: it has no items and draws nothing, but its
-presence makes the invisible zone tall enough (measured at startup; 52 px if the window reports nothing) for the lights to sit
-centred rather than hugging the top edge.
+presence makes the invisible zone tall enough (measured at startup; 52 px if
+the window reports nothing) for the lights to sit centred rather than hugging
+the top edge. It is hidden before entering fullscreen and restored before exit;
+otherwise AppKit carries its empty region into fullscreen and covers the
+Flutter top bar (`macos/Runner/MainFlutterWindow.swift`).
 
 **Platform adapter.** On macOS only, `createPlatformAdapters` awaits
 `windowManager.ensureInitialized()` and `getTitleBarHeight()`, then answers
 `topBar = (height: <measured, or 52 if 0>, leadingInset: 84)`
-(`lib/infrastructure/platform/platform_io.dart:26-35`). 84 px is just past
+(`lib/infrastructure/platform/platform_io.dart`). 84 px is just past
 the green light. Every other platform answers `plainTopBar`
-(`lib/infrastructure/platform/platform_adapters.dart:58-62`,
-`lib/infrastructure/platform/platform_io.dart:27-28`).
+(`lib/infrastructure/platform/platform_adapters.dart`,
+`lib/infrastructure/platform/platform_io.dart`).
 
 `windowDragRegion` restores what a transparent title bar loses: on macOS it
 wraps the bar in `window_manager`'s `DragToMoveArea` (a native `performDrag`)
 inside a `GestureDetector` whose double-tap toggles `maximize`/`unmaximize`,
 matching the native title-bar gesture; elsewhere it returns the child
 untouched because the system title bar is still there
-(`lib/infrastructure/platform/platform_io.dart:118-128`).
+(`lib/infrastructure/platform/platform_io.dart`).
 
 **API.** `VisualMdApp` receives `topBar` and `windowDragRegion` from `main.dart`
-(`lib/main.dart:268-278`) and passes them to `ReaderScreen`, which sizes and
+(`lib/main.dart`) and passes them to `ReaderScreen`, which sizes and
 insets the bar and applies the wrapper
-(`lib/api/screens/reader_screen.dart:39-46`). Platform checks stay out of the
+(`lib/api/screens/reader_screen.dart`). Platform checks stay out of the
 UI. See [Shell](../../05-api/02-shell.md).
 
 ## Inputs and outputs
 
 | Direction | What | Evidence |
 |-----------|------|----------|
-| in (macOS) | title-bar height from the window | `lib/infrastructure/platform/platform_io.dart:32-34` |
-| out | `({double height, double leadingInset}) topBar` | `lib/infrastructure/platform/platform_adapters.dart:36-38` |
-| out | `Widget windowDragRegion(Widget)` | `lib/infrastructure/platform/platform_adapters.dart:40-42` |
+| in (macOS) | title-bar height from the window | `lib/infrastructure/platform/platform_io.dart` |
+| out | `({double height, double leadingInset}) topBar` | `lib/infrastructure/platform/platform_adapters.dart` |
+| out | `Widget windowDragRegion(Widget)` | `lib/infrastructure/platform/platform_adapters.dart` |
 
 ## Events
 
@@ -66,19 +70,23 @@ None. Window chrome contributes layout and interaction, not domain activity.
 
 ## Lifecycle
 
-Native settings are applied once when the window wakes. The adapter measures
-once at startup; the bar does not re-measure if the system changes title-bar
-metrics mid-session.
+Native settings and fullscreen observers are installed when the window wakes.
+The adapter measures once at startup; the bar does not re-measure if the system
+changes title-bar metrics mid-session. The observers leave with the window
+(`macos/Runner/MainFlutterWindow.swift`).
 
 ## Failure and recovery
 
 - A 0 from `getTitleBarHeight` (plugin not ready, unusual window) falls back
   to 52 so the inset still clears the lights
-  (`lib/infrastructure/platform/platform_io.dart:33-34`).
+  (`lib/infrastructure/platform/platform_io.dart`).
 - If `window_manager` ever failed to initialise, `createPlatformAdapters`
   would throw before `runApp`; there is no degraded mode today.
 - Verified by screenshot on macOS 26 on 2026-08-22: lights centred, no overlap.
   Drag and double-click zoom are not yet confirmed by hand.
+- Fullscreen toolbar visibility is guarded by a source-level platform test and
+  was verified visually on macOS 26 on 2026-08-24: the Flutter top bar reaches
+  the top edge, with no empty native strip.
 
 ## Transition
 

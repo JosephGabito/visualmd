@@ -5,7 +5,7 @@
 `Library` is the aggregate for one reading session: directly opened markdowns
 plus an ordered list of independently opened top-level folders. Both are
 values inside the aggregate, not platform handles
-(`lib/domain/library/library.dart:7-40`). Folder identity is an opaque
+(`lib/domain/library/library.dart`). Folder identity is an opaque
 `LibraryRootId`; optional physical-file equality is an opaque
 `DocumentSourceId` ([Document Source Identity](07-document-source-identity.md)).
 
@@ -13,12 +13,12 @@ Six types make up the library:
 
 | Type | Role | Evidence |
 |------|------|----------|
-| `Library` | standalone markdowns, ordered roots and aggregate operations | `lib/domain/library/library.dart:7-120` |
-| `LibraryRoot` | one named top-level folder and its tree | `lib/domain/library/library_root.dart:7-35` |
-| `Folder` | one nested shelf of folders and documents | `lib/domain/library/folder.dart:6-40` |
-| `Document` | markdown source, optional source identity and lazy outline | `lib/domain/library/document.dart:6-31` |
-| `DocumentId` | root identity plus a relative path | `lib/domain/library/document_id.dart:3-60` |
-| `DocumentSourceId` | opaque equality for one physical source | `lib/domain/library/document_source_id.dart:1-17` |
+| `Library` | standalone markdowns, ordered roots and aggregate operations | `lib/domain/library/library.dart` |
+| `LibraryRoot` | one named top-level folder and its tree | `lib/domain/library/library_root.dart` |
+| `Folder` | one nested shelf of folders and documents | `lib/domain/library/folder.dart` |
+| `Document` | markdown source, optional source identity and lazy outline | `lib/domain/library/document.dart` |
+| `DocumentId` | root identity plus a relative path | `lib/domain/library/document_id.dart` |
+| `DocumentSourceId` | opaque equality for one physical source | `lib/domain/library/document_source_id.dart` |
 
 The boundary stops at what is on the shelf. Scanning is an application and
 infrastructure concern; file filtering and nested order are the
@@ -28,28 +28,28 @@ infrastructure concern; file filtering and nested order are the
 
 Both collections are copied into unmodifiable lists. Duplicate folder ids,
 duplicate standalone document ids, and a standalone scope colliding with a
-folder root are rejected (`lib/domain/library/library.dart:12-36`). Documents
+folder root are rejected (`lib/domain/library/library.dart`). Documents
 are yielded with standalone markdowns first, matching the shelf
-(`lib/domain/library/library.dart:42-53`). `find` checks standalone identity and
+(`lib/domain/library/library.dart`). `find` checks standalone identity and
 then the owning root; `findBySource` compares optional physical identity across
-both collections (`lib/domain/library/library.dart:55-74`).
+both collections (`lib/domain/library/library.dart`).
 
 `Library.addOrReplace` is the important identity rule. A new id appends; an
 existing id replaces at its current index. `remove` drops only the named root,
 `removeMarkdown` drops only the named standalone document, and `move` changes
-only top-level order (`lib/domain/library/library.dart:76-117`). Nested folder
+only top-level order (`lib/domain/library/library.dart`). Nested folder
 and document order is therefore untouched by arranging roots or removing a
 standalone source.
 
 Each `LibraryRoot` delegates counting and traversal to its `Folder`, rejects a
 document id from another root, and chooses its root README before its first
-document (`lib/domain/library/library_root.dart:18-34`).
+document (`lib/domain/library/library_root.dart`).
 
 `DocumentId` carries both `rootId` and its normalised relative path. Equality
 and hashing use both fields, so `README.md` in two roots remains two documents
-(`lib/domain/library/document_id.dart:8-16`, `:52-57`). Relative resolution
+(`lib/domain/library/document_id.dart`, `lib/domain/library/document_id.dart`). Relative resolution
 keeps the same root id while normalising `.`, `..`, leading `/`, separators,
-and percent encoding (`lib/domain/library/document_id.dart:33-50`). A link can
+and percent encoding (`lib/domain/library/document_id.dart`). A link can
 reach the current root's README, never a same-named file in another root.
 
 ## Inputs and outputs
@@ -67,9 +67,9 @@ reach the current root's README, never a same-named file in another root.
 
 The two-root fixture proves that duplicate relative paths stay distinct and
 that session order is preserved
-(`test/application/use_cases_test.dart:104-124`). Move and folder handoff are
+(`test/application/use_cases_test.dart`). Move and folder handoff are
 exercised together, while standalone removal covers next, previous and folder
-fallback (`test/application/use_cases_test.dart:300-385`).
+fallback (`test/application/use_cases_test.dart`).
 
 ## Events
 
@@ -82,21 +82,21 @@ domain value itself remains free of subscribers and side effects.
 The session starts with `Library.empty()`. Every successful source mutation
 creates a new aggregate and saves it; unchanged values are reused. Removing the
 last source returns to the welcome view only when neither roots nor standalone
-markdowns remain (`lib/api/reader_controller.dart:343-378`).
+markdowns remain (`lib/api/reader_controller.dart`).
 
 Document outlines remain lazy and are parsed once per `Document`
-(`lib/domain/library/document.dart:20-26`). Refreshing a root creates new
+(`lib/domain/library/document.dart`). Refreshing a root creates new
 documents only for that root.
 
 ## Failure and recovery
 
-- An empty document path is rejected (`lib/domain/library/document_id.dart:12-16`).
+- An empty document path is rejected (`lib/domain/library/document_id.dart`).
 - Duplicate or cross-collection identities are rejected at aggregate
-  construction (`lib/domain/library/library.dart:17-35`).
+  construction (`lib/domain/library/library.dart`).
 - Looking up a missing root or document returns `null`; application use cases
   decide whether that is a no-op or a `DocumentNotFound`.
 - Resolving above a root stops at that root; it never escapes into another
-  folder (`test/domain/library_builder_test.dart:108-120`).
+  folder (`test/domain/library_builder_test.dart`).
 
 ## Transition
 

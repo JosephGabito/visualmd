@@ -11,21 +11,21 @@ Flutter. It contains wiring, never filesystem or domain policy.
 After Flutter initialization, the root creates platform adapters and one shared
 in-memory reader state. Library and Workspace repositories plus the atomic
 restoration adapter all project through that state
-(`lib/main.dart:42-60`). It then creates one mutation queue, workspace
+(`lib/main.dart`). It then creates one mutation queue, workspace
 autosave, the workspace committer, and every Library use case
-(`lib/main.dart:62-121`).
+(`lib/main.dart`).
 
 Theme documents and small preferences are read through platform capabilities
 before the initial unbound Workspace is created
-(`lib/main.dart:112-143`). New, Open, Save, Save As, and reconnect use cases
+(`lib/main.dart`). New, Open, Save, Save As, and reconnect use cases
 share the same session repository, source access, codec, and mutation queue
-(`lib/main.dart:135-173`).
+(`lib/main.dart`).
 
 The source coordinator connects the platform monitor to `RefreshSource`, then
 the controller receives that coordinator with its other use cases. It never
-sees an infrastructure implementation (`lib/main.dart:185-218`). Platform drop,
+sees an infrastructure implementation (`lib/main.dart`). Platform drop,
 drag, native command, and autosave-failure streams are subscribed at the edge
-(`lib/main.dart:201-220`).
+(`lib/main.dart`).
 
 ## Inputs and outputs
 
@@ -37,7 +37,7 @@ drag, native command, and autosave-failure streams are subscribed at the edge
 | Out | one configured `VisualMdApp` |
 
 Launch query options are a web-only input used for samples and visual review;
-they do not become durable Workspace state (`lib/main.dart:222-245`).
+they do not become durable Workspace state (`lib/main.dart`).
 
 ## Events
 

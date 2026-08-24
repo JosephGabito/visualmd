@@ -13,20 +13,20 @@ own generated icon formats directly rather than importing Flutter code.
 
 The widget reads one bundled RGBA asset, preserves its aspect ratio, and uses
 high-quality filtering at the small sizes required by application chrome
-(`lib/api/widgets/brand_mark.dart:3-21`). The asset is declared explicitly so
+(`lib/api/widgets/brand_mark.dart`). The asset is declared explicitly so
 the original full-resolution design source is not added to the application
-bundle (`pubspec.yaml:25-35`).
+bundle (`pubspec.yaml`).
 
 The welcome screen and drag overlay render the detailed mark at 64 logical
-pixels (`lib/api/widgets/welcome_view.dart:50`,
-`lib/api/widgets/drop_overlay.dart:23-29`). The top bar uses the same source at
-18 pixels beside the product name (`lib/api/screens/reader_screen.dart:697-707`).
+pixels (`lib/api/widgets/welcome_view.dart`,
+`lib/api/widgets/drop_overlay.dart`). The top bar uses the same source at
+18 pixels beside the product name (`lib/api/screens/reader_screen.dart`).
 
 macOS consumes the complete 16–1024 pixel asset catalog
-(`macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json:1-67`). Windows
+(`macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json`). Windows
 loads the multi-resolution ICO through its native resource table
-(`windows/runner/Runner.rc:48-55`). The web manifest declares standard and
-maskable 192/512 pixel variants (`web/manifest.json:10-32`).
+(`windows/runner/Runner.rc`). The web manifest declares standard and
+maskable 192/512 pixel variants (`web/manifest.json`).
 
 ## Inputs and outputs
 

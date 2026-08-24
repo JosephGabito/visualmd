@@ -14,10 +14,10 @@ shelf and outline buttons are its callers.
 ## Present wiring
 
 The control is a raw `Listener`, not a `GestureDetector`
-(`lib/api/widgets/pressable.dart:49-56`). That is the whole point:
+(`lib/api/widgets/pressable.dart`). That is the whole point:
 
 - **It does not wait for the release.** `onPointerDown` fires the callback
-  immediately (`lib/api/widgets/pressable.dart:51-55`). A control that acts on
+  immediately (`lib/api/widgets/pressable.dart`). A control that acts on
   the way back up puts the interface a beat behind the hand.
 - **It cannot be deferred.** Pointer events are not subject to the gesture
   arena, so nothing upstream can hold the callback back while it decides
@@ -29,14 +29,14 @@ The control is a raw `Listener`, not a `GestureDetector`
 
 Around that sits the anticipation. The control scales to 1.06 while the pointer
 is over it or while it is `active`, and gives to 0.94 while pressed
-(`lib/api/widgets/pressable.dart:34-35`, `lib/api/widgets/pressable.dart:59-64`),
-over 120 ms of `Curves.easeOut` (`lib/api/widgets/pressable.dart:65-66`). Hover
+(`lib/api/widgets/pressable.dart`, `lib/api/widgets/pressable.dart`),
+over 120 ms of `Curves.easeOut` (`lib/api/widgets/pressable.dart`). Hover
 is tracked by a `MouseRegion`, which also carries the cursor
-(`lib/api/widgets/pressable.dart:45-48`).
+(`lib/api/widgets/pressable.dart`).
 
 A reader who has asked for less motion gets the state changes with no
-animation at all (`lib/api/widgets/pressable.dart:43`,
-`lib/api/widgets/pressable.dart:65`).
+animation at all (`lib/api/widgets/pressable.dart`,
+`lib/api/widgets/pressable.dart`).
 
 ## Inputs and outputs
 
@@ -44,7 +44,7 @@ animation at all (`lib/api/widgets/pressable.dart:43`,
 |---|---|---|
 | `onPress` | `VoidCallback?` | Called on pointer down. `null` disables the control |
 | `active` | `bool` | Holds it raised while what it opened is still on screen |
-| `tooltip` | `String?` | Wraps the control in a `Tooltip` when given (`lib/api/widgets/pressable.dart:72-74`) |
+| `tooltip` | `String?` | Wraps the control in a `Tooltip` when given (`lib/api/widgets/pressable.dart`) |
 | `child` | `Widget` | What is drawn |
 
 Out: `onPress()`, once per press. Nothing else.
@@ -59,19 +59,19 @@ matches the rest of the bar without each contributor re-deciding it.
 ## Lifecycle
 
 One `State` per control, alive as long as the control is on screen. It keeps
-two flags — hovered and pressed (`lib/api/widgets/pressable.dart:37-38`) — and
+two flags — hovered and pressed (`lib/api/widgets/pressable.dart`) — and
 nothing else; there is no controller or subscription to dispose.
 
 ## Failure and recovery
 
 - A `null` `onPress` disables the control rather than hiding it: the pointer
   callback is not installed, the cursor stays plain, the scale stays at 1, and
-  the child dims to 40 % (`lib/api/widgets/pressable.dart:42`,
-  `lib/api/widgets/pressable.dart:46`, `lib/api/widgets/pressable.dart:60-61`,
-  `lib/api/widgets/pressable.dart:67`). The top bar uses this before a library
+  the child dims to 40 % (`lib/api/widgets/pressable.dart`,
+  `lib/api/widgets/pressable.dart`, `lib/api/widgets/pressable.dart`,
+  `lib/api/widgets/pressable.dart`). The top bar uses this before a library
   is open.
 - A press that ends elsewhere, or is cancelled by the system, still releases
-  the pressed state (`lib/api/widgets/pressable.dart:57-58`), so a control
+  the pressed state (`lib/api/widgets/pressable.dart`), so a control
   cannot be left stuck looking pressed.
 - Acting on the way down means there is no "slide off to cancel". That is the
   trade: for toggles and menus the immediacy is worth more than the escape

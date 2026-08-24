@@ -3,7 +3,7 @@
 ## Purpose and boundary
 
 `BuiltInThemes` is the set of themes the reader ships with, written as Dart
-constants (`lib/presentation/theme/built_in_themes.dart:8-124`). It exists so
+constants (`lib/presentation/theme/built_in_themes.dart`). It exists so
 the theme menu is never empty, so
 [ThemeRegistry](05-theme-registry.md) always has something to fall back to,
 and so every shipped theme is a worked example of the same contract a user
@@ -15,19 +15,19 @@ that.
 
 ## Present wiring
 
-Six themes, in menu order (`lib/presentation/theme/built_in_themes.dart:114`):
+Six themes, in menu order (`lib/presentation/theme/built_in_themes.dart`):
 
 | id | Name | Brightness | Source |
 |----|------|------------|--------|
-| `paper` | Paper | light | House (`lib/presentation/theme/built_in_themes.dart:9-24`) |
-| `lamplight` | Lamplight | dark | House (`lib/presentation/theme/built_in_themes.dart:26-41`) |
-| `catppuccin-latte` | Catppuccin Latte | light | Catppuccin (`lib/presentation/theme/built_in_themes.dart:44-59`) |
-| `catppuccin-mocha` | Catppuccin Mocha | dark | Catppuccin (`lib/presentation/theme/built_in_themes.dart:61-76`) |
-| `nord` | Nord | dark | Nord (`lib/presentation/theme/built_in_themes.dart:79-94`) |
-| `gruvbox-dark` | Gruvbox Dark | dark | Gruvbox (`lib/presentation/theme/built_in_themes.dart:97-112`) |
+| `paper` | Paper | light | House (`lib/presentation/theme/built_in_themes.dart`) |
+| `lamplight` | Lamplight | dark | House (`lib/presentation/theme/built_in_themes.dart`) |
+| `catppuccin-latte` | Catppuccin Latte | light | Catppuccin (`lib/presentation/theme/built_in_themes.dart`) |
+| `catppuccin-mocha` | Catppuccin Mocha | dark | Catppuccin (`lib/presentation/theme/built_in_themes.dart`) |
+| `nord` | Nord | dark | Nord (`lib/presentation/theme/built_in_themes.dart`) |
+| `gruvbox-dark` | Gruvbox Dark | dark | Gruvbox (`lib/presentation/theme/built_in_themes.dart`) |
 
 Paper and Lamplight are the defaults of their brightness
-(`lib/presentation/theme/built_in_themes.dart:116-117`), which makes them the
+(`lib/presentation/theme/built_in_themes.dart`), which makes them the
 two halves of `systemPair` and the destination of every fallback.
 
 ## Inputs and outputs
@@ -36,8 +36,8 @@ No inputs: these are `const` values, resolved at compile time. Out: a
 `List<ReaderTheme>` as `all`, and the two named defaults.
 
 The house themes in full — the reference values a new theme can be measured
-against (`lib/presentation/theme/built_in_themes.dart:13-23`,
-`lib/presentation/theme/built_in_themes.dart:30-40`):
+against (`lib/presentation/theme/built_in_themes.dart`,
+`lib/presentation/theme/built_in_themes.dart`):
 
 | Token | Paper | Lamplight |
 |-------|-------|-----------|
@@ -61,9 +61,9 @@ the source beside the theme that uses it:
 
 | Palette | Licence | Source |
 |---------|---------|--------|
-| Catppuccin | MIT | `https://github.com/catppuccin/palette` (`lib/presentation/theme/built_in_themes.dart:43`) |
-| Nord | MIT | `https://www.nordtheme.com` (`lib/presentation/theme/built_in_themes.dart:78`) |
-| Gruvbox | MIT | `https://github.com/morhetz/gruvbox` (`lib/presentation/theme/built_in_themes.dart:96`) |
+| Catppuccin | MIT | `https://github.com/catppuccin/palette` (`lib/presentation/theme/built_in_themes.dart`) |
+| Nord | MIT | `https://www.nordtheme.com` (`lib/presentation/theme/built_in_themes.dart`) |
+| Gruvbox | MIT | `https://github.com/morhetz/gruvbox` (`lib/presentation/theme/built_in_themes.dart`) |
 
 The mapping from each published palette to Visual MD's nine semantic tokens is
 project-specific; the source colour values are the attributed material.
@@ -79,7 +79,7 @@ the contributions that ship in the box.
 Compile-time constants, alive for the life of the process, never reloaded.
 Every one is checked against the JSON format by a round-trip test, and every
 text token is checked at 4.5:1 or better against the paper and panel surfaces
-on which it is used (`test/presentation/theme_test.dart:66-103`). A built-in
+on which it is used (`test/presentation/theme_test.dart`). A built-in
 therefore cannot drift into an unreadable pairing or a shape a user file could
 not also express.
 

@@ -39,7 +39,7 @@ five. The rules are enforced by a test that fails on the first outward import.
   implementation; the inner rings do not change. The macOS target demonstrated
   that boundary: it required no edits to `domain/` or `application/`, while
   `api/` received optional hooks with identity defaults (`dropRegion`, `topBar`,
-  `windowDragRegion` in `lib/api/app.dart:13-23`) for injected wrappers and
+  `windowDragRegion` in `lib/api/app.dart`) for injected wrappers and
   geometry.
 - Domain rules are unit-testable with no Flutter, no browser and no disk.
 - The UI cannot reach the platform directly. Anything it needs crosses the
@@ -53,11 +53,11 @@ five. The rules are enforced by a test that fails on the first outward import.
 
 ## Evidence
 
-- Ring rules as data: `test/architecture/dependency_rules_test.dart:21-33`.
-- The rule that `domain/` imports no package at all: `test/architecture/dependency_rules_test.dart:76`.
-- Ports declared by the application, not by the adapters: `lib/application/ports/folder_scanner.dart:30-32`, `lib/application/ports/library_repository.dart:4-7`.
+- Ring rules as data: `test/architecture/dependency_rules_test.dart`.
+- The rule that `domain/` imports no package at all: `test/architecture/dependency_rules_test.dart`.
+- Ports declared by the application, not by the adapters: `lib/application/ports/folder_scanner.dart`, `lib/application/ports/library_repository.dart`.
 - A use case that depends only on ports and domain:
-  `lib/application/use_cases/add_folder.dart:3-10`.
-- The UI receiving platform capabilities as plain functions and values: `lib/api/app.dart:9-33`.
-- The composition root: `lib/main.dart:17-75`.
+  `lib/application/use_cases/add_folder.dart`.
+- The UI receiving platform capabilities as plain functions and values: `lib/api/app.dart`.
+- The composition root: `lib/main.dart`.
 - The written rules: [Dependency Direction](../00-foundation/03-dependency-direction.md).

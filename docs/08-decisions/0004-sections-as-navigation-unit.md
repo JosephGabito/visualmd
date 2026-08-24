@@ -8,7 +8,7 @@ Status: Accepted · 2026-08-22 · **superseded in part, 2026-08-22**
 > heading anchors are still the scroll targets, still derived in the domain,
 > still matched by `GlobalKey`. What changed is where the keys come from: the
 > document renderer registers one per heading as it builds
-> (`lib/api/render/document_view.dart:192-201`) instead of the pane keying one
+> (`lib/api/render/document_view.dart`) instead of the pane keying one
 > `MarkdownBody` per `Section`. `DocumentOutline.sections` still exists and is
 > still tested, but nothing renders from it. See
 > [Document View](../05-api/12-document-view.md) and
@@ -57,11 +57,11 @@ document is parsed once, whole.)*
 
 ## Evidence
 
-- `Section` and its contract: `lib/domain/reading/section.dart:5-12`.
-- Cutting at boundaries and appending reference definitions: `lib/domain/reading/document_outline.dart:153-168`.
-- Fenced code blocks are skipped while scanning for headings: `lib/domain/reading/document_outline.dart:71-75`.
-- The pane owns the anchor keys and clears them per document: `lib/api/widgets/reading_pane.dart:36`, `lib/api/widgets/reading_pane.dart:48-57`.
-- Scroll to an anchor: `lib/api/widgets/reading_pane.dart:65-75`.
-- Heading keys registered as blocks build: `lib/api/render/document_view.dart:192-201`.
-- Tests: `test/domain/document_outline_test.dart:77-94` (sections and shared reference links), `test/domain/document_outline_test.dart:25-47` (fences).
+- `Section` and its contract: `lib/domain/reading/section.dart`.
+- Cutting at boundaries and appending reference definitions: `lib/domain/reading/document_outline.dart`.
+- Fenced code blocks are skipped while scanning for headings: `lib/domain/reading/document_outline.dart`.
+- The pane owns the anchor keys and clears them per document: `lib/api/widgets/reading_pane.dart`, `lib/api/widgets/reading_pane.dart`.
+- Scroll to an anchor: `lib/api/widgets/reading_pane.dart`.
+- Heading keys registered as blocks build: `lib/api/render/document_view.dart`.
+- Tests: `test/domain/document_outline_test.dart` (sections and shared reference links), `test/domain/document_outline_test.dart` (fences).
 - Written description: [Reading Pane](../05-api/04-reading-pane.md), [Document Outline](../01-domain/03-document-outline.md).

@@ -7,7 +7,7 @@
 [typefaces](03-theme-typefaces.md). It owns the *contract* — what a theme
 consists of and how a theme document is read — and nothing about rendering.
 It lives in the presentation ring
-(`lib/presentation/theme/reader_theme.dart:10-86`), so it holds `Color` and
+(`lib/presentation/theme/reader_theme.dart`), so it holds `Color` and
 `Brightness` from `dart:ui` and knows no widget.
 
 It does not own: where theme files live (that is
@@ -18,7 +18,7 @@ in use (that is [ThemeChoice](04-theme-choice.md)), what themes exist (that is
 
 ## Present wiring
 
-Five fields and an origin (`lib/presentation/theme/reader_theme.dart:13-20`):
+Five fields and an origin (`lib/presentation/theme/reader_theme.dart`):
 
 | Field | Type | Meaning |
 |-------|------|---------|
@@ -30,16 +30,16 @@ Five fields and an origin (`lib/presentation/theme/reader_theme.dart:13-20`):
 | `origin` | `String` | `built-in`, or the file it was read from. |
 
 `isDark` is the one derived property
-(`lib/presentation/theme/reader_theme.dart:31`), used to group themes in the
-picker. `schemaVersion` is 1 (`lib/presentation/theme/reader_theme.dart:11`)
+(`lib/presentation/theme/reader_theme.dart`), used to group themes in the
+picker. `schemaVersion` is 1 (`lib/presentation/theme/reader_theme.dart`)
 and is written into every `toJson`
-(`lib/presentation/theme/reader_theme.dart:75-82`), so a future format change
+(`lib/presentation/theme/reader_theme.dart`), so a future format change
 can be recognised rather than guessed at.
 
 ## Inputs and outputs
 
 In: a decoded JSON map and the origin it came from
-(`lib/presentation/theme/reader_theme.dart:35`). The document format is the
+(`lib/presentation/theme/reader_theme.dart`). The document format is the
 class, field for field:
 
 ```json
@@ -55,10 +55,10 @@ class, field for field:
 
 Out: a `ReaderTheme`, or a `ThemeFormatException`. `toJson` round-trips, which
 is how every built-in is tested against the file format
-(`test/presentation/theme_test.dart:66-74`).
+(`test/presentation/theme_test.dart`).
 
 Constants are the other input: the built-ins are written as Dart
-`const ReaderTheme(...)` (`lib/presentation/theme/built_in_themes.dart:9-24`),
+`const ReaderTheme(...)` (`lib/presentation/theme/built_in_themes.dart`),
 the same shape without the parsing.
 
 ## Events
@@ -77,7 +77,7 @@ is no reload: adding or editing a file takes effect on the next launch.
 ## Failure and recovery
 
 Every rejection names the field and the reason
-(`lib/presentation/theme/reader_theme.dart:36-61`):
+(`lib/presentation/theme/reader_theme.dart`):
 
 | Problem | Message |
 |---------|---------|
@@ -88,7 +88,7 @@ Every rejection names the field and the reason
 | `typefaces` present but not an object | `"typefaces" must be an object when present` |
 
 The exception carries only a `reason` string
-(`lib/presentation/theme/theme_format_exception.dart:2-8`); the registry pairs
+(`lib/presentation/theme/theme_format_exception.dart`); the registry pairs
 it with the file name and the reader keeps every other theme.
 
 ## Transition

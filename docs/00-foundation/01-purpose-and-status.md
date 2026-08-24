@@ -76,6 +76,6 @@ Ten shelves exist in `docs/`, from foundation through domain, application,
 infrastructure, presentation, API, platforms, roadmap, and decisions to
 contributing; the index is the [Architecture](../README.md).
 
-Every component document cites the code it describes as `path:line`. The docs
-suite checks that those references still exist, turning many stale explanations
-into an ordinary validation error that can be corrected with the code change.
+Every component document names the smallest source file that owns the behavior
+it describes. The docs suite checks that those references still exist and that
+exact line citations have not coupled the prose to unrelated source movement.

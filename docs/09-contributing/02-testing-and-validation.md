@@ -27,26 +27,26 @@ The domain suites describe the rules that stay the same on every platform:
 
 - `library_builder_test.dart` covers Markdown filtering, hidden folders,
   natural shelf order, README placement, pruning, duplicate normalization,
-  and root-scoped links (`test/domain/library_builder_test.dart:9-156`).
+  and root-scoped links (`test/domain/library_builder_test.dart`).
 - `document_outline_test.dart` covers headings, anchors, front matter,
   sections, fences, and the Markdown-only invariant
-  (`test/domain/document_outline_test.dart:8-121`).
+  (`test/domain/document_outline_test.dart`).
 - `workspace_test.dart` covers stable source order, unique identity,
   active-document membership, portable relative paths, and Windows root
-  normalization (`test/domain/workspace_test.dart:14-98`).
+  normalization (`test/domain/workspace_test.dart`).
 
 Application tests use in-memory ports so they can focus on orchestration:
 
 - `use_cases_test.dart` covers serialized library mutations, deterministic
   handoff, recovery after failures, document reads, and search scope
-  (`test/application/use_cases_test.dart:90-259`).
+  (`test/application/use_cases_test.dart`).
 - `workspace_use_cases_test.dart` covers New, Save, Save As, transactional
   open, unavailable sources, standalone absorption, deferred autosave,
   download-only web behavior, reconnect, and Windows-root handling
-  (`test/application/workspace_use_cases_test.dart:54-596`).
+  (`test/application/workspace_use_cases_test.dart`).
 - Reader-source tests prove mixed selections use the established add paths and
   a second Open request cannot race an active native picker
-  (`test/api/reader_controller_library_test.dart:119-153`).
+  (`test/api/reader_controller_library_test.dart`).
 
 ## Infrastructure boundaries
 
@@ -55,73 +55,72 @@ rules:
 
 - Desktop scanning uses a real temporary tree and covers nested Markdown,
   ignored files, malformed bytes, and unknown refs
-  (`test/infrastructure/local_folder_scanner_test.dart:11-94`).
+  (`test/infrastructure/local_folder_scanner_test.dart`).
 - The Markdown parser covers block and inline shapes from paragraphs through
   tables and full documents
-  (`test/infrastructure/markdown_document_parser_test.dart:18-234`).
+  (`test/infrastructure/markdown_document_parser_test.dart`).
 - Literal search checks the text a reader sees, case-insensitive matching, and
-  library order (`test/infrastructure/literal_document_search_test.dart:13-56`).
+  library order (`test/infrastructure/literal_document_search_test.dart`).
 - The workspace codec round-trips version one and rejects unknown fields,
   unsupported versions, and unsafe paths
-  (`test/infrastructure/workspace_json_codec_test.dart:11-102`).
+  (`test/infrastructure/workspace_json_codec_test.dart`).
 - Desktop workspace tests preserve the exact save-panel path, verify the macOS
   native-write message, and retain a last-good copy in the portable fallback
-  (`test/infrastructure/desktop_workspace_files_test.dart:9-81`), while the
+  (`test/infrastructure/desktop_workspace_files_test.dart`), while the
   reader-source picker proves native records become typed opaque refs
-  (`test/infrastructure/desktop_reader_source_picker_test.dart:11-60`), and the
+  (`test/infrastructure/desktop_reader_source_picker_test.dart`), and the
   command bridge proves native File-menu selections reach typed Dart commands
-  (`test/infrastructure/desktop_commands_test.dart:9-61`).
+  (`test/infrastructure/desktop_commands_test.dart`).
 - Registry tests ensure process handles retain durable source identities
   without aliasing paths across workspaces
-  (`test/infrastructure/folder_registry_test.dart:6-70`).
+  (`test/infrastructure/folder_registry_test.dart`).
 
 ## Interface and typography
 
 Widget tests protect what a reader can observe:
 
 - Theme, picker, text-size, font-metric, and brand tests cover the visual
-  contract and bundled assets (`test/presentation/theme_test.dart:28-115`,
-  `test/presentation/font_metrics_test.dart:18-81`,
-  `test/presentation/brand_mark_test.dart:6-21`).
+  contract and bundled assets (`test/presentation/theme_test.dart`,
+  `test/presentation/font_metrics_test.dart`,
+  `test/presentation/brand_mark_test.dart`).
 - Renderer tests cover column widths, table overflow, heading rhythm, inline
   punctuation, links, code selection, hanging marks, widows, quotations, and
-  code scrolling (`test/presentation/document_view_test.dart:60-441`,
-  `test/presentation/inline_composer_test.dart:49-338`,
-  `test/presentation/paragraph_setting_test.dart:61-335`,
-  `test/presentation/code_block_test.dart:55-88`).
+  code scrolling (`test/presentation/document_view_test.dart`,
+  `test/presentation/inline_composer_test.dart`,
+  `test/presentation/paragraph_setting_test.dart`,
+  `test/presentation/code_block_test.dart`).
 - Chrome tests cover distinct Open shortcuts, the full launch composition,
   search, panel motion and resizing, error notices, compact-window behavior,
   and reduced-motion behavior
-  (`test/presentation/reader_chrome_test.dart:249-595`).
+  (`test/presentation/reader_chrome_test.dart`).
 - Welcome tests hold the three launcher commands, platform labels,
   launch-size centring, and short-window scrolling, while
   the native configuration test protects the 1280 × 800 macOS launch frame
-  (`test/presentation/welcome_view_test.dart:38-113`,
-  `test/infrastructure/macos_window_configuration_test.dart:5-16`).
+  (`test/presentation/welcome_view_test.dart`,
+  `test/infrastructure/macos_window_configuration_test.dart`).
 - Shelf tests hold the root-reorder state machine, expansion preservation,
   standalone adaptation, hover removal, and accessible arrange actions
-  (`test/presentation/shelf_panel_test.dart:49-391`).
+  (`test/presentation/shelf_panel_test.dart`).
 - Controller tests verify selection handoff, root-scoped links, and physical
   source adaptation between standalone and folder identities
-  (`test/api/reader_controller_library_test.dart:77-231`).
+  (`test/api/reader_controller_library_test.dart`).
 
 ## Architecture and documentation
 
 `dependency_rules_test.dart` reads every import under `lib/`. Its data defines
 the allowed rings, framework-free rings, and platform-only libraries
-(`test/architecture/dependency_rules_test.dart:21-83`). Run it after any file
+(`test/architecture/dependency_rules_test.dart`). Run it after any file
 move or new dependency.
 
 `docs_library_test.dart` opens `docs/` through Visual MD's own scanner and
 builder. It checks shelf indexes, titles, links, anchors, placeholder text, and
-source citation ranges (`test/docs/docs_library_test.dart:38-124`).
-`tool/check_citations.py` adds an advisory semantic pass for citations whose
-range still exists but no longer supports the prose.
+source-file references, and rejects exact line citations
+(`test/docs/docs_library_test.dart`).
 
 `test/typography_measure_test.dart` is different: it prints measurements and
 asserts nothing. Use it when researching a face or measure; durable invariants
 belong in the focused typography tests
-(`test/typography_measure_test.dart:19-78`).
+(`test/typography_measure_test.dart`).
 
 ## Project commands
 

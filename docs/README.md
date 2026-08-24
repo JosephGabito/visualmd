@@ -54,7 +54,7 @@ document sound the same.
 The guide is checked alongside the application. The architecture suite reads
 imports under `lib/` and compares them with the documented dependency map. The
 documentation suite opens this folder through Visual MD's own scanner and
-checks titles, README coverage, relative links, anchors, and source citations.
+checks titles, README coverage, relative links, anchors, and source references.
 
 ```sh
 flutter test test/architecture
@@ -63,5 +63,4 @@ flutter test test/docs
 
 These checks do not replace review; they make ordinary drift visible while it
 is still easy to correct. [Writing Docs](09-contributing/04-writing-docs.md)
-explains how citations work and how to verify that a source range still supports
-the sentence that points to it.
+explains the stable source-file references used throughout the guide.

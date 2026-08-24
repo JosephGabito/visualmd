@@ -47,10 +47,10 @@ to avoid reading bytes the domain would discard; it may not *restate* one.
 ## Evidence
 
 - Adapters produce raw entries; the domain shelves them:
-  `lib/domain/library/library_builder.dart:10-16`,
-  `lib/application/use_cases/add_folder.dart:40-50`.
-- Filtering, pruning and ordering in one place: `lib/domain/library/library_builder.dart:29-33`, `lib/domain/library/library_builder.dart:60-72`.
-- The rules themselves: `lib/domain/library/markdown_file.dart:3-9`, `lib/domain/library/hidden_folders.dart:3-35`, `lib/domain/library/natural_order.dart:6-17`, `lib/domain/library/library.dart:22-30`.
+  `lib/domain/library/library_builder.dart`,
+  `lib/application/use_cases/add_folder.dart`.
+- Filtering, pruning and ordering in one place: `lib/domain/library/library_builder.dart`, `lib/domain/library/library_builder.dart`.
+- The rules themselves: `lib/domain/library/markdown_file.dart`, `lib/domain/library/hidden_folders.dart`, `lib/domain/library/natural_order.dart`, `lib/domain/library/library.dart`.
 - Adapters consulting, not restating: `lib/infrastructure/io/local_folder_scanner.dart` and `lib/infrastructure/web/browser_folder_scanner.dart` import `MarkdownFile` and `HiddenFolders`.
-- Tests: `test/domain/library_builder_test.dart:7-153`, `test/domain/document_outline_test.dart:8-110`.
+- Tests: `test/domain/library_builder_test.dart`, `test/domain/document_outline_test.dart`.
 - Written rules: [Shelving Rules](../01-domain/02-shelving-rules.md), [Document Outline](../01-domain/03-document-outline.md).

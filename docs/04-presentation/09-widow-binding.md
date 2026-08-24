@@ -8,7 +8,7 @@ measuring.
 
 A single word on the last line is a widow: the eye reaches the end of the
 penultimate line, drops, and finds one word where it expected a line
-(`lib/presentation/theme/widow_binding.dart:1-6`). Text that re-flows — a
+(`lib/presentation/theme/widow_binding.dart`). Text that re-flows — a
 window resized, a text size changed, a panel opened — cannot be fixed by
 adjusting a line break, because there is no fixed line to adjust. The remedy
 that survives re-flowing is the old one: bind the last two words with a space
@@ -20,18 +20,18 @@ composed spans is [Paragraph](../05-api/15-paragraph.md)'s job, one ring out.
 ## Present wiring
 
 `WidowBinding` is a namespace, never instantiated
-(`lib/presentation/theme/widow_binding.dart:7`). It holds two constants and
+(`lib/presentation/theme/widow_binding.dart`). It holds two constants and
 two functions:
 
 | Name | Value | Meaning |
 |------|-------|---------|
-| `nonBreakingSpace` | `U+00A0` | A space no line may break at (`lib/presentation/theme/widow_binding.dart:8-9`) |
-| `leastWords` | 4 | Below this the paragraph is left alone (`lib/presentation/theme/widow_binding.dart:11-13`) |
-| `bind` | `String → String` | The text with its final space bound, when binding is worth it (`lib/presentation/theme/widow_binding.dart:15-24`) |
-| `bindLastSpace` | `String → String` | Binds an already-approved final leaf after its caller counts a styled paragraph (`lib/presentation/theme/widow_binding.dart:23-31`) |
+| `nonBreakingSpace` | `U+00A0` | A space no line may break at (`lib/presentation/theme/widow_binding.dart`) |
+| `leastWords` | 4 | Below this the paragraph is left alone (`lib/presentation/theme/widow_binding.dart`) |
+| `bind` | `String → String` | The text with its final space bound, when binding is worth it (`lib/presentation/theme/widow_binding.dart`) |
+| `bindLastSpace` | `String → String` | Binds an already-approved final leaf after its caller counts a styled paragraph (`lib/presentation/theme/widow_binding.dart`) |
 
 `bind` declines in three cases before it changes anything
-(`lib/presentation/theme/widow_binding.dart:17-21`):
+(`lib/presentation/theme/widow_binding.dart`):
 
 1. Text ending in whitespace is returned untouched — it is not the end of a
    paragraph, so its last word is not the last word.
@@ -41,7 +41,7 @@ two functions:
 3. Text with no space at all is returned untouched.
 
 Otherwise the final space becomes a non-breaking one
-(`lib/presentation/theme/widow_binding.dart:23`). Paragraph applies that
+(`lib/presentation/theme/widow_binding.dart`). Paragraph applies that
 decision across the whole span tree, preserving emphasis while leaving link
 and code endings untouched.
 
@@ -77,7 +77,7 @@ rendered text now contains `U+00A0`, so **text copied out of the reader
 carries the non-breaking space with it**, exactly as copied web text does.
 Anything matching on the rendered text — a test, a search — has to expect it.
 
-Covered by `test/presentation/paragraph_setting_test.dart:277-335`: the last
+Covered by `test/presentation/paragraph_setting_test.dart`: the last
 two words bind, short and trailing-space text stay alone, word counting crosses
 runs, final emphasis survives and code endings remain byte-for-byte unchanged.
 

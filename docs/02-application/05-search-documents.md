@@ -4,21 +4,21 @@
 
 `SearchDocuments` chooses the documents in scope and delegates matching
 through the [Document Search Port](06-document-search-port.md)
-(`lib/application/use_cases/search_documents.dart:8-33`). It searches either
+(`lib/application/use_cases/search_documents.dart`). It searches either
 the whole open `Library` or one `DocumentId`; it does not parse Markdown,
 match strings, construct excerpts, or render results.
 
 ## Present wiring
 
 `execute(text, within:)` returns immediately for an empty field, then reads the
-current library through `LibraryRepository` (`lib/application/use_cases/search_documents.dart:19-25`).
+current library through `LibraryRepository` (`lib/application/use_cases/search_documents.dart`).
 Without `within`, every document is handed to the search port in shelf order
-(`:27-29`). With an id, the use case resolves exactly that document and hands
-the adapter a one-item iterable (`:30-32`).
+(`lib/application/use_cases/search_documents.dart`). With an id, the use case resolves exactly that document and hands
+the adapter a one-item iterable (`lib/application/use_cases/search_documents.dart`).
 
 The composition root constructs one instance from the session repository and
 the literal search adapter, then injects it into `ReaderController`
-(`lib/main.dart:35-47`, `lib/main.dart:68-72`).
+(`lib/main.dart`, `lib/main.dart`).
 
 ## Inputs and outputs
 
@@ -43,12 +43,12 @@ The adapter behind it may cache prepared text; that state is outside this ring.
 ## Failure and recovery
 
 No open library throws `NoLibraryOpen`; a scoped id absent from the current
-library throws `DocumentNotFound` (`lib/application/use_cases/search_documents.dart:24-31`).
+library throws `DocumentNotFound` (`lib/application/use_cases/search_documents.dart`).
 The UI only offers search after a library opens and only scopes to its current
 document, so both failures indicate stale caller state.
 
 The scope selection and empty-query short circuit are covered in
-`test/application/use_cases_test.dart:433-455`.
+`test/application/use_cases_test.dart`.
 
 ## Transition
 

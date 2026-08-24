@@ -28,18 +28,18 @@ the page a reader sees.
 
 The presentation ring uses only Dart libraries and its own files. `dart:ui`
 provides `Color` and `Brightness`, while `dart:convert` is enough to understand
-a theme document (`lib/presentation/theme/theme_palette.dart:1`,
-`lib/presentation/theme/reader_theme.dart:1`,
-`lib/presentation/theme/theme_registry.dart:1`). It does not need Flutter or a
+a theme document (`lib/presentation/theme/theme_palette.dart`,
+`lib/presentation/theme/reader_theme.dart`,
+`lib/presentation/theme/theme_registry.dart`). It does not need Flutter or a
 package dependency.
 
 Work that needs a widget, a document, or the file system happens in the ring
 that owns that concern. For example, `ReaderFiles` locates theme files and
 passes their text inward; the presentation ring only parses the text
-(`lib/infrastructure/io/reader_files.dart:9-67`). The architecture test keeps
+(`lib/infrastructure/io/reader_files.dart`). The architecture test keeps
 that boundary visible as the project grows
-(`test/architecture/dependency_rules_test.dart:21-24`,
-`test/architecture/dependency_rules_test.dart:30`).
+(`test/architecture/dependency_rules_test.dart`,
+`test/architecture/dependency_rules_test.dart`).
 
 ## A useful reading path
 

@@ -9,16 +9,16 @@ a Windows machine.
 now carries the product name and the platform services Visual MD needs:
 
 - The window title is `Visual MD`, opened at 1280 × 720
-  (`windows/runner/main.cpp:28-30`).
+  (`windows/runner/main.cpp`).
 - Version resource strings — company, description, product name, copyright —
   read `Visual MD`; the internal name and executable stay `visualmd`
-  (`windows/runner/Runner.rc:92-98`, `windows/CMakeLists.txt:7`).
+  (`windows/runner/Runner.rc`, `windows/CMakeLists.txt`).
 - A native Win32 File menu sends workspace commands to Flutter
-  (`windows/runner/flutter_window.cpp:113-126`,
-  `windows/runner/flutter_window.cpp:170-197`).
+  (`windows/runner/flutter_window.cpp`,
+  `windows/runner/flutter_window.cpp`).
 - Workspace replacement uses `ReplaceFileW` with write-through and a backup,
   falling back to `MoveFileExW` for the first save
-  (`windows/runner/flutter_window.cpp:90-110`).
+  (`windows/runner/flutter_window.cpp`).
 
 ## Build
 
@@ -38,13 +38,13 @@ is guarded:
 
 | Concern | Windows behaviour | Source |
 |---------|-------------------|--------|
-| External links | `rundll32 url.dll,FileProtocolHandler <url>` | `lib/infrastructure/io/desktop_links.dart:7-8` |
-| Security-scoped access | skipped; reads directly | `lib/infrastructure/io/desktop_security_scope.dart:14` |
-| Top bar | plain 44 px bar, 8 px inset (`plainTopBar`) | `lib/infrastructure/platform/platform_io.dart:26-28`, `lib/infrastructure/platform/platform_adapters.dart:58-62` |
-| Window drag | identity — the system title bar stays | `lib/infrastructure/platform/platform_io.dart:99-100` |
-| Folder drop / picker | `desktop_drop` and `file_selector`, both with Windows implementations | `lib/infrastructure/platform/platform_io.dart:47-49`, `:71-75` |
-| File commands | native Win32 menu and Ctrl shortcuts | `windows/runner/flutter_window.cpp:113-126` |
-| Workspace writes | atomic replace with last-good backup | `windows/runner/flutter_window.cpp:90-110` |
+| External links | `rundll32 url.dll,FileProtocolHandler <url>` | `lib/infrastructure/io/desktop_links.dart` |
+| Security-scoped access | skipped; reads directly | `lib/infrastructure/io/desktop_security_scope.dart` |
+| Top bar | plain 44 px bar, 8 px inset (`plainTopBar`) | `lib/infrastructure/platform/platform_io.dart`, `lib/infrastructure/platform/platform_adapters.dart` |
+| Window drag | identity — the system title bar stays | `lib/infrastructure/platform/platform_io.dart` |
+| Folder drop / picker | `desktop_drop` and `file_selector`, both with Windows implementations | `lib/infrastructure/platform/platform_io.dart`, `lib/infrastructure/platform/platform_io.dart` |
+| File commands | native Win32 menu and Ctrl shortcuts | `windows/runner/flutter_window.cpp` |
+| Workspace writes | atomic replace with last-good backup | `windows/runner/flutter_window.cpp` |
 
 ## Window chrome
 

@@ -11,17 +11,17 @@ share a sandbox bookmark, browser handle, or hidden platform token.
 
 `WorkspaceJsonCodec` accepts only the version 1 field set, validates the format
 marker, and delegates path and identity invariants to the domain
-(`lib/infrastructure/workspace/workspace_json_codec.dart:13-60`). Encoding is
+(`lib/infrastructure/workspace/workspace_json_codec.dart`). Encoding is
 stable, indented JSON with a trailing newline
-(`lib/infrastructure/workspace/workspace_json_codec.dart:63-84`). Unknown fields
+(`lib/infrastructure/workspace/workspace_json_codec.dart`). Unknown fields
 are rejected rather than silently discarded
-(`lib/infrastructure/workspace/workspace_json_codec.dart:168-178`).
+(`lib/infrastructure/workspace/workspace_json_codec.dart`).
 
 Desktop workspace files use native open/save panels. The adapter preserves the
 exact path returned by the save panel because macOS grants access to that URL,
-not to a renamed sibling (`lib/infrastructure/io/desktop_workspace_files.dart:45-65`).
+not to a renamed sibling (`lib/infrastructure/io/desktop_workspace_files.dart`).
 On macOS, Foundation writes that selected URL atomically through the native
-channel (`macos/Runner/MainFlutterWindow.swift:104-127`). Windows keeps the
+channel (`macos/Runner/MainFlutterWindow.swift`). Windows keeps the
 temporary-file replacement and last-good backup implemented by its runner.
 Machine-local source access is keyed by Workspace ID and source ID, so two
 workspaces may grant different authority to the same path.
@@ -42,7 +42,7 @@ explicitly disable automatic writes.
 | `WorkspaceIds` | opaque random IDs | opaque random IDs |
 
 The suggested filename uses the public `.visualmd-workspace.json` suffix
-(`lib/application/ports/workspace_files.dart:22-40`). The final name remains
+(`lib/application/ports/workspace_files.dart`). The final name remains
 the reader's choice in the platform panel; changing it afterward would discard
 the authority represented by that selection.
 
@@ -64,7 +64,7 @@ The codec reports actionable `WorkspaceFormatException`s. Opening parses and
 restores before replacing live state. Atomic writes leave the previous target
 intact when replacement fails; the Windows and non-native fallback additionally
 retain `.bak` as the last known complete file
-(`lib/infrastructure/io/desktop_atomic_files.dart:13-79`). Missing or denied
+(`lib/infrastructure/io/desktop_atomic_files.dart`). Missing or denied
 source authority becomes an unavailable source, not a partially restored
 Library.
 

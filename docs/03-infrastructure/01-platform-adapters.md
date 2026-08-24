@@ -5,27 +5,27 @@
 `PlatformAdapters` gathers everything the composition root needs from the host
 platform. Application code receives ports, API code receives plain callbacks
 and geometry, and neither learns which browser or operating system supplied
-them (`lib/infrastructure/platform/platform_adapters.dart:9-62`).
+them (`lib/infrastructure/platform/platform_adapters.dart`).
 
 ## Present wiring
 
 `platform.dart` selects web for `dart.library.js_interop`, desktop for
 `dart.library.io`, and a stub that reports an unsupported target otherwise
-(`lib/infrastructure/platform/platform.dart:1-5`). Both families expose one
+(`lib/infrastructure/platform/platform.dart`). Both families expose one
 asynchronous factory. Desktop measures macOS title-bar geometry and locates the
 reader's private files before returning
-(`lib/infrastructure/platform/platform_io.dart:26-36`).
+(`lib/infrastructure/platform/platform_io.dart`).
 
 | Capability | Web | Desktop |
 |------------|-----|---------|
-| source scanners | browser files and handles (`lib/infrastructure/platform/platform_web.dart:33-43`) | local files with security scope (`lib/infrastructure/platform/platform_io.dart:52-62`) |
-| source changes | five-second metadata checks for rereadable handles (`lib/infrastructure/platform/platform_web.dart:54-56`) | native directory events with a five-second failure fallback (`lib/infrastructure/platform/platform_io.dart:74-76`) |
-| workspace persistence | browser file handles or upload/download, IndexedDB authority (`lib/infrastructure/platform/platform_web.dart:45-54`) | native panels, atomic files, local paths/bookmarks (`lib/infrastructure/platform/platform_io.dart:64-69`) |
-| pickers | browser folder and Markdown pickers (`lib/infrastructure/platform/platform_web.dart:56-60`) | native pickers (`lib/infrastructure/platform/platform_io.dart:71-75`) |
-| drops and drag | document streams (`lib/infrastructure/platform/platform_web.dart:62-69`) | desktop drop wrapper (`lib/infrastructure/platform/platform_io.dart:77-84`) |
-| File commands | empty; Flutter shortcuts remain (`lib/infrastructure/platform/platform_web.dart:71-72`) | native menu command stream (`lib/infrastructure/platform/platform_io.dart:86-87`) |
-| chrome | browser-owned (`lib/infrastructure/platform/platform_web.dart:81-88`) | draggable custom macOS top bar; native elsewhere (`lib/infrastructure/platform/platform_io.dart:95-109`) |
-| preferences and themes | localStorage, built-ins only; no folder action (`lib/infrastructure/platform/platform_web.dart:106-119`) | `ReaderFiles`, plus a callback that reveals its theme directory (`lib/infrastructure/platform/platform_io.dart:131-144`) |
+| source scanners | browser files and handles (`lib/infrastructure/platform/platform_web.dart`) | local files with security scope (`lib/infrastructure/platform/platform_io.dart`) |
+| source changes | five-second metadata checks for rereadable handles (`lib/infrastructure/platform/platform_web.dart`) | native directory events with a five-second failure fallback (`lib/infrastructure/platform/platform_io.dart`) |
+| workspace persistence | browser file handles or upload/download, IndexedDB authority (`lib/infrastructure/platform/platform_web.dart`) | native panels, atomic files, local paths/bookmarks (`lib/infrastructure/platform/platform_io.dart`) |
+| pickers | browser folder and Markdown pickers (`lib/infrastructure/platform/platform_web.dart`) | native pickers (`lib/infrastructure/platform/platform_io.dart`) |
+| drops and drag | document streams (`lib/infrastructure/platform/platform_web.dart`) | desktop drop wrapper (`lib/infrastructure/platform/platform_io.dart`) |
+| File commands | empty; Flutter shortcuts remain (`lib/infrastructure/platform/platform_web.dart`) | native menu command stream (`lib/infrastructure/platform/platform_io.dart`) |
+| chrome | browser-owned (`lib/infrastructure/platform/platform_web.dart`) | draggable custom macOS top bar; native elsewhere (`lib/infrastructure/platform/platform_io.dart`) |
+| preferences and themes | localStorage, built-ins only; no folder action (`lib/infrastructure/platform/platform_web.dart`) | `ReaderFiles`, plus a callback that reveals its theme directory (`lib/infrastructure/platform/platform_io.dart`) |
 
 The composition root is the sole consumer of the complete interface. It
 routes scanners into use cases, Workspace ports into the lifecycle, commands
@@ -35,12 +35,12 @@ into the controller, and chrome callbacks into `VisualMdApp`.
 
 | Direction | Contract | Consumer |
 |-----------|----------|----------|
-| out | scanners and `SourceChangeMonitor` | Library mutation and synchronization use cases (`lib/main.dart:79-121`, `:185-190`) |
-| out | `WorkspaceFiles`, `WorkspaceSourceAccess` | Workspace lifecycle (`lib/main.dart:143-181`) |
-| out | pickers and drop streams | controller (`lib/main.dart:183-222`) |
-| out | `Stream<PlatformCommand>` | native command dispatch (`lib/main.dart:223-240`) |
-| out | preference strings and theme documents | startup and controller (`lib/main.dart:123-142`) |
-| out | links, chrome, and the theme-folder action | `VisualMdApp` (`lib/main.dart:268-277`) |
+| out | scanners and `SourceChangeMonitor` | Library mutation and synchronization use cases (`lib/main.dart`, `lib/main.dart`) |
+| out | `WorkspaceFiles`, `WorkspaceSourceAccess` | Workspace lifecycle (`lib/main.dart`) |
+| out | pickers and drop streams | controller (`lib/main.dart`) |
+| out | `Stream<PlatformCommand>` | native command dispatch (`lib/main.dart`) |
+| out | preference strings and theme documents | startup and controller (`lib/main.dart`) |
+| out | links, chrome, and the theme-folder action | `VisualMdApp` (`lib/main.dart`) |
 
 Opaque refs flow back into scanners and source-access ports. Concrete paths,
 DOM files, bookmarks, and IndexedDB handles do not cross inward.

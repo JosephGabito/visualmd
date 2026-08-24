@@ -41,10 +41,10 @@ path. The UI sees a `FolderRef` only as something to pass to a use case.
 
 ## Evidence
 
-- `FolderRef` and `FolderUnavailable`: `lib/application/ports/folder_scanner.dart:5-19`, `lib/application/ports/folder_scanner.dart:35-41`.
-- The generic registry: `lib/infrastructure/folder_registry.dart:6-20`.
-- Per-family handle types and registries: `lib/infrastructure/web/browser_folder.dart:6-31`, `lib/infrastructure/io/local_folder.dart:6-31`.
-- Composition of scanners behind one port: `lib/infrastructure/routing_folder_scanner.dart:5-21`, `lib/main.dart:23-26`.
+- `FolderRef` and `FolderUnavailable`: `lib/application/ports/folder_scanner.dart`, `lib/application/ports/folder_scanner.dart`.
+- The generic registry: `lib/infrastructure/folder_registry.dart`.
+- Per-family handle types and registries: `lib/infrastructure/web/browser_folder.dart`, `lib/infrastructure/io/local_folder.dart`.
+- Composition of scanners behind one port: `lib/infrastructure/routing_folder_scanner.dart`, `lib/main.dart`.
 - The use case turns only the opaque ref id into domain identity:
-  `lib/application/use_cases/add_folder.dart:40-49`.
-- Test that an unknown ref is reported, not crashed on: `test/application/use_cases_test.dart:47-53`, `test/infrastructure/local_folder_scanner_test.dart:88-94`.
+  `lib/application/use_cases/add_folder.dart`.
+- Test that an unknown ref is reported, not crashed on: `test/application/use_cases_test.dart`, `test/infrastructure/local_folder_scanner_test.dart`.

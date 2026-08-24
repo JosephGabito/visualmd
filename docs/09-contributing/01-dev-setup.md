@@ -1,7 +1,7 @@
 # Development Setup
 
 Visual MD uses Flutter's stable channel and declares its Dart constraint in
-`pubspec.yaml:6-8`. A web checkout needs Flutter and Chrome. Native builds also
+`pubspec.yaml`. A web checkout needs Flutter and Chrome. Native builds also
 need the toolchain for their host platform.
 
 ## Install and check Flutter

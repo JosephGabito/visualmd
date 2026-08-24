@@ -6,7 +6,7 @@ Vertical rhythm is the rule that decides every gap down the page. It is stated
 here because it is a typographic principle rather than a widget, and applied in
 the API ring where the sizes a face actually sets are known —
 [Reading Theme](../05-api/14-reading-theme.md) holds the arithmetic
-(`lib/api/render/reading_theme.dart:245-306`) and
+(`lib/api/render/reading_theme.dart`) and
 [Document View](../05-api/12-document-view.md) spends it.
 
 The rule is Bringhurst's, from *The Elements of Typographic Style*: the
@@ -23,11 +23,11 @@ metrics decide how tall a beat is in the first place
 ## Present wiring
 
 **The beat** is one line of body text: the rendered body size multiplied by the
-leading (`lib/api/render/reading_theme.dart:245-253`). It is measured from
+leading (`lib/api/render/reading_theme.dart`). It is measured from
 `renderedBase`, the size actually set after the face's x-height and the active
 accessibility scaler have been accounted for
-(`lib/api/render/reading_theme.dart:30-33`,
-`lib/api/render/reading_theme.dart:80-81`). An earlier implementation counted
+(`lib/api/render/reading_theme.dart`,
+`lib/api/render/reading_theme.dart`). An earlier implementation counted
 the grid from the requested size instead of the rendered size. Recording that
 distinction here prevents the same drift when another face or scaler is
 introduced.
@@ -36,43 +36,45 @@ Four things must come to whole beats for the rule to hold:
 
 | What | How | Citation |
 |------|-----|----------|
-| The gap between blocks | Exactly one beat — a blank line | `lib/api/render/reading_theme.dart:280-281` |
-| Space above a heading | Whole beats only: `h2` and `h3` take one extra, the rest none | `lib/api/render/reading_theme.dart:283-292` |
-| A heading's own line box | Rounded up to the next whole beat after scaling, however large it is set | `lib/api/render/reading_theme.dart:105-127` |
-| A code block | One beat per line of code, half a beat of padding above and below | `lib/api/render/reading_theme.dart:137-146`, `lib/api/render/reading_theme.dart:259-262`, `lib/api/render/document_view.dart:207-213` |
-| A horizontal rule | Its complete box is one beat | `lib/api/render/document_view.dart:245-255` |
+| The gap between ordinary blocks | Exactly one beat — a blank line | `lib/api/render/reading_theme.dart` |
+| A heading's own lines | Natural display leading: tight at `h1`, opening gradually toward the body at `h6` | `lib/api/render/reading_theme.dart` |
+| The complete heading block | Its shaped height plus half a beat below is rounded up; the remainder sits above | `lib/api/render/document_view.dart` |
+| A code block | One beat per line of code, half a beat of padding above and below | `lib/api/render/reading_theme.dart`, `lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart` |
+| A horizontal rule | Its complete box is one beat | `lib/api/render/document_view.dart` |
 
-A heading takes fewer extra beats than the eye expects, because its own box was
-rounded up too and carries some of that space inside it
-(`lib/api/render/reading_theme.dart:280-292`). A heading directly following
-another heading takes the plain beat and no extra: there is no running text
-between them to be separated from, and a section title with its first
-subheading should read as one unit
-(`lib/api/render/reading_theme.dart:294-306`).
+A heading is reconciled only after Flutter has shaped the complete block. Its
+lines therefore stay close enough to read as one display phrase, while the box
+still consumes whole beats. Half a beat is reserved below; whatever remains of
+the final beat sits above, so the heading belongs more closely to what it
+introduces (`lib/api/render/reading_theme.dart`,
+`lib/api/render/document_view.dart`). A block following a heading adds
+no second gap because that quiet half-beat is already inside the heading. Two
+consecutive headings therefore remain one structural unit
+(`lib/api/render/document_view.dart`).
 
-**The strut is what makes the grid real.** Without it a line carrying an inline
-code span — set smaller than the prose around it — grows to fit and pushes
-itself off the beat, and the grid becomes something the page merely aspires to.
-`strutFor` gives every paragraph and heading a fixed line box with
-`forceStrutHeight` (`lib/api/render/reading_theme.dart:270-275`), applied in
+**The strut is what makes the running-text grid real.** Without it a paragraph
+carrying an inline code span — set smaller than the prose around it — can grow
+and push itself off the beat. `strutFor` fixes paragraph lines to the body box
+(`lib/api/render/reading_theme.dart`), applied in
 [Document View](../05-api/12-document-view.md)
-(`lib/api/render/document_view.dart:188`, `:199`).
+(`lib/api/render/document_view.dart`). Headings intentionally opt out: their
+complete shaped block is reconciled instead.
 
 Two knock-on decisions follow from the rule rather than from taste. A code
 block has no border, because its own ground already says what it is and a
 border is both a second signal and a height that breaks the grid
-(`lib/api/render/document_view.dart:214-219`). A tight list has no space
+(`lib/api/render/document_view.dart`). A tight list has no space
 between its items at all, so its lines follow one another exactly as the lines
 of a paragraph do; a loose one gets a whole beat
-(`lib/api/render/document_view.dart:329-333`).
+(`lib/api/render/document_view.dart`).
 
 ## Inputs and outputs
 
 In: the rendered body size and the leading for the face in hand.
 
 Out: `baseline` (the beat), `snap(height)` rounding up to the next whole one,
-`blockGap`, `spaceAbove(level)` and `gapBefore(headingLevel:, afterHeading:)`
-(`lib/api/render/reading_theme.dart:245-306`).
+`blockGap`, `headingSpaceAfter` and `gapBefore(afterHeading:)`
+(`lib/api/render/reading_theme.dart`).
 
 ## Events
 
@@ -89,15 +91,15 @@ or the scale changes. Nothing is cached and nothing is stateful.
 ## Failure and recovery
 
 Nothing throws: every member is arithmetic, and `spaceAbove` clamps its level
-to 1–6 (`lib/api/render/reading_theme.dart:283-292`).
+to 1–6 (`lib/api/render/reading_theme.dart`).
 
-The invariant is a test rather than an intention.
-`test/presentation/document_view_test.dart:95-165` renders headings, code, a
-rule and a tight list between paragraphs, then asserts
-every paragraph's offset is a whole number of beats — reporting the fractional
-part when it is not. It caught three separate sources of drift in turn: the
-beat measured in the wrong unit, unsnapped heading boxes, and a code block
-whose padding and border did not add up.
+The invariant is a test rather than an intention. The heading suite checks all
+six levels for proximity, a multiline `h1` for tight internal leading, and a
+scaled mixed-script heading for clipping and phase
+(`test/presentation/document_view_test.dart`). The complete rhythm test
+then renders multiline headings, code, a rule and a tight list between
+paragraphs and asserts every later paragraph's offset is a whole number of
+beats (`test/presentation/document_view_test.dart`).
 
 ## Transition
 
@@ -106,9 +108,8 @@ nothing rounds it. Bringhurst's rule permits a departure so long as the text
 returns in phase afterwards, which it does not here — this is a real remaining
 gap rather than a licensed exception.
 
-The heading leading that gets rounded — 1.18 above `h2`, 1.3 below
-(`lib/api/render/reading_theme.dart:119`) — is a judgement, and the number to
-revisit if headings ever feel loose inside their boxes. Flutter distributes a
-line box's extra leading evenly above and below the text, so some of the space
-meant to sit above a heading appears below it; controlling that would need
-per-line placement the text engine does not expose.
+Heading leading is settled per level, but a script can legitimately need taller
+glyphs than the Latin face. Headings deliberately have no forced strut: Flutter
+may expand the shaped text, and the completed block is reconciled from that real
+height rather than clipping it to a Latin estimate
+(`lib/api/render/document_view.dart`, `lib/api/render/document_view.dart`).

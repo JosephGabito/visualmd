@@ -12,24 +12,24 @@ and in-memory commits; adapters provide dialogs, JSON, and platform handles.
 
 `CreateWorkspace` flushes a pending bound save, constructs an empty unbound
 Workspace, and atomically replaces both in-memory projections
-(`lib/application/use_cases/create_workspace.dart:29-42`). `OpenWorkspace`
+(`lib/application/use_cases/create_workspace.dart`). `OpenWorkspace`
 selects and decodes a file before entering the shared mutation queue
-(`lib/application/use_cases/open_workspace.dart:51-67`).
+(`lib/application/use_cases/open_workspace.dart`).
 
 Restore scans every reachable folder and standalone Markdown into temporary
 collections. Only expected unavailable-source failures are retained as missing;
 an unexpected scanner failure aborts restoration
-(`lib/application/use_cases/open_workspace.dart:69-91`,
-`lib/application/use_cases/open_workspace.dart:95-130`). If a restored folder
+(`lib/application/use_cases/open_workspace.dart`,
+`lib/application/use_cases/open_workspace.dart`). If a restored folder
 contains a standalone source, the standalone membership is absorbed and the
 active address follows the same physical document into the folder tree
-(`lib/application/use_cases/open_workspace.dart:98-116`).
+(`lib/application/use_cases/open_workspace.dart`).
 
 The Library and WorkspaceSession replace together only after restoration and
-normalization succeed (`lib/application/use_cases/open_workspace.dart:132-163`).
+normalization succeed (`lib/application/use_cases/open_workspace.dart`).
 Structural changes write first when a bound file supports automatic writes;
 theme and active-document changes are coalesced by autosave
-(`lib/application/use_cases/update_workspace.dart:178-215`).
+(`lib/application/use_cases/update_workspace.dart`).
 
 ## Inputs and outputs
 
@@ -50,7 +50,7 @@ The ports are `WorkspaceFiles`, `WorkspaceCodec`, `WorkspaceSourceAccess`,
 
 None today. Autosave exposes a failure stream because a background write has no
 awaiting UI call; the composition root forwards it to the controller
-(`lib/application/workspace_autosave.dart:31-44`).
+(`lib/application/workspace_autosave.dart`).
 
 ## Lifecycle
 
@@ -64,11 +64,11 @@ stays dirty until the reader explicitly saves.
 Malformed documents and unexpected scan failures leave both current projections
 untouched. Expected missing sources remain in their original order and appear
 as reconnectable shelf rows. Autosave preserves `dirty: true` when a write fails
-and reports that failure visibly (`lib/application/workspace_autosave.dart:38-66`).
+and reports that failure visibly (`lib/application/workspace_autosave.dart`).
 
 Save As pauses autosave while it owns the write queue. Cancellation or failure
 reschedules the old bound session, preventing a silent permanently-dirty state
-(`lib/application/use_cases/save_workspace.dart:77-115`).
+(`lib/application/use_cases/save_workspace.dart`).
 
 ## Transition
 

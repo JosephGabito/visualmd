@@ -25,9 +25,6 @@ flutter analyze
 section "Run all tests"
 flutter test
 
-section "Check documentation citations"
-python3 tool/check_citations.py
-
 section "Build web release"
 flutter build web --release
 

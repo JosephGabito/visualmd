@@ -3,7 +3,7 @@
 Visual MD treats a platform as a bundle of capabilities supplied at startup.
 The reader and its use cases do not branch on an operating system; the
 composition root asks for `PlatformAdapters` once and wires the returned
-implementations into the same application (`lib/main.dart:46-110`).
+implementations into the same application (`lib/main.dart`).
 
 This guide describes the current bundle, including standalone Markdown and
 durable workspace support. A platform is ready when those capabilities work in
@@ -17,7 +17,7 @@ Two families exist today:
 - The desktop family uses `dart:io` and serves macOS and Windows.
 
 The conditional export in
-`lib/infrastructure/platform/platform.dart:3-5` selects a family at compile
+`lib/infrastructure/platform/platform.dart` selects a family at compile
 time. A target that fits an existing family normally extends that
 implementation only where its behavior differs. A target with an incompatible
 runtime or authority model gets a new family and one new conditional branch.
@@ -41,7 +41,7 @@ changes stay distinguishable from adapter decisions.
 ## Implement the capability bundle
 
 `PlatformAdapters` is the inventory the composition root consumes
-(`lib/infrastructure/platform/platform_adapters.dart:11-55`):
+(`lib/infrastructure/platform/platform_adapters.dart`):
 
 | Concern | Capability |
 |---------|------------|
@@ -53,11 +53,11 @@ changes stay distinguishable from adapter decisions.
 
 For an existing family, reuse its answers and add a platform branch only for a
 real difference. The macOS title bar is one example
-(`lib/infrastructure/platform/platform_io.dart:26-36`,
-`lib/infrastructure/platform/platform_io.dart:98-110`). For a new family,
+(`lib/infrastructure/platform/platform_io.dart`,
+`lib/infrastructure/platform/platform_io.dart`). For a new family,
 implement the complete interface and let unsupported host features return a
 neutral value such as an empty command stream or identity wrapper, as the web
-family does (`lib/infrastructure/platform/platform_web.dart:68-103`).
+family does (`lib/infrastructure/platform/platform_web.dart`).
 
 If a target exposes a genuinely new product capability, begin with the use
 case that needs it and add a narrow application port. The adapter then
@@ -69,7 +69,7 @@ implements that port. Platform objects and packages remain in
 `FolderRef` and `MarkdownRef` are process-scoped handles. The application can
 pass them to scanners without learning whether they represent a path, browser
 handle, or sandbox bookmark. Registries keep the platform object on the
-adapter side (`lib/infrastructure/folder_registry.dart:6-20`).
+adapter side (`lib/infrastructure/folder_registry.dart`).
 
 Workspaces add a second requirement: reopen the same durable source identity
 without putting machine authority into shared JSON. Implement
@@ -96,7 +96,7 @@ least:
 - window chrome and accessibility semantics.
 
 On macOS, user-selected read/write access and app-scoped bookmarks are declared
-in `macos/Runner/Release.entitlements:5-10`. Network access remains available
+in `macos/Runner/Release.entitlements`. Network access remains available
 for non-bundled family names used by custom themes. The hidden title bar and
 native File menu are configured in the host before Flutter renders; see
 [macOS](../06-platforms/02-macos.md).
@@ -105,18 +105,18 @@ native File menu are configured in the host before Flutter renders; see
 
 A source scanner test should use a real temporary tree and cover Markdown at
 depth, ignored non-Markdown, hidden folders, malformed bytes, and unknown refs.
-`test/infrastructure/local_folder_scanner_test.dart:11-94` is the desktop
+`test/infrastructure/local_folder_scanner_test.dart` is the desktop
 example.
 
 Workspace tests should cover the platform's actual write and authority
 behavior. Desktop tests keep the platform-selected path intact, exercise the
 macOS native-write message, and retain a last-good fallback copy
-(`test/infrastructure/desktop_workspace_files_test.dart:9-81`), while shared
+(`test/infrastructure/desktop_workspace_files_test.dart`), while shared
 application tests cover transactional restoration, unavailable sources,
 standalone absorption, explicit web downloads, and reconnection
-(`test/application/workspace_use_cases_test.dart:186-596`). Native command
+(`test/application/workspace_use_cases_test.dart`). Native command
 bridges also deserve a focused test
-(`test/infrastructure/desktop_commands_test.dart:9-61`).
+(`test/infrastructure/desktop_commands_test.dart`).
 
 ## Verify on the target
 

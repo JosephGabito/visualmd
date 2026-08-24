@@ -249,28 +249,24 @@ guarded by two suites and one tool:
 - `test/architecture/dependency_rules_test.dart` — the ring rules above.
 - `test/docs/docs_library_test.dart` — opens `docs/` through the app's own
   domain code and fails on a broken link, a missing anchor, a folder without a
-  README, a document without a title, a placeholder word, or a `file:line`
-  citation pointing at code that is not there.
-- `tool/check_citations.py` — the second pass, for what a regex cannot see: a
-  citation whose range still exists but no longer *says* what the sentence
-  claims. Advisory, roughly five false positives; read every hit.
+  README, a document without a title, a placeholder word, a missing source
+  file, or an exact-line citation.
 
 ```sh
 flutter test test/docs                # the gate
-python3 tool/check_citations.py       # after any refactor that moves code
 ```
 
 Conventions when writing here: one component per document, the seven sections
 from
 [docs/00-foundation/05-component-document-template.md](docs/00-foundation/05-component-document-template.md)
-in order, every claim cited as `` `lib/path/file.dart:12-20` ``, a README in
+in order, code claims supported by stable file references such as
+`` `lib/path/file.dart` ``, a README in
 every folder whose link text matches each target's H1 exactly, 40–140 lines,
 and no placeholders.
 
-**Citations rot silently.** Inserting a test mid-file once shifted five
-citations written minutes earlier; a ring move left one pointing at an import
-block. Both stayed "valid ranges". Verify spans with `sed -n`, never with
-arithmetic.
+Do not cite exact source lines in Markdown. Line movement is not a behavioral
+change, and prose should not become stale when unrelated code is inserted above
+the implementation it describes. Point to the smallest owning file instead.
 
 ## House style
 

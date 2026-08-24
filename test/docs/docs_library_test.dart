@@ -1,6 +1,6 @@
 // Opens docs/ through the app's own domain code and checks that it holds
 // together: links resolve, anchors exist, every shelf has a README, every
-// document has a title, and every `file:line` citation points at real code.
+// document has a title, and every source reference points at a real file.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -14,8 +14,11 @@ import 'package:visualmd/infrastructure/io/local_folder.dart';
 import 'package:visualmd/infrastructure/io/local_folder_scanner.dart';
 
 final linkPattern = RegExp(r'(?<!!)\[[^\]]*\]\(([^)\s]+)\)');
-final citationPattern = RegExp(
-  r'`((?:(?:lib|test|macos|web|windows|docs)/[\w./@-]+\.\w+|pubspec\.yaml|README\.md))(?::(\d+)(?:-(\d+))?)?`',
+final sourceReferencePattern = RegExp(
+  r'`((?:(?:lib|test|macos|web|windows|docs|tool|bin)/[\w./@-]+\.\w+|(?:pubspec|analysis_options)\.yaml|README\.md))`',
+);
+final lineCitationPattern = RegExp(
+  r'`(?:(?:(?:lib|test|macos|web|windows|docs|tool|bin)/[\w./@-]+\.\w+|(?:pubspec|analysis_options)\.yaml|README\.md))?:\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*`',
 );
 final fencePattern = RegExp(r'^ {0,3}(`{3,}|~{3,})', multiLine: true);
 
@@ -113,33 +116,28 @@ void main() {
     expect(broken, isEmpty, reason: 'broken links');
   });
 
-  test('every file:line citation points at code that exists', () {
-    final stale = <String>[];
-    final lineCounts = <String, int>{};
+  test('every source reference points at a file that exists', () {
+    final missing = <String>[];
     for (final doc in docs.documents) {
-      for (final match in citationPattern.allMatches(doc.content)) {
+      for (final match in sourceReferencePattern.allMatches(doc.content)) {
         final path = match[1]!;
-        final file = File(path);
-        if (!file.existsSync()) {
-          stale.add('${doc.id}: $path (missing file)');
-          continue;
-        }
-        if (match[2] == null) continue;
-        final lines = lineCounts.putIfAbsent(
-          path,
-          () => file.readAsLinesSync().length,
-        );
-        final from = int.parse(match[2]!);
-        final to = match[3] == null ? from : int.parse(match[3]!);
-        if (from < 1 || to < from || to > lines) {
-          stale.add('${doc.id}: $path:$from-$to (file has $lines lines)');
-        }
+        if (!File(path).existsSync()) missing.add('${doc.id}: $path');
       }
     }
-    expect(stale, isEmpty, reason: 'stale citations');
+    expect(missing, isEmpty, reason: 'missing source files');
   });
 
-  test('citations exist at all — the inventory is evidence-based', () {
+  test('exact line citations never couple prose to source layout', () {
+    final coupled = <String>[];
+    for (final doc in docs.documents) {
+      for (final match in lineCitationPattern.allMatches(doc.content)) {
+        coupled.add('${doc.id}: ${match[0]}');
+      }
+    }
+    expect(coupled, isEmpty, reason: 'exact line citations');
+  });
+
+  test('source references exist — the inventory is evidence-based', () {
     final componentDocs = docs.documents.where(
       (d) =>
           !d.isReadme &&
@@ -147,12 +145,12 @@ void main() {
           !d.id.path.startsWith('00-foundation'),
     );
     final uncited = componentDocs
-        .where((d) => !citationPattern.hasMatch(d.content))
+        .where((d) => !sourceReferencePattern.hasMatch(d.content))
         .map((d) => d.id.path);
     expect(
       uncited,
       isEmpty,
-      reason: 'component documents without any file:line evidence',
+      reason: 'component documents without source evidence',
     );
   });
 
