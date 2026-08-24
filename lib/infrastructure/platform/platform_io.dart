@@ -140,5 +140,6 @@ final class _DesktopAdapters implements PlatformAdapters {
       _files.readThemeDocuments();
 
   @override
-  String? get themesLocation => _files.themesDirectory.path;
+  Future<void> Function()? get openThemesFolder =>
+      () => openWithSystem(_files.themesDirectory.path);
 }

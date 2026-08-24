@@ -33,8 +33,8 @@ class ReaderScreen extends StatefulWidget {
   final ({double height, double leadingInset}) topBar;
   final Widget Function(Widget child) windowDragRegion;
 
-  /// Where a reader may add their own theme files; null where they cannot.
-  final String? themesLocation;
+  /// Reveals the custom-theme directory; null where custom files are absent.
+  final Future<void> Function()? openThemesFolder;
 
   const ReaderScreen({
     super.key,
@@ -43,7 +43,7 @@ class ReaderScreen extends StatefulWidget {
     this.openReaderSources,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
-    this.themesLocation,
+    this.openThemesFolder,
   });
 
   static Widget _identity(Widget child) => child;
@@ -561,7 +561,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             onChoose: c.chooseTheme,
                             marking: c.readingScale.marking,
                             onMark: c.markParagraphs,
-                            themesLocation: widget.themesLocation,
+                            onOpenThemesFolder: widget.openThemesFolder,
                           ),
                         ),
                       ),

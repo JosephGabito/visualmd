@@ -198,6 +198,7 @@ that built-in — that is how you tweak one of the shipped themes.
 
 Colours accept `#rgb`, `#rrggbb` or `#rrggbbaa`, with or without the `#`.
 
-A file that is not valid JSON, or that is missing a required field, is skipped
-with a note in the console — the rest of your themes still load.
+A file that is not valid JSON, or that is missing a required field, is skipped.
+Open the Reading menu to see the filename and the exact reason — the rest of
+your themes still load.
 ''';

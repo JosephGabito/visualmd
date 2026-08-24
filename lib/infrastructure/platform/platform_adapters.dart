@@ -56,9 +56,9 @@ abstract interface class PlatformAdapters {
   /// schema is the UI's; adapters only find and read the files.
   Future<List<({String origin, String json})>> readThemeDocuments();
 
-  /// Where a reader puts their own theme files, in words; null when the
-  /// platform has no such place (the web).
-  String? get themesLocation;
+  /// Reveals the reader's theme directory; absent where custom files are not
+  /// available (the web).
+  Future<void> Function()? get openThemesFolder;
 }
 
 /// A top bar with nothing to make room for.

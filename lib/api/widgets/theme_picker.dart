@@ -18,8 +18,8 @@ class ThemePicker extends StatelessWidget {
   final ParagraphMarking marking;
   final ValueChanged<ParagraphMarking> onMark;
 
-  /// Where a reader may add their own themes; null where they cannot.
-  final String? themesLocation;
+  /// Reveals the custom-theme directory; null where custom files are absent.
+  final Future<void> Function()? onOpenThemesFolder;
 
   const ThemePicker({
     super.key,
@@ -28,7 +28,7 @@ class ThemePicker extends StatelessWidget {
     required this.onChoose,
     required this.marking,
     required this.onMark,
-    this.themesLocation,
+    this.onOpenThemesFolder,
   });
 
   @override
@@ -108,12 +108,26 @@ class ThemePicker extends StatelessWidget {
           ),
           if (registry.errors.isNotEmpty) ...[
             const _Rule(),
-            _Footnote(
-              '${registry.errors.length} theme file skipped — see console',
+            _SectionLabel(
+              registry.errors.length == 1 ? 'Skipped theme' : 'Skipped themes',
             ),
-          ] else if (themesLocation != null) ...[
+            for (final error in registry.errors) _ThemeError(error),
+          ],
+          if (onOpenThemesFolder != null) ...[
             const _Rule(),
-            _Footnote('Your own themes live in $themesLocation'),
+            _Row(
+              label: 'Open themes folder',
+              leading: Icon(
+                Icons.folder_open_outlined,
+                size: 18,
+                color: context.palette.muted,
+              ),
+              selected: false,
+              onTap: () {
+                close();
+                onOpenThemesFolder!();
+              },
+            ),
           ],
         ];
       },
@@ -220,20 +234,34 @@ class _Rule extends StatelessWidget {
   );
 }
 
-class _Footnote extends StatelessWidget {
-  final String text;
-  const _Footnote(this.text);
+class _ThemeError extends StatelessWidget {
+  final ThemeLoadError error;
+  const _ThemeError(this.error);
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
-    child: Text(
-      text,
-      style: context.type.sans(
-        color: context.palette.muted,
-        size: 11.5,
-        height: 1.35,
-      ),
+    padding: const EdgeInsets.fromLTRB(14, 3, 14, 7),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${error.origin} skipped',
+          style: context.type.sans(
+            color: context.palette.ink,
+            size: 11.5,
+            weight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          error.reason,
+          style: context.type.sans(
+            color: context.palette.muted,
+            size: 11.5,
+            height: 1.35,
+          ),
+        ),
+      ],
     ),
   );
 }

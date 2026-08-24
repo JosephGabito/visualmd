@@ -124,9 +124,6 @@ Future<void> main() async {
   final themes = ThemeRegistry.fromDocuments(
     await platform.readThemeDocuments(),
   );
-  for (final error in themes.errors) {
-    debugPrint('Theme skipped — $error');
-  }
   final savedChoice = await platform.readPreference(themePreference);
   final themeChoice = savedChoice == null
       ? null
@@ -276,7 +273,7 @@ Future<void> main() async {
       dropRegion: platform.dropRegion,
       topBar: platform.topBar,
       windowDragRegion: platform.windowDragRegion,
-      themesLocation: platform.themesLocation,
+      openThemesFolder: platform.openThemesFolder,
     ),
   );
 }
