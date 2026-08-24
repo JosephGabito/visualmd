@@ -251,7 +251,7 @@ final class _InlinePlainText {
         .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m[1]!)
         .replaceAllMapped(RegExp(r'\[([^\]]+)\]\[[^\]]*\]'), (m) => m[1]!)
         .replaceAll(RegExp(r'<[^>]+>'), '');
-    text = _stripPairedMarks(text);
+    text = _stripPairedMarks(text, literals);
     text = CharacterReferences.decode(text);
     final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     return literals.restore(normalized);
@@ -386,18 +386,217 @@ final class _InlinePlainText {
       (codeUnit >= 0x5b && codeUnit <= 0x60) ||
       (codeUnit >= 0x7b && codeUnit <= 0x7e);
 
-  static String _stripPairedMarks(String text) {
-    var result = text;
-    for (final pattern in [
-      RegExp(r'\*\*(.+?)\*\*', dotAll: true),
-      RegExp(r'__(.+?)__', dotAll: true),
+  static String _stripPairedMarks(String text, _InlineLiterals literals) {
+    final emphasis = _EmphasisPlainText(text, literals).read();
+    return emphasis.replaceAllMapped(
       RegExp(r'~~(.+?)~~', dotAll: true),
-      RegExp(r'\*(.+?)\*', dotAll: true),
-    ]) {
-      result = result.replaceAllMapped(pattern, (match) => match[1]!);
-    }
-    return result;
+      (match) => match[1]!,
+    );
   }
+}
+
+/// Removes only the delimiter characters that CommonMark resolves as marks.
+///
+/// A regex cannot do this recursively: `**outer _inner_**` needs another pass,
+/// while `*foo**bar*` must keep its interior pair under the rule of three. The
+/// outline does not need the resulting mark tree, but it does need the same
+/// delimiter-run decisions as the page so titles and anchors name what is read.
+final class _EmphasisPlainText {
+  static final _punctuationOrSymbol = RegExp(r'^[\p{P}\p{S}]$', unicode: true);
+  static final _whitespace = RegExp(r'^(?:\p{Zs}|[\t\n\f\r])$', unicode: true);
+
+  final String source;
+  final _InlineLiterals literals;
+
+  _EmphasisPlainText(this.source, this.literals);
+
+  String read() {
+    final atoms = _atoms();
+    final delimiters = atoms.whereType<_EmphasisDelimiter>().toList();
+    _resolve(delimiters);
+    return atoms.map((atom) => atom.output).join();
+  }
+
+  List<_EmphasisAtom> _atoms() {
+    final atoms = <_EmphasisAtom>[];
+    var cursor = 0;
+    while (cursor < source.length) {
+      final kept = literals.tokenAt(source, cursor);
+      if (kept != null) {
+        atoms.add(_EmphasisText(kept.token, edgeText: kept.value));
+        cursor += kept.token.length;
+        continue;
+      }
+
+      final codeUnit = source.codeUnitAt(cursor);
+      final width =
+          codeUnit >= 0xd800 &&
+              codeUnit <= 0xdbff &&
+              cursor + 1 < source.length &&
+              source.codeUnitAt(cursor + 1) >= 0xdc00 &&
+              source.codeUnitAt(cursor + 1) <= 0xdfff
+          ? 2
+          : 1;
+      if (codeUnit == 0x2a || codeUnit == 0x5f) {
+        final character = String.fromCharCode(codeUnit);
+        var end = cursor + 1;
+        while (end < source.length && source.codeUnitAt(end) == codeUnit) {
+          end++;
+        }
+        atoms.add(_EmphasisDelimiter(character, end - cursor));
+        cursor = end;
+      } else {
+        atoms.add(_EmphasisText(source.substring(cursor, cursor + width)));
+        cursor += width;
+      }
+    }
+
+    for (var index = 0; index < atoms.length; index++) {
+      final delimiter = atoms[index];
+      if (delimiter is! _EmphasisDelimiter) continue;
+      final before = index == 0 ? null : _lastScalar(atoms[index - 1].edge);
+      final after = index + 1 == atoms.length
+          ? null
+          : _firstScalar(atoms[index + 1].edge);
+      delimiter.classify(before: before, after: after);
+    }
+    return atoms;
+  }
+
+  static String? _firstScalar(String text) {
+    if (text.isEmpty) return null;
+    return String.fromCharCode(text.runes.first);
+  }
+
+  static String? _lastScalar(String text) {
+    if (text.isEmpty) return null;
+    return String.fromCharCode(text.runes.last);
+  }
+
+  static bool _isWhitespace(String? scalar) =>
+      scalar == null || _whitespace.hasMatch(scalar);
+
+  static bool _isPunctuation(String? scalar) =>
+      scalar != null && _punctuationOrSymbol.hasMatch(scalar);
+
+  static void _resolve(List<_EmphasisDelimiter> stack) {
+    var current = 0;
+    final openersBottom = <String, List<int>>{};
+    while (current < stack.length) {
+      final closer = stack[current];
+      if (!closer.canClose) {
+        current++;
+        continue;
+      }
+
+      final bottoms = openersBottom.putIfAbsent(
+        closer.character,
+        () => List.filled(3, -1),
+      );
+      final bottom = bottoms[closer.remaining % 3];
+      var openerIndex = -1;
+      for (var candidate = current - 1; candidate > bottom; candidate--) {
+        final opener = stack[candidate];
+        if (opener.character == closer.character &&
+            opener.canOpen &&
+            _canFormMark(opener, closer)) {
+          openerIndex = candidate;
+          break;
+        }
+      }
+
+      if (openerIndex == -1) {
+        bottoms[closer.remaining % 3] = current - 1;
+        if (closer.canOpen) {
+          current++;
+        } else {
+          stack.removeAt(current);
+        }
+        continue;
+      }
+
+      final opener = stack[openerIndex];
+      final used = opener.remaining >= 2 && closer.remaining >= 2 ? 2 : 1;
+      if (current > openerIndex + 1) {
+        stack.removeRange(openerIndex + 1, current);
+      }
+      current = openerIndex + 1;
+      opener.remaining -= used;
+      closer.remaining -= used;
+
+      if (opener.remaining == 0) {
+        stack.removeAt(openerIndex);
+        current--;
+      }
+      if (closer.remaining == 0) {
+        stack.removeAt(current);
+      }
+    }
+  }
+
+  static bool _canFormMark(
+    _EmphasisDelimiter opener,
+    _EmphasisDelimiter closer,
+  ) {
+    if ((opener.canOpen && opener.canClose) ||
+        (closer.canOpen && closer.canClose)) {
+      return (opener.remaining + closer.remaining) % 3 != 0 ||
+          (opener.remaining % 3 == 0 && closer.remaining % 3 == 0);
+    }
+    return true;
+  }
+}
+
+sealed class _EmphasisAtom {
+  String get output;
+  String get edge;
+}
+
+final class _EmphasisText implements _EmphasisAtom {
+  final String source;
+  final String edgeText;
+
+  _EmphasisText(this.source, {String? edgeText})
+    : edgeText = edgeText ?? source;
+
+  @override
+  String get output => source;
+
+  @override
+  String get edge => edgeText;
+}
+
+final class _EmphasisDelimiter implements _EmphasisAtom {
+  final String character;
+  int remaining;
+  bool canOpen = false;
+  bool canClose = false;
+
+  _EmphasisDelimiter(this.character, int length) : remaining = length;
+
+  void classify({required String? before, required String? after}) {
+    final beforeWhitespace = _EmphasisPlainText._isWhitespace(before);
+    final afterWhitespace = _EmphasisPlainText._isWhitespace(after);
+    final beforePunctuation = _EmphasisPlainText._isPunctuation(before);
+    final afterPunctuation = _EmphasisPlainText._isPunctuation(after);
+    final leftFlanking =
+        !afterWhitespace &&
+        (!afterPunctuation || beforeWhitespace || beforePunctuation);
+    final rightFlanking =
+        !beforeWhitespace &&
+        (!beforePunctuation || afterWhitespace || afterPunctuation);
+    final allowIntraWord = character == '*';
+    canOpen =
+        leftFlanking && (!rightFlanking || allowIntraWord || beforePunctuation);
+    canClose =
+        rightFlanking && (!leftFlanking || allowIntraWord || afterPunctuation);
+  }
+
+  @override
+  String get output => character * remaining;
+
+  @override
+  String get edge => character;
 }
 
 /// A collision-free placeholder store for source fragments whose grammar has
@@ -422,6 +621,19 @@ final class _InlineLiterals {
       restored = restored.replaceAll('$_marker$index$_marker', _values[index]);
     }
     return restored;
+  }
+
+  ({String token, String value})? tokenAt(String text, int offset) {
+    if (!text.startsWith(_marker, offset)) return null;
+    final indexStart = offset + _marker.length;
+    final indexEnd = text.indexOf(_marker, indexStart);
+    if (indexEnd == -1) return null;
+    final index = int.tryParse(text.substring(indexStart, indexEnd));
+    if (index == null || index < 0 || index >= _values.length) return null;
+    return (
+      token: text.substring(offset, indexEnd + _marker.length),
+      value: _values[index],
+    );
   }
 
   static String _markerAbsentFrom(String source) {

@@ -102,6 +102,21 @@ The bundled variable reading faces receive that weight through
 reflow naturally without pushing the paragraph off its baseline grid
 (`test/presentation/paragraph_setting_test.dart`).
 
+### Combined and nested emphasis
+
+Composition is recursive, so a child begins with the complete style inherited
+from its parent. Emphasis inside strength retains weight and adds italic;
+strength inside emphasis retains italic and adds weight. Triple delimiters use
+that same pair of ordinary marks rather than inventing a third visual role
+(`lib/api/render/inline_composer.dart`).
+
+The result remains one selectable and accessible string. No delimiter is
+painted or spoken, no nested span supplies a replacement semantics label, and
+search background remains an independent layer. A long combined specimen may
+wrap differently because its glyphs are wider, but every rendered line returns
+to the prose baseline grid (`test/presentation/inline_composer_test.dart`,
+`test/presentation/paragraph_setting_test.dart`).
+
 ### Setting the punctuation
 
 `_text` walks a run grapheme by grapheme

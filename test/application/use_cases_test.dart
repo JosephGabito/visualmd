@@ -428,6 +428,8 @@ void main() {
                 '\n'
                 '### **Marked** `code` and [a link](https://example.com)\n'
                 '\n'
+                '### ***Combined*** and **strong with _nested voice_**\n'
+                '\n'
                 r'### \*literal stars\* and \[brackets\] and \`ticks\`'
                 '\n'
                 '\n'
@@ -474,6 +476,7 @@ void main() {
       'section',
       'section-1',
       'marked-code-and-a-link',
+      'combined-and-strong-with-nested-voice',
       'literal-stars-and-brackets-and-ticks',
       'emphasis-and-hash-and-code',
       'ℋ',
@@ -484,6 +487,47 @@ void main() {
       'duplicate-heading-1',
       'a-multi-source-setext-heading-with-code-and-a-link',
     ]);
+  });
+
+  test('the outline and page agree on combined delimiter precedence', () {
+    const sources = [
+      '***foo***',
+      '_____foo_____',
+      '*foo **bar *baz* bim** bop*',
+      '**foo *bar **baz** bim* bop**',
+      '*foo**bar*',
+      'foo***bar***baz',
+      '****foo****',
+      '*foo _bar* baz_',
+      '*foo __bar *baz bim__ bam*',
+      '**foo **bar baz**',
+      '*foo *bar baz*',
+      '***foo** bar*',
+      '*foo **bar***',
+      '***foo* bar**',
+      '**foo *bar***',
+      '**foo "*bar*" foo**',
+      r'\**escaped opener*',
+      r'**escaped closer\***',
+      '*a `*`*',
+    ];
+    const parser = MarkdownDocumentParser();
+
+    for (var index = 0; index < sources.length; index++) {
+      final markdown = '# ${sources[index]}';
+      final document = Document(
+        id: DocumentId(
+          const LibraryRootId('delimiter-corpus'),
+          'case-$index.md',
+        ),
+        content: markdown,
+      );
+      final outline = document.outline.tableOfContents.headings.single;
+      final page = parser.parse(markdown).headings.single;
+
+      expect(outline.text, page.text, reason: sources[index]);
+      expect(outline.anchor, page.anchor, reason: sources[index]);
+    }
   });
 
   test('ReadDocument fails clearly without a library or document', () async {

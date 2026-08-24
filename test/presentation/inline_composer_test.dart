@@ -325,6 +325,62 @@ void main() {
     expect(strongLeaves.last.style!.backgroundColor, theme.palette.selection);
   });
 
+  testWidgets('nested marks accumulate their two independent signals', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final paragraph =
+        const MarkdownDocumentParser()
+                .parse('***combined*** beside **outer *inner* tail**')
+                .blocks
+                .single
+            as ParagraphBlock;
+    const base = TextStyle(
+      color: Color(0xFF123456),
+      fontSize: 19,
+      height: 1.6,
+      fontWeight: FontWeight.w400,
+      fontStyle: FontStyle.normal,
+    );
+    final spans = InlineComposer(
+      theme: theme,
+      matches: const [TextMatch(start: 0, end: 8, excerpt: 'combined')],
+    ).compose(paragraph.content, style: base);
+
+    final leaves = <TextSpan>[];
+    void collect(InlineSpan span) {
+      if (span is! TextSpan) return;
+      if (span.text != null) leaves.add(span);
+      span.children?.forEach(collect);
+    }
+
+    spans.forEach(collect);
+    TextStyle styleContaining(String text) =>
+        leaves.singleWhere((span) => span.text!.contains(text)).style!;
+
+    final combined = styleContaining('combined');
+    final outer = styleContaining('outer');
+    final inner = styleContaining('inner');
+    expect(
+      TextSpan(children: spans).toPlainText(),
+      'combined beside outer inner tail',
+    );
+    expect(combined.fontStyle, FontStyle.italic);
+    expect(combined.fontWeight, FontWeight.w700);
+    expect(combined.backgroundColor, theme.palette.selection);
+    expect(outer.fontStyle, FontStyle.normal);
+    expect(outer.fontWeight, FontWeight.w700);
+    expect(inner.fontStyle, FontStyle.italic);
+    expect(inner.fontWeight, FontWeight.w700);
+    for (final style in [combined, outer, inner]) {
+      expect(style.color, base.color);
+      expect(style.fontSize, base.fontSize);
+      expect(style.height, base.height);
+      expect(style.decoration, base.decoration);
+    }
+    expect(leaves.every((span) => span.semanticsLabel == null), isTrue);
+  });
+
   testWidgets(
     'an authored line remains one selectable newline in the text flow',
     (tester) async {
