@@ -40,9 +40,10 @@ The private `_Parser` works line by line
   text), HTML tags and genuine paired inline delimiters, then collapses
   formatting whitespace (`lib/domain/reading/document_outline.dart`). A
   delimiter-run resolver applies CommonMark's flanking, nesting, overlap and
-  rule-of-three decisions without importing a Markdown package into the domain
-  ring. Nested marks are therefore removed recursively, while a literal pair
-  such as the middle `**` in `*foo**bar*` remains part of the title. Code
+  rule-of-three decisions, plus GFM's one- and two-tilde strikethrough, without
+  importing a Markdown package into the domain ring. Nested marks are therefore
+  removed recursively, while a literal pair such as the middle `**` in
+  `*foo**bar*` and every tilde in `~~~literal~~~` remains part of the title. Code
   spans and autolinks are protected as literal regions before backslash
   escapes are resolved. Consequently `\*literal\*` keeps both stars,
   `\\*emphasis*` keeps one backslash but loses the genuine emphasis marks,
@@ -95,6 +96,7 @@ The private `_Parser` works line by line
 | an h1 containing every escaped ASCII punctuation mark | every mark without its source backslash; the hyphen-only slug is `-` | one | the resolved punctuation |
 | an h1 mixing named, decimal, hexadecimal, structural, escaped and code-literal references | valid prose references become Unicode; encoded structural marks stay text; protected forms stay source | one | the resolved reading text |
 | headings with triple marks, marks inside marks, overlapping runs and escaped delimiters | nested grammar disappears; unmatched and rule-of-three delimiters remain reading text; anchors follow the resolved words | one per heading | the first resolved h1 |
+| headings with one-, two-, three- and four-tilde runs, whitespace edges and nested roles | eligible strikethrough notation disappears; ineligible long runs and unmatched tildes remain reading text | one per heading | the resolved h1 |
 | `intro`, `# One`, `## Two` | One, Two | three: the first has no heading | `One` |
 | `---` / `title: "From Front Matter"` / `---` / `# Body Heading` | Body Heading at line 5 | one, without `tags:` | `From Front Matter` |
 | empty string | none | none | `null` |

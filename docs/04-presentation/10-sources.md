@@ -332,6 +332,24 @@ neither adds colour, size, a box, spacing or an accessibility label. The prose
 remains one selectable line of thought even when its mark tree is several
 levels deep (`lib/api/render/inline_composer.dart`).
 
+## Strikethrough
+
+The formal [GitHub Flavored Markdown specification](https://github.github.com/gfm/#strikethrough-extension-)
+defines strikethrough as text wrapped by one or two tildes, ends the construct
+at a new paragraph, and makes runs of three or more tildes literal. Visual MD
+enforces that final boundary ahead of `package:markdown`, then carries either
+eligible spelling as the same recursive `InlineMark.strikethrough`
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+The [CSS Text Decoration specification](https://www.w3.org/TR/css-text-decor-4/)
+names line-through as a continuous line through the middle of each line of
+text and records editorial deletion as one of text decoration's traditional
+uses. That is already the entire signal. Lupton's economy of signals gives no
+reason to dim the words as well, and the legibility rule keeps body ink at its
+full contrast. Visual MD therefore inherits colour, weight, style, size and
+leading and adds only `TextDecoration.lineThrough`; search background remains
+an independent paint layer (`lib/api/render/inline_composer.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

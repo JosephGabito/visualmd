@@ -265,6 +265,88 @@ void main() {
     });
   });
 
+  group('GFM strikethrough delimiters', () {
+    test('one and two tildes become the same domain mark', () {
+      final paragraph = single<ParagraphBlock>(
+        'Read ~one tilde~ beside ~~two tildes~~.',
+      );
+      final deleted = paragraph.content.whereType<MarkedRun>().toList();
+
+      expect(deleted.map((run) => run.mark), [
+        InlineMark.strikethrough,
+        InlineMark.strikethrough,
+      ]);
+      expect(deleted.map((run) => run.text), ['one tilde', 'two tildes']);
+      expect(paragraph.text, 'Read one tilde beside two tildes.');
+    });
+
+    test('a shorter eligible run leaves the unmatched tilde authored', () {
+      final paragraph = single<ParagraphBlock>('~corrected~~ text');
+      final deleted = paragraph.content.whereType<MarkedRun>().single;
+
+      expect(deleted.mark, InlineMark.strikethrough);
+      expect(deleted.text, 'corrected');
+      expect(paragraph.text, 'corrected~ text');
+    });
+
+    test('strikethrough may occur inside words and beside punctuation', () {
+      final paragraph = single<ParagraphBlock>(
+        'before~obsolete~after and (~aside~).',
+      );
+
+      expect(paragraph.content.whereType<MarkedRun>().map((run) => run.text), [
+        'obsolete',
+        'aside',
+      ]);
+      expect(paragraph.text, 'beforeobsoleteafter and (aside).');
+    });
+
+    test('interior whitespace and runs of three or more remain literal', () {
+      for (final source in [
+        '~ leading~',
+        '~trailing ~',
+        'This will ~~~not~~~ strike.',
+        'This will ~~~~also not~~~~ strike.',
+      ]) {
+        final paragraph = single<ParagraphBlock>(source);
+
+        expect(
+          paragraph.content.whereType<MarkedRun>(),
+          isEmpty,
+          reason: source,
+        );
+        expect(paragraph.text, source, reason: source);
+      }
+    });
+
+    test('a blank line prevents a strikethrough pair', () {
+      final content = parse('This ~~has a\n\nnew paragraph~~.');
+
+      expect(content.blocks, hasLength(2));
+      expect(content.blocks.whereType<ParagraphBlock>(), hasLength(2));
+      expect(content.blocks.map((block) => block.text), [
+        'This ~~has a',
+        'new paragraph~~.',
+      ]);
+    });
+
+    test('nested inline roles bind inside the deletion mark', () {
+      final paragraph = single<ParagraphBlock>(
+        '~~old **important** `literal ~` and [guide](https://example.com)~~',
+      );
+      final deleted = paragraph.content.single as MarkedRun;
+
+      expect(deleted.mark, InlineMark.strikethrough);
+      expect(
+        deleted.children.whereType<MarkedRun>().single.mark,
+        InlineMark.strong,
+      );
+      expect(deleted.children.whereType<CodeRun>().single.text, 'literal ~');
+      expect(deleted.children.whereType<LinkRun>().single.text, 'guide');
+      expect(paragraph.text, 'old important literal ~ and guide');
+    });
+  });
+
   group('soft line breaks', () {
     test('source wrapping disappears into one word separator', () {
       final paragraph = single<ParagraphBlock>(

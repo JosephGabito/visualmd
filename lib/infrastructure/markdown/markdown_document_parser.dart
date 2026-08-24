@@ -20,6 +20,10 @@ final class MarkdownDocumentParser implements DocumentParser {
   @override
   DocumentContent parse(String markdown) {
     final nodes = md.Document(
+      // package:markdown currently lets its delimiter resolver consume a
+      // shorter pair from a run of three or more tildes. GFM makes the whole
+      // run literal, so claim it before the extension syntax sees it.
+      inlineSyntaxes: [_LiteralLongTildeRunSyntax()],
       extensionSet: md.ExtensionSet.gitHubFlavored,
       // The reader draws text, not HTML: escaping it here would put `&amp;`
       // on the page.
@@ -43,6 +47,17 @@ final class MarkdownDocumentParser implements DocumentParser {
       }
     }
     return source;
+  }
+}
+
+/// Keeps GFM's ineligible long tilde runs out of the delimiter stack.
+final class _LiteralLongTildeRunSyntax extends md.InlineSyntax {
+  _LiteralLongTildeRunSyntax() : super(r'~{3,}', startCharacter: 0x7e);
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Text(match[0]!));
+    return true;
   }
 }
 

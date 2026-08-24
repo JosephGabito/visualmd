@@ -109,6 +109,35 @@ void main() {
     expect(notation, isEmpty);
   });
 
+  test(
+    'indexes valid strikethrough but preserves ineligible tilde runs',
+    () async {
+      final document = Document(
+        id: DocumentId(rootId, 'strikethrough.md'),
+        content:
+            'Find ~retired~ beside ~~obsolete~~ while ~~~literal~~~ survives.',
+      );
+
+      final retired = await search.find(SearchQuery('retired'), [document]);
+      final obsolete = await search.find(SearchQuery('obsolete'), [document]);
+      final literal = await search.find(SearchQuery('~~~literal~~~'), [
+        document,
+      ]);
+      final notation = await search.find(SearchQuery('~retired~'), [document]);
+
+      expect(
+        retired.single.matches.single.excerpt,
+        'Find retired beside obsolete while ~~~literal~~~ survives.',
+      );
+      expect(
+        obsolete.single.matches.single.excerpt,
+        'Find retired beside obsolete while ~~~literal~~~ survives.',
+      );
+      expect(literal.single.matches.single.excerpt, contains('~~~literal~~~'));
+      expect(notation, isEmpty);
+    },
+  );
+
   test('matches the reading text across editor wrapping', () async {
     final document = Document(
       id: DocumentId(rootId, 'wrapped.md'),

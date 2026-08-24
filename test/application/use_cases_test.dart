@@ -530,6 +530,38 @@ void main() {
     }
   });
 
+  test('the outline and page agree on formal GFM strikethrough', () {
+    const sources = [
+      '~single~',
+      '~~double~~',
+      'before~inside~after',
+      '~shorter~~',
+      '~ leading~',
+      '~trailing ~',
+      '~~~three~~~',
+      '~~~~four~~~~',
+      '~~old **important** `literal ~` and [guide](https://example.com)~~',
+      r'\~escaped~ and ~escaped\~',
+    ];
+    const parser = MarkdownDocumentParser();
+
+    for (var index = 0; index < sources.length; index++) {
+      final markdown = '# ${sources[index]}';
+      final document = Document(
+        id: DocumentId(
+          const LibraryRootId('strikethrough-corpus'),
+          'case-$index.md',
+        ),
+        content: markdown,
+      );
+      final outline = document.outline.tableOfContents.headings.single;
+      final page = parser.parse(markdown).headings.single;
+
+      expect(outline.text, page.text, reason: sources[index]);
+      expect(outline.anchor, page.anchor, reason: sources[index]);
+    }
+  });
+
   test('ReadDocument fails clearly without a library or document', () async {
     final repo = FakeRepository();
     final useCase = ReadDocument(

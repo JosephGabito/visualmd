@@ -33,7 +33,7 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 |-----|---------|
 | `TextRun` | A `TextSpan` whose text has been set (`lib/api/render/inline_composer.dart`) |
 | `CodeRun` | A selectable `InlineCodeSpan` in the surrounding role, set verbatim in contrast-safe accent mono with a translucent muted underline (`lib/api/render/inline_composer.dart`) |
-| `MarkedRun` | Italic, weight 700, or a strikethrough in `muted` — one mark each, since one mark is enough (`lib/api/render/inline_composer.dart`) |
+| `MarkedRun` | Italic, weight 700, or one inherited-ink line through the text — one signal for each meaning (`lib/api/render/inline_composer.dart`) |
 | `LinkRun` | `linkFor(base)`, which preserves the complete heading, table or marked style and adds only link colour, underline and interaction (`lib/api/render/inline_composer.dart`) |
 | `ImageRun` | Its alt text in `muted`; images are not resolved yet, and the alt is what the author meant the reader to get either way (`lib/api/render/inline_composer.dart`) |
 | `LineBreakRun` | One selectable newline in the surrounding style; no widget, extra gap or source marker (`lib/api/render/inline_composer.dart`) |
@@ -114,6 +114,21 @@ The result remains one selectable and accessible string. No delimiter is
 painted or spoken, no nested span supplies a replacement semantics label, and
 search background remains an independent layer. A long combined specimen may
 wrap differently because its glyphs are wider, but every rendered line returns
+to the prose baseline grid (`test/presentation/inline_composer_test.dart`,
+`test/presentation/paragraph_setting_test.dart`).
+
+### Strikethrough
+
+Both eligible GFM spellings reach composition as
+`InlineMark.strikethrough`. The composer inherits the complete surrounding
+role and adds only `TextDecoration.lineThrough`: no muted tone, accent, weight,
+italic, size or leading change. A deletion is still legible prose, and the
+continuous line is already its editorial signal
+(`lib/api/render/inline_composer.dart`).
+
+The words remain ordinary selectable and accessible text. Search background
+can paint either spelling without replacing the line-through or supplying a
+semantics label, and a long deleted passage may reflow while every line returns
 to the prose baseline grid (`test/presentation/inline_composer_test.dart`,
 `test/presentation/paragraph_setting_test.dart`).
 

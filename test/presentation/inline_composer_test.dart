@@ -382,6 +382,67 @@ void main() {
   });
 
   testWidgets(
+    'strikethrough adds only a line and keeps search paint independent',
+    (tester) async {
+      await makeComposer(tester);
+      final paragraph =
+          const MarkdownDocumentParser()
+                  .parse('~single~ and ~~double~~')
+                  .blocks
+                  .single
+              as ParagraphBlock;
+      final matchStart = paragraph.text.indexOf('double');
+      const base = TextStyle(
+        color: Color(0xFF123456),
+        fontSize: 19,
+        height: 1.6,
+        fontWeight: FontWeight.w400,
+        fontStyle: FontStyle.normal,
+      );
+      final spans = InlineComposer(
+        theme: theme,
+        matches: [
+          TextMatch(
+            start: matchStart,
+            end: matchStart + 'double'.length,
+            excerpt: paragraph.text,
+          ),
+        ],
+      ).compose(paragraph.content, style: base);
+
+      final deletedLeaves = <TextSpan>[];
+      void collect(InlineSpan span, {bool insideDeletion = false}) {
+        if (span is! TextSpan) return;
+        final deleted =
+            insideDeletion ||
+            span.style?.decoration == TextDecoration.lineThrough;
+        if (deleted && span.text != null) deletedLeaves.add(span);
+        for (final child in span.children ?? const <InlineSpan>[]) {
+          collect(child, insideDeletion: deleted);
+        }
+      }
+
+      spans.forEach(collect);
+      expect(TextSpan(children: spans).toPlainText(), 'single and double');
+      expect(deletedLeaves.map((span) => span.text), ['single', 'double']);
+      for (final leaf in deletedLeaves) {
+        expect(leaf.style!.decoration, TextDecoration.lineThrough);
+        expect(leaf.style!.color, base.color);
+        expect(leaf.style!.fontSize, base.fontSize);
+        expect(leaf.style!.height, base.height);
+        expect(leaf.style!.fontWeight, base.fontWeight);
+        expect(leaf.style!.fontStyle, base.fontStyle);
+        expect(leaf.semanticsLabel, isNull);
+      }
+      expect(deletedLeaves.first.style!.backgroundColor, isNull);
+      expect(
+        deletedLeaves.last.style!.backgroundColor,
+        theme.palette.selection,
+      );
+    },
+  );
+
+  testWidgets(
     'an authored line remains one selectable newline in the text flow',
     (tester) async {
       await makeComposer(tester);
