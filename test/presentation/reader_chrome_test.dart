@@ -168,6 +168,7 @@ void main() {
     PanelWidths? panelWidths,
     OpenWorkspace? openWorkspace,
     Future<void> Function()? openReaderSources,
+    bool withLibrary = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -205,7 +206,7 @@ void main() {
       panelWidths: panelWidths,
       savePreference: (key, value) async => saved.add((key, value)),
     );
-    await controller.openSampleLibrary();
+    if (withLibrary) await controller.openSampleLibrary();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -304,6 +305,21 @@ void main() {
       );
     },
   );
+
+  testWidgets('Command-Option-O opens the sample library', (tester) async {
+    await pumpReader(tester, withLibrary: false);
+    expect(controller.library, isNull);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyO);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+
+    expect(controller.library, isNotNull);
+    expect(controller.library!.roots.single.name, 'notes');
+  });
 
   testWidgets('the desktop launch width preserves both default side panels', (
     tester,

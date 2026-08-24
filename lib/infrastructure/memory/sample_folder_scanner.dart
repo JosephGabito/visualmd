@@ -15,16 +15,16 @@ final class SampleFolderScanner implements FolderScanner {
     FileEntry('README.md', '''
 # Welcome to Visual MD
 
-The last markdown reader you need. Drop a folder, and every markdown file in
-it is on the shelf to your left — instantly, nested folders and all.
+A quiet place to read Markdown. Open one document, add a folder, or restore a
+workspace; everything you bring in settles onto the shelf to your left.
 
 ## How it works
 
-1. **Drop a folder** anywhere on this window, or use *Open a folder*.
+1. **Drop Markdown files or folders** anywhere on the window, or use *Open…*.
 2. Pick a document from the shelf.
 3. Use the **outline** on the right to move through long documents.
 
-Nothing leaves your machine. Files are read in the browser and never uploaded.
+Your files stay on your device.
 
 ## What you're looking at
 
@@ -42,6 +42,9 @@ outside the column, where it belongs.
 
 | Keys | Does |
 |------|------|
+| `⌘` / `Ctrl` + `O` | Open Markdown or a folder |
+| `⇧⌘O` / `Ctrl+Shift+O` | Open a saved workspace |
+| `⌥⌘O` / `Ctrl+Alt+O` | Open this sample library |
 | `⌘` / `Ctrl` + `B` | Toggle the shelf |
 | `⌘` / `Ctrl` + `.` | Toggle the outline |
 
@@ -52,7 +55,7 @@ final library = LibraryBuilder.build(name: 'notes', files: files);
 print(library.openingDocument?.title); // "Welcome to Visual MD"
 ```
 
-Now go drop something.
+Now go open something of your own.
 '''),
     FileEntry('guide/01-the-shelf.md', '''
 ---

@@ -3,7 +3,8 @@
 ## Purpose and boundary
 
 A small library bundled in source so the reader is never empty-handed: it
-is what "browse the sample library" opens on the welcome screen and what
+is what **Open Sample Library** opens from the welcome screen, keyboard, or
+native File menu, and what
 `?open=sample` opens on the web
 (`lib/infrastructure/memory/sample_folder_scanner.dart:4-5`,
 `lib/api/reader_controller.dart:239`, `lib/main.dart:194`,
@@ -32,11 +33,11 @@ The bundled documents and what each one exercises:
 
 | Path | Demonstrates | Evidence |
 |------|--------------|----------|
-| `README.md` | root README opens first; h2 outline; ordered list; blockquote; a paragraph opening with a quotation, so the hung mark is visible; a table; a fenced `dart` code block | `lib/infrastructure/memory/sample_folder_scanner.dart:15-56` |
-| `guide/01-the-shelf.md` | YAML front matter with `title: The Shelf`; numbered file ordering; bullet lists | `:57-78` |
-| `guide/02-the-outline.md` | headings to four levels; outline indentation relative to the shallowest level; an anchor-link example | `:79-101` |
-| `guide/advanced/reference-links.md` | a second level of nesting; a reference-style link whose definition is at the bottom of the file | `:102-115` |
-| `notes/colophon.md` | a second top-level shelf; emphasis, and a heading below the title | `:116-133` |
+| `README.md` | root README opens first; h2 outline; ordered list; blockquote; a paragraph opening with a quotation, so the hung mark is visible; a table; a fenced `dart` code block | `lib/infrastructure/memory/sample_folder_scanner.dart:15-59` |
+| `guide/01-the-shelf.md` | YAML front matter with `title: The Shelf`; numbered file ordering; bullet lists | `:60-82` |
+| `guide/02-the-outline.md` | headings to four levels; outline indentation relative to the shallowest level; an anchor-link example | `:83-105` |
+| `guide/advanced/reference-links.md` | a second level of nesting; a reference-style link whose definition is at the bottom of the file | `:106-119` |
+| `notes/colophon.md` | a second top-level shelf; emphasis, and a heading below the title | `:120-137` |
 
 The resulting shelf has two folders at the root (`guide`, `notes`), one
 nested folder (`guide/advanced`) and five documents — the count shown under
@@ -45,7 +46,9 @@ the shelf heading.
 ## Events
 
 None. Opening the sample follows the same `AddFolder` use case as any other
-folder, so application behavior stays consistent.
+folder, so application behavior stays consistent. Its stable ref refreshes an
+existing sample root rather than duplicating it, and the controller selects
+its opening document (`lib/api/reader_controller.dart:258-264`).
 
 ## Lifecycle
 

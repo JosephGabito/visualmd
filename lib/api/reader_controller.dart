@@ -255,7 +255,12 @@ final class ReaderController extends ChangeNotifier {
     }
   }
 
-  Future<void> openSampleLibrary() => addFolder(_sampleFolder);
+  Future<void> openSampleLibrary() async {
+    await addFolder(_sampleFolder);
+    final sample = library?.rootById(LibraryRootId(_sampleFolder.id));
+    final opening = sample?.openingDocument;
+    if (opening != null) await openDocument(opening.id);
+  }
 
   Future<void> newWorkspace() async {
     final create = _createWorkspace;

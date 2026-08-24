@@ -29,8 +29,8 @@ background used by an installed PWA (`web/manifest.json:2-8`, `:10-32`).
 ## Launch options
 
 The web adapters expose the URL query as `launchOptions`
-(`lib/infrastructure/platform/platform_web.dart:77-79`), and the composition
-root interprets the supported keys (`lib/main.dart:222-245`):
+(`lib/infrastructure/platform/platform_web.dart:93-95`), and the composition
+root interprets the supported keys (`lib/main.dart:245-269`):
 
 | Query | Effect |
 |-------|--------|

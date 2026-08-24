@@ -9,9 +9,10 @@ the host's File menu, while file I/O remains behind application ports.
 
 ## Present wiring
 
-The platform command contract distinguishes Open reader sources from Open
-Workspace, alongside New, Save, Save As, Add Folder, and Add Markdown
-(`lib/infrastructure/platform/platform_command.dart:1-10`). Desktop hosts send
+The platform command contract distinguishes Open reader sources, Open
+Workspace, and Open Sample Library, alongside New, Save, Save As, Add Folder,
+and Add Markdown
+(`lib/infrastructure/platform/platform_command.dart:1-11`). Desktop hosts send
 those selections over one method channel, where they become a typed stream
 (`lib/infrastructure/io/desktop_commands.dart:7-30`). The composition root maps
 each command to the matching controller method (`lib/main.dart:209-224`).
@@ -42,6 +43,7 @@ desktop menu remains genuinely native.
 | New Workspace | Command/Control-N | fresh unbound reading room |
 | Open | Command-O on macOS | selected folders and Markdown files added in panel order |
 | Open Workspace | Command/Control-Shift-O | selected workspace restored transactionally |
+| Open Sample Library | Command-Option-O / Control-Alt-O | bundled sample opened or refreshed without duplicating its root |
 | Save | Command/Control-S | current workspace flushed or first file requested |
 | Save As | Command/Control-Shift-S | fork written with a new Workspace ID |
 | Add Folder | native File menu | folder appended to the current workspace |
@@ -50,10 +52,11 @@ desktop menu remains genuinely native.
 The native macOS Open panel accepts folders and the supported Markdown
 extensions together, permits multiple selection, and reports whether each URL
 is a directory before Dart sees it (`macos/Runner/MainFlutterWindow.swift:52-91`).
-Command-O invokes that reader-source action; Command-Shift-O invokes Open
-Workspace, so the two concepts do not compete for one chord
-(`lib/api/screens/reader_screen.dart:280-308`,
-`macos/Runner/MainFlutterWindow.swift:231-266`).
+Command-O invokes that reader-source action, Command-Shift-O invokes Open
+Workspace, and Command-Option-O invokes the sample. The welcome screen and
+native File menu expose those same commands
+(`lib/api/screens/reader_screen.dart:310-337`,
+`macos/Runner/MainFlutterWindow.swift:239-270`).
 
 ## Events
 

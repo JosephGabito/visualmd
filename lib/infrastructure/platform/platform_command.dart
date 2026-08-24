@@ -3,6 +3,7 @@ enum PlatformCommand {
   newWorkspace,
   openWorkspace,
   openReaderSources,
+  openSampleLibrary,
   saveWorkspace,
   saveWorkspaceAs,
   addFolder,

@@ -311,8 +311,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
           final openReaderSources? => {
             const SingleActivator(LogicalKeyboardKey.keyO, meta: true):
                 openReaderSources,
+            const SingleActivator(LogicalKeyboardKey.keyO, control: true):
+                openReaderSources,
           },
-          null => const {},
+          null => {
+            const SingleActivator(LogicalKeyboardKey.keyO, meta: true):
+                c.pickAndAddFolder,
+            const SingleActivator(LogicalKeyboardKey.keyO, control: true):
+                c.pickAndAddFolder,
+          },
         },
         const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true):
             c.openWorkspace,
@@ -321,6 +328,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
           control: true,
           shift: true,
         ): c.openWorkspace,
+        const SingleActivator(LogicalKeyboardKey.keyO, meta: true, alt: true):
+            c.openSampleLibrary,
+        const SingleActivator(
+          LogicalKeyboardKey.keyO,
+          control: true,
+          alt: true,
+        ): c.openSampleLibrary,
         const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
             c.saveWorkspace,
         const SingleActivator(LogicalKeyboardKey.keyS, control: true):
@@ -570,8 +584,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             ? WelcomeView(
                                 opening: c.opening,
                                 error: c.error,
-                                onOpenFolder: c.pickAndAddFolder,
+                                onOpen:
+                                    widget.openReaderSources ??
+                                    c.pickAndAddFolder,
+                                onOpenWorkspace: c.openWorkspace,
                                 onOpenSample: c.openSampleLibrary,
+                                opensMixedSources:
+                                    widget.openReaderSources != null,
                               )
                             : compact
                             ? Stack(
