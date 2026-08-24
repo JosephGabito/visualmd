@@ -1,6 +1,7 @@
 import 'package:markdown/markdown.dart' as md;
 
 import '../../application/ports/document_parser.dart';
+import '../../domain/reading/character_references.dart';
 import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
 import '../../domain/reading/content/inline.dart';
@@ -301,7 +302,13 @@ final class _Mapper {
           runs.add(
             LinkRun(
               href: node.attributes['href'] ?? '',
-              title: node.attributes['title'],
+              // package:markdown protects quotes when it stores the parsed
+              // title as an HTML-shaped attribute. The domain carries the
+              // author's resolved title, not that transport encoding.
+              title: switch (node.attributes['title']) {
+                final title? => CharacterReferences.decode(title),
+                null => null,
+              },
               children: _inlines(node.children, lineBreaks),
             ),
           );

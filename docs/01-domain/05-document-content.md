@@ -52,6 +52,15 @@ ever a line the author asked for with two trailing spaces or a backslash
 (`lib/domain/reading/content/inline.dart`). Its text is one newline; the source
 markers and indentation after them are formatting, not domain content.
 
+`LinkRun` keeps three meanings separate: `children` are the visible label,
+`href` is the destination, and the optional `title` is advisory metadata. Its
+plain `text` is therefore only the children's reading text. Search, outlines,
+anchors, copying and assistive technology receive what the reader can see;
+neither a private destination nor a tooltip-like title silently enters the
+document's prose (`lib/domain/reading/content/inline.dart`). Nested marks and
+code remain children rather than being flattened, so a linked phrase keeps its
+real typographic roles.
+
 The model is deliberately ignorant of which valid delimiter spelling produced
 a mark. Both `*emphasis*` and `_emphasis_` become the same
 `MarkedRun(InlineMark.emphasis, ...)`; the stars or underscores have already

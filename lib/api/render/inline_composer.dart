@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -197,17 +199,22 @@ final class InlineComposer {
 
       case LinkRun(:final href, :final children):
         final tap = onTapLink;
+        final recognizer = tap == null
+            ? null
+            : (TapGestureRecognizer()..onTap = () => tap(href));
+        final composed = _compose(
+          children,
+          style: theme.linkFor(base),
+          previous: previous,
+          cursor: cursor,
+        );
         return [
-          TextSpan(
-            children: _compose(
-              children,
-              style: theme.linkFor(base),
-              previous: previous,
-              cursor: cursor,
-            ),
-            recognizer: tap == null
-                ? null
-                : (TapGestureRecognizer()..onTap = () => tap(href)),
+          _LinkTextSpan(
+            // Semantics and hit testing own the glyphs the page actually set,
+            // including typographic quotes and collapsed dash runs.
+            label: TextSpan(children: composed).toPlainText(),
+            children: composed,
+            recognizer: recognizer,
             mouseCursor: SystemMouseCursors.click,
           ),
         ];
@@ -309,6 +316,83 @@ final class InlineComposer {
       n++;
     }
     return n;
+  }
+}
+
+/// A styled link that remains one interaction and one accessible phrase.
+///
+/// A normal child-only [TextSpan] paints its descendants correctly, but its
+/// recognizer is absent from both hit testing and semantics because the parent
+/// owns no text of its own. This span deliberately presents the descendants as
+/// one logical run while leaving their styles available to the text engine.
+final class _LinkTextSpan extends TextSpan {
+  final String label;
+
+  const _LinkTextSpan({
+    required this.label,
+    required super.children,
+    required super.recognizer,
+    required super.mouseCursor,
+  });
+
+  @override
+  bool visitChildren(InlineSpanVisitor visitor) => visitor(this);
+
+  @override
+  InlineSpan? getSpanForPositionVisitor(
+    TextPosition position,
+    Accumulator offset,
+  ) {
+    final start = offset.value;
+    final end = start + label.length;
+    final target = position.offset;
+    final owns =
+        (target == start && position.affinity == TextAffinity.downstream) ||
+        (start < target && target < end) ||
+        (target == end && position.affinity == TextAffinity.upstream);
+    offset.increment(label.length);
+    return owns ? this : null;
+  }
+
+  @override
+  int? codeUnitAtVisitor(int index, Accumulator offset) {
+    final local = index - offset.value;
+    offset.increment(label.length);
+    return local >= 0 && local < label.length ? label.codeUnitAt(local) : null;
+  }
+
+  @override
+  void computeToPlainText(
+    StringBuffer buffer, {
+    bool includeSemanticsLabels = true,
+    bool includePlaceholders = true,
+  }) {
+    buffer.write(label);
+  }
+
+  @override
+  void computeSemanticsInformation(
+    List<InlineSpanSemanticsInformation> collector, {
+    ui.Locale? inheritedLocale,
+    bool inheritedSpellOut = false,
+  }) {
+    collector.add(
+      InlineSpanSemanticsInformation(
+        label,
+        recognizer: recognizer,
+        stringAttributes: [
+          if (inheritedSpellOut && label.isNotEmpty)
+            ui.SpellOutStringAttribute(
+              range: TextRange(start: 0, end: label.length),
+            ),
+          if (inheritedLocale != null && label.isNotEmpty)
+            ui.LocaleStringAttribute(
+              locale: inheritedLocale,
+              range: TextRange(start: 0, end: label.length),
+            ),
+        ],
+      ),
+    );
   }
 }
 

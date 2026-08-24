@@ -160,6 +160,17 @@ a blank line ends its search for a closer, and a run of three or more tildes is
 literal in full. Strong, code and link runs inside the deletion remain nested
 rather than flattened (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+An **inline link** arrives as `a` and becomes one recursive `LinkRun`: resolved
+label children, destination, and an optional advisory title. CommonMark admits
+double-quoted, single-quoted and parenthesised titles, with at most one source
+line ending between components; a blank line leaves the attempted link literal.
+Escapes and character references have already served the grammar. The package's
+HTML-shaped node protects a quote in an attribute as `&quot;`, so the adapter
+decodes the title once more before it crosses into the domain. The visible label
+remains the run's only reading text, and CommonMark's prohibition on nested
+links leaves the inner valid link as the interaction when link notation
+overlaps (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
@@ -231,6 +242,12 @@ official named and numeric specimens, invalid forms, structural punctuation,
 code, link metadata and fence info; domain, application, search and
 presentation tests then require the decoded character to remain the same
 through every consumer.
+The inline-link group covers optional and all three title forms, one-line and
+blank-line boundaries, escapes and references in metadata, recursive label
+roles, and the inner-link precedence rule. Search proves that only the visible
+label is indexed; the controller keeps fragment, document and external targets
+distinct; application and composer tests keep the same label in the outline,
+page, pointer target and accessibility tree.
 
 ## Transition
 

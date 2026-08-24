@@ -138,6 +138,30 @@ void main() {
     },
   );
 
+  test(
+    'indexes a link label but not its destination or advisory title',
+    () async {
+      final document = Document(
+        id: DocumentId(rootId, 'links.md'),
+        content: 'Read [the visible guide](/private/path "Advisory title").',
+      );
+
+      final visible = await search.find(SearchQuery('visible guide'), [
+        document,
+      ]);
+      final destination = await search.find(SearchQuery('private/path'), [
+        document,
+      ]);
+      final title = await search.find(SearchQuery('advisory title'), [
+        document,
+      ]);
+
+      expect(visible.single.matches.single.excerpt, 'Read the visible guide.');
+      expect(destination, isEmpty);
+      expect(title, isEmpty);
+    },
+  );
+
   test('matches the reading text across editor wrapping', () async {
     final document = Document(
       id: DocumentId(rootId, 'wrapped.md'),
