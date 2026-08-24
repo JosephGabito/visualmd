@@ -67,11 +67,37 @@ class _ReaderScreenState extends State<ReaderScreen> {
   int _activeMatch = 0;
   int _searchRequest = 0;
   bool _searching = false;
+  late int _seenContentRevision;
 
   ReaderController get c => widget.controller;
 
   @override
+  void initState() {
+    super.initState();
+    _seenContentRevision = c.contentRevision;
+    c.addListener(_handleControllerChange);
+  }
+
+  @override
+  void didUpdateWidget(ReaderScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+    oldWidget.controller.removeListener(_handleControllerChange);
+    _seenContentRevision = c.contentRevision;
+    c.addListener(_handleControllerChange);
+  }
+
+  void _handleControllerChange() {
+    if (_seenContentRevision == c.contentRevision) return;
+    _seenContentRevision = c.contentRevision;
+    if (_searchMode != _SearchMode.closed && _searchText.text.isNotEmpty) {
+      unawaited(_searchNow());
+    }
+  }
+
+  @override
   void dispose() {
+    c.removeListener(_handleControllerChange);
     _searchDebounce?.cancel();
     _searchText.dispose();
     _searchFocus.dispose();

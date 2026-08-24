@@ -61,6 +61,16 @@ class ReadingPaneState extends State<ReadingPane> {
         if (_scroll.hasClients) _scroll.jumpTo(0);
         _trackActiveHeading();
       });
+    } else if (oldWidget.reading.document.content !=
+        widget.reading.document.content) {
+      // The page changed beneath the same document identity. Rebuild heading
+      // anchors, but keep the scroll controller exactly where the reader was.
+      _keys = {};
+      _matchKeys = {};
+      _activeAnchor = null;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _trackActiveHeading(),
+      );
     }
     if (!identical(oldWidget.matches, widget.matches)) {
       _matchKeys = {};

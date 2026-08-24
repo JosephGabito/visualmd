@@ -8,7 +8,8 @@ and never scans a folder or writes a file itself
 (`lib/api/reader_controller.dart:41-75`).
 
 Its injected source operations are `AddFolder`, `AddMarkdown`, `RemoveFolder`,
-`RemoveMarkdown`, and `MoveFolder`. Reading and searching remain separate use cases. Folder
+`RemoveMarkdown`, and `MoveFolder`. Reading, searching, and external-source
+refresh remain separate use cases. Folder
 picking, the sample ref, theme registry, restored preferences and the
 preference writer are also injected
 (`lib/api/reader_controller.dart:45-84`).
@@ -29,9 +30,9 @@ source is already in a folder, it opens the existing folder document and sends
 the same expand request (`lib/api/reader_controller.dart:191-218`).
 
 `pickAndAddFolder` obtains a ref and follows the same path. The sample does too
-(`lib/api/reader_controller.dart:219-227`). The composition root routes folder
+(`lib/api/reader_controller.dart:238-258`). The composition root routes folder
 and direct-markdown streams independently
-(`lib/main.dart:201-203`).
+(`lib/main.dart:220-221`).
 
 `removeFolder` passes the current selection into the use case, maps an empty
 aggregate back to the welcome state, and reads the deterministic neighbor only
@@ -44,11 +45,11 @@ aggregate but intentionally leaves `reading` unchanged
 
 `openDocument` skips an already-open identity. Search delegates scope to
 `SearchDocuments` without retaining query state
-(`lib/api/reader_controller.dart:396-411`).
+(`lib/api/reader_controller.dart:422-436`).
 
 Relative links are resolved from the current `DocumentId`. Because resolution
 keeps its `LibraryRootId`, the candidate lookup cannot cross into a second root
-with the same path (`lib/api/reader_controller.dart:412-434`,
+with the same path (`lib/api/reader_controller.dart:438-461`,
 `lib/domain/library/document_id.dart:33-50`). Schemed URLs remain external and
 hash-only links remain anchors.
 
@@ -82,13 +83,16 @@ through `ListenableBuilder` (`lib/api/screens/reader_screen.dart:41-46`,
 
 ## Events
 
-None. Folder and document lifecycle events eventually belong after successful
-application commits, not in this controller. Preference persistence already
-has the function-shaped seam a future event reactor would replace.
+The controller subscribes to committed `SourceSyncEvent` values. A successful
+refresh replaces the Library, rereads the active document when its bytes or
+identity changed, increments `contentRevision`, and keeps the selected identity
+when it survived (`lib/api/reader_controller.dart:568-595`). Widgets use that
+revision to refresh transient projections such as an open search.
 
 ## Lifecycle
 
-One controller lives for the app process. Web launch options may add the sample
+One controller lives for the app process and disposes its source subscription
+and coordinator with itself (`lib/api/reader_controller.dart:607-613`). Web launch options may add the sample
 root or change theme and reading parameters before the first frame
 (`lib/main.dart:222-235`). Startup creates an unbound workspace; opening a
 saved workspace is an explicit reader action.
@@ -104,9 +108,14 @@ identity
 Source-add errors become a short message while the previous aggregate remains
 available. The outstanding-request counter is decremented in `finally`, so one
 failed rapid drop cannot leave the busy state stuck
-(`lib/api/reader_controller.dart:158-218`). A later successful request clears
+(`lib/api/reader_controller.dart:171-237`). A later successful request clears
 an earlier error; `clearError` gives the occupied-reader notice an explicit
-dismiss action (`lib/api/reader_controller.dart:443-447`).
+dismiss action (`lib/api/reader_controller.dart:474-478`).
+
+A watcher or reread failure uses the same persistent occupied-reader error
+surface instead of disappearing behind the welcome screen. The last good
+Library remains readable, and a later successful synchronization clears only
+that synchronization error (`lib/api/reader_controller.dart:568-595`).
 
 Shelf-generated remove and move ids are safe no-ops if stale. A missing
 document still surfaces as `DocumentNotFound`; the shelf can only offer ids

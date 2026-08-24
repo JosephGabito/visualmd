@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
 
+import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
 import '../../application/ports/reader_source_picker.dart';
+import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import 'platform_command.dart';
@@ -11,7 +13,9 @@ import 'platform_command.dart';
 /// One implementation per platform family; `platform.dart` picks it.
 abstract interface class PlatformAdapters {
   FolderScanner get folderScanner;
+  FolderDocumentScanner get folderDocumentScanner;
   MarkdownScanner get markdownScanner;
+  SourceChangeMonitor get sourceChangeMonitor;
   WorkspaceFiles get workspaceFiles;
   WorkspaceSourceAccess get workspaceSourceAccess;
   ReaderSourcePicker? get readerSourcePicker;

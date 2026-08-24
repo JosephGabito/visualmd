@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
 import '../../application/ports/reader_source_picker.dart';
+import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../io/desktop_folder_drop.dart';
@@ -15,6 +17,7 @@ import '../io/desktop_links.dart';
 import '../io/desktop_markdown_picker.dart';
 import '../io/desktop_reader_source_picker.dart';
 import '../io/desktop_security_scope.dart';
+import '../io/desktop_source_change_monitor.dart';
 import '../io/desktop_workspace_files.dart';
 import '../io/desktop_workspace_source_access.dart';
 import '../io/local_folder.dart';
@@ -51,17 +54,26 @@ final class _DesktopAdapters implements PlatformAdapters {
   late final _markdownPicker = DesktopMarkdownPicker(_markdownRegistry);
   late final _commands = DesktopCommands();
 
-  @override
-  late final FolderScanner folderScanner = LocalFolderScanner(
+  late final _folderScanner = LocalFolderScanner(
     _registry,
     access: const DesktopSecurityScope(),
   );
+
+  @override
+  FolderScanner get folderScanner => _folderScanner;
+
+  @override
+  FolderDocumentScanner get folderDocumentScanner => _folderScanner;
 
   @override
   late final MarkdownScanner markdownScanner = LocalMarkdownScanner(
     _markdownRegistry,
     access: const DesktopSecurityScope(),
   );
+
+  @override
+  late final SourceChangeMonitor sourceChangeMonitor =
+      DesktopSourceChangeMonitor(_registry, _markdownRegistry);
 
   @override
   final WorkspaceFiles workspaceFiles = const DesktopWorkspaceFiles();

@@ -2,8 +2,8 @@
 
 ## Purpose and boundary
 
-Implements the `FolderScanner` port for folders provided by the browser
-(`lib/infrastructure/web/browser_folder_scanner.dart:17-41`). It reads source
+Implements both folder scanning ports for folders provided by the browser
+(`lib/infrastructure/web/browser_folder_scanner.dart:17-42`). It reads source
 bytes and returns `FileEntry` values; `LibraryBuilder` remains responsible for
 the library itself. Applying the Markdown and hidden-folder filters before a
 read avoids asking the browser for content the domain would discard
@@ -65,9 +65,11 @@ None. `AddFolder` owns the library mutation after a successful scan.
 ## Lifecycle
 
 Stateless apart from the registry it reads from; one instance per web
-`PlatformAdapters` (`lib/infrastructure/platform/platform_web.dart:26-43`). Each
-`scan` walks the folder afresh — there is no cache, so re-opening the same ref
-re-reads the files.
+`PlatformAdapters` (`lib/infrastructure/platform/platform_web.dart:30-46`). Each
+full `scan` walks the folder afresh. `scanDocument` rereads one path only for a
+modern directory handle; legacy file objects are immutable snapshots and return
+no targeted result (`lib/infrastructure/web/browser_folder_scanner.dart:44-76`).
+See [Browser Source Change Monitor](05-source-change-monitor.md).
 
 ## Failure and recovery
 

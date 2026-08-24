@@ -54,6 +54,9 @@ a library result follows the ordinary document-opening path.
 The screen owns one text controller, focus node and debounce timer, disposing
 all three with its state (`lib/api/screens/reader_screen.dart:57-73`). Closing
 search invalidates pending requests and removes every highlight (`:98-107`).
+When source synchronization increments `contentRevision`, an open non-empty
+search reruns against the committed Library, using the same request-number guard
+as typed queries (`lib/api/screens/reader_screen.dart:67-102`).
 
 ## Failure and recovery
 

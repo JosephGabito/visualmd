@@ -96,6 +96,24 @@ final class Library {
     return Library(roots: roots, markdowns: next);
   }
 
+  /// Replaces one existing document while preserving its place on the shelf.
+  Library replaceDocument(Document document) {
+    final markdownIndex = markdowns.indexWhere(
+      (candidate) => candidate.id == document.id,
+    );
+    if (markdownIndex >= 0) {
+      final next = [...markdowns]..[markdownIndex] = document;
+      return Library(roots: roots, markdowns: next);
+    }
+    final rootIndex = roots.indexWhere((root) => root.id == document.id.rootId);
+    if (rootIndex < 0 || roots[rootIndex].find(document.id) == null) {
+      return this;
+    }
+    final next = [...roots]
+      ..[rootIndex] = roots[rootIndex].replaceDocument(document);
+    return Library(roots: next, markdowns: markdowns);
+  }
+
   Library remove(LibraryRootId id) => Library(
     roots: roots.where((root) => root.id != id),
     markdowns: markdowns,

@@ -5,7 +5,7 @@
 `PlatformAdapters` gathers everything the composition root needs from the host
 platform. Application code receives ports, API code receives plain callbacks
 and geometry, and neither learns which browser or operating system supplied
-them (`lib/infrastructure/platform/platform_adapters.dart:9-55`).
+them (`lib/infrastructure/platform/platform_adapters.dart:9-62`).
 
 ## Present wiring
 
@@ -19,6 +19,7 @@ reader's private files before returning
 | Capability | Web | Desktop |
 |------------|-----|---------|
 | source scanners | browser files and handles (`lib/infrastructure/platform/platform_web.dart:33-43`) | local files with security scope (`lib/infrastructure/platform/platform_io.dart:52-62`) |
+| source changes | five-second metadata checks for rereadable handles (`lib/infrastructure/platform/platform_web.dart:54-56`) | native directory events with a five-second failure fallback (`lib/infrastructure/platform/platform_io.dart:74-76`) |
 | workspace persistence | browser file handles or upload/download, IndexedDB authority (`lib/infrastructure/platform/platform_web.dart:45-54`) | native panels, atomic files, local paths/bookmarks (`lib/infrastructure/platform/platform_io.dart:64-69`) |
 | pickers | browser folder and Markdown pickers (`lib/infrastructure/platform/platform_web.dart:56-60`) | native pickers (`lib/infrastructure/platform/platform_io.dart:71-75`) |
 | drops and drag | document streams (`lib/infrastructure/platform/platform_web.dart:62-69`) | desktop drop wrapper (`lib/infrastructure/platform/platform_io.dart:77-84`) |
@@ -46,7 +47,8 @@ DOM files, bookmarks, and IndexedDB handles do not cross inward.
 
 ## Events
 
-None. Drop and command streams are platform input, not domain events.
+Drop, command, and source-change streams are platform input, not domain events.
+Source changes are invalidations: adapters never send document bytes inward.
 
 ## Lifecycle
 

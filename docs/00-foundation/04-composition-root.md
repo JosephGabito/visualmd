@@ -13,7 +13,7 @@ in-memory reader state. Library and Workspace repositories plus the atomic
 restoration adapter all project through that state
 (`lib/main.dart:42-60`). It then creates one mutation queue, workspace
 autosave, the workspace committer, and every Library use case
-(`lib/main.dart:62-110`).
+(`lib/main.dart:62-121`).
 
 Theme documents and small preferences are read through platform capabilities
 before the initial unbound Workspace is created
@@ -21,8 +21,9 @@ before the initial unbound Workspace is created
 share the same session repository, source access, codec, and mutation queue
 (`lib/main.dart:135-173`).
 
-The controller receives use cases and plain platform functions; it never sees
-an infrastructure implementation (`lib/main.dart:175-200`). Platform drop,
+The source coordinator connects the platform monitor to `RefreshSource`, then
+the controller receives that coordinator with its other use cases. It never
+sees an infrastructure implementation (`lib/main.dart:185-218`). Platform drop,
 drag, native command, and autosave-failure streams are subscribed at the edge
 (`lib/main.dart:201-220`).
 
@@ -40,8 +41,8 @@ they do not become durable Workspace state (`lib/main.dart:222-245`).
 
 ## Events
 
-There is no domain event bus. Platform streams and autosave failures are edge
-signals forwarded directly to the controller.
+There is no domain event bus. Platform streams, committed source refreshes, and
+autosave failures are edge signals forwarded directly to the controller.
 
 ## Lifecycle
 

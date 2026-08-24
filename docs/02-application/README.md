@@ -39,6 +39,7 @@ involved:
 | [AddMarkdown](07-add-markdown.md) | How one dropped markdown opens directly or reconnects with its containing folder. |
 | [RemoveMarkdown](08-remove-markdown.md) | How a standalone document leaves the session without losing reading intent. |
 | [Workspace Lifecycle](09-workspace-lifecycle.md) | How New, Open, Save, Save As, restore, reconnect, and autosave fit together. |
+| [Source Synchronization](10-source-synchronization.md) | How external edits become ordered, atomic Library refreshes without moving the reader. |
 
 ## Where to continue
 

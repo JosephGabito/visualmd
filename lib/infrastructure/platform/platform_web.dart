@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
+import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
 import '../../application/ports/reader_source_picker.dart';
+import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../web/browser_folder.dart';
@@ -15,6 +17,7 @@ import '../web/browser_markdown.dart';
 import '../web/browser_markdown_picker.dart';
 import '../web/browser_markdown_scanner.dart';
 import '../web/browser_source_identity.dart';
+import '../web/browser_source_change_monitor.dart';
 import '../web/browser_workspace_files.dart';
 import '../web/browser_workspace_source_access.dart';
 import '../web/browser_links.dart';
@@ -31,17 +34,26 @@ final class _WebAdapters implements PlatformAdapters {
   late final _picker = BrowserFolderPicker(_registry);
   late final _markdownPicker = BrowserMarkdownPicker(_markdownRegistry);
 
-  @override
-  late final FolderScanner folderScanner = BrowserFolderScanner(
+  late final _folderScanner = BrowserFolderScanner(
     _registry,
     _sourceIdentities,
   );
+
+  @override
+  FolderScanner get folderScanner => _folderScanner;
+
+  @override
+  FolderDocumentScanner get folderDocumentScanner => _folderScanner;
 
   @override
   late final MarkdownScanner markdownScanner = BrowserMarkdownScanner(
     _markdownRegistry,
     _sourceIdentities,
   );
+
+  @override
+  late final SourceChangeMonitor sourceChangeMonitor =
+      BrowserSourceChangeMonitor(_registry, _markdownRegistry);
 
   @override
   final WorkspaceFiles workspaceFiles = BrowserWorkspaceFiles();
