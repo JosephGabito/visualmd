@@ -95,6 +95,22 @@ tighter still at its largest sizes. Visual MD's `[1.14, 1.18, 1.24, 1.30,
 display line, is reconciled with the body grid. Flutter may therefore expand a
 mixed-script line before the renderer measures it.
 
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#setext-headings)
+defines a Setext heading as one or more uninterrupted paragraph lines followed
+by its underline, with all of those lines parsed as inline content. The
+outline therefore joins the same source paragraph that the page parser renders
+instead of treating only its last physical line as the title.
+[GitHub's section-link rules](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#section-links)
+establish the reader's anchor contract: remove markup and punctuation, preserve
+the words including Unicode, replace spaces with hyphens, and number repeats.
+[Flutter's heading-level semantics](https://api.flutter.dev/flutter/semantics/SemanticsProperties/headingLevel.html)
+carry the authored level to screen readers and map it to `aria-level` on the
+web; the renderer supplies that structure in addition to its visual hierarchy.
+The Dart team's current [`intl`](https://pub.dev/packages/intl) bidi utilities
+identify the first strongly directional character. Visual MD uses that signal
+for a heading's base direction, while a heading made only of punctuation
+inherits the surrounding page direction instead of guessing.
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

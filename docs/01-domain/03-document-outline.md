@@ -29,12 +29,13 @@ The private `_Parser` works line by line
 - **ATX headings.** One to six `#` followed by whitespace; trailing closing
   hashes are stripped, and a heading of only hashes has empty text
   (`lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`).
-- **Setext headings.** A non-blank line followed by a line of `=` (h1) or
-  `-` (h2) — unless the first line looks like a heading, blockquote, table
-  row, list item, ordered item or fence
-  (`lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`). This
-  is what keeps `---` rules, `|---|` table separators and `- item` lists out
-  of the outline.
+- **Setext headings.** One or more uninterrupted paragraph lines followed by
+  `=` (h1) or `-` (h2). The parser gathers the complete paragraph, beginning
+  the section at its first source line, and stops when a fence, ATX heading,
+  quotation, rule, list, table or reference definition interrupts it
+  (`lib/domain/reading/document_outline.dart`). This is what keeps `---`
+  rules, `|---|` table separators and list items out of the outline while a
+  genuinely multi-source-line title remains one heading.
 - **Inline cleanup.** Heading text drops images (keeping alt), links (keeping
   text), HTML tags, backticks, `**`, `__`, `*`, `~~`, and collapses
   whitespace (`lib/domain/reading/document_outline.dart`).
@@ -71,6 +72,7 @@ The private `_Parser` works line by line
 |-------|----------|----------|-------|
 | `# Purpose and Status`, `## Purpose ##`, an h3 whose text mixes inline code, a link and bold | Purpose and Status (h1), Purpose (h2), `code and a link and bold` (h3); anchors `purpose-and-status`, `purpose`, `code-and-a-link-and-bold` | three | `Purpose and Status` |
 | `Title` / `=====`, `Sub` / `---`, then `---`, a table, `- item` / `---` | Title (h1), Sub (h2) | two | `Title` |
+| two paragraph lines / `====`, later two lines / `---` | one joined h1, one joined h2; source positions point to each first line | two | the joined h1 |
 | `# Setup`, `## Setup`, `## Setup`, `## ???` | anchors `setup`, `setup-1`, `setup-2`, `section` | four | `Setup` |
 | `intro`, `# One`, `## Two` | One, Two | three: the first has no heading | `One` |
 | `---` / `title: "From Front Matter"` / `---` / `# Body Heading` | Body Heading at line 5 | one, without `tags:` | `From Front Matter` |

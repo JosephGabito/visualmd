@@ -34,7 +34,7 @@ behaviour.
 |---|-----------|-------------|-----------|
 | 19 | Headings inside fenced code blocks are not headings; a fence closes only with the same character and at least the same length | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 20 | Closing hashes on ATX headings are not part of the text | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
-| 21 | Setext underlines turn paragraphs into headings, never rules, table separators or list items | `lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
+| 21 | A Setext underline promotes every uninterrupted source line in its paragraph, never a rule, table separator, list item, code block or reference definition | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 22 | Heading text has inline markdown stripped | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 23 | Anchors are unique within a document; the empty slug is `section` | `lib/domain/reading/heading_anchor.dart`, `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 24 | Every section includes its own heading line; leading prose is a heading-less section | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |

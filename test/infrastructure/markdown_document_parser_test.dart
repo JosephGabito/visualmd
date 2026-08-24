@@ -134,6 +134,34 @@ void main() {
         );
       },
     );
+
+    test('a setext heading parses every source line as inline content', () {
+      final heading = single<HeadingBlock>(
+        'First *line*\n'
+        'continues with `code` and [a link](https://example.com)\n'
+        '====\n',
+      );
+
+      expect(heading.level, 1);
+      expect(heading.text, 'First line continues with code and a link');
+      expect(heading.content.whereType<MarkedRun>(), hasLength(1));
+      expect(heading.content.whereType<CodeRun>(), hasLength(1));
+      expect(heading.content.whereType<LinkRun>(), hasLength(1));
+    });
+
+    test('a hyphen underline makes the complete paragraph level two', () {
+      final heading = single<HeadingBlock>(
+        'A level-two heading begins here\n'
+        'and continues on another source line\n'
+        '---\n',
+      );
+
+      expect(heading.level, 2);
+      expect(
+        heading.text,
+        'A level-two heading begins here and continues on another source line',
+      );
+    });
   });
 
   group('a code block', () {
