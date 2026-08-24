@@ -331,6 +331,76 @@ void main() {
     });
   });
 
+  group('character references', () {
+    test('named, decimal, and hexadecimal forms become reading text', () {
+      final paragraph = single<ParagraphBlock>(
+        '&nbsp; &amp; &copy; &AElig; &Dcaron; &frac34; &HilbertSpace; '
+        '&DifferentialD; &ClockwiseContourIntegral; &ngE; '
+        '&#35; &#1234; &#992; &#0; &#X22; &#XD06; &#xcab;',
+      );
+
+      expect(paragraph.text, '\u00a0 & © Æ Ď ¾ ℋ ⅆ ∲ ≧̸ # Ӓ Ϡ � " ആ ಫ');
+      expect(single<ParagraphBlock>('&#1; &#x1;').text, '� \u0001');
+    });
+
+    test('malformed and unknown forms remain authored text', () {
+      const source =
+          '&nbsp &x; &#; &#x; &#87654321; &#abcdef0; '
+          '&ThisIsNotDefined; &hi?; &copy';
+
+      expect(single<ParagraphBlock>(source).text, source);
+    });
+
+    test('decoded punctuation cannot create markdown structure', () {
+      final content = parse('''
+&#42;foo&#42;
+
+&#42; foo
+
+&#35; heading-shaped text
+''');
+
+      expect(content.blocks, everyElement(isA<ParagraphBlock>()));
+      expect(content.blocks.map((block) => block.text), [
+        '*foo*',
+        '* foo',
+        '# heading-shaped text',
+      ]);
+      expect(
+        content.blocks
+            .whereType<ParagraphBlock>()
+            .expand((paragraph) => paragraph.content)
+            .whereType<MarkedRun>(),
+        isEmpty,
+      );
+    });
+
+    test('code keeps references while link metadata and fence info decode', () {
+      final inline = single<ParagraphBlock>('`f&ouml;&ouml;`');
+      expect(inline.content.single, const CodeRun('f&ouml;&ouml;'));
+
+      final block = single<CodeBlock>('```f&ouml;&ouml;\nbody &copy;\n```');
+      expect(block.language, 'föö');
+      expect(block.code, 'body &copy;');
+
+      final link =
+          single<ParagraphBlock>('[foo](/f&ouml;&ouml; "f&ouml;&ouml;")')
+                  .content
+                  .single
+              as LinkRun;
+      expect(link.href, '/f%C3%B6%C3%B6');
+      expect(link.title, 'föö');
+    });
+
+    test('reference boundaries do not divide one typographic phrase', () {
+      final paragraph = single<ParagraphBlock>(
+        '&quot;quoted&quot; and an ellipsis&#46;&#46;&#46;',
+      );
+
+      expect(paragraph.content, [const TextRun('"quoted" and an ellipsis...')]);
+    });
+  });
+
   group('inline code', () {
     test(
       'keeps every character, including what markdown would otherwise eat',

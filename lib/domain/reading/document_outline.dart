@@ -1,3 +1,4 @@
+import 'character_references.dart';
 import 'heading_anchor.dart';
 import 'heading.dart';
 import 'section.dart';
@@ -232,7 +233,9 @@ final class _Parser {
 /// therefore set aside before escaped ASCII punctuation is exposed as reading
 /// text. Actual Markdown structure is removed afterwards, so `\*literal\*`
 /// keeps its stars while `\\*emphasis*` keeps one slash and loses only the
-/// genuine emphasis delimiters.
+/// genuine emphasis delimiters. Character references resolve only after that
+/// structure has been removed, so an encoded asterisk remains text instead of
+/// becoming a delimiter the source never authored.
 final class _InlinePlainText {
   final String source;
 
@@ -249,6 +252,7 @@ final class _InlinePlainText {
         .replaceAllMapped(RegExp(r'\[([^\]]+)\]\[[^\]]*\]'), (m) => m[1]!)
         .replaceAll(RegExp(r'<[^>]+>'), '');
     text = _stripPairedMarks(text);
+    text = CharacterReferences.decode(text);
     final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     return literals.restore(normalized);
   }

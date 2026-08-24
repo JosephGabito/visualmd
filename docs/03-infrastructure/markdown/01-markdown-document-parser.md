@@ -103,6 +103,22 @@ ellipsis setting can see one continuous prose phrase without crossing a real
 role such as code, emphasis, a link or an authored line
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+A valid **character reference** is another source spelling for ordinary
+Unicode. Named forms use the complete semicolon-terminated WHATWG HTML table;
+decimal and hexadecimal forms use CommonMark's bounded digit counts. The
+parser package resolves them after block and inline structure is established,
+which is why `&#42;foo&#42;` becomes visible stars without becoming emphasis or
+a list marker. Code spans and blocks keep entity-looking source, while link
+destinations, titles and fenced info strings resolve it. Malformed, unknown and
+unterminated forms remain authored text. Adjacent decoded nodes are coalesced
+like escaped punctuation, so encoded quotes and dots enter one continuous
+typographic phrase (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+The framework-free outline mirrors the same ordering through
+`CharacterReferences`, whose complete named table is reproducibly generated
+from WHATWG rather than maintained by hand
+(`lib/domain/reading/character_references.dart`,
+`tool/generate_character_references.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
@@ -169,7 +185,11 @@ the same through search and layout. The backslash-escape group exercises every
 ASCII punctuation mark, non-escapable characters, block and inline delimiters,
 code, links, autolinks, destinations, titles and fence info strings. The
 application test then requires the page and outline to derive identical text
-and anchors from escaped headings.
+and anchors from escaped headings. The character-reference group adds the
+official named and numeric specimens, invalid forms, structural punctuation,
+code, link metadata and fence info; domain, application, search and
+presentation tests then require the decoded character to remain the same
+through every consumer.
 
 ## Transition
 

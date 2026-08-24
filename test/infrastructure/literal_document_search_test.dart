@@ -101,6 +101,29 @@ void main() {
     expect(sourceNotation, isEmpty);
   });
 
+  test(
+    'indexes decoded characters instead of their source references',
+    () async {
+      final document = Document(
+        id: DocumentId(rootId, 'references.md'),
+        content: 'Named &copy; and numeric &#35; references are visible.',
+      );
+
+      final visible = await search.find(SearchQuery('© and numeric #'), [
+        document,
+      ]);
+      final sourceNotation = await search.find(SearchQuery('&copy;'), [
+        document,
+      ]);
+
+      expect(
+        visible.single.matches.single.excerpt,
+        contains('© and numeric #'),
+      );
+      expect(sourceNotation, isEmpty);
+    },
+  );
+
   test('omits documents without a match and preserves library order', () async {
     final documents = [
       Document(id: DocumentId(rootId, 'a.md'), content: 'first needle'),
