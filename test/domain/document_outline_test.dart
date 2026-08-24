@@ -77,6 +77,36 @@ Text.
       );
     });
 
+    test('character references resolve after heading grammar is settled', () {
+      final headings = DocumentOutline.parse(r'''
+# &copy; &#35; &HilbertSpace; &ngE;
+
+## &#42;literal&#42; and \&copy; and `&amp;`
+''').tableOfContents.headings;
+
+      expect(headings.map((heading) => heading.text), [
+        '© # ℋ ≧̸',
+        r'*literal* and &copy; and &amp;',
+      ]);
+      expect(headings.map((heading) => heading.anchor), [
+        'ℋ',
+        'literal-and-copy-and-amp',
+      ]);
+    });
+
+    test('malformed references and literal regions remain untouched', () {
+      final heading = DocumentOutline.parse(
+        '# &MadeUpEntity; &copy and '
+        '`&copy;` <https://example.com?q=&copy;>',
+      ).tableOfContents.headings.single;
+
+      expect(
+        heading.text,
+        '&MadeUpEntity; &copy and &copy; https://example.com?q=&copy;',
+      );
+      expect(heading.anchor, 'madeupentity-copy-and-copy-httpsexamplecomqcopy');
+    });
+
     test('ignores headings inside fenced code blocks', () {
       final outline = DocumentOutline.parse('''
 # Real

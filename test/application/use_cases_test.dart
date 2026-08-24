@@ -434,6 +434,13 @@ void main() {
                 r'### \\*emphasis* and \# hash and `\* code`'
                 '\n'
                 '\n'
+                '### &copy; &#35; &HilbertSpace; &ngE;\n'
+                '\n'
+                r'### &#42;literal&#42; and \&copy; and `&amp;`'
+                '\n'
+                '\n'
+                '### &#1; control and &#x1; control\n'
+                '\n'
                 '## العربية 日本語 中文\n'
                 '\n'
                 '## Duplicate heading\n'
@@ -469,6 +476,9 @@ void main() {
       'marked-code-and-a-link',
       'literal-stars-and-brackets-and-ticks',
       'emphasis-and-hash-and-code',
+      'ℋ',
+      'literal-and-copy-and-amp',
+      'control-and-control',
       'العربية-日本語-中文',
       'duplicate-heading',
       'duplicate-heading-1',

@@ -109,6 +109,22 @@ void main() {
     },
   );
 
+  testWidgets(
+    'character references become continuous prose without a visual signal',
+    (tester) async {
+      await makeComposer(tester);
+      final paragraph =
+          const MarkdownDocumentParser()
+                  .parse('&quot;quoted&quot; and an ellipsis&#46;&#46;&#46;')
+                  .blocks
+                  .single
+              as ParagraphBlock;
+
+      expect(paragraph.content, everyElement(isA<TextRun>()));
+      expect(rendered(paragraph.content), '“quoted” and an ellipsis…');
+    },
+  );
+
   testWidgets('a match crosses marked runs without changing punctuation', (
     tester,
   ) async {

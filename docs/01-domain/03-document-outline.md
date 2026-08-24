@@ -42,9 +42,17 @@ The private `_Parser` works line by line
   spans and autolinks are protected as literal regions before backslash
   escapes are resolved. Consequently `\*literal\*` keeps both stars,
   `\\*emphasis*` keeps one backslash but loses the genuine emphasis marks,
-  and a slash inside code or an autolink stays authored text. Collision-free
-  private placeholders keep this small resolver framework-free while making
-  the outline name the same heading the page presents.
+  and a slash inside code or an autolink stays authored text. Character
+  references resolve only after real Markdown structure is removed, so
+  `&#42;literal&#42;` keeps its visible stars without becoming emphasis.
+  Escaped ampersands, code spans and autolinks are protected from that pass.
+  Named references use the complete semicolon-terminated WHATWG table generated
+  into the domain, while bounded decimal and hexadecimal forms become their
+  Unicode scalar. Collision-free private placeholders keep this resolver
+  framework-free while making the outline name the same heading the page
+  presents (`lib/domain/reading/character_references.dart`,
+  `lib/domain/reading/named_character_references.g.dart`,
+  `lib/domain/reading/document_outline.dart`).
 - **Anchors.** GitHub style: lowercase, keep letters, digits, spaces and
   hyphens, spaces to hyphens. Duplicates get `-1`, `-2`, …; an empty slug
   becomes `section`. The rule is not this parser's own — it lives in
@@ -81,6 +89,7 @@ The private `_Parser` works line by line
 | two paragraph lines / `====`, later two lines / `---` | one joined h1, one joined h2; source positions point to each first line | two | the joined h1 |
 | `# Setup`, `## Setup`, `## Setup`, `## ???` | anchors `setup`, `setup-1`, `setup-2`, `section` | four | `Setup` |
 | an h1 containing every escaped ASCII punctuation mark | every mark without its source backslash; the hyphen-only slug is `-` | one | the resolved punctuation |
+| an h1 mixing named, decimal, hexadecimal, structural, escaped and code-literal references | valid prose references become Unicode; encoded structural marks stay text; protected forms stay source | one | the resolved reading text |
 | `intro`, `# One`, `## Two` | One, Two | three: the first has no heading | `One` |
 | `---` / `title: "From Front Matter"` / `---` / `# Body Heading` | Body Heading at line 5 | one, without `tags:` | `From Front Matter` |
 | empty string | none | none | `null` |
@@ -109,6 +118,11 @@ per library build.
 - Escape resolution is grammar, not styling. Once a slash exposes literal
   punctuation, the outline stores only that punctuation; no escape-specific
   domain type or visual treatment survives.
+- Character-reference resolution is text decoding, not a second parse. A
+  decoded delimiter never gains structural meaning, malformed forms remain
+  authored text, and code or autolink literals are restored only after the
+  decoding pass (`lib/domain/reading/character_references.dart`,
+  `lib/domain/reading/document_outline.dart`).
 - Splitting at headings can separate a construct from its context; reference
   definitions are the one case handled explicitly
   (`test/domain/document_outline_test.dart`).

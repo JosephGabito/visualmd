@@ -206,6 +206,30 @@ autolinks remain literal because their grammar says they are literal
 (`lib/api/render/inline_composer.dart`). The reader sees punctuation, never a
 special “escaped” colour or run.
 
+## Character references
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#entity-and-numeric-character-references)
+defines named, decimal and hexadecimal references as alternate source
+spellings for Unicode. It delegates the valid named set to WHATWG, requires a
+semicolon, bounds decimal forms to seven digits and hexadecimal forms to six,
+and replaces invalid scalar values with `U+FFFD`. Recognition is inactive in
+code but active in destinations, titles and fenced info strings. Most
+importantly, a decoded punctuation mark cannot retroactively become Markdown
+structure.
+
+The authoritative [WHATWG character-reference table](https://html.spec.whatwg.org/entities.json)
+contains far more than the familiar `amp`, `copy` and `nbsp` names, including
+values composed from multiple Unicode code points. Visual MD therefore
+generates its domain lookup from that table and keeps only semicolon-terminated
+keys; a partial handwritten dictionary would silently make the page and
+outline disagree (`tool/generate_character_references.dart`).
+
+There is no typographic style for an encoded character. CommonMark explicitly
+permits parsers to discard whether Unicode came directly from source or from a
+reference. Visual MD follows that semantic boundary: once decoded, the
+character enters normal prose setting, search and navigation exactly as if the
+author typed it directly.
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code
