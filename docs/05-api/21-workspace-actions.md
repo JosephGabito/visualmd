@@ -31,11 +31,17 @@ desktop menu remains genuinely native.
 | Action | Shortcut | Result |
 |--------|----------|--------|
 | New Workspace | Command/Control-N | fresh unbound reading room |
-| Open Workspace | Command/Control-O | selected workspace restored transactionally |
+| Open Workspace | Command/Control-Shift-O | selected workspace restored transactionally |
 | Save | Command/Control-S | current workspace flushed or first file requested |
 | Save As | Command/Control-Shift-S | fork written with a new Workspace ID |
 | Add Folder | native File menu | folder appended to the current workspace |
 | Add Markdown | native File menu | standalone Markdown added or resolved |
+
+Command/Control-O remains available for opening folders and Markdown files;
+workspace documents intentionally use the shifted chord so those two concepts
+do not compete for the platform-standard Open shortcut
+(`lib/api/screens/reader_screen.dart:278-299`,
+`macos/Runner/MainFlutterWindow.swift:194-207`).
 
 ## Events
 

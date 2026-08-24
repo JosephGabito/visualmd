@@ -198,8 +198,8 @@ class MainFlutterWindow: NSWindow {
         target: controller))
     submenu.addItem(
       item(
-        "Open Workspace…", key: "o", action: #selector(NativeFileMenuController.openWorkspace),
-        target: controller))
+        "Open Workspace…", key: "o", modifiers: [.command, .shift],
+        action: #selector(NativeFileMenuController.openWorkspace), target: controller))
     submenu.addItem(.separator())
     submenu.addItem(
       item(
