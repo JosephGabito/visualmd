@@ -305,6 +305,23 @@ void main() {
     },
   );
 
+  testWidgets('the desktop launch width preserves both default side panels', (
+    tester,
+  ) async {
+    await pumpReader(tester, size: const Size(1280, 800));
+
+    expect(find.byType(ShelfPanel), findsOneWidget);
+    expect(find.byType(OutlinePanel), findsOneWidget);
+    expect(
+      panelWidth(tester, ShelfPanel),
+      closeTo(PanelWidths.defaultShelf, 0.001),
+    );
+    expect(
+      panelWidth(tester, OutlinePanel),
+      closeTo(PanelWidths.defaultOutline, 0.001),
+    );
+  });
+
   testWidgets('the shelf toggles on the press, not the release', (
     tester,
   ) async {

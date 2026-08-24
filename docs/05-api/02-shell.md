@@ -99,6 +99,11 @@ document, `_EmptyLibrary` offers another folder instead
 (`lib/api/screens/reader_screen.dart:531-537`,
 `lib/api/screens/reader_screen.dart:708-739`).
 
+The welcome composition centres itself inside the available height at normal
+desktop sizes. Below its preferred height it scrolls instead of overflowing,
+so deliberately compact windows remain usable
+(`lib/api/widgets/welcome_view.dart:21-40`, `:137-154`).
+
 ## Events
 
 None today. The shell is where future UI slots would be presented: top-bar

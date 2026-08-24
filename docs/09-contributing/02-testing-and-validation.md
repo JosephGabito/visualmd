@@ -89,9 +89,14 @@ Widget tests protect what a reader can observe:
   `test/presentation/inline_composer_test.dart:49-338`,
   `test/presentation/paragraph_setting_test.dart:61-335`,
   `test/presentation/code_block_test.dart:55-88`).
-- Chrome tests cover distinct Open shortcuts, search, panel motion and resizing,
-  error notices, compact-window behavior, and reduced-motion behavior
-  (`test/presentation/reader_chrome_test.dart:248-562`).
+- Chrome tests cover distinct Open shortcuts, the full launch composition,
+  search, panel motion and resizing, error notices, compact-window behavior,
+  and reduced-motion behavior
+  (`test/presentation/reader_chrome_test.dart:248-579`).
+- Welcome tests hold both launch-size centring and short-window scrolling, while
+  the native configuration test protects the 1280 × 800 macOS launch frame
+  (`test/presentation/welcome_view_test.dart:28-55`,
+  `test/infrastructure/macos_window_configuration_test.dart:5-16`).
 - Shelf tests hold the root-reorder state machine, expansion preservation,
   standalone adaptation, hover removal, and accessible arrange actions
   (`test/presentation/shelf_panel_test.dart:49-391`).

@@ -78,6 +78,11 @@ bar that doubles as a drag handle with double-click-to-zoom
 `lib/infrastructure/platform/platform_io.dart:106-117`). See
 [Window Chrome](../03-infrastructure/desktop/03-window-chrome.md).
 
+The initial content frame is 1280 × 800, wide enough to enter the reader's
+full desktop composition instead of its compact mode. The window remains
+resizable down to the smaller minimum above
+(`macos/Runner/Base.lproj/MainMenu.xib:333-340`).
+
 The application File menu is native AppKit chrome, inserted beside the app
 menu after AppKit has installed the menu bar. Its Command-O Open panel accepts
 folders and Markdown files in one multi-selection operation; Command-Shift-O
