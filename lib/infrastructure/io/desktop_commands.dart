@@ -15,6 +15,7 @@ final class DesktopCommands {
       final command = switch (call.method) {
         'newWorkspace' => PlatformCommand.newWorkspace,
         'openWorkspace' => PlatformCommand.openWorkspace,
+        'openReaderSources' => PlatformCommand.openReaderSources,
         'saveWorkspace' => PlatformCommand.saveWorkspace,
         'saveWorkspaceAs' => PlatformCommand.saveWorkspaceAs,
         'addFolder' => PlatformCommand.addFolder,

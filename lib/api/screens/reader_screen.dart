@@ -29,6 +29,7 @@ enum _SearchMode { closed, document, library }
 class ReaderScreen extends StatefulWidget {
   final ReaderController controller;
   final void Function(String url) openExternal;
+  final Future<void> Function()? openReaderSources;
   final ({double height, double leadingInset}) topBar;
   final Widget Function(Widget child) windowDragRegion;
 
@@ -39,6 +40,7 @@ class ReaderScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.openExternal,
+    this.openReaderSources,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
     this.themesLocation,
@@ -279,6 +281,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
             c.newWorkspace,
         const SingleActivator(LogicalKeyboardKey.keyN, control: true):
             c.newWorkspace,
+        ...switch (widget.openReaderSources) {
+          final openReaderSources? => {
+            const SingleActivator(LogicalKeyboardKey.keyO, meta: true):
+                openReaderSources,
+          },
+          null => const {},
+        },
         const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true):
             c.openWorkspace,
         const SingleActivator(

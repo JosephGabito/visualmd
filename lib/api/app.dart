@@ -11,6 +11,7 @@ import '../presentation/theme/theme_choice.dart';
 class VisualMdApp extends StatelessWidget {
   final ReaderController controller;
   final void Function(String url) openExternal;
+  final Future<void> Function()? openReaderSources;
 
   /// Lets the platform capture drops around the UI; identity when it doesn't need to.
   final Widget Function(Widget child) dropRegion;
@@ -28,6 +29,7 @@ class VisualMdApp extends StatelessWidget {
     super.key,
     required this.controller,
     required this.openExternal,
+    this.openReaderSources,
     this.dropRegion = _identity,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
@@ -80,6 +82,7 @@ class VisualMdApp extends StatelessWidget {
           ReaderScreen(
             controller: controller,
             openExternal: openExternal,
+            openReaderSources: openReaderSources,
             topBar: topBar,
             windowDragRegion: windowDragRegion,
             themesLocation: themesLocation,

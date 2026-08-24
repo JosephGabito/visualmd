@@ -44,7 +44,7 @@ Workspace Save As keeps the exact URL returned by `NSSavePanel`. The runner
 writes that URL with Foundation's atomic option, allowing macOS to manage the
 auxiliary file without exposing an ungranted sibling path to Dart
 (`lib/infrastructure/io/desktop_workspace_files.dart:45-65`,
-`macos/Runner/MainFlutterWindow.swift:60-84`).
+`macos/Runner/MainFlutterWindow.swift:104-127`).
 
 ## Reader files
 
@@ -75,15 +75,15 @@ a zone measured at startup (52 px fallback); minimum window size is 720 × 480
 title-bar height at startup and answers the UI with a taller, 84 px-inset top
 bar that doubles as a drag handle with double-click-to-zoom
 (`lib/infrastructure/platform/platform_io.dart:26-35`,
-`lib/infrastructure/platform/platform_io.dart:98-109`). See
+`lib/infrastructure/platform/platform_io.dart:106-117`). See
 [Window Chrome](../03-infrastructure/desktop/03-window-chrome.md).
 
 The application File menu is native AppKit chrome, inserted beside the app
-menu after AppKit has installed the menu bar. It provides New, Open Workspace,
-Save, Save As, Add Folder, and Add Markdown. Workspace opening uses
-Command-Shift-O, leaving the standard Command-O chord available for opening
-folders and Markdown files (`macos/Runner/MainFlutterWindow.swift:187-218`).
-The Flutter top bar does not duplicate it.
+menu after AppKit has installed the menu bar. Its Command-O Open panel accepts
+folders and Markdown files in one multi-selection operation; Command-Shift-O
+opens a workspace instead. New, Save, Save As, Add Folder, and Add Markdown
+remain explicit actions (`macos/Runner/MainFlutterWindow.swift:231-266`). The
+Flutter top bar does not duplicate the menu.
 
 ## Status
 

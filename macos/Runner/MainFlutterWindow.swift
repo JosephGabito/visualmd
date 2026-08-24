@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import UniformTypeIdentifiers
 
 private final class NativeFileMenuController: NSObject {
   private let channel: FlutterMethodChannel
@@ -9,6 +10,7 @@ private final class NativeFileMenuController: NSObject {
   }
 
   @objc func newWorkspace() { channel.invokeMethod("newWorkspace", arguments: nil) }
+  @objc func openReaderSources() { channel.invokeMethod("openReaderSources", arguments: nil) }
   @objc func openWorkspace() { channel.invokeMethod("openWorkspace", arguments: nil) }
   @objc func saveWorkspace() { channel.invokeMethod("saveWorkspace", arguments: nil) }
   @objc func saveWorkspaceAs() { channel.invokeMethod("saveWorkspaceAs", arguments: nil) }
@@ -46,6 +48,47 @@ class MainFlutterWindow: NSWindow {
       name: "com.visualmd.visualmd/commands",
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
+
+    let readerSourcePicker = FlutterMethodChannel(
+      name: "com.visualmd.visualmd/reader-source-picker",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    readerSourcePicker.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "pick", let self else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+
+      let panel = NSOpenPanel()
+      panel.title = "Open"
+      panel.prompt = "Open"
+      panel.canChooseFiles = true
+      panel.canChooseDirectories = true
+      panel.allowsMultipleSelection = true
+      panel.resolvesAliases = true
+      panel.allowedContentTypes = [
+        .folder,
+        UTType(filenameExtension: "md"),
+        UTType(filenameExtension: "markdown"),
+        UTType(filenameExtension: "mdown"),
+        UTType(filenameExtension: "mkd"),
+      ].compactMap { $0 }
+
+      panel.beginSheetModal(for: self) { response in
+        guard response == .OK else {
+          result([])
+          return
+        }
+        result(
+          panel.urls.compactMap { url -> [String: String]? in
+            let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
+            if values?.isDirectory == true {
+              return ["kind": "folder", "path": url.path]
+            }
+            return ["kind": "markdown", "path": url.path]
+          })
+      }
+    }
 
     let atomicFiles = FlutterMethodChannel(
       name: "com.visualmd.visualmd/atomic-files",
@@ -195,6 +238,10 @@ class MainFlutterWindow: NSWindow {
     submenu.addItem(
       item(
         "New Workspace", key: "n", action: #selector(NativeFileMenuController.newWorkspace),
+        target: controller))
+    submenu.addItem(
+      item(
+        "Open…", key: "o", action: #selector(NativeFileMenuController.openReaderSources),
         target: controller))
     submenu.addItem(
       item(

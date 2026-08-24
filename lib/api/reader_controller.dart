@@ -538,6 +538,11 @@ final class ReaderController extends ChangeNotifier {
   Future<void> _refreshWorkspaceSession() async {
     workspaceSession = await _currentWorkspace?.call() ?? workspaceSession;
   }
+
+  void reportReaderSourcePickerFailure(Object failure) {
+    error = "Couldn't choose a folder or Markdown file: $failure";
+    notifyListeners();
+  }
 }
 
 WorkspaceTheme _workspaceTheme(ThemeChoice choice) => switch (choice) {

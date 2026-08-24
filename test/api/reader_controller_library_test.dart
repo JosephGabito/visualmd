@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/reader_controller.dart';
+import 'package:visualmd/api/reader_source_opener.dart';
 import 'package:visualmd/application/library_mutation_queue.dart';
 import 'package:visualmd/application/ports/folder_scanner.dart';
 import 'package:visualmd/application/ports/markdown_scanner.dart';
+import 'package:visualmd/application/ports/reader_source_picker.dart';
 import 'package:visualmd/application/use_cases/add_folder.dart';
 import 'package:visualmd/application/use_cases/add_markdown.dart';
 import 'package:visualmd/application/use_cases/move_folder.dart';
@@ -48,6 +52,24 @@ final class _MarkdownScanner implements MarkdownScanner {
   Future<ScannedMarkdown> scan(MarkdownRef ref) async => markdowns[ref.id]!;
 }
 
+final class _ReaderSourcePicker implements ReaderSourcePicker {
+  List<ReaderSourceSelection> selected = const [];
+
+  @override
+  Future<List<ReaderSourceSelection>> pick() async => selected;
+}
+
+final class _DeferredReaderSourcePicker implements ReaderSourcePicker {
+  final result = Completer<List<ReaderSourceSelection>>();
+  var calls = 0;
+
+  @override
+  Future<List<ReaderSourceSelection>> pick() {
+    calls++;
+    return result.future;
+  }
+}
+
 void main() {
   const alpha = FolderRef(id: 'a', name: 'alpha');
   const beta = FolderRef(id: 'b', name: 'beta');
@@ -56,11 +78,13 @@ void main() {
 
   late _Scanner scanner;
   late _MarkdownScanner markdownScanner;
+  late _ReaderSourcePicker readerSourcePicker;
   late ReaderController controller;
 
   setUp(() {
     scanner = _Scanner();
     markdownScanner = _MarkdownScanner();
+    readerSourcePicker = _ReaderSourcePicker();
     final repository = InMemoryLibraryRepository();
     final mutations = LibraryMutationQueue();
     const parser = MarkdownDocumentParser();
@@ -91,6 +115,42 @@ void main() {
       themes: ThemeRegistry(),
     );
   });
+
+  test(
+    'Open routes every selected source through its existing use case',
+    () async {
+      markdownScanner.markdowns['plan'] = const ScannedMarkdown(
+        name: 'plan.md',
+        content: '# Plan',
+        sourceId: DocumentSourceId('/outside/plan.md'),
+      );
+      readerSourcePicker.selected = const [
+        FolderSourceSelection(alpha),
+        MarkdownSourceSelection(MarkdownRef(id: 'plan', name: 'plan.md')),
+      ];
+
+      await ReaderSourceOpener(readerSourcePicker, controller).call();
+
+      expect(controller.library!.roots.single.id, alphaId);
+      expect(controller.library!.markdowns.single.title, 'Plan');
+      expect(controller.reading!.document.title, 'Plan');
+    },
+  );
+
+  test(
+    'Open ignores a second request while its native picker is active',
+    () async {
+      final picker = _DeferredReaderSourcePicker();
+      final opener = ReaderSourceOpener(picker, controller);
+
+      final first = opener.call();
+      final second = opener.call();
+      expect(picker.calls, 1);
+
+      picker.result.complete(const []);
+      await Future.wait([first, second]);
+    },
+  );
 
   test(
     'adding, arranging and removing roots preserves reading intent',

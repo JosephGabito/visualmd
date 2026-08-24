@@ -44,6 +44,9 @@ Application tests use in-memory ports so they can focus on orchestration:
   open, unavailable sources, standalone absorption, deferred autosave,
   download-only web behavior, reconnect, and Windows-root handling
   (`test/application/workspace_use_cases_test.dart:54-596`).
+- Reader-source tests prove mixed selections use the established add paths and
+  a second Open request cannot race an active native picker
+  (`test/api/reader_controller_library_test.dart:119-153`).
 
 ## Infrastructure boundaries
 
@@ -64,8 +67,10 @@ rules:
 - Desktop workspace tests preserve the exact save-panel path, verify the macOS
   native-write message, and retain a last-good copy in the portable fallback
   (`test/infrastructure/desktop_workspace_files_test.dart:9-81`), while the
+  reader-source picker proves native records become typed opaque refs
+  (`test/infrastructure/desktop_reader_source_picker_test.dart:11-60`), and the
   command bridge proves native File-menu selections reach typed Dart commands
-  (`test/infrastructure/desktop_commands_test.dart:9-27`).
+  (`test/infrastructure/desktop_commands_test.dart:9-45`).
 - Registry tests ensure process handles retain durable source identities
   without aliasing paths across workspaces
   (`test/infrastructure/folder_registry_test.dart:6-70`).
@@ -84,9 +89,9 @@ Widget tests protect what a reader can observe:
   `test/presentation/inline_composer_test.dart:49-338`,
   `test/presentation/paragraph_setting_test.dart:61-335`,
   `test/presentation/code_block_test.dart:55-88`).
-- Chrome tests cover search, panel motion and resizing, error notices, and
-  reduced-motion behavior
-  (`test/presentation/reader_chrome_test.dart:31-319`).
+- Chrome tests cover distinct Open shortcuts, search, panel motion and resizing,
+  error notices, compact-window behavior, and reduced-motion behavior
+  (`test/presentation/reader_chrome_test.dart:248-562`).
 - Shelf tests hold the root-reorder state machine, expansion preservation,
   standalone adaptation, hover removal, and accessible arrange actions
   (`test/presentation/shelf_panel_test.dart:49-391`).

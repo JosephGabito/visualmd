@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
+import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import 'platform_command.dart';
@@ -13,6 +14,7 @@ abstract interface class PlatformAdapters {
   MarkdownScanner get markdownScanner;
   WorkspaceFiles get workspaceFiles;
   WorkspaceSourceAccess get workspaceSourceAccess;
+  ReaderSourcePicker? get readerSourcePicker;
 
   Future<FolderRef?> pickFolder();
   Future<MarkdownRef?> pickMarkdown();

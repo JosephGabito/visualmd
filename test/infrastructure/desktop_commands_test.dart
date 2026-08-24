@@ -24,4 +24,23 @@ void main() {
       expect(await received, PlatformCommand.saveWorkspaceAs);
     },
   );
+
+  test(
+    'the native Open item requests reader sources, not a workspace',
+    () async {
+      final commands = DesktopCommands();
+      final received = commands.stream.first;
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'com.visualmd.visualmd/commands',
+            const StandardMethodCodec().encodeMethodCall(
+              const MethodCall('openReaderSources'),
+            ),
+            (_) {},
+          );
+
+      expect(await received, PlatformCommand.openReaderSources);
+    },
+  );
 }

@@ -8,6 +8,7 @@ import 'api/layout/panel_widths.dart';
 import 'api/theme/font_licences.dart';
 import 'presentation/theme/reading_scale.dart';
 import 'api/reader_controller.dart';
+import 'api/reader_source_opener.dart';
 import 'presentation/theme/theme_choice.dart';
 import 'presentation/theme/theme_registry.dart';
 import 'application/library_mutation_queue.dart';
@@ -198,6 +199,10 @@ Future<void> main() async {
     panelWidths: panelWidths,
     savePreference: platform.writePreference,
   );
+  final openReaderSources = switch (platform.readerSourcePicker) {
+    final picker? => ReaderSourceOpener(picker, controller),
+    null => null,
+  };
   platform.folderDrops.listen(controller.addFolder);
   platform.markdownDrops.listen(controller.addMarkdown);
   platform.dragging.listen(controller.setDragging);
@@ -207,6 +212,8 @@ Future<void> main() async {
         controller.newWorkspace();
       case PlatformCommand.openWorkspace:
         controller.openWorkspace();
+      case PlatformCommand.openReaderSources:
+        openReaderSources?.call();
       case PlatformCommand.saveWorkspace:
         controller.saveWorkspace();
       case PlatformCommand.saveWorkspaceAs:
@@ -247,6 +254,7 @@ Future<void> main() async {
   runApp(
     VisualMdApp(
       controller: controller,
+      openReaderSources: openReaderSources?.call,
       openExternal: platform.openExternal,
       dropRegion: platform.dropRegion,
       topBar: platform.topBar,
