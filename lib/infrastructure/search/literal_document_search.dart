@@ -1,4 +1,6 @@
 // ignore_for_file: prefer_initializing_formals — private fields keep public constructor names.
+import 'package:characters/characters.dart';
+
 import '../../application/ports/document_parser.dart';
 import '../../application/ports/document_search.dart';
 import '../../domain/library/document.dart';
@@ -45,8 +47,11 @@ final class LiteralDocumentSearch implements DocumentSearch {
 
   static String _excerpt(String text, int start, int end) {
     const reach = 46;
-    final from = start > reach ? start - reach : 0;
-    final to = end + reach < text.length ? end + reach : text.length;
+    final roughFrom = start > reach ? start - reach : 0;
+    final roughTo = end + reach < text.length ? end + reach : text.length;
+    final range = CharacterRange.at(text, roughFrom, roughTo);
+    final from = range.stringBeforeLength;
+    final to = text.length - range.stringAfterLength;
     final words = text
         .substring(from, to)
         .replaceAll(RegExp(r'\s+'), ' ')

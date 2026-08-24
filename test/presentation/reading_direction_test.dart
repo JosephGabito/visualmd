@@ -20,6 +20,29 @@ void main() {
       ReadingDirection.of('日本語と中文', fallback: TextDirection.rtl),
       TextDirection.ltr,
     );
+    expect(
+      ReadingDirection.of('👩🏽‍💻 123 — العربية', fallback: TextDirection.ltr),
+      TextDirection.rtl,
+    );
+    expect(
+      ReadingDirection.of('1️⃣ (עברית)', fallback: TextDirection.ltr),
+      TextDirection.rtl,
+    );
+    expect(
+      ReadingDirection.of(
+        '\u2067English inside an isolate\u2069 العربية',
+        fallback: TextDirection.ltr,
+      ),
+      TextDirection.rtl,
+    );
+    expect(
+      ReadingDirection.of(
+        '${String.fromCharCode(0x1e900)} after emoji 👩🏽‍💻',
+        fallback: TextDirection.ltr,
+      ),
+      TextDirection.rtl,
+      reason: 'astral right-to-left scripts must not be read as surrogates',
+    );
   });
 
   test('directionally neutral headings inherit their reading context', () {

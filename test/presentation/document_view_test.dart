@@ -519,6 +519,28 @@ void main() {
     expect(find.byIcon(Icons.check_box_outline_blank), findsOneWidget);
   });
 
+  testWidgets('an RTL list hangs its marker from the reading edge', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      ListBlock(
+        ordered: true,
+        items: [
+          ListItem([paragraph('البند الأول')]),
+        ],
+      ),
+    ]);
+
+    expect(
+      tester.getCenter(find.text('1.')).dx,
+      greaterThan(tester.getCenter(find.text('البند الأول')).dx),
+    );
+    expect(
+      tester.widget<Text>(find.text('البند الأول')).textDirection,
+      TextDirection.rtl,
+    );
+  });
+
   testWidgets('a quotation is set one shade back, marked once by its rule', (
     tester,
   ) async {
@@ -558,6 +580,28 @@ void main() {
     expect(find.text('Key'), findsOneWidget);
     expect(find.text('only one'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('each table cell keeps its own reading direction', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      const TableBlock(
+        head: [
+          TableCell([TextRun('Language')]),
+        ],
+        rows: [
+          [
+            TableCell([TextRun('العربية 123')]),
+          ],
+        ],
+      ),
+    ]);
+
+    expect(
+      tester.widget<Text>(find.text('العربية 123')).textDirection,
+      TextDirection.rtl,
+    );
   });
 
   testWidgets('each table column follows its widest bounded cell and scrolls', (

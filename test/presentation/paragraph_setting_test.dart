@@ -162,6 +162,54 @@ void main() {
     expect(theme!.spaceAfter(block, null), 0);
   });
 
+  testWidgets('each paragraph begins at the edge its language reads from', (
+    tester,
+  ) async {
+    const arabic = '👩🏽‍💻 123 — العربية تبدأ من الحافة اليمنى.';
+    await pump(tester, [para(arabic)]);
+
+    final text = tester.widget<Text>(find.textContaining('العربية'));
+    expect(text.textDirection, TextDirection.rtl);
+    expect(text.textAlign, TextAlign.start);
+    expect(text.textSpan!.toPlainText().replaceAll('\u00a0', ' '), arabic);
+  });
+
+  testWidgets('an RTL opening quote hangs from the reading edge', (
+    tester,
+  ) async {
+    await pump(tester, [para('"العربية تبدأ بعلامة اقتباس.')]);
+
+    final positioned = tester.widget<Positioned>(
+      find.descendant(
+        of: find.byType(Paragraph),
+        matching: find.byType(Positioned),
+      ),
+    );
+    expect(positioned.left, isNull);
+    expect(positioned.right, lessThan(0));
+    expect(find.text('“'), findsOneWidget);
+  });
+
+  testWidgets('CJK and emoji reflow without splitting their clusters', (
+    tester,
+  ) async {
+    const source =
+        '中文日本語沒有空格也需要自然換行，並保留👩🏽‍💻與👨‍👩‍👧‍👦完整顯示。'
+        '這一段故意延長，以便在狹窄欄位中形成多行。';
+    final theme = await pump(tester, [para(source)], width: 220);
+    final richText = find.descendant(
+      of: find.byType(Paragraph),
+      matching: find.byType(RichText),
+    );
+    final widget = tester.widget<RichText>(richText);
+    final size = tester.getSize(richText);
+
+    expect(widget.text.toPlainText(), source);
+    expect(size.width, lessThanOrEqualTo(220));
+    expect(size.height, greaterThan(theme!.baseline * 2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('indented paragraphs start further in, except the first', (
     tester,
   ) async {

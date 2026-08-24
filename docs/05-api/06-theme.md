@@ -61,6 +61,15 @@ fails the library's own face stands in
 (`lib/api/theme/library_theme.dart`). A typo in a theme file costs a
 font, not the app.
 
+The bundled faces cover Latin writing, not every script a markdown document
+may contain. Every style therefore carries the same ordered native fallback
+list for emoji, Arabic, Hebrew, CJK, Devanagari, Tamil and Thai
+(`lib/api/theme/library_theme.dart`). A desktop platform uses the first
+installed face that can draw the character, then retains its own default as the
+final safety net. CanvasKit supplies its own downloadable fallback on the web.
+The document stays one selectable string; fallback changes only which glyph
+draws a grapheme the preferred face does not own.
+
 ## The reading face, and what a size means
 
 `ThemeTypefaces.library` names Alegreya for reading — drawn for literature and

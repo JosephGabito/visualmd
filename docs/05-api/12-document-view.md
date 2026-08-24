@@ -57,8 +57,9 @@ Each block type is built by `_BlockView`
 - **Paragraph** — composed with the theme in hand, which inside a quotation is
   the quoting one, handed its indent, and given the theme's strut so a code span
   cannot push a line off the beat. It sets flush-start/ragged-end and reflows
-  at the measured prose width (`lib/api/render/document_view.dart`). Setting it is
-  [Paragraph](15-paragraph.md)'s job.
+  at the measured prose width. Each paragraph derives its own reading edge from
+  its first strong Unicode character (`lib/api/render/document_view.dart`).
+  Setting it is [Paragraph](15-paragraph.md)'s job.
 - **Heading** — wrapped in a `KeyedSubtree` keyed by anchor so the outline can
   bring it into view, then handed to `_RhythmicHeading`. Its lines keep their
   natural display leading. The sequence owns its outgoing half-beat; after
@@ -70,6 +71,7 @@ Each block type is built by `_BlockView`
   hierarchy is also available to assistive technology. `ReadingDirection`
   takes the first strongly directional character as the block's base direction,
   so Arabic and Hebrew headings align and wrap from the side they are read
+  using generated Unicode 17 bidi classes rather than a BMP script heuristic
   (`lib/api/render/reading_direction.dart`).
 - **Code** — a [`ReadableCodeBlock`](11-code-block.md) with half a beat of
   padding above and below and **no border**: its own ground already says what
@@ -78,12 +80,14 @@ Each block type is built by `_BlockView`
 - **Quotation** — `_Quote`: a 2 px accent rule and blocks re-rendered one shade
   back with `ReadingTheme.quoting`. Two signals, not three: no italic
   (`lib/api/render/document_view.dart`).
-- **List** — `_List`: markers hang in a gutter so every item shares a left edge.
+- **List** — `_List`: markers hang in a gutter at each item's reading edge.
+  An RTL item places its marker to the right; an LTR item places it to the left.
   Loose items get one beat; tight items follow like paragraph lines. Markers
   are muted signposts, and task items show a checkbox
   (`lib/api/render/document_view.dart`).
 - **Table** — `_Table`: alignment as the author asked, a panel-coloured head
-  row, ragged-row padding and locally scrolling overflow
+  row, ragged-row padding and locally scrolling overflow. Each cell resolves
+  direction independently, because adjacent languages need not share an edge
   (`lib/api/render/document_view.dart`,
   `lib/api/render/reading_theme.dart`).
 - **Rule** — a centred one-pixel divider in the quiet border tone, constrained
@@ -91,7 +95,8 @@ Each block type is built by `_BlockView`
   returns to the grid. A non-interactive semantics node names the structure
   “Thematic break” without making it a focus target
   (`lib/api/render/document_view.dart`).
-- **RawBlock** — muted text (`lib/api/render/document_view.dart`).
+- **RawBlock** — muted text with its authored reading direction
+  (`lib/api/render/document_view.dart`).
 
 ### The table-width formula
 
@@ -140,7 +145,8 @@ words (`lib/api/render/document_view.dart`).
 
 `test/presentation/document_view_test.dart` covers column widths and table
 overflow, multiline geometry at all six heading levels, scaled mixed-script
-and unbreakable headings, heading-level semantics and authored direction,
+and unbreakable headings, heading-level semantics and authored direction for
+paragraphs, lists and table cells,
 thematic-break geometry and semantics, rhythm through rules and lists, tonal
 hierarchy, anchors, markers, task lists and quotation treatment.
 

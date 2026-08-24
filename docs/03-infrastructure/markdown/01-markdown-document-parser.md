@@ -119,6 +119,13 @@ from WHATWG rather than maintained by hand
 (`lib/domain/reading/character_references.dart`,
 `tool/generate_character_references.dart`).
 
+**Plain Unicode.** Directly authored Unicode is not normalised or rewritten.
+Precomposed and decomposed spellings, combining stacks, emoji sequences,
+bidirectional scripts and unspaced CJK text remain the exact strings supplied
+by the author. Grapheme-aware styling and paragraph direction belong to the
+Flutter edge; this adapter only preserves the text it hands there
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).

@@ -125,6 +125,61 @@ void main() {
     },
   );
 
+  testWidgets('plain Unicode is composed one grapheme at a time', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    const source = 'nai\u0308ve 👩🏽‍💻 beside العربية and 中文。';
+    final combining = source.indexOf('\u0308');
+    final modifier = source.indexOf('🏽');
+    final spans = InlineComposer(
+      theme: theme,
+      matches: [
+        TextMatch(start: combining, end: combining + 1, excerpt: 'ï'),
+        TextMatch(start: modifier, end: modifier + 2, excerpt: '👩🏽‍💻'),
+      ],
+    ).compose(const [TextRun(source)]);
+
+    final highlighted = <String>[];
+    void collect(InlineSpan span) {
+      if (span is! TextSpan) return;
+      if (span.text != null && span.style?.backgroundColor != null) {
+        highlighted.add(span.text!);
+      }
+      span.children?.forEach(collect);
+    }
+
+    spans.forEach(collect);
+    expect(TextSpan(children: spans).toPlainText(), source);
+    expect(highlighted, ['i\u0308', '👩🏽‍💻']);
+  });
+
+  testWidgets('verbatim highlighting never bisects an emoji sequence', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    const source = 'print("👩🏽‍💻")';
+    final joiner = source.indexOf('\u200d');
+    final spans =
+        InlineComposer(
+          theme: theme,
+          matches: [TextMatch(start: joiner, end: joiner + 1, excerpt: source)],
+        ).highlightedVerbatim(
+          source,
+          style: theme.code,
+          highlighting: null,
+          styleFor: (_) => theme.code,
+        );
+
+    final highlighted = spans
+        .whereType<TextSpan>()
+        .where((span) => span.style?.backgroundColor != null)
+        .map((span) => span.text)
+        .toList();
+    expect(TextSpan(children: spans).toPlainText(), source);
+    expect(highlighted, ['👩🏽‍💻']);
+  });
+
   testWidgets('a match crosses marked runs without changing punctuation', (
     tester,
   ) async {

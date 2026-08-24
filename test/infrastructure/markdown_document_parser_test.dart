@@ -638,6 +638,33 @@ void main() {
     });
   });
 
+  group('plain Unicode', () {
+    test('preserves combining sequences without normalising the source', () {
+      const source =
+          'Precomposed café; decomposed nai\u0308ve; stacked Z\u0351\u036b\u0343; '
+          'and Devanagari क्षि.';
+
+      final paragraph = single<ParagraphBlock>(source);
+
+      expect(paragraph.text, source);
+      expect(paragraph.text, contains('i\u0308'));
+      expect(paragraph.text, isNot(contains('ï')));
+    });
+
+    test('preserves complete emoji, bidirectional, and CJK sequences', () {
+      const source =
+          'Emoji 👩🏽‍💻, family 👨‍👩‍👧‍👦, flag 🇵🇭, and keycap 1️⃣. '
+          'العربية 123 beside עברית; 中文日本語沒有空格。';
+
+      final paragraph = single<ParagraphBlock>(source);
+
+      expect(paragraph.text, source);
+      expect(paragraph.text, contains('👩🏽‍💻'));
+      expect(paragraph.text, contains('👨‍👩‍👧‍👦'));
+      expect(paragraph.text, endsWith('中文日本語沒有空格。'));
+    });
+  });
+
   group('the smaller shapes', () {
     test('every CommonMark thematic-break form becomes the same block', () {
       for (final source in [

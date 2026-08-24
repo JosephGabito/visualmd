@@ -340,6 +340,10 @@ class _BlockView extends StatelessWidget {
                 offset: offset,
               ),
             ),
+            textDirection: ReadingDirection.of(
+              text,
+              fallback: Directionality.of(context),
+            ),
           ),
         );
     }
@@ -526,27 +530,35 @@ class _List extends StatelessWidget {
     final children = <Widget>[];
     var itemOffset = offset;
     for (var i = 0; i < list.items.length; i++) {
+      final direction = ReadingDirection.of(
+        list.items[i].text,
+        fallback: Directionality.of(context),
+      );
       children.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: gutter,
-              child: _Marker(list: list, index: i, theme: theme),
-            ),
-            Expanded(
-              child: _BlockSequence(
-                blocks: list.items[i].blocks,
-                theme: theme,
-                composer: composer,
-                codeHighlighter: codeHighlighter,
-                keys: keys,
-                matchKeys: matchKeys,
-                startOffset: itemOffset,
-                separatorLength: 1,
+        Directionality(
+          textDirection: direction,
+          child: Row(
+            textDirection: direction,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: gutter,
+                child: _Marker(list: list, index: i, theme: theme),
               ),
-            ),
-          ],
+              Expanded(
+                child: _BlockSequence(
+                  blocks: list.items[i].blocks,
+                  theme: theme,
+                  composer: composer,
+                  codeHighlighter: codeHighlighter,
+                  keys: keys,
+                  matchKeys: matchKeys,
+                  startOffset: itemOffset,
+                  separatorLength: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       );
       if (i + 1 < list.items.length && between > 0) {
@@ -586,8 +598,8 @@ class _Marker extends StatelessWidget {
     // Markers are signposts: they mark the line without competing with it.
     final label = list.ordered ? '${list.start + index}.' : '•';
     return Padding(
-      padding: EdgeInsets.only(right: theme.em * 0.5),
-      child: Text(label, textAlign: TextAlign.right, style: theme.marker),
+      padding: EdgeInsetsDirectional.only(end: theme.em * 0.5),
+      child: Text(label, textAlign: TextAlign.end, style: theme.marker),
     );
   }
 }
@@ -627,23 +639,30 @@ class _TableState extends State<_Table> {
       vertical: widget.theme.em * 0.45,
     );
 
-    Widget cell(TableCell cell, TextStyle style, int offset) => Padding(
-      padding: cellPadding,
-      child: Text.rich(
-        TextSpan(
-          children: widget.composer.compose(
-            cell.content,
-            style: style,
-            offset: offset,
+    Widget cell(TableCell cell, TextStyle style, int offset) {
+      final direction = ReadingDirection.of(
+        cell.text,
+        fallback: Directionality.of(context),
+      );
+      return Padding(
+        padding: cellPadding,
+        child: Text.rich(
+          TextSpan(
+            children: widget.composer.compose(
+              cell.content,
+              style: style,
+              offset: offset,
+            ),
           ),
+          textDirection: direction,
+          textAlign: switch (cell.alignment) {
+            ColumnAlignment.start => TextAlign.start,
+            ColumnAlignment.center => TextAlign.center,
+            ColumnAlignment.end => TextAlign.end,
+          },
         ),
-        textAlign: switch (cell.alignment) {
-          ColumnAlignment.start => TextAlign.start,
-          ColumnAlignment.center => TextAlign.center,
-          ColumnAlignment.end => TextAlign.end,
-        },
-      ),
-    );
+      );
+    }
 
     final columns = widget.table.head.length;
     var rowOffset = widget.offset;
@@ -765,6 +784,10 @@ class Paragraph extends StatelessWidget {
   Widget build(BuildContext context) {
     final (mark, rest) = splitHangingMark(spans);
     final set = bindWidow(rest);
+    final direction = ReadingDirection.of(
+      set.map(_plainOf).join(),
+      fallback: Directionality.of(context),
+    );
 
     final flow = Text.rich(
       strutStyle: strut,
@@ -772,6 +795,7 @@ class Paragraph extends StatelessWidget {
       // the eye begins each line, ragged at the edge where it leaves. Unlike
       // justification, this never stretches word spaces into rivers.
       textAlign: TextAlign.start,
+      textDirection: direction,
       softWrap: true,
       TextSpan(
         children: [
@@ -798,9 +822,10 @@ class Paragraph extends StatelessWidget {
       children: [
         flow,
         Positioned(
-          left: indent - hang,
+          left: direction == TextDirection.ltr ? indent - hang : null,
+          right: direction == TextDirection.rtl ? indent - hang : null,
           top: 0,
-          child: Text(mark, style: style),
+          child: Text(mark, style: style, textDirection: direction),
         ),
       ],
     );
