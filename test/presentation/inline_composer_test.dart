@@ -270,6 +270,61 @@ void main() {
     );
   });
 
+  testWidgets('strength adds only weight and keeps search paint independent', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final paragraph =
+        const MarkdownDocumentParser()
+                .parse('**asterisk** and __underscore__')
+                .blocks
+                .single
+            as ParagraphBlock;
+    final matchStart = paragraph.text.indexOf('underscore');
+    const base = TextStyle(
+      color: Color(0xFF123456),
+      fontSize: 19,
+      height: 1.6,
+      fontWeight: FontWeight.w400,
+    );
+    final spans = InlineComposer(
+      theme: theme,
+      matches: [
+        TextMatch(
+          start: matchStart,
+          end: matchStart + 'underscore'.length,
+          excerpt: paragraph.text,
+        ),
+      ],
+    ).compose(paragraph.content, style: base);
+
+    final strongLeaves = <TextSpan>[];
+    void collect(InlineSpan span, {bool insideStrength = false}) {
+      if (span is! TextSpan) return;
+      final strong =
+          insideStrength || span.style?.fontWeight == FontWeight.w700;
+      if (strong && span.text != null) strongLeaves.add(span);
+      for (final child in span.children ?? const <InlineSpan>[]) {
+        collect(child, insideStrength: strong);
+      }
+    }
+
+    spans.forEach(collect);
+    expect(TextSpan(children: spans).toPlainText(), 'asterisk and underscore');
+    expect(strongLeaves.map((span) => span.text), ['asterisk', 'underscore']);
+    for (final leaf in strongLeaves) {
+      expect(leaf.style!.fontWeight, FontWeight.w700);
+      expect(leaf.style!.fontStyle, base.fontStyle);
+      expect(leaf.style!.color, base.color);
+      expect(leaf.style!.fontSize, base.fontSize);
+      expect(leaf.style!.height, base.height);
+      expect(leaf.style!.decoration, base.decoration);
+      expect(leaf.semanticsLabel, isNull);
+    }
+    expect(strongLeaves.first.style!.backgroundColor, isNull);
+    expect(strongLeaves.last.style!.backgroundColor, theme.palette.selection);
+  });
+
   testWidgets(
     'an authored line remains one selectable newline in the text flow',
     (tester) async {

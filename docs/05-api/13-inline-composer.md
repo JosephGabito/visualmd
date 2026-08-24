@@ -89,6 +89,19 @@ running text, not a miniature heading. Its long hostile specimen wraps on the
 ordinary measure and baseline grid, and its Unicode clusters use the same
 composition path as roman prose (`test/presentation/inline_composer_test.dart`).
 
+### Strong emphasis
+
+`InlineMark.strong` inherits the surrounding role and changes only its weight
+to 700. It does not borrow italic from emphasis, shift toward the accent, add a
+box, or alter size and leading. Search paint remains independent, and the
+delimiter-free words remain the selectable and accessible text
+(`lib/api/render/inline_composer.dart`).
+
+The bundled variable reading faces receive that weight through
+`TextStyle.fontWeight`; the long hostile specimen proves the heavier glyphs may
+reflow naturally without pushing the paragraph off its baseline grid
+(`test/presentation/paragraph_setting_test.dart`).
+
 ### Setting the punctuation
 
 `_text` walks a run grapheme by grapheme

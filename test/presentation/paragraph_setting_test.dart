@@ -320,6 +320,38 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('long strength reflows on the prose grid and stays accessible', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    const source =
+        'This strongly important passage continues through enough ordinary '
+        'prose to wrap over several rendered lines without changing the '
+        'measure, leading, searchability, selection, or baseline rhythm of the '
+        'paragraph that contains it.';
+    final block = const MarkdownDocumentParser()
+        .parse('**$source**')
+        .blocks
+        .single;
+    final theme = await pump(tester, [block], width: 340);
+    final richText = find.descendant(
+      of: find.byType(Paragraph),
+      matching: find.byType(RichText),
+    );
+    final visible = tester.widget<RichText>(richText).text.toPlainText();
+    final height = tester.getSize(richText).height;
+
+    expect(visible.replaceAll('\u00a0', ' '), source);
+    expect(height, greaterThan(theme!.baseline * 2));
+    expect(
+      height / theme.baseline,
+      closeTo((height / theme.baseline).roundToDouble(), 0.01),
+    );
+    expect(tester.getSemantics(richText).label, visible);
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets(
     'editor wrapping is invisible at both narrow and wide reading measures',
     (tester) async {

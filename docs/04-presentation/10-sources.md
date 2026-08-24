@@ -295,6 +295,22 @@ must not. Visual MD therefore inherits every surrounding text property and
 changes only `fontStyle`; it adds no weight, colour, size, box or spacing
 (`lib/api/render/inline_composer.dart`).
 
+## Strong emphasis
+
+The same [CommonMark delimiter-run grammar](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis)
+applies to paired `**` and `__` runs. Double asterisks may delimit strength
+inside a word, while double underscores may not; interior edge spaces still
+invalidate the pair. Both valid spellings become the same delimiter-free
+`InlineMark.strong` (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+Strong emphasis marks importance rather than a change of voice. Lupton's
+economy of signals still permits only one cue, while the legibility evidence
+above distinguishes the cue from italic: bold does not carry italic's measured
+penalty in continuous reading. Visual MD therefore adds one weight and inherits
+the surrounding colour, size, leading and decoration. A phrase can become
+important without turning into a label or disturbing the reading grid
+(`lib/api/render/inline_composer.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code
