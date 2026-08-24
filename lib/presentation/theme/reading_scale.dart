@@ -89,12 +89,28 @@ final class ReadingScale {
   // beat and everything cut from it. Two descriptions of one thing in two
   // rings is how they drift apart.
 
-  /// Code, a touch smaller than the prose around it — but only a touch. The
-  /// old reason for shrinking it, that a mono face reads larger at the same
-  /// nominal size, is handled properly now by matching x-heights; what is
-  /// left is the wish that a code run should not shout over the sentence
-  /// carrying it.
-  double get code => base * 0.94;
+  /// The smallest code size offered, in logical pixels.
+  ///
+  /// A reader may reduce prose to 15 px. Letting dense source follow it all
+  /// the way down would make punctuation and similar glyphs needlessly hard
+  /// to distinguish, so code stops at this independently legible floor.
+  static const double minimumCodeSize = 13;
+
+  /// Code is three logical pixels smaller than prose.
+  ///
+  /// This is an absolute typographic step, not a percentage. At the
+  /// comfortable 18 px reading size, fenced source is therefore 15 px.
+  double get code {
+    final reduced = base - 3;
+    return reduced < minimumCodeSize ? minimumCodeSize : reduced;
+  }
+
+  /// The complete height of one source line, in logical pixels.
+  ///
+  /// Seven pixels of leading keep punctuation distinct without giving dense
+  /// reference material the open texture of running prose. At the comfortable
+  /// scale this is a 15 px face on a 22 px line.
+  double get codeLineHeight => code + 7;
 
   /// Table text, slightly smaller so a table stays a table.
   double get tableText => base * 0.9;

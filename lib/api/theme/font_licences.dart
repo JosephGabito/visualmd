@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 const bundledFontLicences = {
   'Literata': 'assets/fonts/LICENSE-Literata.txt',
   'Inter': 'assets/fonts/LICENSE-Inter.txt',
-  'JetBrains Mono': 'assets/fonts/LICENSE-JetBrainsMono.txt',
+  'Geist Mono': 'assets/fonts/LICENSE-GeistMono.txt',
   'Alegreya': 'assets/fonts/LICENSE-Alegreya.txt',
 };
 

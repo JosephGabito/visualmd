@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
 import '../../domain/search/search_result.dart';
+import '../../presentation/code/code_highlighter.dart';
 import '../../presentation/theme/hanging_punctuation.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../../presentation/theme/widow_binding.dart';
@@ -42,6 +43,7 @@ abstract final class ParagraphRules {
 class DocumentView extends StatelessWidget {
   final DocumentContent content;
   final ReadingTheme theme;
+  final CodeHighlighter codeHighlighter;
 
   /// Keys by heading anchor, so the outline can bring a heading into view.
   final Map<String, GlobalKey> anchorKeys;
@@ -56,6 +58,7 @@ class DocumentView extends StatelessWidget {
     required this.content,
     required this.theme,
     required this.anchorKeys,
+    this.codeHighlighter = const PlainCodeHighlighter(),
     this.onTapLink,
     this.matches = const [],
     this.activeMatch = -1,
@@ -81,6 +84,7 @@ class DocumentView extends StatelessWidget {
           blocks: content.blocks,
           theme: theme,
           composer: composer,
+          codeHighlighter: codeHighlighter,
           keys: anchorKeys,
           matchKeys: matchKeys,
           // A fixed width, not a maximum: a code block's ground should span
@@ -109,6 +113,7 @@ class _BlockSequence extends StatelessWidget {
   final List<Block> blocks;
   final ReadingTheme theme;
   final InlineComposer composer;
+  final CodeHighlighter codeHighlighter;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final double Function(Block block)? widthFor;
@@ -119,6 +124,7 @@ class _BlockSequence extends StatelessWidget {
     required this.blocks,
     required this.theme,
     required this.composer,
+    required this.codeHighlighter,
     required this.keys,
     required this.matchKeys,
     this.widthFor,
@@ -141,6 +147,7 @@ class _BlockSequence extends StatelessWidget {
         block: block,
         theme: theme,
         composer: composer,
+        codeHighlighter: codeHighlighter,
         keys: keys,
         matchKeys: matchKeys,
         offset: offset,
@@ -172,6 +179,7 @@ class _BlockView extends StatelessWidget {
   final Block block;
   final ReadingTheme theme;
   final InlineComposer composer;
+  final CodeHighlighter codeHighlighter;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
@@ -185,6 +193,7 @@ class _BlockView extends StatelessWidget {
     required this.block,
     required this.theme,
     required this.composer,
+    required this.codeHighlighter,
     required this.keys,
     required this.matchKeys,
     required this.offset,
@@ -228,18 +237,32 @@ class _BlockView extends StatelessWidget {
           ),
         );
 
-      case CodeBlock(:final code):
+      case CodeBlock(:final code, :final language):
         return _matchTarget(
           ReadableCodeBlock(
             source: code,
-            spans: composer.verbatim(code, style: theme.code, offset: offset),
+            language: language,
+            highlighter: codeHighlighter,
+            scheme: Theme.of(context).brightness == Brightness.dark
+                ? CodeHighlightScheme.dark
+                : CodeHighlightScheme.light,
+            spansFor: (highlighting) => composer.highlightedVerbatim(
+              code,
+              style: theme.code,
+              highlighting: highlighting,
+              styleFor: theme.codeToken,
+              offset: offset,
+            ),
             textStyle: theme.code,
-            // Half a beat above and below: with each line of code set to one
-            // beat, the whole block comes to a whole number of them and the
-            // prose beneath it resumes on the grid.
+            bodyBackground: theme.codeBodyBackground,
+            beat: theme.baseline,
+            // The header keeps the prose beat while source lines run more
+            // tightly beneath it. The body reconciles the completed surface,
+            // rather than forcing each source line onto the prose grid.
+            headerHeight: theme.baseline,
             padding: EdgeInsets.symmetric(
               horizontal: theme.renderedBase * 0.9,
-              vertical: theme.baseline / 2,
+              vertical: theme.codeLine / 2,
             ),
             // Its own ground is enough to say what it is; a border as well
             // would be the same signal twice, and a border has a height.
@@ -255,6 +278,7 @@ class _BlockView extends StatelessWidget {
           blocks: blocks,
           theme: theme,
           composer: composer,
+          codeHighlighter: codeHighlighter,
           keys: keys,
           matchKeys: matchKeys,
           offset: offset,
@@ -265,6 +289,7 @@ class _BlockView extends StatelessWidget {
           list: block as ListBlock,
           theme: theme,
           composer: composer,
+          codeHighlighter: codeHighlighter,
           keys: keys,
           matchKeys: matchKeys,
           offset: offset,
@@ -410,6 +435,7 @@ class _Quote extends StatelessWidget {
   final List<Block> blocks;
   final ReadingTheme theme;
   final InlineComposer composer;
+  final CodeHighlighter codeHighlighter;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
@@ -418,6 +444,7 @@ class _Quote extends StatelessWidget {
     required this.blocks,
     required this.theme,
     required this.composer,
+    required this.codeHighlighter,
     required this.keys,
     required this.matchKeys,
     required this.offset,
@@ -443,6 +470,7 @@ class _Quote extends StatelessWidget {
             blocks: blocks,
             theme: quoted,
             composer: composer,
+            codeHighlighter: codeHighlighter,
             keys: keys,
             matchKeys: matchKeys,
             startOffset: offset,
@@ -460,6 +488,7 @@ class _List extends StatelessWidget {
   final ListBlock list;
   final ReadingTheme theme;
   final InlineComposer composer;
+  final CodeHighlighter codeHighlighter;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
@@ -468,6 +497,7 @@ class _List extends StatelessWidget {
     required this.list,
     required this.theme,
     required this.composer,
+    required this.codeHighlighter,
     required this.keys,
     required this.matchKeys,
     required this.offset,
@@ -496,6 +526,7 @@ class _List extends StatelessWidget {
                 blocks: list.items[i].blocks,
                 theme: theme,
                 composer: composer,
+                codeHighlighter: codeHighlighter,
                 keys: keys,
                 matchKeys: matchKeys,
                 startOffset: itemOffset,

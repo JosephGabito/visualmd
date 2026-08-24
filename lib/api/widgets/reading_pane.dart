@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../application/use_cases/read_document.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/search/search_result.dart';
+import '../../presentation/code/code_highlighter.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../render/document_view.dart';
 import '../render/reading_theme.dart';
@@ -13,6 +14,7 @@ import '../theme/library_theme.dart';
 class ReadingPane extends StatefulWidget {
   final DocumentReading reading;
   final ReadingScale scale;
+  final CodeHighlighter codeHighlighter;
   final void Function(String href) onLink;
   final ValueChanged<Heading?> onActiveHeadingChanged;
   final List<TextMatch> matches;
@@ -22,6 +24,7 @@ class ReadingPane extends StatefulWidget {
     super.key,
     required this.reading,
     required this.scale,
+    this.codeHighlighter = const PlainCodeHighlighter(),
     required this.onLink,
     required this.onActiveHeadingChanged,
     this.matches = const [],
@@ -197,6 +200,7 @@ class ReadingPaneState extends State<ReadingPane> {
                   DocumentView(
                     content: reading.content,
                     theme: theme,
+                    codeHighlighter: widget.codeHighlighter,
                     anchorKeys: _keys,
                     matches: widget.matches,
                     activeMatch: widget.activeMatch,

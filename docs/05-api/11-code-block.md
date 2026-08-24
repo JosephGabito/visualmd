@@ -2,116 +2,111 @@
 
 ## Purpose and boundary
 
-`ReadableCodeBlock` renders fenced code so it can be read
-(`lib/api/widgets/code_block.dart`). It exists because prose and code want
-opposite things from a column.
+`ReadableCodeBlock` presents verbatim source as a quiet reference surface
+(`lib/api/widgets/code_block.dart`). Prose is the page speaking to the reader;
+code is supporting evidence. It is therefore smaller and more compact, while
+remaining selectable, searchable and exact.
 
-The reading column is sized for prose — about 66 characters, see
-[Reading Scale](../04-presentation/07-reading-scale.md) — and that is right for
-sentences. Code is not sentences. It is written in lines of its own length, and
-neither breaking them nor clipping them is harmless: a re-wrapped line changes
-what the code appears to say, and a clipped one hides it. So this block scrolls
-sideways instead.
-
-It owns layout and scrolling only. It does not colour code: syntax highlighting
-is a separate scope with its own entry in the
-[backlog](../07-roadmap/02-backlog.md).
+The widget owns the language header, local scrolling or wrapping, copying and
+the completed block's geometry. It does not parse fences or understand a
+grammar. The domain supplies `CodeBlock.code` and `CodeBlock.language`; the
+framework-free [Code Highlighting](../04-presentation/12-code-highlighting.md)
+contract supplies optional source ranges.
 
 ## Present wiring
 
-A plain widget, built by [Document View](12-document-view.md) for every
-`CodeBlock` in the document
-(`lib/api/render/document_view.dart`), which supplies the mono style
-and the padding and decoration derived from the theme and the palette — so a
-code block is themed like everything else.
+[Document View](12-document-view.md) builds one `ReadableCodeBlock` for every
+domain `CodeBlock` (`lib/api/render/document_view.dart`). The author's exact
+source paints immediately. `CodeHighlighter.highlight` runs asynchronously;
+when valid tokens arrive, [Inline Composer](13-inline-composer.md) divides the
+same source into styled ranges without replacing any character
+(`lib/api/render/inline_composer.dart`).
 
-It is laid out at `wideWidth` rather than `proseWidth`
-(`lib/api/render/document_view.dart`): code is given about a third more
-room than prose before it has to scroll at all.
+The header is one prose beat high. It shows a human language name and two icon
+actions with tooltips and semantics:
 
-The `SizedBox` around each block is a fixed width, not a maximum, so the code
-block is a band across the page rather than a label wrapped around its shortest
-line (`lib/api/render/document_view.dart`).
+- **Wrap long lines** changes only this block. Off is the default because a
+  wrapped line can resemble source indentation. Turning it on removes local
+  horizontal scrolling and lets the source reflow.
+- **Copy code** sends the exact source to the clipboard, including tabs, blank
+  lines and trailing spaces. A check briefly confirms completion.
 
-**It sits on the beat, and it has no border.** Each line of code is set to
-exactly one beat (`lib/api/render/reading_theme.dart`,
-`lib/api/render/reading_theme.dart`) and the padding
-is half a beat above and below
-(`lib/api/render/document_view.dart`), so the whole block comes to a
-whole number of beats and the prose beneath it resumes on the grid — see
-[Vertical Rhythm](../04-presentation/11-vertical-rhythm.md). The border it used
-to carry is gone (`lib/api/render/document_view.dart`): the block's own
-ground already says what it is, so a border was a second signal, and it had a
-height that broke the grid.
+Unwrapped source lives in a horizontal `SingleChildScrollView` with a subdued
+four-pixel scrollbar. The page itself never gains horizontal overflow
+(`lib/api/widgets/code_block.dart`). Code receives `wideWidth`, about a third
+more room than prose, before local scrolling begins
+(`lib/api/render/reading_theme.dart`).
 
-The block itself (`lib/api/widgets/code_block.dart`):
+The colour surface uses one signal with two tones. On a dark theme the code
+body is darker than its header; on a light theme it is brighter. The header
+uses `codeBackground`, while `ReadingTheme.codeBodyBackground` derives the
+body in the correct luminance direction (`lib/api/render/reading_theme.dart`).
+There is no border or shadow.
 
-- A `Container` with the decoration it was given, clipped to its rounded
-  corners so a scrolled line does not spill past the border
-  (`lib/api/widgets/code_block.dart`).
-- A `Scrollbar` over a horizontal `SingleChildScrollView`
-  (`lib/api/widgets/code_block.dart`). `thumbVisibility` is true because
-  the bar is the only immediate sign that there is more line to the right.
-- `Text` with `softWrap: false` — the rule the whole widget exists to keep.
+Geist Mono is measured and normalised before it is set. Source letters are
+three logical pixels smaller than prose: 15 px on a 22 px line at the
+comfortable 18 px reading size
+(`lib/presentation/theme/reading_scale.dart`). The complete body is then
+rounded to the prose grid and the small correction shared above and below the
+source. Code stays internally dense while the paragraph after it returns in
+phase (`lib/api/widgets/code_block.dart`).
 
-The fence's own trailing newline was already stripped by the parser, so it does
-not render as a blank final line
-(`lib/infrastructure/markdown/markdown_document_parser.dart`).
-
-Selection is left to the reading pane's `SelectionArea`
-(`lib/api/widgets/reading_pane.dart`); the text carries only its own
-selection colour so a highlighted line still reads against the block's
-background (`lib/api/widgets/code_block.dart`). Nesting a second
-`SelectionArea` here would create a competing selection registrar.
-
-Inline code stays a run inside its surrounding role. `inlineCodeFor(base)`
-keeps the mono face while scaling relative to a paragraph, heading or table
-cell (`lib/api/render/inline_composer.dart`,
-`lib/api/render/reading_theme.dart`).
+Search and syntax use different channels. Syntax supplies foreground colour;
+the current search match supplies the background. Both therefore survive on
+the same `TextSpan`, and selection remains owned by the reading pane's single
+`SelectionArea` (`lib/api/render/inline_composer.dart`).
 
 ## Inputs and outputs
 
-| In | Type | From |
-|----|------|------|
-| `source` | `String` | `CodeBlock.code`, verbatim |
-| `textStyle` | `TextStyle` | `ReadingTheme.code` — mono at 0.94 of body, one beat per line, slashed zero |
-| `padding` | `EdgeInsets` | Half a beat vertically (`lib/api/render/document_view.dart`) |
-| `decoration` | `Decoration` | `codeBackground` and an 8 px radius, no border (`lib/api/render/document_view.dart`) |
+| In | Meaning |
+|----|---------|
+| `source` | Exact source text; the authority for painting and copying |
+| `language` | First word of the fence info string, or null |
+| `highlighter` / `scheme` | Optional semantic source ranges for light or dark ground |
+| `spansFor` | Merges ranges with search without surrendering source ownership |
+| `textStyle` | Compact Geist Mono style from `ReadingTheme.code` |
+| `bodyBackground` | Derived second tone beneath source |
+| `beat` / `headerHeight` | Prose rhythm used to reconcile the complete surface |
+| `padding` / `decoration` | Theme-bound internal space and rounded header surface |
 
-Out: a widget. It reports nothing and calls nothing back — a code block is
-read, not interacted with.
+Out: one selectable widget. The only external side effect is an explicit
+clipboard write after the reader invokes Copy.
 
 ## Events
 
-None today. When a fence-language contributor lands (see the
-[plugin architecture](../07-roadmap/01-plugin-architecture.md)), it would be
-consulted one level out, in `DocumentView`'s `CodeBlock` case, with this plain
-scrolling block as the fallback when nothing claims the language.
+None. Wrap and copied confirmation are local ephemeral state. No domain event
+is emitted because reading or copying an example does not mutate the library.
 
 ## Lifecycle
 
-One `ScrollController` per block, created with the state and disposed with it
-(`lib/api/widgets/code_block.dart`). Blocks live as long as the document
-they are in; changing document rebuilds them.
+One state object and horizontal `ScrollController` live with each rendered
+block (`lib/api/widgets/code_block.dart`). A source, language, scheme or
+highlighter change invalidates the pending request and starts another. A
+request number prevents a late result from an earlier document repainting the
+new one. Copy confirmation owns a short timer; both timer and controller are
+disposed with the block.
+
+The application creates one `ShikiCodeHighlighter` at composition and shares
+it across blocks so grammars and themes remain cached (`lib/main.dart`).
 
 ## Failure and recovery
 
-- A block shorter than the column simply does not scroll — there is nothing to
-  scroll to, and the bar stays out of the way
-  (`test/presentation/code_block_test.dart`).
-- A fence with no language, or an unknown one, renders the same way: this
-  widget never looks at the language.
-- Very long lines have no upper bound; they scroll as far as they need.
+Highlighting is enhancement, never a precondition. A plain fence, unknown
+language, failed grammar, thrown contributor or invalid source range leaves
+the exact plain source visible (`lib/api/widgets/code_block.dart`,
+`lib/api/highlighting/shiki_code_highlighter.dart`). A package update cannot
+insert, remove or reorder text because ranges are accepted only when they
+match the corresponding source substring.
 
-Guarded by `test/presentation/code_block_test.dart`: a long line can be
-scrolled to its end rather than being cut off, code is never re-wrapped, code is
-never re-punctuated, and a short block still fills its column. That the block
-comes to whole beats is held one level out, in
-`test/presentation/document_view_test.dart`.
+A short line has no scroll extent. A long line remains reachable. Wrapped
+source grows vertically and the rhythmic body reconciles its new shaped
+height before returning to prose. These contracts, keyboard access, copying,
+semantics, theme direction and fallback are held by
+`test/presentation/code_block_test.dart`.
 
 ## Transition
 
-Code now runs wider than prose, but only to 1.35 × the measure
-(`lib/api/render/reading_theme.dart`). On a large screen there is room to
-go further, and the factor is a judgement rather than a measurement. That, and
-syntax highlighting, are the two things this widget is shaped to receive.
+Diagram fences such as `mermaid` need a different block renderer, not special
+cases in this text widget. The existing `CodeHighlighter` proves one narrow
+typed contributor; a general plugin registry should wait until more real
+contributors reveal the common shape.

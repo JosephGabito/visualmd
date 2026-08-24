@@ -1,6 +1,7 @@
 # Workspaces
 __workspace
 
+tmp
 # Local environment and signing credentials
 .env
 .env.*

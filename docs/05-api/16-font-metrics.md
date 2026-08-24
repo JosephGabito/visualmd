@@ -27,7 +27,7 @@ Three tables, all read from each font's `OS/2` table rather than estimated:
 | Alegreya | 0.452 | 0.637 | 0.345 |
 | Literata | 0.507 | 0.700 | 0.308 |
 | Inter | 0.546 | 0.728 | 0.244 |
-| JetBrains Mono | 0.550 | 0.730 | 0.300 |
+| Geist Mono | 0.530 | 0.710 | 0.295 |
 
 Citations: `lib/api/theme/font_metrics.dart`, `lib/api/theme/font_metrics.dart`, `lib/api/theme/font_metrics.dart`.
 

@@ -40,7 +40,7 @@ Five things establish the flow and return displayed departures to whole beats:
 | Body relationships | Ordinary blocks get one beat; consecutive spaced paragraphs get Lupton's quieter half-beat; indented paragraphs get no gap | `lib/api/render/reading_theme.dart` |
 | A heading's own lines | Natural display leading: tight at `h1`, opening gradually toward the body at `h6` | `lib/api/render/reading_theme.dart` |
 | The complete heading block | Its shaped height and outgoing half-beat are reconciled together; only the grid correction remains inside the heading | `lib/api/render/document_view.dart` |
-| A code block | One beat per line of code, half a beat of padding above and below | `lib/api/render/reading_theme.dart`, `lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart` |
+| A code block | Compact source lines at 72 percent of a beat; the completed coloured surface rounds to the prose grid | `lib/api/render/reading_theme.dart`, `lib/api/widgets/code_block.dart` |
 | A horizontal rule | Its complete box is one beat | `lib/api/render/document_view.dart` |
 
 A heading is reconciled only after Flutter has shaped the complete block. Its
@@ -68,10 +68,12 @@ and push itself off the beat. `strutFor` fixes paragraph lines to the body box
 (`lib/api/render/document_view.dart`). Headings intentionally opt out: their
 complete shaped block is reconciled instead.
 
-Two knock-on decisions follow from the rule rather than from taste. A code
-block has no border, because its own ground already says what it is and a
-border is both a second signal and a height that breaks the grid
-(`lib/api/render/document_view.dart`). A tight list has no space
+Two knock-on decisions follow from the rule rather than from taste. Code lines
+must be allowed a denser texture than prose, so the completed body reconciles
+its shaped height instead of forcing every source line onto the prose beat
+(`lib/api/widgets/code_block.dart`). The block has no border, because its own
+ground already says what it is and a border is both a second signal and a
+height that breaks the grid (`lib/api/render/document_view.dart`). A tight list has no space
 between its items at all, so its lines follow one another exactly as the lines
 of a paragraph do; a loose one gets a whole beat
 (`lib/api/render/document_view.dart`).
@@ -112,7 +114,9 @@ a scaled mixed-script heading for clipping and phase
 (`test/presentation/document_view_test.dart`). The complete rhythm test
 then renders multiline headings, code, a rule and a tight list between
 paragraphs and asserts every later paragraph's offset is a whole number of
-beats (`test/presentation/document_view_test.dart`).
+beats (`test/presentation/document_view_test.dart`). The code-block suite also
+measures the compact source line and proves both scrolled and wrapped surfaces
+finish on a whole prose beat (`test/presentation/code_block_test.dart`).
 
 ## Transition
 

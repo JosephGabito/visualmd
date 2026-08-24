@@ -97,6 +97,18 @@ mixed-script line before the renderer measures it.
 
 ## Technical-document systems
 
+[Geist Mono](https://github.com/vercel/geist-font) was designed for code
+editors, diagrams, terminals and other interfaces where code is represented.
+That is the medium Visual MD asks it to serve. Its bundled variable font is
+licensed under the SIL Open Font License 1.1, and its measured x-height is
+0.530 em. Visual MD normalises that metric before applying the code scale, so
+the decision to set dense source three logical pixels below prose remains
+independent of the face chosen. At the comfortable reading scale that is a
+15 px face on a 22 px line, against prose at 18 px. The 13 px floor protects
+punctuation when the reader chooses the smallest text setting. This absolute
+scale expresses the project-specific hierarchy: paragraphs address the reader,
+while code is a reference or example consulted from that prose.
+
 [Primer](https://primer.style/product/primitives/typography/) sets inline code
 at 0.9285 em so it inherits the role around it without shouting over the prose.
 The [CSS Text Decoration specification](https://www.w3.org/TR/css-text-decor-4/)

@@ -93,7 +93,7 @@ coverage of the raw fallback remains listed in [Invariants](04-invariants.md).
 
 Images are carried but not resolved (`ImageRun` holds a `source` nobody reads
 yet); relative image loading is in the
-[backlog](../07-roadmap/02-backlog.md). If syntax highlighting arrives,
-`CodeBlock.language` is already the field it needs, and the colouring belongs
-in the renderer rather than here — a highlighted token is not a domain
-concept.
+[backlog](../07-roadmap/02-backlog.md). Syntax highlighting now reads
+`CodeBlock.language` through the presentation contract and colours source in
+the renderer. No token moved into this model: a highlighted range is still not
+a domain concept.

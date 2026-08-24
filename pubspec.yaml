@@ -16,6 +16,7 @@ dependencies:
   window_manager: ^0.5.2
   path_provider: ^2.1.6
   markdown: ^7.3.1
+  shiki_flutter: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -31,7 +32,7 @@ flutter:
     # the app's licence page.
     - assets/fonts/LICENSE-Literata.txt
     - assets/fonts/LICENSE-Inter.txt
-    - assets/fonts/LICENSE-JetBrainsMono.txt
+    - assets/fonts/LICENSE-GeistMono.txt
     - assets/fonts/LICENSE-Alegreya.txt
 
   # Bundled rather than fetched: a reader should draw text with no network,
@@ -53,6 +54,6 @@ flutter:
         - asset: assets/fonts/Alegreya.ttf
         - asset: assets/fonts/Alegreya-Italic.ttf
           style: italic
-    - family: JetBrains Mono
+    - family: Geist Mono
       fonts:
-        - asset: assets/fonts/JetBrainsMono.ttf
+        - asset: assets/fonts/GeistMono.ttf

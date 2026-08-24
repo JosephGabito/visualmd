@@ -328,6 +328,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.6.0"
+  oniguruma_dart:
+    dependency: transitive
+    description:
+      name: oniguruma_dart
+      sha256: b861147f0c23251bbb6276adb50f09f6794aa9dd662be42bf154646e0f68bc19
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   package_config:
     dependency: transitive
     description:
@@ -464,6 +472,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.2"
+  shiki_flutter:
+    dependency: "direct main"
+    description:
+      name: shiki_flutter
+      sha256: "486b00ae4e26e6021b9be270b6bfad419b4dddf5ba328ab7e6256c4e0f405921"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
+  shiki_flutter_dart_engine:
+    dependency: transitive
+    description:
+      name: shiki_flutter_dart_engine
+      sha256: "6af4d3c5d8425938a47b4f4ce4c2471837c64083ac40c9da9d00e3519a96c2df"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
+  shiki_flutter_engine_interface:
+    dependency: transitive
+    description:
+      name: shiki_flutter_engine_interface
+      sha256: "727c2a325f8349219aa883a3cb6ca96537955dc9a29ed04c705e374294556f3d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   sky_engine:
     dependency: transitive
     description: flutter

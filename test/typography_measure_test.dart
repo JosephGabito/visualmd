@@ -40,7 +40,7 @@ void main() {
       'assets/fonts/Inter.ttf',
       'assets/fonts/Inter-Italic.ttf',
     ]);
-    await loadFont('JetBrains Mono', ['assets/fonts/JetBrainsMono.ttf']);
+    await loadFont('Geist Mono', ['assets/fonts/GeistMono.ttf']);
   });
 
   test('does fontWeight reach a variable font?', () {
@@ -139,7 +139,7 @@ void main() {
   });
 
   test('how do the three faces compare at the same size?', () {
-    for (final family in ['Literata', 'Inter', 'JetBrains Mono']) {
+    for (final family in ['Literata', 'Inter', 'Geist Mono']) {
       final style = TextStyle(fontFamily: family, fontSize: 18);
       final painter = TextPainter(
         text: TextSpan(text: 'Handgloves', style: style),

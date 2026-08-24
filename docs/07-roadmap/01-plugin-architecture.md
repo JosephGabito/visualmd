@@ -6,7 +6,8 @@ those attachment points concrete types, so contributors can discover them in
 code and the dependency direction remains visible.
 
 This document records a direction, not an implemented framework. The current
-application has no plugin loader, event bus, manifest, or public plugin API.
+application has one narrow typed contributor, `CodeHighlighter`, but no plugin
+loader, event bus, manifest, registry, or public plugin API.
 
 ## Three kinds of plugin
 
@@ -34,11 +35,12 @@ the read path does not depend on subscriber order.
 ### Contributors
 
 Some extensions must *return* a value into the render path — a widget for a
-fenced `mermaid` block, highlighted spans for a `dart` block. Those need a
-request-and-response contract rather than a notification. A contributor implements a typed interface and
-registers into an extension point keyed by what it handles, for example a
-fence-language block renderer keyed by language. The kernel calls the first
-contributor that claims the key and falls back to its own rendering.
+fenced `mermaid` block, or syntax ranges for a `dart` block. Those need a
+request-and-response contract rather than a notification. `CodeHighlighter`
+is the first concrete example: the composition root injects one implementation
+and the kernel falls back to plain source when it returns null
+(`lib/presentation/code/code_highlighter.dart`). Registration and competing
+contributors do not exist yet.
 
 ### UI slots
 
@@ -75,12 +77,12 @@ The first capabilities should use explicit, minimal extension points. A shared
 plugin contract can be extracted only after several real uses reveal which
 parts are genuinely common.
 
-First planned plugins:
+First capabilities:
 
 | Plugin | Kind | Hooks |
 |--------|------|-------|
 | Recents in the shelf | Reactor + slot | `DocumentOpened` → recent list; rendered in the shelf-panel slot |
-| Syntax highlighting | Contributor | fence language → highlighted spans; plain code remains the fallback |
+| Syntax highlighting | Contributor, implemented | fence language → semantic source ranges; plain code remains the fallback |
 
 ## Where hooks attach today
 
@@ -97,9 +99,10 @@ Evidence for each attachment point in the current kernel:
 - **Shelf-panel slot** — the shelf column is laid out in
   `lib/api/screens/reader_screen.dart`; a slot could add tabs beside
   `ShelfPanel` there.
-- **Reading-pane block contributors** — every document is rendered by one
-  `DocumentView` in `lib/api/render/document_view.dart`; a contributor
-  would take over fenced blocks inside that render.
+- **Code highlighting contributor** — every document is rendered by one
+  `DocumentView`, which already consults the injected `CodeHighlighter` for
+  fenced source (`lib/api/render/document_view.dart`). A future block-widget
+  contributor would be a separate contract for fences such as `mermaid`.
 - **Document footer slot** — after `DocumentView`, before the reading column
   closes, in `lib/api/widgets/reading_pane.dart`.
 - **Top-bar actions slot** — the action row in `_TopBar`,

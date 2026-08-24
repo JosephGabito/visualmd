@@ -49,12 +49,14 @@ see, never a leap. The last entry is `1.0`, and that is the point: **no
 heading may be smaller than the text it heads**. At body size a `h6` leans on
 weight and tracking instead (`lib/api/render/reading_theme.dart`).
 
-Code sits a touch under the body at 0.94, and only a touch: the old reason for
-shrinking it — a mono face reads larger at the same nominal size — is handled
-by matching x-heights now, leaving only the wish that a code run should not
-shout over the sentence carrying it
-(`lib/presentation/theme/reading_scale.dart`). Table text is smaller
-again, so a table stays a table
+Code sits at 82 percent of the body's perceived letter size and each source
+line at 72 percent of a prose line. Source is denser than prose, and the
+leading tightens slightly more than the letters: code becomes a compact
+reference texture rather than smaller glyphs floating in prose-sized boxes.
+Both reductions happen only after every bundled face is matched by x-height.
+They are therefore deliberate hierarchy rather than an accidental consequence
+of one mono face rendering larger or smaller at the same nominal size
+(`lib/presentation/theme/reading_scale.dart`). Table text uses the same compact scale so a table stays a table
 (`lib/presentation/theme/reading_scale.dart`).
 
 ### How one paragraph is told from the next
@@ -83,7 +85,7 @@ traditional quad, a multiple of the type rather than a fixed distance
 | `measure` | `double` | 66 characters |
 | `marking` | `ParagraphMarking` | `spaced` |
 
-Out: `heading(level)`, `indent`, `code`, `tableText` — all derived — plus the
+Out: `heading(level)`, `indent`, `code`, `codeLineHeight`, `tableText` — all derived — plus the
 55-character `minimumReadableMeasure` used when a component has to protect a
 text column.
 `ReadingScale.comfortable` is the default

@@ -20,7 +20,7 @@ void main() {
       'Alegreya': 'assets/fonts/Alegreya.ttf',
       'Literata': 'assets/fonts/Literata.ttf',
       'Inter': 'assets/fonts/Inter.ttf',
-      'JetBrains Mono': 'assets/fonts/JetBrainsMono.ttf',
+      'Geist Mono': 'assets/fonts/GeistMono.ttf',
     }.entries) {
       await (FontLoader(
         entry.key,

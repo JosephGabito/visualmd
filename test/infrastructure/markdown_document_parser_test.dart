@@ -115,6 +115,20 @@ void main() {
       expect(code.code, 'final x = 1;');
     });
 
+    test('a tilde fence carries the same language contract', () {
+      final code = single<CodeBlock>('~~~python\nprint("hello")\n~~~');
+      expect(code.language, 'python');
+      expect(code.code, 'print("hello")');
+    });
+
+    test('only the first word of an info string names the language', () {
+      final code = single<CodeBlock>(
+        '```dart title="record.dart" linenos=true\nfinal x = 1;\n```',
+      );
+      expect(code.language, 'dart');
+      expect(code.code, 'final x = 1;');
+    });
+
     test('has no language when the fence names none', () {
       expect(single<CodeBlock>('```\nplain\n```').language, isNull);
     });
@@ -122,6 +136,20 @@ void main() {
     test('keeps its own blank lines but not the fence\'s closing newline', () {
       final code = single<CodeBlock>('```\nfirst\n\nlast\n```');
       expect(code.code, 'first\n\nlast');
+    });
+
+    test('keeps tabs, trailing spaces, and shorter inner fences verbatim', () {
+      final code = single<CodeBlock>(
+        '````markdown\nalpha\tbeta  \n```dart\nvalue\n```\n````',
+      );
+      expect(code.language, 'markdown');
+      expect(code.code, 'alpha\tbeta  \n```dart\nvalue\n```');
+    });
+
+    test('an unclosed fence safely owns the rest of the document', () {
+      final code = single<CodeBlock>('```php\n<?php echo "still visible";');
+      expect(code.language, 'php');
+      expect(code.code, '<?php echo "still visible";');
     });
 
     test('an indented block is code too', () {

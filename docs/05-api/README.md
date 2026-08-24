@@ -21,7 +21,7 @@ which lets the same reader UI run on desktop and the web
 | [Anchored Menu](08-anchored-menu.md) | The menu that opens from its trigger, and the motion it uses |
 | [Pressable](09-pressable.md) | The press behaviour every control in the chrome shares |
 | [Collapsible Panel](10-collapsible-panel.md) | How a side panel slides out of the way instead of vanishing |
-| [Code Block](11-code-block.md) | Why fenced code scrolls sideways instead of being clipped |
+| [Code Block](11-code-block.md) | Exact source, syntax colour, wrap, copy, overflow and compact rhythm |
 | [Document View](12-document-view.md) | The renderer: per-block widths and the vertical rhythm |
 | [Inline Composer](13-inline-composer.md) | Runs into spans, with the punctuation set on the way past |
 | [Reading Theme](14-reading-theme.md) | Every style and gap the page is set with, derived once |
