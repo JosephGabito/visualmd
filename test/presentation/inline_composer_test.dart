@@ -486,7 +486,7 @@ void main() {
   });
 
   testWidgets(
-    'inline code remains selectable text with strong colour and a quiet underline',
+    'inline code remains selectable text and never borrows the link underline',
     (tester) async {
       await makeComposer(tester);
       final span =
@@ -497,16 +497,13 @@ void main() {
       expect(span.toPlainText(), 'DocumentOutline.parse');
       expect(span.style!.fontFamily, theme.code.fontFamily);
       expect(span.style!.backgroundColor, isNull);
-      expect(span.style!.decoration, TextDecoration.underline);
+      expect(span.style!.decoration, TextDecoration.none);
       expect(
         ThemePalette.contrastRatio(span.style!.color!, theme.palette.paper),
         greaterThanOrEqualTo(ThemePalette.minimumTextContrast),
       );
-      expect(
-        span.style!.decorationColor,
-        theme.palette.muted.withValues(alpha: 0.4),
-      );
-      expect(span.style!.decorationThickness, 1.25);
+      expect(span.style!.decorationColor, isNull);
+      expect(span.style!.decorationThickness, isNull);
     },
   );
 
@@ -718,18 +715,81 @@ void main() {
 
   testWidgets('a link reports where it points when tapped', (tester) async {
     await makeComposer(tester);
+    final spans = composer.compose([
+      const LinkRun(href: 'guide/intro.md', children: [TextRun('the guide')]),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(home: Text.rich(TextSpan(children: spans))),
+    );
+
+    final text = find.byType(RichText);
+    await tester.tapAt(tester.getTopLeft(text) + const Offset(4, 10));
+    await tester.pump();
+    expect(tapped, ['guide/intro.md']);
+  });
+
+  testWidgets('a link adds only its two interaction signals', (tester) async {
+    await makeComposer(tester);
+    const base = TextStyle(
+      color: Color(0xFF123456),
+      fontSize: 19,
+      height: 1.6,
+      fontWeight: FontWeight.w700,
+      fontStyle: FontStyle.italic,
+    );
     final span =
         composer.compose([
-              const LinkRun(
-                href: 'guide/intro.md',
-                children: [TextRun('the guide')],
-              ),
-            ]).single
+              const LinkRun(href: '/guide', children: [TextRun('the guide')]),
+            ], style: base).single
             as TextSpan;
+    final leaf = span.children!.single as TextSpan;
 
-    expect(span.style ?? (span.children!.single as TextSpan).style, isNotNull);
-    (span.recognizer! as TapGestureRecognizer).onTap!();
-    expect(tapped, ['guide/intro.md']);
+    expect(leaf.style!.color, theme.palette.accent);
+    expect(leaf.style!.decoration, TextDecoration.underline);
+    expect(
+      leaf.style!.decorationColor,
+      theme.palette.accent.withValues(alpha: 0.4),
+    );
+    expect(leaf.style!.fontSize, base.fontSize);
+    expect(leaf.style!.height, base.height);
+    expect(leaf.style!.fontWeight, base.fontWeight);
+    expect(leaf.style!.fontStyle, base.fontStyle);
+  });
+
+  testWidgets('the visible words are an actionable link for accessibility', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final semantics = tester.ensureSemantics();
+    final spans = composer.compose([
+      const LinkRun(
+        href: '/guide',
+        title: 'Advisory title',
+        children: [
+          TextRun('the '),
+          MarkedRun(InlineMark.strong, [TextRun('visible')]),
+          TextRun(' guide'),
+        ],
+      ),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(home: Text.rich(TextSpan(children: spans))),
+    );
+
+    final paragraph = tester.getSemantics(find.byType(RichText));
+    final link = paragraph
+        .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+        .single;
+    expect(
+      link,
+      matchesSemantics(
+        label: 'the visible guide',
+        textDirection: TextDirection.ltr,
+        isLink: true,
+        hasTapAction: true,
+      ),
+    );
+    semantics.dispose();
   });
 
   testWidgets('a link title never replaces or invalidates its visible label', (
@@ -748,6 +808,23 @@ void main() {
 
     expect(span.toPlainText(), 'titled link');
     expect(span.semanticsLabel, isNull);
+  });
+
+  testWidgets('a link owns the typographic glyphs the reader can see', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final span =
+        composer.compose([
+              const LinkRun(
+                href: '/guide',
+                children: [TextRun('"guide"---now')],
+              ),
+            ]).single
+            as TextSpan;
+
+    expect(span.toPlainText(), '“guide”—now');
+    expect(span.getSemanticsInformation().single.text, '“guide”—now');
   });
 
   testWidgets('links keep the typographic role around them', (tester) async {

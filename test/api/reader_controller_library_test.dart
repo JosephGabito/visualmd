@@ -378,4 +378,25 @@ void main() {
     expect(target, isA<DocumentLink>());
     expect((target! as DocumentLink).id, DocumentId(alphaId, 'guide.md'));
   });
+
+  test(
+    'link targets keep anchor, document, and external intent distinct',
+    () async {
+      await controller.addFolder(alpha);
+      await controller.openDocument(DocumentId(alphaId, 'README.md'));
+
+      final anchor = controller.resolveLink('#setup')! as AnchorLink;
+      final document =
+          controller.resolveLink('guide.md#details')! as DocumentLink;
+      final external =
+          controller.resolveLink('https://example.com/guide')! as ExternalLink;
+
+      expect(anchor.anchor, 'setup');
+      expect(document.id, DocumentId(alphaId, 'guide.md'));
+      expect(document.anchor, 'details');
+      expect(external.url, 'https://example.com/guide');
+      expect(controller.resolveLink(''), isNull);
+      expect(controller.resolveLink('missing.md'), isNull);
+    },
+  );
 }

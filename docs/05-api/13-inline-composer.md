@@ -32,7 +32,7 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 | Run | Becomes |
 |-----|---------|
 | `TextRun` | A `TextSpan` whose text has been set (`lib/api/render/inline_composer.dart`) |
-| `CodeRun` | A selectable `InlineCodeSpan` in the surrounding role, set verbatim in contrast-safe accent mono with a translucent muted underline (`lib/api/render/inline_composer.dart`) |
+| `CodeRun` | A selectable `InlineCodeSpan` in the surrounding role, set verbatim in contrast-safe accent mono and never underlined (`lib/api/render/inline_composer.dart`) |
 | `MarkedRun` | Italic, weight 700, or one inherited-ink line through the text — one signal for each meaning (`lib/api/render/inline_composer.dart`) |
 | `LinkRun` | `linkFor(base)`, which preserves the complete heading, table or marked style and adds only link colour, underline and interaction (`lib/api/render/inline_composer.dart`) |
 | `ImageRun` | Its alt text in `muted`; images are not resolved yet, and the alt is what the author meant the reader to get either way (`lib/api/render/inline_composer.dart`) |
@@ -42,9 +42,10 @@ A link or code run keeps its full context. A link in an `h2` remains an `h2`,
 a link in a table keeps lining tabular figures, and inline code in a heading
 steps one logical pixel below that heading instead of collapsing to body-code
 size
-(`lib/api/render/reading_theme.dart`). Code is never promoted to an
-embedded widget: its muted underline is only a painted decoration, while
-the text remains in the paragraph's selectable, copyable and reflowable span tree.
+(`lib/api/render/reading_theme.dart`). Code is never promoted to an embedded
+widget: the text remains in the paragraph's selectable, copyable and reflowable
+span tree. Mono and code colour identify it; reserving the underline for actual
+links keeps that interaction promise unambiguous.
 Even an unbroken identifier stays in that flow and wraps inside a narrow
 reading column (`test/presentation/inline_composer_test.dart`).
 The explicit span type also stops widow binding from rewriting source text at
@@ -61,11 +62,13 @@ assistive technology receive the line itself
 
 A Markdown link title remains domain data, but it is not used as the Flutter
 span's semantics label. A semantics label replaces visible text for assistive
-technology, while the link title is only advisory; Flutter also forbids adding
-one to a child-only `TextSpan`. The visible link text therefore remains its
-accessible label (`lib/api/render/inline_composer.dart`), guarded with
-a titled-link regression at
-`test/presentation/inline_composer_test.dart`.
+technology, while the link title is only advisory. `_LinkTextSpan` instead
+presents the complete recursive label as one logical range: nested code,
+strength and emphasis still paint independently, but hit testing and semantics
+own the whole phrase. The visible words form one link node with a tap action,
+and a real pointer tap reaches the same callback
+(`lib/api/render/inline_composer.dart`,
+`test/presentation/inline_composer_test.dart`).
 
 Composition advances by extended grapheme cluster rather than UTF-16 code
 unit. Search and syntax boundaries that land inside a combining sequence,

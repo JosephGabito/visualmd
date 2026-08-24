@@ -51,7 +51,10 @@ Relative links are resolved from the current `DocumentId`. Because resolution
 keeps its `LibraryRootId`, the candidate lookup cannot cross into a second root
 with the same path (`lib/api/reader_controller.dart`,
 `lib/domain/library/document_id.dart`). Schemed URLs remain external and
-hash-only links remain anchors.
+hash-only links remain anchors. A relative document may carry a fragment; the
+controller resolves the path within the current root and keeps the fragment on
+the resulting `DocumentLink`. Empty and missing targets remain `null` rather
+than becoming accidental navigation (`lib/api/reader_controller.dart`).
 
 ## Preferences
 

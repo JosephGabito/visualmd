@@ -216,15 +216,12 @@ final class ReadingTheme {
     return code.copyWith(
       fontSize: FontMetrics.sizeFor(monoFamily, inlineSize),
       color: _contrastSafeAccent(palette),
-      // A decoration is ink, not geometry: this identifies a technical
-      // reference without padding the run or moving the paragraph off its
-      // beat. Its muted stroke supports the coloured text without repeating
-      // the same strong signal.
+      // Mono and the code colour already identify a technical token. An
+      // underline promises interaction, so it belongs to links alone.
       backgroundColor: null,
-      decoration: TextDecoration.underline,
-      decorationColor: palette.muted.withValues(alpha: 0.4),
-      // Flutter defines this as a multiplier of the face's own underline.
-      decorationThickness: 1.25,
+      decoration: TextDecoration.none,
+      decorationColor: null,
+      decorationThickness: null,
       height: base.height,
     );
   }

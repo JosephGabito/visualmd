@@ -350,6 +350,29 @@ full contrast. Visual MD therefore inherits colour, weight, style, size and
 leading and adds only `TextDecoration.lineThrough`; search background remains
 an independent paint layer (`lib/api/render/inline_composer.dart`).
 
+## Inline links
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#links) defines an inline
+link as visible link text followed immediately by a destination and an optional
+title. The title may be double quoted, single quoted or parenthesised; link
+components permit limited source-line separation but never a blank line. Link
+labels may carry other inline roles, while links themselves cannot nest. That
+grammar is the parser contract. Visual MD carries the resolved label,
+destination and advisory title as separate data, so the label alone remains
+reading text (`lib/domain/reading/content/inline.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+[WCAG technique G182](https://www.w3.org/WAI/WCAG22/Techniques/general/G182)
+uses an underline as the conventional non-colour cue for links, and
+[Link Purpose in Context](https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html)
+grounds that purpose in the visible link words and their context. Visual MD
+therefore gives links accent plus underline and exposes those same visible
+words as one actionable link to assistive technology. Inline code deliberately
+loses its former underline: mono and code colour already say “technical
+token,” while an underline should continue to mean “this can be followed”
+(`lib/api/render/reading_theme.dart`,
+`lib/api/render/inline_composer.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code
@@ -369,18 +392,13 @@ at 0.9285 em so it inherits the role around it without shouting over the prose.
 At Visual MD's comfortable 18 px scale that evidence lands close to a 17 px
 inline face. The reader records that decision as an absolute one-logical-pixel
 step from the surrounding role rather than retaining Primer's percentage.
-The [CSS Text Decoration specification](https://www.w3.org/TR/css-text-decor-4/)
-defines an underline as a line decoration painted with the text and treats any
-leak beyond its box as ink overflow rather than layout overflow. Flutter's
-[`decorationThickness`](https://api.flutter.dev/flutter/painting/TextStyle/decorationThickness.html)
-is a multiplier of the face's own underline. Visual MD therefore normalises
-the surrounding face to its measured letter size, subtracts one logical pixel,
-normalises Geist Mono from that target, and adds a translucent muted underline
-at 1.25 of the face's own stroke. It is a quiet technical signal that adds no
-box, padding or height. The text takes the theme accent; where that falls below
-WCAG's 4.5:1 threshold, it is mixed toward the theme's ink only until the
-threshold is met. The run remains real text, so symbols, paths and commands all
-select, copy and reflow as part of the sentence.
+Visual MD therefore normalises the surrounding face to its measured letter
+size, subtracts one logical pixel, and normalises Geist Mono from that target.
+The text takes the theme accent; where that falls below WCAG's 4.5:1 threshold,
+it is mixed toward the theme's ink only until the threshold is met. No box,
+padding, decoration or changed line height is added. The run remains real text,
+so symbols, paths and commands all select, copy and reflow as part of the
+sentence.
 
 ## Checklists
 

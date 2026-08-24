@@ -426,7 +426,7 @@ void main() {
                 '\n'
                 '## !!! ??? ——— …\n'
                 '\n'
-                '### **Marked** `code` and [a link](https://example.com)\n'
+                '### **Marked** `code` and [a link](https://example.com "Advisory title")\n'
                 '\n'
                 '### ***Combined*** and **strong with _nested voice_**\n'
                 '\n'

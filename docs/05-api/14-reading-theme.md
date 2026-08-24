@@ -79,9 +79,9 @@ says it is quoted; the colour is the second and last signal.
 adds only link signals. `inlineCodeFor(base)` measures the surrounding face,
 steps back one logical pixel, and normalises Geist Mono from that target, so
 headings and tables retain their hierarchy without a hidden percentage
-(`lib/api/render/reading_theme.dart`). Its translucent muted underline
-is painted at 1.25 of the face's own stroke inside the existing line box, so it
-does not change selectable flow or vertical rhythm. The text uses the accent;
+(`lib/api/render/reading_theme.dart`). Mono and its contrast-safe code colour
+already identify the technical token; it has no underline because that mark is
+reserved for content the reader can follow. The text uses the accent;
 if that is below 4.5:1 against paper, `_contrastSafeAccent` finds the smallest
 mix toward ink that meets the threshold.
 

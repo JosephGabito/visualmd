@@ -347,6 +347,83 @@ void main() {
     });
   });
 
+  group('inline links', () {
+    test('the title is optional domain data', () {
+      final paragraph = single<ParagraphBlock>(
+        'Read [untitled](/guide) beside [titled](/reference "Details").',
+      );
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links.map((link) => link.text), ['untitled', 'titled']);
+      expect(links.map((link) => link.href), ['/guide', '/reference']);
+      expect(links.map((link) => link.title), [null, 'Details']);
+      expect(paragraph.text, 'Read untitled beside titled.');
+    });
+
+    test('all three title delimiters resolve to the same value', () {
+      final paragraph = single<ParagraphBlock>(
+        '[double](/a "Title") [single](/b \'Title\') '
+        '[parentheses](/c (Title))',
+      );
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links.map((link) => link.title), ['Title', 'Title', 'Title']);
+    });
+
+    test('escapes and character references resolve inside href and title', () {
+      final link =
+          single<ParagraphBlock>(
+                r'[guide](/a\(b\)?q=&copy; "A \"title\" &copy;")',
+              ).content.single
+              as LinkRun;
+
+      expect(link.href, '/a(b)?q=%C2%A9');
+      expect(link.title, 'A "title" ©');
+      expect(link.text, 'guide');
+    });
+
+    test('components may span one source line but not a blank line', () {
+      final valid = single<ParagraphBlock>('[guide](/manual\n"Manual title")');
+      final link = valid.content.whereType<LinkRun>().single;
+      final invalid = parse('[guide](/manual\n\n"Not a title")');
+
+      expect(link.href, '/manual');
+      expect(link.title, 'Manual title');
+      expect(invalid.text, '[guide](/manual\n\n"Not a title")');
+      expect(
+        invalid.blocks
+            .whereType<ParagraphBlock>()
+            .expand((block) => block.content)
+            .whereType<LinkRun>(),
+        isEmpty,
+      );
+    });
+
+    test('nested inline roles remain inside the visible link text', () {
+      final link =
+          single<ParagraphBlock>(
+                '[read **important** *voice* and `code`](/guide)',
+              ).content.single
+              as LinkRun;
+
+      expect(link.text, 'read important voice and code');
+      expect(link.children.whereType<MarkedRun>(), hasLength(2));
+      expect(link.children.whereType<CodeRun>().single.text, 'code');
+    });
+
+    test('a link cannot contain another link, so the inner link wins', () {
+      final paragraph = single<ParagraphBlock>(
+        '[outer [inner](/inner)](/outer)',
+      );
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links, hasLength(1));
+      expect(links.single.href, '/inner');
+      expect(links.single.text, 'inner');
+      expect(paragraph.text, '[outer inner](/outer)');
+    });
+  });
+
   group('soft line breaks', () {
     test('source wrapping disappears into one word separator', () {
       final paragraph = single<ParagraphBlock>(
