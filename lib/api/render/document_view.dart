@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide TableCell;
+import 'package:flutter/rendering.dart';
 
 import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
@@ -145,10 +148,7 @@ class _BlockSequence extends StatelessWidget {
       if (i > 0 && ParagraphRules.separates(previous, block, marking)) {
         children.add(
           SizedBox(
-            height: theme.gapBefore(
-              headingLevel: block is HeadingBlock ? block.level : null,
-              afterHeading: previous is HeadingBlock,
-            ),
+            height: theme.gapBefore(afterHeading: previous is HeadingBlock),
           ),
         );
       }
@@ -222,15 +222,18 @@ class _BlockView extends StatelessWidget {
         return _matchTarget(
           KeyedSubtree(
             key: keys.putIfAbsent(anchor, GlobalKey.new),
-            child: Text.rich(
-              TextSpan(
-                children: composer.compose(
-                  content,
-                  style: theme.heading(level),
-                  offset: offset,
+            child: _RhythmicHeading(
+              beat: theme.baseline,
+              spaceAfter: theme.headingSpaceAfter,
+              child: Text.rich(
+                TextSpan(
+                  children: composer.compose(
+                    content,
+                    style: theme.heading(level),
+                    offset: offset,
+                  ),
                 ),
               ),
-              strutStyle: theme.strutFor(theme.heading(level)),
             ),
           ),
         );
@@ -325,6 +328,92 @@ class _BlockView extends StatelessWidget {
       matchKeys[index] = key;
     }
     return KeyedSubtree(key: key, child: child);
+  }
+}
+
+/// Lets display lines use their natural leading, then returns the completed
+/// heading to the running-text grid.
+///
+/// The unused fraction of the final beat sits above the heading. The fixed
+/// half-beat below it keeps the heading attached to the content it introduces;
+/// the following block therefore needs no separate gap.
+final class _RhythmicHeading extends SingleChildRenderObjectWidget {
+  final double beat;
+  final double spaceAfter;
+
+  const _RhythmicHeading({
+    required this.beat,
+    required this.spaceAfter,
+    required super.child,
+  });
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderRhythmicHeading(beat, spaceAfter);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderRhythmicHeading renderObject,
+  ) {
+    renderObject
+      ..beat = beat
+      ..spaceAfter = spaceAfter;
+  }
+}
+
+final class _RenderRhythmicHeading extends RenderShiftedBox {
+  _RenderRhythmicHeading(this._beat, this._spaceAfter, [RenderBox? child])
+    : super(child);
+
+  double _beat;
+  double get beat => _beat;
+  set beat(double value) {
+    if (_beat == value) return;
+    _beat = value;
+    markNeedsLayout();
+  }
+
+  double _spaceAfter;
+  double get spaceAfter => _spaceAfter;
+  set spaceAfter(double value) {
+    if (_spaceAfter == value) return;
+    _spaceAfter = value;
+    markNeedsLayout();
+  }
+
+  BoxConstraints _childConstraints(BoxConstraints constraints) =>
+      constraints.copyWith(minHeight: 0, maxHeight: double.infinity);
+
+  double _snappedHeight(double childHeight) =>
+      ((childHeight + spaceAfter) / beat).ceil() * beat;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final childSize = child?.getDryLayout(_childConstraints(constraints));
+    if (childSize == null) return constraints.smallest;
+    return constraints.constrain(
+      Size(childSize.width, _snappedHeight(childSize.height)),
+    );
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+
+    child.layout(_childConstraints(constraints), parentUsesSize: true);
+    size = constraints.constrain(
+      Size(child.size.width, _snappedHeight(child.size.height)),
+    );
+
+    final padding = math.max(0.0, size.height - child.size.height);
+    final trailing = math.min(spaceAfter, padding);
+    final childParentData = child.parentData! as BoxParentData;
+    childParentData.offset = Offset(0, padding - trailing);
   }
 }
 

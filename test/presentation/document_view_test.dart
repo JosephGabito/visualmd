@@ -29,11 +29,13 @@ void main() {
   });
 
   late Map<String, GlobalKey> keys;
+  late ReadingTheme renderedTheme;
 
   Future<void> pumpDocument(
     WidgetTester tester,
     List<Block> blocks, {
     double width = 1100,
+    TextScaler textScaler = TextScaler.noScaling,
   }) async {
     // Room for the measure: a narrow window clamps the column, which is its
     // own behaviour and not what these tests are about.
@@ -44,15 +46,23 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: libraryTheme(BuiltInThemes.paper),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+          child: child!,
+        ),
         home: Scaffold(
           body: SingleChildScrollView(
             child: SizedBox(
               width: width,
               child: Builder(
                 builder: (context) {
+                  renderedTheme = ReadingTheme.of(
+                    context,
+                    ReadingScale.comfortable,
+                  );
                   return DocumentView(
                     content: DocumentContent(blocks),
-                    theme: ReadingTheme.of(context, ReadingScale.comfortable),
+                    theme: renderedTheme,
                     anchorKeys: keys,
                   );
                 },
@@ -85,33 +95,97 @@ void main() {
     );
   });
 
-  testWidgets('a heading is given more room above it than a paragraph break', (
+  testWidgets('every heading belongs more closely to what it introduces', (
     tester,
   ) async {
-    await pumpDocument(tester, [
-      paragraph('First.'),
-      paragraph('Second.'),
-      const HeadingBlock(
-        level: 2,
-        content: [TextRun('A section')],
-        anchor: 'a-section',
-      ),
-      paragraph('Third.'),
-    ]);
+    final blocks = <Block>[];
+    for (var level = 1; level <= 6; level++) {
+      blocks
+        ..add(paragraph('Before h$level.'))
+        ..add(
+          HeadingBlock(
+            level: level,
+            content: [TextRun('Heading h$level')],
+            anchor: 'heading-h$level',
+          ),
+        )
+        ..add(paragraph('After h$level.'));
+    }
+    await pumpDocument(tester, blocks);
 
     double gapBetween(String above, String below) =>
         tester.getTopLeft(find.text(below)).dy -
         tester.getBottomLeft(find.text(above)).dy;
 
-    final betweenParagraphs = gapBetween('First.', 'Second.');
-    final aboveHeading = gapBetween('Second.', 'A section');
-    final belowHeading = gapBetween('A section', 'Third.');
+    for (var level = 1; level <= 6; level++) {
+      expect(
+        gapBetween('Before h$level.', 'Heading h$level'),
+        greaterThan(gapBetween('Heading h$level', 'After h$level.')),
+        reason: 'h$level belongs to the text it introduces',
+      );
+    }
+  });
 
-    expect(aboveHeading, greaterThan(betweenParagraphs * 1.5));
+  testWidgets('a multiline h1 uses display leading inside a reconciled block', (
+    tester,
+  ) async {
+    const title =
+        'A deliberately long level-one heading that wraps across several lines without turning each display line into a body-text beat';
+    await pumpDocument(tester, [
+      paragraph('Before.'),
+      const HeadingBlock(
+        level: 1,
+        content: [TextRun(title)],
+        anchor: 'long-title',
+      ),
+      paragraph('After.'),
+    ], width: 430);
+
+    final style = renderedTheme.heading(1);
+    final rendered = tester.getSize(find.text(title));
+    final lineHeight = style.fontSize! * style.height!;
+
+    expect(rendered.height, greaterThan(lineHeight * 2));
     expect(
-      aboveHeading,
-      greaterThan(belowHeading),
-      reason: 'a heading belongs to the text it introduces',
+      style.height,
+      lessThanOrEqualTo(1.15),
+      reason: 'wrapped display lines should read as one heading',
+    );
+  });
+
+  testWidgets('a scaled mixed-script heading returns prose to the beat', (
+    tester,
+  ) async {
+    const title =
+        'العربية والعناوين الطويلة — 日本語と中文 — remain complete when the reader enlarges the text';
+    await pumpDocument(
+      tester,
+      [
+        paragraph('Before.'),
+        const HeadingBlock(
+          level: 1,
+          content: [TextRun(title)],
+          anchor: 'mixed-script',
+        ),
+        paragraph('After.'),
+      ],
+      width: 430,
+      textScaler: const TextScaler.linear(1.6),
+    );
+
+    final first = tester.getTopLeft(find.text('Before.')).dy;
+    final after = tester.getTopLeft(find.text('After.')).dy;
+    final beats = (after - first) / renderedTheme.baseline;
+
+    expect(tester.takeException(), isNull);
+    expect(
+      (beats - beats.roundToDouble()).abs(),
+      lessThan(0.02),
+      reason: 'the shaped heading is reconciled after its real height is known',
+    );
+    expect(
+      tester.getTopLeft(find.text('After.')).dy,
+      greaterThan(tester.getBottomLeft(find.text(title)).dy),
     );
   });
 
@@ -164,6 +238,16 @@ void main() {
                         anchor: 'b',
                       ),
                       paragraph('Sixth.'),
+                      const HeadingBlock(
+                        level: 1,
+                        content: [
+                          TextRun(
+                            'A multiline title whose natural display leading is reconciled only after the complete heading has been laid out',
+                          ),
+                        ],
+                        anchor: 'multiline',
+                      ),
+                      paragraph('Seventh.'),
                     ]),
                     theme: theme!,
                     anchorKeys: keys,
@@ -179,7 +263,14 @@ void main() {
 
     final beat = theme!.baseline;
     final first = tester.getTopLeft(find.text('First.')).dy;
-    for (final label in ['Second.', 'Third.', 'Fourth.', 'Fifth.', 'Sixth.']) {
+    for (final label in [
+      'Second.',
+      'Third.',
+      'Fourth.',
+      'Fifth.',
+      'Sixth.',
+      'Seventh.',
+    ]) {
       final beats = (tester.getTopLeft(find.text(label)).dy - first) / beat;
       expect(
         (beats - beats.roundToDouble()).abs(),
