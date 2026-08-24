@@ -3,8 +3,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/api/render/document_view.dart';
 import 'package:visualmd/api/render/inline_composer.dart';
 import 'package:visualmd/api/render/reading_theme.dart';
+import 'package:visualmd/api/theme/font_metrics.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/search/search_result.dart';
@@ -187,6 +189,55 @@ void main() {
     expect((longPath as TextSpan).text, path);
     expect(command, isA<TextSpan>());
     expect((command as TextSpan).toPlainText(), 'git log --oneline');
+  });
+
+  testWidgets('an unbroken inline reference wraps inside the reading column', (
+    tester,
+  ) async {
+    const source =
+        'VisualMdWorkspaceDocumentRootAbsolutePathWithoutAnyBreakOpportunity'
+        'AndWithEnoughCharactersToCrossSeveralNarrowLines';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(BuiltInThemes.paper),
+        home: Center(
+          child: SizedBox(
+            width: 180,
+            child: Builder(
+              builder: (context) {
+                final reading = ReadingTheme.of(
+                  context,
+                  ReadingScale.comfortable,
+                );
+                final inline = InlineComposer(theme: reading);
+                return Paragraph(
+                  spans: inline.compose(const [CodeRun(source)]),
+                  style: reading.body,
+                  textScaler: reading.textScaler,
+                  strut: reading.strutFor(reading.body),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final render = tester.renderObject<RenderParagraph>(
+      find.descendant(
+        of: find.byType(Paragraph),
+        matching: find.byType(RichText),
+      ),
+    );
+    final boxes = render.getBoxesForSelection(
+      const TextSelection(baseOffset: 0, extentOffset: source.length),
+    );
+    expect(boxes.length, greaterThan(2));
+    expect(
+      boxes.every((box) => box.toRect().right <= render.size.width + 0.01),
+      isTrue,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a reader can select and copy only the backticked reference', (
@@ -373,6 +424,14 @@ void main() {
 
     expect(headingCode.fontSize, greaterThan(bodyCode.fontSize!));
     expect(headingCode.fontFamily, theme.code.fontFamily);
+    expect(
+      FontMetrics.letterSizeFor(bodyCode.fontFamily!, bodyCode.fontSize!),
+      closeTo(17, 0.001),
+    );
+    expect(
+      FontMetrics.letterSizeFor(headingCode.fontFamily!, headingCode.fontSize!),
+      closeTo(ReadingScale.comfortable.heading(1) - 1, 0.001),
+    );
   });
 
   testWidgets('an unresolved image still says what it was meant to say', (

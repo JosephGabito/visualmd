@@ -68,4 +68,15 @@ abstract final class FontMetrics {
     if (ratio == null) return size;
     return size * referenceXHeight / ratio;
   }
+
+  /// The quoted letter size produced by [fontSize] in [family].
+  ///
+  /// This is the inverse of [sizeFor]. It lets a contextual run change by an
+  /// absolute logical-pixel step even when its surrounding face and its own
+  /// face have different x-heights.
+  static double letterSizeFor(String family, double fontSize) {
+    final ratio = xHeights[family];
+    if (ratio == null) return fontSize;
+    return fontSize * ratio / referenceXHeight;
+  }
 }

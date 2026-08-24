@@ -65,6 +65,15 @@ And an element with no shape of its own — `sup`, inline HTML, a footnote
 reference — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+A `code` run receives the content already normalised by the
+[CommonMark code-span rules](https://spec.commonmark.org/0.31.2/#code-spans):
+its closing delimiter must match the opening backtick run, line endings become
+spaces, and one ordinary space is removed from both edges when both are
+present. Literal backslashes, entity-looking text and inner backticks remain
+source rather than becoming other inline syntax. The mapper carries that result
+into `CodeRun` without another transformation
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 ## Inputs and outputs
 
 | | Type | Notes |
@@ -102,7 +111,7 @@ as a horizontal rule** is read as opening front matter and swallowed to the
 next `---`. The outline parser has the same behaviour, so the reader is at
 least self-consistent about it.
 
-Behaviour is covered by 33 tests in
+Behaviour is covered in
 `test/infrastructure/markdown_document_parser_test.dart`, grouped by the shape
 under test: paragraphs (`test/infrastructure/markdown_document_parser_test.dart`), inline code (`test/infrastructure/markdown_document_parser_test.dart`), headings and their
 anchors (`test/infrastructure/markdown_document_parser_test.dart`), code blocks (`test/infrastructure/markdown_document_parser_test.dart`), quotations (`test/infrastructure/markdown_document_parser_test.dart`), lists
