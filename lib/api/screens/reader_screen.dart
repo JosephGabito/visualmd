@@ -279,10 +279,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
             c.newWorkspace,
         const SingleActivator(LogicalKeyboardKey.keyN, control: true):
             c.newWorkspace,
-        const SingleActivator(LogicalKeyboardKey.keyO, meta: true):
+        const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true):
             c.openWorkspace,
-        const SingleActivator(LogicalKeyboardKey.keyO, control: true):
-            c.openWorkspace,
+        const SingleActivator(
+          LogicalKeyboardKey.keyO,
+          control: true,
+          shift: true,
+        ): c.openWorkspace,
         const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
             c.saveWorkspace,
         const SingleActivator(LogicalKeyboardKey.keyS, control: true):

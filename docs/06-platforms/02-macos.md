@@ -79,10 +79,11 @@ bar that doubles as a drag handle with double-click-to-zoom
 [Window Chrome](../03-infrastructure/desktop/03-window-chrome.md).
 
 The application File menu is native AppKit chrome, inserted beside the app
-menu after AppKit has installed the menu bar. It provides New/Open/Save/Save
-As and Add Folder/Markdown with native Command shortcuts
-(`macos/Runner/MainFlutterWindow.swift:188-219`). The Flutter top bar does not
-duplicate it.
+menu after AppKit has installed the menu bar. It provides New, Open Workspace,
+Save, Save As, Add Folder, and Add Markdown. Workspace opening uses
+Command-Shift-O, leaving the standard Command-O chord available for opening
+folders and Markdown files (`macos/Runner/MainFlutterWindow.swift:187-218`).
+The Flutter top bar does not duplicate it.
 
 ## Status
 

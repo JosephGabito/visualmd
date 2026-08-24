@@ -15,18 +15,29 @@ import 'package:visualmd/api/widgets/shelf_panel.dart';
 import 'package:visualmd/api/screens/reader_screen.dart';
 import 'package:visualmd/application/ports/folder_scanner.dart';
 import 'package:visualmd/application/ports/markdown_scanner.dart';
+import 'package:visualmd/application/ports/workspace_files.dart';
+import 'package:visualmd/application/ports/workspace_source_access.dart';
 import 'package:visualmd/application/library_mutation_queue.dart';
+import 'package:visualmd/application/workspace_autosave.dart';
 import 'package:visualmd/application/use_cases/add_folder.dart';
 import 'package:visualmd/application/use_cases/add_markdown.dart';
 import 'package:visualmd/application/use_cases/move_folder.dart';
+import 'package:visualmd/application/use_cases/open_workspace.dart';
 import 'package:visualmd/domain/library/library_builder.dart';
+import 'package:visualmd/domain/workspace/workspace.dart';
+import 'package:visualmd/domain/workspace/workspace_id.dart';
+import 'package:visualmd/domain/workspace/workspace_source.dart';
 import 'package:visualmd/application/use_cases/read_document.dart';
 import 'package:visualmd/application/use_cases/remove_folder.dart';
 import 'package:visualmd/application/use_cases/remove_markdown.dart';
 import 'package:visualmd/application/use_cases/search_documents.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/infrastructure/memory/in_memory_library_repository.dart';
+import 'package:visualmd/infrastructure/memory/in_memory_reader_state.dart';
+import 'package:visualmd/infrastructure/memory/in_memory_workspace_restoration.dart';
+import 'package:visualmd/infrastructure/memory/in_memory_workspace_session_repository.dart';
 import 'package:visualmd/infrastructure/search/literal_document_search.dart';
+import 'package:visualmd/infrastructure/workspace/workspace_json_codec.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
 
@@ -52,6 +63,86 @@ final class _MarkdownScanner implements MarkdownScanner {
       throw MarkdownUnavailable(ref);
 }
 
+final class _WorkspaceFiles implements WorkspaceFiles {
+  var openRequests = 0;
+
+  @override
+  Future<WorkspaceFileRef?> pickOpen() async {
+    openRequests++;
+    return null;
+  }
+
+  @override
+  Future<WorkspaceFileRef?> pickSave({required String suggestedName}) async =>
+      throw UnsupportedError('Saving is outside this shortcut test.');
+
+  @override
+  Future<String> read(WorkspaceFileRef file) =>
+      throw UnsupportedError('No workspace is selected in this test.');
+
+  @override
+  Future<void> write(WorkspaceFileRef file, String contents) =>
+      throw UnsupportedError('Saving is outside this shortcut test.');
+}
+
+final class _WorkspaceAccess implements WorkspaceSourceAccess {
+  Never _unused() =>
+      throw UnsupportedError('No workspace is selected in this test.');
+
+  @override
+  Future<void> bindFolder(
+    WorkspaceId workspaceId,
+    WorkspaceSourceId sourceId,
+    FolderRef ref,
+  ) async => _unused();
+
+  @override
+  Future<void> bindMarkdown(
+    WorkspaceId workspaceId,
+    WorkspaceSourceId sourceId,
+    MarkdownRef ref,
+  ) async => _unused();
+
+  @override
+  Future<void> forkBindings(
+    WorkspaceId from,
+    WorkspaceId to,
+    Iterable<WorkspaceSourceId> sources,
+  ) async => _unused();
+
+  @override
+  Future<WorkspaceSourceLocation> locateFolder(FolderRef ref) async =>
+      _unused();
+
+  @override
+  Future<WorkspaceSourceLocation> locateMarkdown(MarkdownRef ref) async =>
+      _unused();
+
+  @override
+  Future<FolderRef?> reconnectFolder(
+    Workspace workspace,
+    WorkspaceSource source,
+  ) async => _unused();
+
+  @override
+  Future<MarkdownRef?> reconnectMarkdown(
+    Workspace workspace,
+    WorkspaceSource source,
+  ) async => _unused();
+
+  @override
+  Future<FolderRef> restoreFolder(
+    Workspace workspace,
+    WorkspaceSource source,
+  ) async => _unused();
+
+  @override
+  Future<MarkdownRef> restoreMarkdown(
+    Workspace workspace,
+    WorkspaceSource source,
+  ) async => _unused();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -75,6 +166,7 @@ void main() {
     WidgetTester tester, {
     Size size = const Size(1280, 800),
     PanelWidths? panelWidths,
+    OpenWorkspace? openWorkspace,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -106,6 +198,7 @@ void main() {
         search: LiteralDocumentSearch(parser: parser),
       ),
       pickFolder: () async => null,
+      openWorkspace: openWorkspace,
       sampleFolder: const FolderRef(id: 'sample', name: 'notes'),
       themes: ThemeRegistry(),
       panelWidths: panelWidths,
@@ -146,6 +239,53 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+    'workspace opening uses Shift-O and leaves the standard Open chord free',
+    (tester) async {
+      final files = _WorkspaceFiles();
+      final state = InMemoryReaderState();
+      final sessions = InMemoryWorkspaceSessionRepository(state);
+      final mutations = LibraryMutationQueue();
+      const codec = WorkspaceJsonCodec();
+      final autosave = WorkspaceAutosave(
+        sessions: sessions,
+        files: files,
+        codec: codec,
+        mutations: mutations,
+      );
+      final openWorkspace = OpenWorkspace(
+        files: files,
+        codec: codec,
+        access: _WorkspaceAccess(),
+        folders: _Scanner(),
+        markdowns: _MarkdownScanner(),
+        restoration: InMemoryWorkspaceRestoration(state),
+        mutations: mutations,
+        autosave: autosave,
+      );
+      await pumpReader(tester, openWorkspace: openWorkspace);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyO);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pump();
+      expect(files.openRequests, 0, reason: 'Command-O remains unclaimed');
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyO);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pumpAndSettle();
+
+      expect(
+        files.openRequests,
+        1,
+        reason: 'Command-Shift-O opens a workspace',
+      );
+    },
+  );
 
   testWidgets('the shelf toggles on the press, not the release', (
     tester,
