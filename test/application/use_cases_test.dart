@@ -413,6 +413,61 @@ void main() {
     expect(reading.content.headings.map((h) => h.text), ['Notes', 'Start']);
   });
 
+  test('the page and outline agree on every hostile heading anchor', () async {
+    const root = LibraryRootId('headings');
+    final repo = FakeRepository();
+    final source = FakeScanner({
+      'headings': const ScannedFolder(
+        name: 'headings',
+        files: [
+          FileEntry(
+            'headings.md',
+            '#\n'
+                '\n'
+                '## !!! ??? ——— …\n'
+                '\n'
+                '### **Marked** `code` and [a link](https://example.com)\n'
+                '\n'
+                '## العربية 日本語 中文\n'
+                '\n'
+                '## Duplicate heading\n'
+                '\n'
+                '## Duplicate heading\n'
+                '\n'
+                'A multi-source **Setext** heading\n'
+                'with `code` and [a link](https://example.com)\n'
+                '===\n',
+          ),
+        ],
+      ),
+    });
+    await addFolder(
+      repo,
+      source,
+    ).execute(const FolderRef(id: 'headings', name: 'headings'));
+
+    final reading = await ReadDocument(
+      repository: repo,
+      parser: const MarkdownDocumentParser(),
+    ).execute(DocumentId(root, 'headings.md'));
+    final outline = reading.outline.tableOfContents.headings;
+    final content = reading.content.headings;
+
+    expect(
+      outline.map((heading) => (heading.level, heading.text, heading.anchor)),
+      content.map((heading) => (heading.level, heading.text, heading.anchor)),
+    );
+    expect(outline.map((heading) => heading.anchor), [
+      'section',
+      'section-1',
+      'marked-code-and-a-link',
+      'العربية-日本語-中文',
+      'duplicate-heading',
+      'duplicate-heading-1',
+      'a-multi-source-setext-heading-with-code-and-a-link',
+    ]);
+  });
+
   test('ReadDocument fails clearly without a library or document', () async {
     final repo = FakeRepository();
     final useCase = ReadDocument(

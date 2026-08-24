@@ -153,6 +153,92 @@ void main() {
     );
   });
 
+  testWidgets('every heading level wraps as one complete display block', (
+    tester,
+  ) async {
+    for (var level = 1; level <= 6; level++) {
+      final title =
+          'Level $level has a deliberately long heading that must occupy several rendered lines at a narrow measure without clipping, widening the page, or losing its place in the hierarchy';
+      await pumpDocument(tester, [
+        HeadingBlock(
+          level: level,
+          content: [TextRun(title)],
+          anchor: 'level-$level',
+        ),
+        paragraph('After level $level.'),
+      ], width: 340);
+
+      final style = renderedTheme.heading(level);
+      final rendered = tester.getSize(find.text(title));
+      expect(
+        rendered.height,
+        greaterThan(style.fontSize! * style.height! * 1.5),
+        reason: 'h$level should prove its multiline geometry',
+      );
+      expect(rendered.width, lessThanOrEqualTo(340));
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('mixed-direction and unbreakable headings remain reachable', (
+    tester,
+  ) async {
+    const arabic =
+        'العربية والعناوين الطويلة تحتاج إلى التفاف صحيح دون أن تختفي الكلمات من الصفحة';
+    const unbreakable =
+        'VisualMdWorkspaceDocumentRootAbsolutePathWithoutAnyBreakOpportunityAndWithEnoughCharactersToCrossSeveralNarrowLines';
+    await pumpDocument(tester, [
+      const HeadingBlock(
+        level: 2,
+        content: [TextRun(arabic)],
+        anchor: 'arabic',
+      ),
+      const HeadingBlock(
+        level: 4,
+        content: [TextRun(unbreakable)],
+        anchor: 'unbreakable',
+      ),
+      paragraph('Still here.'),
+    ], width: 340);
+
+    expect(tester.getSize(find.text(arabic)).width, lessThanOrEqualTo(340));
+    expect(
+      tester.widget<Text>(find.text(arabic)).textDirection,
+      TextDirection.rtl,
+    );
+    expect(
+      tester.getSize(find.text(unbreakable)).width,
+      lessThanOrEqualTo(340),
+    );
+    expect(
+      tester.widget<Text>(find.text(unbreakable)).textDirection,
+      TextDirection.ltr,
+    );
+    expect(find.text('Still here.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('assistive technology receives every authored heading level', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpDocument(tester, [
+      for (var level = 1; level <= 6; level++)
+        HeadingBlock(
+          level: level,
+          content: [TextRun('Semantic heading $level')],
+          anchor: 'semantic-$level',
+        ),
+    ]);
+
+    for (var level = 1; level <= 6; level++) {
+      final node = tester.getSemantics(find.text('Semantic heading $level'));
+      expect(node.flagsCollection.isHeader, isTrue);
+      expect(node.headingLevel, level);
+    }
+    semantics.dispose();
+  });
+
   testWidgets('a scaled mixed-script heading returns prose to the beat', (
     tester,
   ) async {

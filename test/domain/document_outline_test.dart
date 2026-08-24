@@ -79,6 +79,58 @@ Sub
       expect(h.map((x) => '${x.level}:${x.text}'), ['1:Title', '2:Sub']);
     });
 
+    test('a setext heading owns every source line in its paragraph', () {
+      final outline = DocumentOutline.parse(
+        'First *line*\n'
+        'continues with `code` and [a link](https://example.com)\n'
+        '====\n'
+        'body\n'
+        '\n'
+        'Second line\n'
+        'continues too\n'
+        '---\n'
+        'after\n',
+      );
+
+      expect(
+        outline.tableOfContents.headings.map(
+          (heading) => (heading.level, heading.text, heading.line),
+        ),
+        [
+          (1, 'First line continues with code and a link', 0),
+          (2, 'Second line continues too', 5),
+        ],
+      );
+      expect(outline.title, 'First line continues with code and a link');
+      expect(outline.sections, hasLength(2));
+      expect(
+        outline.sections.first.markdown,
+        startsWith('First *line*\ncontinues with `code`'),
+      );
+      expect(outline.sections.last.markdown, startsWith('Second line\n'));
+    });
+
+    test('setext content must otherwise be an ordinary paragraph', () {
+      expect(
+        DocumentOutline.parse('    indented code\n---\n')
+            .tableOfContents
+            .headings,
+        isEmpty,
+      );
+      expect(
+        DocumentOutline.parse('[reference]: https://example.com\n---\n')
+            .tableOfContents
+            .headings,
+        isEmpty,
+      );
+      final hashText = DocumentOutline.parse('#not-an-atx-heading\n===\n')
+          .tableOfContents
+          .headings
+          .single;
+      expect(hashText.text, '#not-an-atx-heading');
+      expect(hashText.anchor, 'not-an-atx-heading');
+    });
+
     test('makes duplicate anchors unique', () {
       final outline = DocumentOutline.parse(
         '# Setup\n## Setup\n## Setup\n## ???\n',

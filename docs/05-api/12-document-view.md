@@ -65,7 +65,12 @@ Each block type is built by `_BlockView`
   shaping, the render object accounts for that known space and keeps only the
   grid correction inside the heading. There is no forced strut, so a taller
   fallback script may establish the height it actually needs
-  (`lib/api/render/document_view.dart`).
+  (`lib/api/render/document_view.dart`). A semantics annotation carries both
+  the heading role and its authored level from one through six, so the visual
+  hierarchy is also available to assistive technology. `ReadingDirection`
+  takes the first strongly directional character as the block's base direction,
+  so Arabic and Hebrew headings align and wrap from the side they are read
+  (`lib/api/render/reading_direction.dart`).
 - **Code** — a [`ReadableCodeBlock`](11-code-block.md) with half a beat of
   padding above and below and **no border**: its own ground already says what
   it is, and a border is both a second signal and a height that breaks the grid
@@ -130,10 +135,11 @@ A short table row is padded rather than throwing
 (`lib/api/render/document_view.dart`), and a `RawBlock` shows its
 words (`lib/api/render/document_view.dart`).
 
-`test/presentation/document_view_test.dart` covers column widths and
-table overflow, all six heading levels, multiline and scaled mixed-script
-headings, rhythm through rules and lists, tonal hierarchy, anchors, markers,
-task lists and quotation treatment.
+`test/presentation/document_view_test.dart` covers column widths and table
+overflow, multiline geometry at all six heading levels, scaled mixed-script
+and unbreakable headings, heading-level semantics and authored direction,
+rhythm through rules and lists, tonal hierarchy, anchors, markers, task lists
+and quotation treatment.
 
 ## Transition
 

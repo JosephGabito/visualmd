@@ -11,6 +11,7 @@ import '../../presentation/theme/widow_binding.dart';
 import '../theme/reading_measure.dart';
 import '../widgets/code_block.dart';
 import 'inline_composer.dart';
+import 'reading_direction.dart';
 import 'reading_theme.dart';
 
 /// The rules a page of paragraphs is set by.
@@ -224,12 +225,20 @@ class _BlockView extends StatelessWidget {
             child: _RhythmicHeading(
               beat: theme.baseline,
               followingSpace: followingSpace,
-              child: Text.rich(
-                TextSpan(
-                  children: composer.compose(
-                    content,
-                    style: theme.heading(level),
-                    offset: offset,
+              child: Semantics(
+                header: true,
+                headingLevel: level,
+                child: Text.rich(
+                  TextSpan(
+                    children: composer.compose(
+                      content,
+                      style: theme.heading(level),
+                      offset: offset,
+                    ),
+                  ),
+                  textDirection: ReadingDirection.of(
+                    content.map((run) => run.text).join(),
+                    fallback: Directionality.of(context),
                   ),
                 ),
               ),

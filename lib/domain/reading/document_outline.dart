@@ -61,8 +61,14 @@ final class _Parser {
   static final _setextH1 = RegExp(r'^ {0,3}=+[ \t]*$');
   static final _setextH2 = RegExp(r'^ {0,3}-+[ \t]*$');
   static final _refDefinition = RegExp(r'^ {0,3}\[[^\]]+\]:[ \t]*\S');
-  static final _notParagraph = RegExp(
-    r'^ {0,3}(?:[#>|]|[-*+][ \t]|\d+[.)][ \t]|```|~~~)',
+  static final _paragraphInterrupt = RegExp(
+    r'^ {0,3}(?:#{1,6}(?:[ \t]+|$)|>|[-*+](?:[ \t]+|$)|\d{1,9}[.)](?:[ \t]+|$)|`{3,}|~{3,})',
+  );
+  static final _thematicBreak = RegExp(
+    r'^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$',
+  );
+  static final _tableDelimiter = RegExp(
+    r'^ {0,3}\|?(?:[ \t]*:?-+:?[ \t]*\|[ \t]*)+(?:[ \t]|[ \t]*:?-+:?[ \t]*)?$',
   );
 
   DocumentOutline parse() {
@@ -105,22 +111,13 @@ final class _Parser {
         continue;
       }
 
-      if (i + 1 < lines.length &&
-          line.trim().isNotEmpty &&
-          !_notParagraph.hasMatch(line)) {
-        final next = lines[i + 1];
-        final level = _setextH1.hasMatch(next)
-            ? 1
-            : _setextH2.hasMatch(next)
-            ? 2
-            : 0;
-        if (level > 0) {
-          final heading = _heading(level, line, i);
-          headings.add(heading);
-          boundaries.add((i, heading));
-          i += 2;
-          continue;
-        }
+      final setext = _setextStartingAt(i);
+      if (setext != null) {
+        final heading = _heading(setext.level, setext.source, i);
+        headings.add(heading);
+        boundaries.add((i, heading));
+        i = setext.after;
+        continue;
       }
       i++;
     }
@@ -130,6 +127,50 @@ final class _Parser {
       tableOfContents: TableOfContents(List.unmodifiable(headings)),
       sections: List.unmodifiable(_sections(boundaries, refDefinitions)),
     );
+  }
+
+  /// A Setext underline promotes the complete paragraph before it, not merely
+  /// the last physical line. Stop at the same top-level shapes that can end a
+  /// paragraph so the navigation model cannot absorb a list, rule, table or
+  /// second heading that the page parser renders separately.
+  ({int level, String source, int after})? _setextStartingAt(int start) {
+    if (!_canStartParagraph(start)) return null;
+
+    for (var line = start + 1; line < lines.length; line++) {
+      final level = _setextH1.hasMatch(lines[line])
+          ? 1
+          : _setextH2.hasMatch(lines[line])
+          ? 2
+          : 0;
+      if (level > 0) {
+        return (
+          level: level,
+          source: lines.sublist(start, line).join('\n'),
+          after: line + 1,
+        );
+      }
+      if (_interruptsParagraph(line)) return null;
+    }
+    return null;
+  }
+
+  bool _canStartParagraph(int line) =>
+      lines[line].trim().isNotEmpty &&
+      !lines[line].startsWith('    ') &&
+      !lines[line].startsWith('\t') &&
+      !_refDefinition.hasMatch(lines[line]) &&
+      !_interruptsParagraph(line);
+
+  bool _interruptsParagraph(int line) {
+    final source = lines[line];
+    if (source.trim().isEmpty ||
+        _paragraphInterrupt.hasMatch(source) ||
+        _thematicBreak.hasMatch(source) ||
+        _refDefinition.hasMatch(source) ||
+        _tableDelimiter.hasMatch(source)) {
+      return true;
+    }
+    return line + 1 < lines.length && _tableDelimiter.hasMatch(lines[line + 1]);
   }
 
   /// Returns the front matter body (if any) and the line the document body starts on.
