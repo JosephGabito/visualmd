@@ -45,7 +45,9 @@ already become reading text, `CodeRun`
 (verbatim, never re-set — `lib/domain/reading/content/inline.dart`), `MarkedRun` carrying one of
 `InlineMark.emphasis | strong | strikethrough` over its children (`lib/domain/reading/content/inline.dart`),
 `LinkRun` (`lib/domain/reading/content/inline.dart`), `ImageRun` (`lib/domain/reading/content/inline.dart`) and `LineBreakRun`, which is only
-ever a break the author asked for with two trailing spaces (`lib/domain/reading/content/inline.dart`).
+ever a line the author asked for with two trailing spaces or a backslash
+(`lib/domain/reading/content/inline.dart`). Its text is one newline; the source
+markers and indentation after them are formatting, not domain content.
 
 `RawBlock` is the model's promise that nothing is silently dropped: markup the
 reader cannot set still reaches the page as its words

@@ -36,7 +36,7 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 | `MarkedRun` | Italic, weight 700, or a strikethrough in `muted` — one mark each, since one mark is enough (`lib/api/render/inline_composer.dart`) |
 | `LinkRun` | `linkFor(base)`, which preserves the complete heading, table or marked style and adds only link colour, underline and interaction (`lib/api/render/inline_composer.dart`) |
 | `ImageRun` | Its alt text in `muted`; images are not resolved yet, and the alt is what the author meant the reader to get either way (`lib/api/render/inline_composer.dart`) |
-| `LineBreakRun` | A newline (`lib/api/render/inline_composer.dart`) |
+| `LineBreakRun` | One selectable newline in the surrounding style; no widget, extra gap or source marker (`lib/api/render/inline_composer.dart`) |
 
 A link or code run keeps its full context. A link in an `h2` remains an `h2`,
 a link in a table keeps lining tabular figures, and inline code in a heading
@@ -51,6 +51,12 @@ The explicit span type also stops widow binding from rewriting source text at
 the end of a paragraph (`lib/api/render/inline_composer.dart`,
 `lib/api/render/document_view.dart`). A
 mouse-selection test copies only the code run and asserts its exact source text
+(`test/presentation/inline_composer_test.dart`).
+
+An authored line stays inside the same span tree as its surrounding emphasis or
+link. Its newline advances the same offset cursor used by document search, so a
+match after the break highlights the intended characters while selection and
+assistive technology receive the line itself
 (`test/presentation/inline_composer_test.dart`).
 
 A Markdown link title remains domain data, but it is not used as the Flutter

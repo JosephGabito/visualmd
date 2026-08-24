@@ -251,34 +251,34 @@ final class _Mapper {
 
   List<Inline> inlines(List<md.Node>? nodes) {
     final source = nodes ?? const <md.Node>[];
-    return _inlines(source, _SoftLineBreaks(source));
+    return _inlines(source, _InlineLineBreaks(source));
   }
 
-  List<Inline> _inlines(List<md.Node>? nodes, _SoftLineBreaks softBreaks) {
+  List<Inline> _inlines(List<md.Node>? nodes, _InlineLineBreaks lineBreaks) {
     final runs = <Inline>[];
     for (final node in nodes ?? const <md.Node>[]) {
       switch (node) {
         case md.Text():
-          runs.add(TextRun(softBreaks.textFor(node)));
+          runs.add(TextRun(lineBreaks.textFor(node)));
 
         case md.Element(tag: 'code'):
           runs.add(CodeRun(node.textContent));
 
         case md.Element(tag: 'em'):
           runs.add(
-            MarkedRun(InlineMark.emphasis, _inlines(node.children, softBreaks)),
+            MarkedRun(InlineMark.emphasis, _inlines(node.children, lineBreaks)),
           );
 
         case md.Element(tag: 'strong'):
           runs.add(
-            MarkedRun(InlineMark.strong, _inlines(node.children, softBreaks)),
+            MarkedRun(InlineMark.strong, _inlines(node.children, lineBreaks)),
           );
 
         case md.Element(tag: 'del'):
           runs.add(
             MarkedRun(
               InlineMark.strikethrough,
-              _inlines(node.children, softBreaks),
+              _inlines(node.children, lineBreaks),
             ),
           );
 
@@ -287,7 +287,7 @@ final class _Mapper {
             LinkRun(
               href: node.attributes['href'] ?? '',
               title: node.attributes['title'],
-              children: _inlines(node.children, softBreaks),
+              children: _inlines(node.children, lineBreaks),
             ),
           );
 
@@ -313,7 +313,7 @@ final class _Mapper {
           // even though the markup around them is dropped.
           final children = node.children;
           if (children != null && children.isNotEmpty) {
-            runs.addAll(_inlines(children, softBreaks));
+            runs.addAll(_inlines(children, lineBreaks));
           } else if (node.textContent.isNotEmpty) {
             runs.add(TextRun(node.textContent));
           }
@@ -326,7 +326,7 @@ final class _Mapper {
   }
 }
 
-/// Resolves source wrapping before it enters the domain.
+/// Resolves inline line endings before they enter the domain.
 ///
 /// CommonMark calls an ordinary newline inside inline content a soft break.
 /// It is not an authored line: spaces and tabs beside it disappear, and the
@@ -334,13 +334,19 @@ final class _Mapper {
 /// words need one space. Chinese and Japanese do not; inserting a Western
 /// word space there would make the editor's wrapping visible on the page.
 ///
+/// Two or more spaces or a backslash instead produce a hard break element.
+/// That is an authored line, but any indentation at the beginning of the next
+/// source line is formatting whitespace and must not become visible reading
+/// text.
+///
 /// The package keeps soft breaks inside `md.Text`, including breaks at the
-/// edge of a marked or linked run. This resolver therefore reads the complete
-/// inline subtree before changing any one text node. Package-shaped nodes do
-/// not escape this adapter.
-final class _SoftLineBreaks {
+/// edge of a marked or linked run, while hard breaks are separate elements.
+/// This resolver therefore reads the complete inline subtree before changing
+/// any one text node. Package-shaped nodes do not escape this adapter.
+final class _InlineLineBreaks {
   static const _object = '\u{fffc}';
   static final _aroundBreak = RegExp(r'[ \t]*\n[ \t]*');
+  static final _leadingIndent = RegExp(r'^[ \t]+');
   static final _punctuationOrMark = RegExp(
     r'^(?:\p{Punctuation}|\p{Mark})$',
     unicode: true,
@@ -355,26 +361,39 @@ final class _SoftLineBreaks {
 
   final Map<md.Text, String> _resolved = Map.identity();
 
-  _SoftLineBreaks(List<md.Node> nodes) {
+  _InlineLineBreaks(List<md.Node> nodes) {
     final fullText = StringBuffer();
-    final pieces = <_TextPiece>[];
+    final pieces = <_InlinePiece>[];
     _collect(nodes, fullText, pieces);
     final context = fullText.toString();
     final scripts = _ScriptContext(context);
+    var afterHardBreak = false;
 
     for (final piece in pieces) {
-      _resolved[piece.node] = piece.node.text.replaceAllMapped(_aroundBreak, (
-        match,
-      ) {
-        final before = scripts.before(piece.start + match.start);
-        final after = scripts.after(piece.start + match.end);
-        return before != null &&
-                after != null &&
-                _unspacedEastAsian.hasMatch(before) &&
-                _unspacedEastAsian.hasMatch(after)
-            ? ''
-            : ' ';
-      });
+      switch (piece) {
+        case _TextPiece(:final node, :final start):
+          var text = node.text.replaceAllMapped(_aroundBreak, (match) {
+            final before = scripts.before(start + match.start);
+            final after = scripts.after(start + match.end);
+            return before != null &&
+                    after != null &&
+                    _unspacedEastAsian.hasMatch(before) &&
+                    _unspacedEastAsian.hasMatch(after)
+                ? ''
+                : ' ';
+          });
+          if (afterHardBreak) {
+            text = text.replaceFirst(_leadingIndent, '');
+          }
+          _resolved[node] = text;
+          if (text.isNotEmpty) afterHardBreak = false;
+
+        case _HardBreakPiece():
+          afterHardBreak = true;
+
+        case _AtomicPiece():
+          afterHardBreak = false;
+      }
     }
   }
 
@@ -383,7 +402,7 @@ final class _SoftLineBreaks {
   static void _collect(
     Iterable<md.Node> nodes,
     StringBuffer fullText,
-    List<_TextPiece> pieces,
+    List<_InlinePiece> pieces,
   ) {
     for (final node in nodes) {
       switch (node) {
@@ -391,9 +410,14 @@ final class _SoftLineBreaks {
           pieces.add(_TextPiece(node, fullText.length));
           fullText.write(node.text);
 
-        case md.Element(tag: 'br' || 'code' || 'img' || 'input'):
-          // An explicit break or atomic inline is a real boundary. Context on
-          // its far side must not decide how a nearby soft break joins.
+        case md.Element(tag: 'br'):
+          pieces.add(const _HardBreakPiece());
+          fullText.write(_object);
+
+        case md.Element(tag: 'code' || 'img' || 'input'):
+          // An atomic inline is a real boundary. Context on its far side must
+          // not decide how a nearby soft break joins.
+          pieces.add(const _AtomicPiece());
           fullText.write(_object);
 
         case md.Element(:final children):
@@ -412,11 +436,23 @@ final class _SoftLineBreaks {
       _punctuationOrMark.hasMatch(character);
 }
 
-final class _TextPiece {
+sealed class _InlinePiece {
+  const _InlinePiece();
+}
+
+final class _TextPiece extends _InlinePiece {
   final md.Text node;
   final int start;
 
   const _TextPiece(this.node, this.start);
+}
+
+final class _HardBreakPiece extends _InlinePiece {
+  const _HardBreakPiece();
+}
+
+final class _AtomicPiece extends _InlinePiece {
+  const _AtomicPiece();
 }
 
 /// Nearest script-bearing characters around every break, indexed once.
@@ -439,7 +475,7 @@ final class _ScriptContext {
           next <= 0xdfff;
       final end = isSurrogatePair ? offset + 2 : offset + 1;
       final character = text.substring(offset, end);
-      if (!_SoftLineBreaks._ignorableForScript(character)) {
+      if (!_InlineLineBreaks._ignorableForScript(character)) {
         _characters.add(_ScriptCharacter(offset, character));
       }
       offset = end;

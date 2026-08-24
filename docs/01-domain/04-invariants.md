@@ -54,6 +54,7 @@ behaviour.
 | 33 | A soft line break never preserves the source line: adjoining indentation disappears, word-separated scripts receive one space, and unspaced Chinese or Japanese joins receive none | `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart`, `test/infrastructure/literal_document_search_test.dart`, `test/presentation/paragraph_setting_test.dart` |
 | 34 | Every valid thematic-break spelling becomes the same textless `RuleBlock`; near misses remain authored content | `lib/domain/reading/content/block.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart` |
 | 35 | Markup with no shape in the model is kept as words, never dropped | `lib/domain/reading/content/block.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | Untested — see Gaps |
+| 36 | Two trailing spaces or a backslash inside inline content becomes one authored newline; its source markers and following indentation never enter reading text | `lib/domain/reading/content/inline.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart`, `test/infrastructure/literal_document_search_test.dart`, `test/presentation/inline_composer_test.dart`, `test/presentation/paragraph_setting_test.dart` |
 
 ## Gaps
 

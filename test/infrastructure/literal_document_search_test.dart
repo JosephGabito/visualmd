@@ -65,6 +65,24 @@ void main() {
     expect(cjk.single.matches.single.excerpt, contains('中文源代码继续'));
   });
 
+  test(
+    'indexes authored lines as one newline without their source syntax',
+    () async {
+      final document = Document(
+        id: DocumentId(rootId, 'address.md'),
+        content: 'Visual MD Reading Room  \n     Metro Manila',
+      );
+
+      final results = await search.find(SearchQuery('Metro Manila'), [
+        document,
+      ]);
+      final match = results.single.matches.single;
+
+      expect(match.start, 'Visual MD Reading Room\n'.length);
+      expect(match.excerpt, 'Visual MD Reading Room Metro Manila');
+    },
+  );
+
   test('omits documents without a match and preserves library order', () async {
     final documents = [
       Document(id: DocumentId(rootId, 'a.md'), content: 'first needle'),

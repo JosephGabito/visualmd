@@ -117,6 +117,41 @@ void main() {
     expect(marked.toString(), 'needle');
   });
 
+  testWidgets(
+    'an authored line remains one selectable newline in the text flow',
+    (tester) async {
+      await makeComposer(tester);
+      final composed =
+          InlineComposer(
+            theme: theme,
+            matches: const [TextMatch(start: 6, end: 12, excerpt: 'second')],
+            activeMatch: 0,
+          ).compose(const [
+            TextRun('first'),
+            LineBreakRun(),
+            MarkedRun(InlineMark.strong, [TextRun('second')]),
+            LineBreakRun(),
+            LinkRun(href: '#third', children: [TextRun('third')]),
+          ]);
+
+      final highlighted = StringBuffer();
+      void collect(InlineSpan span) {
+        if (span is! TextSpan) return;
+        if (span.text != null && span.style?.backgroundColor != null) {
+          highlighted.write(span.text);
+        }
+        span.children?.forEach(collect);
+      }
+
+      composed.forEach(collect);
+      expect(
+        TextSpan(children: composed).toPlainText(),
+        'first\nsecond\nthird',
+      );
+      expect(highlighted.toString(), 'second');
+    },
+  );
+
   testWidgets('code is composed exactly as written', (tester) async {
     await makeComposer(tester);
     expect(
