@@ -42,6 +42,29 @@ void main() {
     expect(results.single.matches.single.excerpt, isNot(contains('**')));
   });
 
+  test('matches the reading text across editor wrapping', () async {
+    final document = Document(
+      id: DocumentId(rootId, 'wrapped.md'),
+      content:
+          'A searchable phrase is deliberately\n'
+          'wrapped in the source, while 中文源代码\n'
+          '继续 remains naturally unspaced.',
+    );
+
+    final latin = await search.find(SearchQuery('deliberately wrapped'), [
+      document,
+    ]);
+    final cjk = await search.find(SearchQuery('中文源代码继续'), [document]);
+
+    expect(latin.single.matches, hasLength(1));
+    expect(
+      latin.single.matches.single.excerpt,
+      contains('deliberately wrapped'),
+    );
+    expect(cjk.single.matches, hasLength(1));
+    expect(cjk.single.matches.single.excerpt, contains('中文源代码继续'));
+  });
+
   test('omits documents without a match and preserves library order', () async {
     final documents = [
       Document(id: DocumentId(rootId, 'a.md'), content: 'first needle'),

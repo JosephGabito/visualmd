@@ -39,7 +39,9 @@ Two sealed hierarchies and a container.
 | `RawBlock` | text the reader has no shape for | `lib/domain/reading/content/block.dart` |
 
 **Runs** — what a line of text is made of
-(`lib/domain/reading/content/inline.dart`): `TextRun`, `CodeRun`
+(`lib/domain/reading/content/inline.dart`): `TextRun`, whose punctuation and
+internal spacing remain authored while source-formatting soft breaks have
+already become reading text, `CodeRun`
 (verbatim, never re-set — `lib/domain/reading/content/inline.dart`), `MarkedRun` carrying one of
 `InlineMark.emphasis | strong | strikethrough` over its children (`lib/domain/reading/content/inline.dart`),
 `LinkRun` (`lib/domain/reading/content/inline.dart`), `ImageRun` (`lib/domain/reading/content/inline.dart`) and `LineBreakRun`, which is only

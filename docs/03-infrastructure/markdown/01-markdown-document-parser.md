@@ -9,8 +9,9 @@ source in, [Document Content](../../01-domain/05-document-content.md) out
 
 It owns exactly one thing: the mapping from `package:markdown`'s
 HTML-shaped tree onto the domain's model. It decides nothing about how
-anything looks — the author's text is carried across as written, and how it is
-*set* is settled later in [Presentation](../../04-presentation/README.md)
+anything looks — formatting whitespace is resolved into reading text while
+authorial punctuation remains source, and how that text is *set* is settled
+later in [Presentation](../../04-presentation/README.md)
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Present wiring
@@ -67,11 +68,21 @@ item already carries its state (`lib/infrastructure/markdown/markdown_document_p
 fallback that parses a `style` in case another syntax ever emits one
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
-**Runs** map tag by tag (`lib/infrastructure/markdown/markdown_document_parser.dart`), with two rules worth stating. A single
-newline inside a paragraph becomes a **space**, never a break: treating it
-otherwise would impose the source file's own wrapping on the page (`lib/infrastructure/markdown/markdown_document_parser.dart`).
-And an element with no shape of its own — `sup`, inline HTML, a footnote
-reference — has its children kept even though its markup is dropped
+**Runs** map tag by tag (`lib/infrastructure/markdown/markdown_document_parser.dart`), with two rules worth stating.
+
+An ordinary newline inside inline content is a **soft break**, never an authored
+line. `_SoftLineBreaks` reads the complete inline subtree before mapping any one
+text node, because the newline may sit at the edge of emphasis or a link. Spaces
+and tabs beside it disappear. Scripts that separate words receive one space;
+Chinese and Japanese source lines join without a Western word space. The result
+is identical whether the editor hard-wrapped the source or kept the paragraph
+on one line, so the page's measured column — not the source file — owns reflow
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). The same resolved
+text is what document search indexes
+(`lib/infrastructure/search/literal_document_search.dart`).
+
+An element with no shape of its own — `sup`, inline HTML, a footnote reference
+— has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 A `code` run receives the content already normalised by the
@@ -126,6 +137,11 @@ under test: paragraphs (`test/infrastructure/markdown_document_parser_test.dart`
 anchors (`test/infrastructure/markdown_document_parser_test.dart`), code blocks (`test/infrastructure/markdown_document_parser_test.dart`), quotations (`test/infrastructure/markdown_document_parser_test.dart`), lists
 (`test/infrastructure/markdown_document_parser_test.dart`), tables (`test/infrastructure/markdown_document_parser_test.dart`), the smaller shapes (`test/infrastructure/markdown_document_parser_test.dart`) and the
 document as a whole (`test/infrastructure/markdown_document_parser_test.dart`).
+The soft-break group adds indentation, inline-boundary, container, CJK,
+Japanese, Korean, Arabic, Hebrew, code-span and explicit-break boundaries;
+`test/infrastructure/literal_document_search_test.dart` and
+`test/presentation/paragraph_setting_test.dart` prove the resolved text remains
+the same through search and layout.
 
 ## Transition
 

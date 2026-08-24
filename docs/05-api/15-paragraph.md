@@ -114,7 +114,10 @@ document of many quoted paragraphs measures each distinct rendering once.
 `test/presentation/paragraph_setting_test.dart` covers a lone paragraph,
 half-beat spaced and one-em indented sequences, recursive paragraph marking,
 long reflow at changing widths, stable leading, widow binding and hanging
-punctuation measured against the actual face.
+punctuation measured against the actual face. It also renders source-wrapped
+and unwrapped versions of the same Latin and East Asian prose at narrow and
+wide measures and requires identical text and geometry; the editor's line
+length therefore cannot leak into this widget.
 
 ## Transition
 

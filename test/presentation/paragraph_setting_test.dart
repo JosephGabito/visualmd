@@ -9,6 +9,7 @@ import 'package:visualmd/api/theme/reading_measure.dart';
 import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
+import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/hanging_punctuation.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
@@ -238,6 +239,48 @@ void main() {
     expect(wideTheme!.proseWidth(760), lessThanOrEqualTo(760));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'editor wrapping is invisible at both narrow and wide reading measures',
+    (tester) async {
+      const parser = MarkdownDocumentParser();
+      final wrapped = parser
+          .parse(
+            'A paragraph wrapped by an editor\n'
+            'must compose from its words, not\n'
+            'from those source lines. 中文源代码\n'
+            '继续使用同一个自然段。',
+          )
+          .blocks
+          .single;
+      final unwrapped = parser
+          .parse(
+            'A paragraph wrapped by an editor must compose from its words, '
+            'not from those source lines. 中文源代码继续使用同一个自然段。',
+          )
+          .blocks
+          .single;
+
+      Future<(Size, String)> layout(Block block, double width) async {
+        await pump(tester, [block], width: width);
+        final richText = find.descendant(
+          of: find.byType(Paragraph),
+          matching: find.byType(RichText),
+        );
+        final widget = tester.widget<RichText>(richText);
+        return (tester.getSize(richText), widget.text.toPlainText());
+      }
+
+      for (final width in [340.0, 760.0]) {
+        final wrappedLayout = await layout(wrapped, width);
+        final unwrappedLayout = await layout(unwrapped, width);
+
+        expect(wrappedLayout.$2, unwrappedLayout.$2);
+        expect(wrappedLayout.$1, unwrappedLayout.$1);
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('paragraph marking follows prose into quotes and list items', (
     tester,

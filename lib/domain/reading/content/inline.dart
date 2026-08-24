@@ -1,7 +1,9 @@
 /// The run-level content of a document: what a line of text is made of.
 ///
-/// Pure text, exactly as the author wrote it. How it is *set* — which quote
-/// marks, which figures, which face — is a presentation decision made later.
+/// Pure text as the Markdown grammar resolves it. Authorial punctuation and
+/// internal spacing remain source; formatting whitespace such as a soft line
+/// break has already become the reading text it represents. How that text is
+/// *set* — which quote marks, which figures, which face — is decided later.
 sealed class Inline {
   const Inline();
 
