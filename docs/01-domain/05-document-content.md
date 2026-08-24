@@ -61,6 +61,11 @@ document's prose (`lib/domain/reading/content/inline.dart`). Nested marks and
 code remain children rather than being flattened, so a linked phrase keeps its
 real typographic roles.
 
+CommonMark also permits an empty inline-link label. The domain keeps that valid
+shape — including its destination and title — while its `text` remains empty.
+That is data fidelity, not permission to invent visible or accessible words at
+the page edge (`lib/domain/reading/content/inline.dart`).
+
 The model is deliberately ignorant of which valid delimiter spelling produced
 a mark. Both `*emphasis*` and `_emphasis_` become the same
 `MarkedRun(InlineMark.emphasis, ...)`; the stars or underscores have already

@@ -827,6 +827,126 @@ void main() {
     expect(span.getSemanticsInformation().single.text, '“guide”—now');
   });
 
+  testWidgets(
+    'one long link reflows without losing any line of its hit target',
+    (tester) async {
+      const label =
+          'A linked explanation with nested language and the unbroken token '
+          'VisualMdWorkspaceDocumentRootAbsolutePathWithoutAnyBreakOpportunity'
+          'AndWithEnoughCharactersToCrossSeveralNarrowLines still belongs to '
+          'one destination.';
+      const href = 'https://example.com/one/very/long/destination';
+      final activations = <String>[];
+      late ReadingTheme reading;
+      final semantics = tester.ensureSemantics();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: libraryTheme(BuiltInThemes.paper),
+          home: Center(
+            child: SizedBox(
+              width: 220,
+              child: Builder(
+                builder: (context) {
+                  reading = ReadingTheme.of(context, ReadingScale.comfortable);
+                  final inline = InlineComposer(
+                    theme: reading,
+                    onTapLink: activations.add,
+                  );
+                  return Paragraph(
+                    spans: inline.compose(const [
+                      LinkRun(href: href, children: [TextRun(label)]),
+                    ]),
+                    style: reading.body,
+                    textScaler: reading.textScaler,
+                    strut: reading.strutFor(reading.body),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final render = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: find.byType(Paragraph),
+          matching: find.byType(RichText),
+        ),
+      );
+      final boxes = render.getBoxesForSelection(
+        const TextSelection(baseOffset: 0, extentOffset: label.length),
+      );
+      final lines = <double, Rect>{};
+      for (final box in boxes) {
+        lines.putIfAbsent(box.top, box.toRect);
+      }
+
+      expect(lines.length, greaterThan(4));
+      expect(
+        boxes.every((box) => box.toRect().right <= render.size.width + 0.01),
+        isTrue,
+      );
+      for (final line in lines.values) {
+        await tester.tapAt(render.localToGlobal(line.center));
+        await tester.pump();
+      }
+      expect(activations, everyElement(href));
+      expect(activations, hasLength(lines.length));
+      final paragraph = tester.getSemantics(
+        find.descendant(
+          of: find.byType(Paragraph),
+          matching: find.byType(RichText),
+        ),
+      );
+      final link = paragraph
+          .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+          .single;
+      expect(
+        link,
+        matchesSemantics(
+          label: label,
+          textDirection: TextDirection.ltr,
+          isLink: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    },
+  );
+
+  testWidgets('an empty link creates no invisible interaction target', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final semantics = tester.ensureSemantics();
+    final spans = composer.compose(const [
+      TextRun('before '),
+      LinkRun(href: '/invisible', children: []),
+      TextRun('after'),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(home: Text.rich(TextSpan(children: spans))),
+    );
+
+    expect(TextSpan(children: spans).toPlainText(), 'before after');
+    final paragraph = tester.getSemantics(find.byType(RichText));
+    final children = paragraph.debugListChildrenInOrder(
+      DebugSemanticsDumpOrder.traversalOrder,
+    );
+    expect(
+      children.where((node) {
+        final data = node.getSemanticsData();
+        return data.flagsCollection.isLink ||
+            data.hasAction(SemanticsAction.tap);
+      }),
+      isEmpty,
+    );
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets('links keep the typographic role around them', (tester) async {
     await makeComposer(tester);
     final heading = theme.heading(2);

@@ -422,6 +422,44 @@ void main() {
       expect(links.single.text, 'inner');
       expect(paragraph.text, '[outer inner](/outer)');
     });
+
+    test('long destinations preserve balanced structure and URL data', () {
+      final repeated = List.filled(40, 'segment-').join();
+      final destination =
+          'https://example.com/one/two/three/'
+          '${repeated}resource(foo(and(bar)))'
+          '?workspace=visual-md&mode=reader%20view#deep-link';
+      final link =
+          single<ParagraphBlock>('[reachable]($destination)').content.single
+              as LinkRun;
+
+      expect(link.href, destination);
+      expect(link.text, 'reachable');
+    });
+
+    test('an empty label is valid but contributes no reading text', () {
+      final paragraph = single<ParagraphBlock>(
+        'before [](/invisible-target "Advisory") after',
+      );
+      final link = paragraph.content.whereType<LinkRun>().single;
+
+      expect(link.children, isEmpty);
+      expect(link.text, isEmpty);
+      expect(link.href, '/invisible-target');
+      expect(link.title, 'Advisory');
+      expect(paragraph.text, 'before  after');
+    });
+
+    test('a title keeps resolved punctuation exactly', () {
+      final link =
+          single<ParagraphBlock>(
+                '[guide](/guide "A \'quote\', (detail), '
+                'colon: semicolon; — &copy;")',
+              ).content.single
+              as LinkRun;
+
+      expect(link.title, "A 'quote', (detail), colon: semicolon; — ©");
+    });
   });
 
   group('soft line breaks', () {

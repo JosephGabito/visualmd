@@ -70,6 +70,14 @@ and a real pointer tap reaches the same callback
 (`lib/api/render/inline_composer.dart`,
 `test/presentation/inline_composer_test.dart`).
 
+The destination and title never enter the span tree, so neither can widen the
+page. A long label remains ordinary inline text: Flutter may use emergency
+breaks inside an otherwise unbreakable token, but never splits a grapheme, and
+every resulting line still maps back to the one `_LinkTextSpan` interaction.
+An empty label paints no glyph, creates no hit rectangle, and therefore exposes
+no phantom link action (`lib/api/render/inline_composer.dart`,
+`test/presentation/inline_composer_test.dart`).
+
 Composition advances by extended grapheme cluster rather than UTF-16 code
 unit. Search and syntax boundaries that land inside a combining sequence,
 emoji modifier, flag, or ZWJ sequence are expanded to the complete visible
