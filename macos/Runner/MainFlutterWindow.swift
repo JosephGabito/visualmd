@@ -41,6 +41,18 @@ class MainFlutterWindow: NSWindow {
     let toolbar = NSToolbar(identifier: "visualmd.chrome")
     toolbar.showsBaselineSeparator = false
     self.toolbar = toolbar
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(hideToolbarForFullScreen(_:)),
+      name: NSWindow.willEnterFullScreenNotification,
+      object: self
+    )
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(restoreToolbarAfterFullScreen(_:)),
+      name: NSWindow.willExitFullScreenNotification,
+      object: self
+    )
     self.minSize = NSSize(width: 720, height: 480)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
@@ -229,8 +241,28 @@ class MainFlutterWindow: NSWindow {
     }
   }
 
+  deinit {
+    NotificationCenter.default.removeObserver(self)
+  }
+
+  @objc private func hideToolbarForFullScreen(_ notification: Notification) {
+    // The empty toolbar exists only to centre the traffic lights in a normal
+    // window. Fullscreen has no persistent traffic lights; keeping the toolbar
+    // would cover the Flutter top bar with an empty native strip.
+    toolbar?.isVisible = false
+  }
+
+  @objc private func restoreToolbarAfterFullScreen(_ notification: Notification) {
+    toolbar?.isVisible = true
+  }
+
   private func installFileMenu(channel: FlutterMethodChannel) {
     guard let mainMenu = NSApp.mainMenu else { return }
+    for title in ["Edit", "Help"] {
+      if let unusedMenu = mainMenu.items.first(where: { $0.title == title }) {
+        mainMenu.removeItem(unusedMenu)
+      }
+    }
     if mainMenu.items.contains(where: { $0.title == "File" }) { return }
 
     let controller = NativeFileMenuController(channel: channel)
