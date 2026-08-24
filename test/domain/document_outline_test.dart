@@ -94,6 +94,49 @@ Text.
       ]);
     });
 
+    test('nested heading marks agree on plain text and anchors', () {
+      final headings = DocumentOutline.parse(r'''
+# ***Combined importance***
+
+## **Strong with _nested voice_**
+
+### *foo**bar*
+''').tableOfContents.headings;
+
+      expect(headings.map((heading) => heading.text), [
+        'Combined importance',
+        'Strong with nested voice',
+        'foo**bar',
+      ]);
+      expect(headings.map((heading) => heading.anchor), [
+        'combined-importance',
+        'strong-with-nested-voice',
+        'foobar',
+      ]);
+    });
+
+    test('delimiter precedence preserves only genuinely literal marks', () {
+      final headings = DocumentOutline.parse(r'''
+# *foo**bar*
+
+## *foo _bar* baz_
+
+### **foo **bar baz**
+
+#### foo***bar***baz
+
+##### \**escaped opener* and **escaped closer\***
+''').tableOfContents.headings;
+
+      expect(headings.map((heading) => heading.text), [
+        'foo**bar',
+        'foo _bar baz_',
+        '**foo bar baz',
+        'foobarbaz',
+        '*escaped opener and escaped closer*',
+      ]);
+    });
+
     test('malformed references and literal regions remain untouched', () {
       final heading = DocumentOutline.parse(
         '# &MadeUpEntity; &copy and '

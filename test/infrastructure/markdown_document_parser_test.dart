@@ -175,6 +175,96 @@ void main() {
     });
   });
 
+  group('combined and nested emphasis', () {
+    test('triple delimiters prefer emphasis around strength', () {
+      for (final source in ['***important***', '___important___']) {
+        final paragraph = single<ParagraphBlock>(source);
+        final emphasis = paragraph.content.single as MarkedRun;
+        final strength = emphasis.children.single as MarkedRun;
+
+        expect(emphasis.mark, InlineMark.emphasis, reason: source);
+        expect(strength.mark, InlineMark.strong, reason: source);
+        expect(strength.children, [const TextRun('important')]);
+        expect(paragraph.text, 'important');
+      }
+    });
+
+    test('each role may contain the other without exposing its notation', () {
+      final emphasisOutside =
+          single<ParagraphBlock>('*voice with **important words** inside*')
+                  .content
+                  .single
+              as MarkedRun;
+      final strengthOutside =
+          single<ParagraphBlock>('**important words with *voice* inside**')
+                  .content
+                  .single
+              as MarkedRun;
+
+      expect(emphasisOutside.mark, InlineMark.emphasis);
+      expect(
+        emphasisOutside.children.whereType<MarkedRun>().single.mark,
+        InlineMark.strong,
+      );
+      expect(emphasisOutside.text, 'voice with important words inside');
+      expect(strengthOutside.mark, InlineMark.strong);
+      expect(
+        strengthOutside.children.whereType<MarkedRun>().single.mark,
+        InlineMark.emphasis,
+      );
+      expect(strengthOutside.text, 'important words with voice inside');
+    });
+
+    test('nesting remains recursive rather than flattening the mark stack', () {
+      final outer =
+          single<ParagraphBlock>('*outer **middle *inner* middle** outer*')
+                  .content
+                  .single
+              as MarkedRun;
+      final middle = outer.children.whereType<MarkedRun>().single;
+      final inner = middle.children.whereType<MarkedRun>().single;
+
+      expect(
+        [outer.mark, middle.mark, inner.mark],
+        [InlineMark.emphasis, InlineMark.strong, InlineMark.emphasis],
+      );
+      expect(outer.text, 'outer middle inner middle outer');
+    });
+
+    test('the rule of three preserves delimiters that are reading text', () {
+      final paragraph = single<ParagraphBlock>('*foo**bar*');
+      final emphasis = paragraph.content.single as MarkedRun;
+
+      expect(emphasis.mark, InlineMark.emphasis);
+      expect(emphasis.children, [const TextRun('foo**bar')]);
+      expect(paragraph.text, 'foo**bar');
+    });
+
+    test('overlap and shared-closer precedence keep only unmatched marks', () {
+      final overlap = single<ParagraphBlock>('*foo _bar* baz_');
+      final sharedCloser = single<ParagraphBlock>('**foo **bar baz**');
+
+      expect(overlap.content.first, isA<MarkedRun>());
+      expect((overlap.content.first as MarkedRun).text, 'foo _bar');
+      expect(overlap.text, 'foo _bar baz_');
+      expect(sharedCloser.content.first, const TextRun('**foo '));
+      expect((sharedCloser.content.last as MarkedRun).text, 'bar baz');
+      expect(sharedCloser.text, '**foo bar baz');
+    });
+
+    test('code and links remain nested inside the combined mark', () {
+      final paragraph = single<ParagraphBlock>(
+        '***read `*` and [the guide](https://example.com)***',
+      );
+      final emphasis = paragraph.content.single as MarkedRun;
+      final strength = emphasis.children.single as MarkedRun;
+
+      expect(strength.children.whereType<CodeRun>().single.text, '*');
+      expect(strength.children.whereType<LinkRun>().single.text, 'the guide');
+      expect(paragraph.text, 'read * and the guide');
+    });
+  });
+
   group('soft line breaks', () {
     test('source wrapping disappears into one word separator', () {
       final paragraph = single<ParagraphBlock>(

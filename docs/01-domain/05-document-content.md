@@ -61,6 +61,14 @@ The same boundary holds for `**strong**` and `__strong__`: both become one
 `InlineMark.strong`, retaining importance as a typed mark without retaining its
 source notation.
 
+Marks remain recursive rather than being flattened. `***important***` is an
+emphasis run containing a strong run, while `**important with _voice_ inside**`
+keeps emphasis inside strength. That stack is semantic: presentation can add
+the two independent cues, and plain-text consumers still receive only the
+words. A delimiter run which CommonMark leaves literal remains in those words;
+for example, the middle `**` in `*foo**bar*` is reading text, not decoration
+(`lib/domain/reading/content/inline.dart`).
+
 `RawBlock` is the model's promise that nothing is silently dropped: markup the
 reader cannot set still reaches the page as its words
 (`lib/domain/reading/content/block.dart`).

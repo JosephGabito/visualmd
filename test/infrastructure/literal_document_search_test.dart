@@ -83,6 +83,32 @@ void main() {
     },
   );
 
+  test('indexes nested marks as one delimiter-free reading phrase', () async {
+    final document = Document(
+      id: DocumentId(rootId, 'nested-emphasis.md'),
+      content:
+          'Find ***Critical*** beside **important _context_** without marks.',
+    );
+
+    final critical = await search.find(SearchQuery('critical'), [document]);
+    final phrase = await search.find(SearchQuery('important context'), [
+      document,
+    ]);
+    final notation = await search.find(SearchQuery('***Critical***'), [
+      document,
+    ]);
+
+    expect(
+      critical.single.matches.single.excerpt,
+      'Find Critical beside important context without marks.',
+    );
+    expect(
+      phrase.single.matches.single.excerpt,
+      'Find Critical beside important context without marks.',
+    );
+    expect(notation, isEmpty);
+  });
+
   test('matches the reading text across editor wrapping', () async {
     final document = Document(
       id: DocumentId(rootId, 'wrapped.md'),

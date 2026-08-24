@@ -141,6 +141,14 @@ visible. Double asterisks may work inside a word, while double underscores do
 not, preserving identifier-like text such as `foo__bar__`
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+Delimiter runs remain a tree when the grammar nests them. Triple delimiters
+prefer emphasis around strength; either mark may contain the other; and deeper
+valid nesting remains recursive `MarkedRun` children. CommonMark's precedence
+and rule of three decide which characters were syntax before this adapter sees
+the tree. It therefore removes no delimiter itself: genuine syntax is absent,
+while literal notation such as the middle `**` in `*foo**bar*` remains in a
+`TextRun` (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).

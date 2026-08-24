@@ -311,6 +311,27 @@ the surrounding colour, size, leading and decoration. A phrase can become
 important without turning into a label or disturbing the reading grid
 (`lib/api/render/inline_composer.dart`).
 
+## Combined and nested emphasis
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis)
+does not define triple delimiters as a third mark. Its ambiguity rules prefer
+fewer nestings and, for a triple run, emphasis outside strength. The same rules
+allow either role inside the other, resolve overlapping candidates by source
+order, prefer the later opener when candidates share a closer, and use the
+rule of three to prevent runs such as `*foo**bar*` from being split into marks
+the author did not write. Code, links, images and HTML bind more tightly than
+emphasis. Visual MD preserves the resulting recursive mark tree and removes
+only the delimiter characters which that grammar consumed
+(`lib/domain/reading/document_outline.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+Typography does not need a new combined style. Lupton's economy of signals
+still applies to each meaning: italic marks a local change of voice and weight
+marks importance. When both meanings apply, the two inherited cues accumulate;
+neither adds colour, size, a box, spacing or an accessibility label. The prose
+remains one selectable line of thought even when its mark tree is several
+levels deep (`lib/api/render/inline_composer.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code
