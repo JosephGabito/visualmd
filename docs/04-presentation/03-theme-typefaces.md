@@ -19,13 +19,15 @@ rhythm.
 |-------|---------|----------|
 | `serif` | `Alegreya` | Reading text, headings, the app name. |
 | `sans` | `Inter` | Shelf, outline, buttons, labels, breadcrumbs. |
-| `mono` | `JetBrains Mono` | Code, inline and block. |
+| `mono` | `Geist Mono` | Code, inline and block. |
 
 `ThemeTypefaces.library` holds those three defaults
 (`lib/presentation/theme/theme_typefaces.dart`). Alegreya reads the page:
 a face drawn by Huerta Tipografica for literature and long-form text, with the
 long extenders and the movement of a book rather than the even texture of a
-screen serif. Literata is still bundled and still selectable — a theme may name
+screen serif. Geist Mono was drawn for code editors, diagrams and terminals,
+so the functional voice is meant for dense source rather than borrowed from a
+prose face. Literata is still bundled and still selectable — a theme may name
 it, and `?serif=<family>` swaps the reading face for one run. It serves three
 purposes at once: the default when a theme omits `typefaces` entirely
 (`lib/presentation/theme/reader_theme.dart`), the per-field default when a

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/reading/table_of_contents.dart';
 import '../../domain/search/search_result.dart';
+import '../../presentation/code/code_highlighter.dart';
 import '../layout/panel_widths.dart';
 import '../render/reading_theme.dart';
 import '../reader_controller.dart';
@@ -28,6 +29,7 @@ enum _SearchMode { closed, document, library }
 /// The room: shelf on the left, page in the middle, outline on the right.
 class ReaderScreen extends StatefulWidget {
   final ReaderController controller;
+  final CodeHighlighter codeHighlighter;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
   final ({double height, double leadingInset}) topBar;
@@ -40,6 +42,7 @@ class ReaderScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.openExternal,
+    this.codeHighlighter = const PlainCodeHighlighter(),
     this.openReaderSources,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
@@ -412,6 +415,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 key: _pane,
                 reading: reading,
                 scale: c.readingScale,
+                codeHighlighter: widget.codeHighlighter,
                 matches: _searchMode == _SearchMode.document
                     ? result?.matches ?? const []
                     : const [],

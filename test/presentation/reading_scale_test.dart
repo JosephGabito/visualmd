@@ -14,7 +14,11 @@ void main() {
 
   setUpAll(() async {
     // Whatever the library's reading face is, that is the one measured.
-    final files = {'Alegreya': 'Alegreya.ttf', 'Literata': 'Literata.ttf'};
+    final files = {
+      'Alegreya': 'Alegreya.ttf',
+      'Literata': 'Literata.ttf',
+      'Geist Mono': 'GeistMono.ttf',
+    };
     for (final entry in files.entries) {
       await (FontLoader(
         entry.key,
@@ -51,24 +55,30 @@ void main() {
       }
     });
 
-    test('code and table text stay under the body size but stay legible', () {
-      expect(scale.code, lessThan(scale.base));
-      expect(scale.code, greaterThan(scale.base * 0.8));
+    test('reference code is visibly smaller and tighter than prose', () {
+      expect(scale.base, 18);
+      expect(scale.code, 15);
+      expect(scale.codeLineHeight, 22);
       expect(scale.tableText, lessThan(scale.base));
     });
 
-    test('the scale keeps its proportions at any body size', () {
-      final large = scale.copyWith(base: 22);
-      expect(
-        large.heading(2) / large.base,
-        closeTo(scale.heading(2) / scale.base, 0.001),
-      );
-      expect(
-        large.indent / large.base,
-        closeTo(scale.indent / scale.base, 0.001),
-      );
-      expect(large.code / large.base, closeTo(scale.code / scale.base, 0.001));
-    });
+    test(
+      'the code step follows the reader without crossing its size floor',
+      () {
+        final large = scale.copyWith(base: 22);
+        expect(
+          large.heading(2) / large.base,
+          closeTo(scale.heading(2) / scale.base, 0.001),
+        );
+        expect(
+          large.indent / large.base,
+          closeTo(scale.indent / scale.base, 0.001),
+        );
+        expect(large.code, 19);
+        expect(large.codeLineHeight, 26);
+        expect(scale.copyWith(base: 15).code, ReadingScale.minimumCodeSize);
+      },
+    );
   });
 
   group('the measure, in the face actually used', () {
@@ -105,7 +115,7 @@ void main() {
     test('a wider face gets a wider column, not a longer line', () {
       final serif = ReadingMeasure.columnWidth(body(scale.base), scale.measure);
       final mono = ReadingMeasure.columnWidth(
-        TextStyle(fontFamily: 'JetBrains Mono', fontSize: scale.base),
+        TextStyle(fontFamily: 'Geist Mono', fontSize: scale.base),
         scale.measure,
       );
       expect(mono, isNot(closeTo(serif, 1)));
@@ -193,7 +203,13 @@ void main() {
       final codeLine =
           enlarged.textScaler.scale(enlarged.code.fontSize!) *
           enlarged.code.height!;
-      expect(codeLine / enlarged.baseline, closeTo(1, 0.001));
+      expect(
+        codeLine,
+        closeTo(
+          enlarged.textScaler.scale(enlarged.scale.codeLineHeight),
+          0.001,
+        ),
+      );
     });
   });
 

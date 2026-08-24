@@ -12,7 +12,7 @@ abstract final class FontMetrics {
   static const xHeights = <String, double>{
     'Literata': 0.507,
     'Inter': 0.546,
-    'JetBrains Mono': 0.550,
+    'Geist Mono': 0.530,
     // A literary face: small letters, long extenders. It is set larger to
     // read the same, which is the whole point of quoting sizes this way.
     'Alegreya': 0.452,
@@ -24,14 +24,14 @@ abstract final class FontMetrics {
   static const capHeights = <String, double>{
     'Literata': 0.700,
     'Inter': 0.728,
-    'JetBrains Mono': 0.730,
+    'Geist Mono': 0.710,
     'Alegreya': 0.637,
   };
 
   static const descenders = <String, double>{
     'Literata': 0.308,
     'Inter': 0.244,
-    'JetBrains Mono': 0.300,
+    'Geist Mono': 0.295,
     'Alegreya': 0.345,
   };
 

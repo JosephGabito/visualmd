@@ -23,6 +23,7 @@ the page a reader sees.
 | [Widow Binding](09-widow-binding.md) | Keeping the last word of a paragraph off a line of its own |
 | [Sources](10-sources.md) | Where these decisions came from, and what the research actually says |
 | [Vertical Rhythm](11-vertical-rhythm.md) | The beat every gap is spent in, and the rule that keeps text in phase |
+| [Code Highlighting](12-code-highlighting.md) | Framework-free syntax roles and exact source ranges |
 
 ## How it fits
 

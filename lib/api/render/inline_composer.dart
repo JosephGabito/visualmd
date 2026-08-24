@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/reading/content/inline.dart';
 import '../../domain/search/search_result.dart';
+import '../../presentation/code/code_highlighter.dart';
 import '../../presentation/theme/typographic_punctuation.dart';
 import 'reading_theme.dart';
 
@@ -41,6 +42,73 @@ final class InlineComposer {
     required TextStyle style,
     int offset = 0,
   }) => _text(text, style, _TextCursor(offset), setPunctuation: false);
+
+  /// Composes the exact code source while layering two independent meanings:
+  /// syntax changes the foreground, and document search changes the ground.
+  ///
+  /// Source offsets remain the authority. Any gap not covered by a contributed
+  /// token is emitted in [style], so highlighting can fail partially without
+  /// removing, repeating or rewriting a character.
+  List<InlineSpan> highlightedVerbatim(
+    String text, {
+    required TextStyle style,
+    required CodeHighlighting? highlighting,
+    required TextStyle Function(CodeHighlightToken token) styleFor,
+    int offset = 0,
+  }) {
+    if (text.isEmpty) return const [];
+    final tokens = [
+      for (final token in highlighting?.tokens ?? const <CodeHighlightToken>[])
+        if (token.start >= 0 &&
+            token.end <= text.length &&
+            token.start < token.end)
+          token,
+    ]..sort((a, b) => a.start.compareTo(b.start));
+
+    final boundaries = <int>{0, text.length};
+    for (final token in tokens) {
+      boundaries
+        ..add(token.start)
+        ..add(token.end);
+    }
+    for (final match in matches) {
+      final start = (match.start - offset).clamp(0, text.length);
+      final end = (match.end - offset).clamp(0, text.length);
+      if (start < end) {
+        boundaries
+          ..add(start)
+          ..add(end);
+      }
+    }
+    final cuts = boundaries.toList()..sort();
+
+    final spans = <InlineSpan>[];
+    for (var i = 0; i + 1 < cuts.length; i++) {
+      final start = cuts[i];
+      final end = cuts[i + 1];
+      if (start == end) continue;
+      final tokenIndex = tokens.indexWhere(
+        (token) => token.start <= start && token.end >= end,
+      );
+      final base = tokenIndex < 0 ? style : styleFor(tokens[tokenIndex]);
+      final matchIndex = matches.indexWhere(
+        (match) => match.overlaps(offset + start, offset + end),
+      );
+      final runStyle = _highlighted(base, matchIndex);
+      final value = text.substring(start, end);
+
+      final previous = spans.isEmpty ? null : spans.last;
+      if (previous is TextSpan && previous.style == runStyle) {
+        spans[spans.length - 1] = TextSpan(
+          text: '${previous.text ?? ''}$value',
+          style: runStyle,
+        );
+      } else {
+        spans.add(TextSpan(text: value, style: runStyle));
+      }
+    }
+    return spans;
+  }
 
   List<InlineSpan> _compose(
     List<Inline> runs, {

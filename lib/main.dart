@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'api/app.dart';
+import 'api/highlighting/shiki_code_highlighter.dart';
 import 'api/layout/panel_widths.dart';
 import 'api/theme/font_licences.dart';
 import 'presentation/theme/reading_scale.dart';
@@ -48,6 +49,7 @@ Future<void> main() async {
 
   // Infrastructure
   final platform = await createPlatformAdapters();
+  final codeHighlighter = ShikiCodeHighlighter();
   final readerState = InMemoryReaderState();
   final repository = InMemoryLibraryRepository(readerState);
   final sessions = InMemoryWorkspaceSessionRepository(readerState);
@@ -270,6 +272,7 @@ Future<void> main() async {
   runApp(
     VisualMdApp(
       controller: controller,
+      codeHighlighter: codeHighlighter,
       openReaderSources: openReaderSources?.call,
       openExternal: platform.openExternal,
       dropRegion: platform.dropRegion,

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../domain/reading/content/block.dart';
+import '../../presentation/code/code_highlighter.dart';
 import '../theme/reading_measure.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../../presentation/theme/theme_palette.dart';
@@ -21,6 +22,7 @@ final class ReadingTheme {
   final ReadingScale scale;
   final LibraryPalette palette;
   final TextScaler textScaler;
+  final bool isDark;
 
   /// The line height actually used, worked out for the face in hand. Every
   /// gap on the page is cut from it, so the rhythm follows the face rather
@@ -45,6 +47,7 @@ final class ReadingTheme {
     required this.scale,
     required this.palette,
     required this.textScaler,
+    required this.isDark,
     required this.leading,
     required this.renderedBase,
     required this.body,
@@ -131,11 +134,16 @@ final class ReadingTheme {
       scale: scale,
       palette: p,
       textScaler: textScaler,
+      isDark: dark,
       leading: leading,
       renderedBase: renderedBase,
       body: body,
-      code: _onBeat(type.mono(color: p.ink, size: scale.code), unit, textScaler)
-          .copyWith(
+      code:
+          _onBeat(
+            type.mono(color: p.ink, size: scale.code),
+            textScaler.scale(scale.codeLineHeight),
+            textScaler,
+          ).copyWith(
             letterSpacing: tracking,
             // Zero and capital O are the pair a reader of technical documents
             // most often has to tell apart, and guessing is how a command gets
@@ -171,6 +179,7 @@ final class ReadingTheme {
     scale: theme.scale,
     palette: theme.palette,
     textScaler: theme.textScaler,
+    isDark: theme.isDark,
     leading: theme.leading,
     renderedBase: theme.renderedBase,
     body: theme.quote,
@@ -211,6 +220,40 @@ final class ReadingTheme {
       height: base.height,
     );
   }
+
+  /// A syntax run keeps the code face and rhythm; colour is its only cue.
+  ///
+  /// Shiki's suggested foreground is treated as input, not authority. It is
+  /// moved toward the active theme's ink only when the real code surface would
+  /// otherwise fall below ordinary-text contrast.
+  TextStyle codeToken(CodeHighlightToken token) {
+    if (token.role == CodeTokenRole.plain ||
+        token.role == CodeTokenRole.punctuation) {
+      return code;
+    }
+    final suggested = ThemePalette.parseHexColor(token.foreground ?? '');
+    final fallback = token.role == CodeTokenRole.comment
+        ? palette.muted
+        : palette.accent;
+    return code.copyWith(
+      color: _contrastSafeOn(
+        suggested ?? fallback,
+        codeBodyBackground,
+        palette.ink,
+      ),
+    );
+  }
+
+  /// The code itself recedes one step behind its header on dark themes and
+  /// comes one step forward on light themes.
+  ///
+  /// Luminance alone supplies the hierarchy. A divider or shadow would repeat
+  /// the same boundary with more ink and, in the case of a border, more height.
+  Color get codeBodyBackground => Color.lerp(
+    palette.codeBackground,
+    isDark ? Colors.black : Colors.white,
+    0.09,
+  )!;
 
   /// The width prose is set to: the measure, or the room available if that
   /// is narrower. Everything on the page lines up against this.
@@ -256,6 +299,10 @@ final class ReadingTheme {
   /// One line of body text. The same measurement as [baseline]; the name is
   /// kept for reading about text rather than about the grid.
   double get line => baseline;
+
+  /// One compact line of source, before the completed block is reconciled
+  /// with the prose grid.
+  double get codeLine => textScaler.scale(scale.codeLineHeight);
 
   /// Gives [style] a line height of exactly one beat, whatever size the face
   /// turned out to need.
@@ -327,4 +374,31 @@ Color _contrastSafeAccent(LibraryPalette palette) {
     }
   }
   return Color.lerp(accent, palette.ink, sufficient)!;
+}
+
+Color _contrastSafeOn(Color proposed, Color background, Color ink) {
+  if (ThemePalette.contrastRatio(proposed, background) >=
+      ThemePalette.minimumTextContrast) {
+    return proposed;
+  }
+
+  final inkContrast = ThemePalette.contrastRatio(ink, background);
+  final blackContrast = ThemePalette.contrastRatio(Colors.black, background);
+  final whiteContrast = ThemePalette.contrastRatio(Colors.white, background);
+  final anchor = inkContrast >= ThemePalette.minimumTextContrast
+      ? ink
+      : (blackContrast >= whiteContrast ? Colors.black : Colors.white);
+  var tooFaint = 0.0;
+  var sufficient = 1.0;
+  for (var i = 0; i < 12; i++) {
+    final middle = (tooFaint + sufficient) / 2;
+    final candidate = Color.lerp(proposed, anchor, middle)!;
+    if (ThemePalette.contrastRatio(candidate, background) >=
+        ThemePalette.minimumTextContrast) {
+      sufficient = middle;
+    } else {
+      tooFaint = middle;
+    }
+  }
+  return Color.lerp(proposed, anchor, sufficient)!;
 }

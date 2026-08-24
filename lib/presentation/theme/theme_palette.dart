@@ -26,7 +26,7 @@ final class ThemePalette {
   /// Links, the active outline entry, list bullets, the selected shelf row.
   final Color accent;
 
-  /// Background of fenced code blocks.
+  /// Header ground of fenced code blocks; the renderer derives the body tone.
   final Color codeBackground;
 
   /// Soft wash of the accent for selected and hovered rows.

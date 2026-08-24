@@ -59,7 +59,7 @@ once at startup, so add a file and restart.
 | `palette.ink` | yes | Body text. |
 | `palette.muted` | yes | Breadcrumbs, counts, inactive outline entries. |
 | `palette.accent` | yes | Links, active outline entry, bullets, selected row. |
-| `palette.codeBackground` | yes | Behind fenced code blocks. |
+| `palette.codeBackground` | yes | Fenced-code header; the body derives a lighter or darker tone. |
 | `palette.accentSoft` | no | Selected and hovered rows. Derived from the accent over the paper when absent. |
 | `palette.selection` | no | Text selection. Derived from the accent at 30 % alpha when absent. |
 | `typefaces.serif` / `.sans` / `.mono` | no | Bundled or Google Fonts family names. Each falls back independently (`lib/presentation/theme/theme_typefaces.dart`). |

@@ -27,7 +27,7 @@ Every token carries the doc comment that defines it
 | `ink` | Body text. | yes |
 | `muted` | Breadcrumbs, counts, inactive outline entries. | yes |
 | `accent` | Links, active outline entry, bullets, selected shelf row. | yes |
-| `codeBackground` | Behind fenced code blocks. | yes |
+| `codeBackground` | Fenced-code header; the body derives a second tone. | yes |
 | `accentSoft` | Selected and hovered rows. | derived |
 | `selection` | Text selection highlight. | derived |
 
@@ -96,6 +96,7 @@ has no sensible default, and guessing would ship an unreadable page. The
 
 Nine tokens is deliberately few. New tokens should arrive derived-by-default,
 so existing files stay valid — that is the pattern `accentSoft` and
-`selection` set. Syntax highlighting would need its own colour tokens, but it
-remains a separate scope; see the
-[Backlog](../07-roadmap/02-backlog.md).
+`selection` set. Syntax highlighting deliberately has no palette fields here:
+the contributor suggests token foregrounds and the reader makes them safe on
+the active surface. A theme chooses the reading surface, not the meaning of
+every programming-language token.

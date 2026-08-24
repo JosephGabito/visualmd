@@ -41,7 +41,7 @@ voice, never the rhythm. Read as `context.type`
 
 ## Fonts are bundled, not fetched
 
-Alegreya, Literata, Inter and JetBrains Mono ship inside the app as variable
+Alegreya, Literata, Inter and Geist Mono ship inside the app as variable
 TTFs, with their italics, declared in `pubspec.yaml`. Three reasons, in
 order of weight: a reader must be able to draw text with no network; there is no flash
 of a fallback face at launch; and the metrics become deterministic enough to
@@ -64,8 +64,9 @@ font, not the app.
 ## The reading face, and what a size means
 
 `ThemeTypefaces.library` names Alegreya for reading — drawn for literature and
-long-form text — with Inter for the furniture and JetBrains Mono for code
-(`lib/presentation/theme/theme_typefaces.dart`). Literata stays bundled
+long-form text — with Inter for the furniture and Geist Mono for code
+(`lib/presentation/theme/theme_typefaces.dart`). Geist Mono was drawn
+specifically for code editors, diagrams and terminals. Literata stays bundled
 and selectable: a theme may name it, and `?serif=<family>` overrides the reading
 face for one run (`lib/main.dart`, applied by `VisualMdApp._wearing` at
 `lib/api/app.dart`), which is for judging a face on a real document and so
@@ -92,7 +93,7 @@ Two facts were measured before relying on it
 reaches the `wght` axis when `fontVariations` sets only `opsz`, so weight stays
 ordinary Flutter; and the axis does real work — at 18 px the display cut
 (`opsz` 60) sets about 2 % narrower than the default, the small-text cut
-(`opsz` 8) about 9 % wider. Neither JetBrains Mono nor Alegreya has the axis,
+(`opsz` 8) about 9 % wider. Neither Geist Mono nor Alegreya has the axis,
 so both are left alone (`lib/api/theme/font_licences.dart`) — the reading
 face gets no display cut at heading sizes, the one thing Literata does that it
 does not.
@@ -135,6 +136,7 @@ itself, so the styles the page is set with are assembled by
 | `ReadingTheme` (API) | Concrete `TextStyle`s, column widths, and the beat |
 | `DocumentView` (API) | Where each block goes |
 
-Code *colouring* is not part of a theme at all — syntax highlighting, diagrams
-and images are a separate scope, listed in the
-[Backlog](../07-roadmap/02-backlog.md).
+Code *colouring* is not part of a theme at all. The
+[Code Highlighting](../04-presentation/12-code-highlighting.md) contributor
+suggests syntax foregrounds; `ReadingTheme` enforces contrast against the
+theme's derived code body. Diagrams and images remain separate scopes.

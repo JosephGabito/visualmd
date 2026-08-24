@@ -22,7 +22,7 @@ void main() {
       'Alegreya': 'assets/fonts/Alegreya.ttf',
       'Literata': 'assets/fonts/Literata.ttf',
       'Inter': 'assets/fonts/Inter.ttf',
-      'JetBrains Mono': 'assets/fonts/JetBrainsMono.ttf',
+      'Geist Mono': 'assets/fonts/GeistMono.ttf',
     }.entries) {
       await (FontLoader(
         entry.key,
@@ -412,7 +412,7 @@ void main() {
         TextSpan(text: 'one two three four five six '),
         InlineCodeSpan(
           text: 'small tail',
-          style: TextStyle(fontFamily: 'JetBrains Mono'),
+          style: TextStyle(fontFamily: 'Geist Mono'),
         ),
       ]);
       expect(

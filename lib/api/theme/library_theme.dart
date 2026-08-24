@@ -19,6 +19,8 @@ final class LibraryPalette extends ThemeExtension<LibraryPalette> {
   final Color muted;
   final Color accent;
   final Color accentSoft;
+
+  /// Header ground for fenced code; `ReadingTheme` derives the body tone.
   final Color codeBackground;
   final Color selection;
 

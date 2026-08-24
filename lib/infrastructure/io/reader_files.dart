@@ -175,7 +175,7 @@ that built-in — that is how you tweak one of the shipped themes.
   "typefaces": {
     "serif": "Lora",
     "sans": "Inter",
-    "mono": "JetBrains Mono"
+    "mono": "Geist Mono"
   }
 }
 ```
@@ -191,7 +191,7 @@ that built-in — that is how you tweak one of the shipped themes.
 | `palette.ink` | Body text. |
 | `palette.muted` | Breadcrumbs, counts, inactive outline entries. |
 | `palette.accent` | Links, the active outline entry, bullets, the selected row. |
-| `palette.codeBackground` | Behind fenced code blocks. |
+| `palette.codeBackground` | Fenced-code header; the body derives a second tone. |
 | `palette.accentSoft` | Optional. Selected and hovered rows. Derived from the accent over the paper when absent. |
 | `palette.selection` | Optional. Text selection. Derived from the accent when absent. |
 | `typefaces` | Optional. Any Google Fonts family name; an unknown name falls back to the library's own. |

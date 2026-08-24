@@ -102,6 +102,7 @@ while a long prose cell grows only to the researched 55-character measure.
 |----|------|------|
 | `content` | `DocumentContent` | `DocumentReading.content` |
 | `theme` | `ReadingTheme` | Built by the [reading pane](04-reading-pane.md) |
+| `codeHighlighter` | `CodeHighlighter` | Framework-free source-range contributor, plain by default |
 | `anchorKeys` | `Map<String, GlobalKey>` | Owned by the pane; filled in as headings build |
 | `onTapLink` | `void Function(String href)?` | The pane's link handler |
 
@@ -110,10 +111,11 @@ Out: nothing directly. Links report through the composer; the pane reads
 
 ## Events
 
-None today. The **reading-pane block** slot belongs here: a contributor that
-renders a fenced language — mermaid, or syntax highlighting — would be
-consulted in `_BlockView`'s `CodeBlock` case
-(`lib/api/render/document_view.dart`). See the
+No events. `_BlockView` already consults the injected `CodeHighlighter` in its
+`CodeBlock` case and supplies the ranges to `InlineComposer`
+(`lib/api/render/document_view.dart`). A **reading-pane block** contributor for
+rendered artifacts such as Mermaid would be a separate future slot; syntax
+ranges do not replace the code widget. See the
 [plugin architecture](../07-roadmap/01-plugin-architecture.md).
 
 ## Lifecycle
