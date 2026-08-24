@@ -124,7 +124,7 @@ final class InlineComposer {
           ),
         ];
 
-      case LinkRun(:final href, :final children, :final title):
+      case LinkRun(:final href, :final children):
         final tap = onTapLink;
         return [
           TextSpan(
@@ -138,7 +138,6 @@ final class InlineComposer {
                 ? null
                 : (TapGestureRecognizer()..onTap = () => tap(href)),
             mouseCursor: SystemMouseCursors.click,
-            semanticsLabel: title,
           ),
         ];
 

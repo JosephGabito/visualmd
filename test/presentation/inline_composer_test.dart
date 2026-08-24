@@ -321,6 +321,24 @@ void main() {
     expect(tapped, ['guide/intro.md']);
   });
 
+  testWidgets('a link title never replaces or invalidates its visible label', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final span =
+        composer.compose([
+              const LinkRun(
+                href: 'https://example.com',
+                title: 'Example title',
+                children: [TextRun('titled link')],
+              ),
+            ]).single
+            as TextSpan;
+
+    expect(span.toPlainText(), 'titled link');
+    expect(span.semanticsLabel, isNull);
+  });
+
   testWidgets('links keep the typographic role around them', (tester) async {
     await makeComposer(tester);
     final heading = theme.heading(2);
