@@ -209,6 +209,67 @@ void main() {
     expect(marked.toString(), 'needle');
   });
 
+  testWidgets('emphasis adds only italic and keeps search paint independent', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final paragraph =
+        const MarkdownDocumentParser()
+                .parse('*asterisk* and _underscore_')
+                .blocks
+                .single
+            as ParagraphBlock;
+    final matchStart = paragraph.text.indexOf('underscore');
+    const base = TextStyle(
+      color: Color(0xFF123456),
+      fontSize: 19,
+      height: 1.6,
+      fontWeight: FontWeight.w400,
+    );
+    final spans = InlineComposer(
+      theme: theme,
+      matches: [
+        TextMatch(
+          start: matchStart,
+          end: matchStart + 'underscore'.length,
+          excerpt: paragraph.text,
+        ),
+      ],
+    ).compose(paragraph.content, style: base);
+
+    final emphasizedLeaves = <TextSpan>[];
+    void collect(InlineSpan span, {bool insideEmphasis = false}) {
+      if (span is! TextSpan) return;
+      final emphasized =
+          insideEmphasis || span.style?.fontStyle == FontStyle.italic;
+      if (emphasized && span.text != null) emphasizedLeaves.add(span);
+      for (final child in span.children ?? const <InlineSpan>[]) {
+        collect(child, insideEmphasis: emphasized);
+      }
+    }
+
+    spans.forEach(collect);
+    expect(TextSpan(children: spans).toPlainText(), 'asterisk and underscore');
+    expect(emphasizedLeaves.map((span) => span.text), [
+      'asterisk',
+      'underscore',
+    ]);
+    for (final leaf in emphasizedLeaves) {
+      expect(leaf.style!.fontStyle, FontStyle.italic);
+      expect(leaf.style!.fontWeight, base.fontWeight);
+      expect(leaf.style!.color, base.color);
+      expect(leaf.style!.fontSize, base.fontSize);
+      expect(leaf.style!.height, base.height);
+      expect(leaf.style!.decoration, base.decoration);
+      expect(leaf.semanticsLabel, isNull);
+    }
+    expect(emphasizedLeaves.first.style!.backgroundColor, isNull);
+    expect(
+      emphasizedLeaves.last.style!.backgroundColor,
+      theme.palette.selection,
+    );
+  });
+
   testWidgets(
     'an authored line remains one selectable newline in the text flow',
     (tester) async {

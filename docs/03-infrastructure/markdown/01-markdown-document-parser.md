@@ -126,6 +126,14 @@ by the author. Grapheme-aware styling and paragraph direction belong to the
 Flutter edge; this adapter only preserves the text it hands there
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+**Emphasis.** CommonMark decides whether a single `*` or `_` delimiter run is
+left- or right-flanking before this adapter sees it. Both valid spellings arrive
+as `em` and become the same `InlineMark.emphasis`; invalid, mismatched and
+unmatched delimiters remain ordinary text. The distinction inside words is
+preserved: an asterisk may delimit `foo*bar*`, while an underscore in
+`foo_bar_` remains literal so identifiers are not silently restyled
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).

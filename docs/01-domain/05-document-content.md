@@ -52,6 +52,12 @@ ever a line the author asked for with two trailing spaces or a backslash
 (`lib/domain/reading/content/inline.dart`). Its text is one newline; the source
 markers and indentation after them are formatting, not domain content.
 
+The model is deliberately ignorant of which valid delimiter spelling produced
+a mark. Both `*emphasis*` and `_emphasis_` become the same
+`MarkedRun(InlineMark.emphasis, ...)`; the stars or underscores have already
+served their grammatical purpose and cannot leak into outlines, search,
+selection or assistive text (`lib/domain/reading/content/inline.dart`).
+
 `RawBlock` is the model's promise that nothing is silently dropped: markup the
 reader cannot set still reaches the page as its words
 (`lib/domain/reading/content/block.dart`).

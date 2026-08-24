@@ -275,6 +275,26 @@ the authored string (`lib/api/theme/library_theme.dart`). Flutter Web's
 documents the different web boundary: the engine downloads its own split Noto
 fallback and cannot preload it through the public API.
 
+## Emphasis
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#emphasis-and-strong-emphasis)
+defines emphasis through left- and right-flanking delimiter runs rather than a
+simple pair of matching characters. A single asterisk or underscore may mark
+emphasis when its edges satisfy those rules; whitespace at an interior edge
+prevents it. The two spellings intentionally differ inside words:
+`foo*bar*` may emphasize `bar`, while `foo_bar_` remains literal. Visual MD
+delegates that grammar to the current CommonMark parser and carries either
+valid spelling as one delimiter-free `InlineMark.emphasis`
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+Lupton's *Hierarchy* supplies the visual rule already recorded above: italic
+is the standard mark of emphasis, and an economy of signals gives emphasis one
+cue rather than several. The legibility evidence also warns that italic slows
+continuous reading, which fixes its scope: a phrase may change voice, a passage
+must not. Visual MD therefore inherits every surrounding text property and
+changes only `fontStyle`; it adds no weight, colour, size, box or spacing
+(`lib/api/render/inline_composer.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

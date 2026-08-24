@@ -42,6 +42,21 @@ void main() {
     expect(results.single.matches.single.excerpt, isNot(contains('**')));
   });
 
+  test('indexes emphasized words without either delimiter spelling', () async {
+    final document = Document(
+      id: DocumentId(rootId, 'emphasis.md'),
+      content: 'Find *Needle* beside _thread_.',
+    );
+
+    final needle = await search.find(SearchQuery('needle'), [document]);
+    final thread = await search.find(SearchQuery('thread'), [document]);
+    final notation = await search.find(SearchQuery('*Needle*'), [document]);
+
+    expect(needle.single.matches.single.excerpt, 'Find Needle beside thread.');
+    expect(thread.single.matches.single.excerpt, 'Find Needle beside thread.');
+    expect(notation, isEmpty);
+  });
+
   test('matches the reading text across editor wrapping', () async {
     final document = Document(
       id: DocumentId(rootId, 'wrapped.md'),

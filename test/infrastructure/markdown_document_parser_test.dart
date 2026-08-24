@@ -53,6 +53,67 @@ void main() {
     });
   });
 
+  group('emphasis delimiters', () {
+    test('asterisks and underscores become the same domain mark', () {
+      final paragraph = single<ParagraphBlock>(
+        'Read *asterisk emphasis* beside _underscore emphasis_.',
+      );
+      final emphasis = paragraph.content.whereType<MarkedRun>().toList();
+
+      expect(emphasis.map((run) => run.mark), [
+        InlineMark.emphasis,
+        InlineMark.emphasis,
+      ]);
+      expect(emphasis.map((run) => run.text), [
+        'asterisk emphasis',
+        'underscore emphasis',
+      ]);
+      expect(
+        paragraph.text,
+        'Read asterisk emphasis beside underscore emphasis.',
+      );
+    });
+
+    test('asterisks may work inside words while underscores do not', () {
+      final paragraph = single<ParagraphBlock>(
+        'foo*bar* and 5*6*78; foo_bar_ and 5_6_78 stay literal.',
+      );
+      final emphasis = paragraph.content.whereType<MarkedRun>().toList();
+
+      expect(emphasis.map((run) => run.text), ['bar', '6']);
+      expect(paragraph.text, contains('foo_bar_ and 5_6_78'));
+    });
+
+    test('punctuation may flank emphasis but interior edge spaces may not', () {
+      final valid = single<ParagraphBlock>('foo-_(bar)_ and _(baz)_.');
+      final invalid = single<ParagraphBlock>(
+        r'Before * leading* and *trailing * and _ leading_ and _trailing _',
+      );
+
+      expect(valid.content.whereType<MarkedRun>().map((run) => run.text), [
+        '(bar)',
+        '(baz)',
+      ]);
+      expect(invalid.content.whereType<MarkedRun>(), isEmpty);
+      expect(
+        invalid.text,
+        r'Before * leading* and *trailing * and _ leading_ and _trailing _',
+      );
+    });
+
+    test('mismatched and unmatched delimiters remain authored text', () {
+      for (final source in [
+        r'_asterisk*',
+        r'*underscore_',
+        r'an unmatched *delimiter',
+      ]) {
+        final paragraph = single<ParagraphBlock>(source);
+        expect(paragraph.content.whereType<MarkedRun>(), isEmpty);
+        expect(paragraph.text, source);
+      }
+    });
+  });
+
   group('soft line breaks', () {
     test('source wrapping disappears into one word separator', () {
       final paragraph = single<ParagraphBlock>(
