@@ -58,7 +58,7 @@ exposes the resulting folder and drag streams as `folderDrops` and `dragging`
 | side effect | a browser folder handle stored in the registry | `:76,110,134` |
 
 `drops` is wired to `ReaderController.addFolder` and `dragging` to
-`setDragging` in the composition root (`lib/main.dart:201-203`). Direct-file
+`setDragging` in the composition root (`lib/main.dart:206-208`). Direct-file
 classification is documented separately in [Browser Markdown Drop](04-markdown-drop.md).
 
 ## Events

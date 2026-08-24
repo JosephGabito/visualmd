@@ -9,6 +9,7 @@ link:
 |---------|------|--------|
 | `DesktopFolderDrop` | folder and direct-markdown drops become opaque refs | `lib/infrastructure/io/desktop_folder_drop.dart:14-28` |
 | `DesktopFolderPicker` | the native "choose a folder" dialog | `lib/infrastructure/io/desktop_folder_picker.dart:6-8` |
+| `DesktopReaderSourcePicker` | macOS Open records become typed folder or Markdown refs | `lib/infrastructure/io/desktop_reader_source_picker.dart:8-18` |
 | `openWithSystem` | a clicked URL goes to the default browser | `lib/infrastructure/io/desktop_links.dart:3-4` |
 
 All three stop at the registry or the OS; none reads a file. Their boundary
@@ -21,7 +22,7 @@ with the UI is a wrapper function and three streams, so the API never imports
 `wrap(child)` returns a `DropTarget` around whatever the UI passes in
 (`lib/infrastructure/io/desktop_folder_drop.dart:30-58`). The composition root
 applies it to the whole screen via `PlatformAdapters.dropRegion`
-(`lib/infrastructure/platform/platform_io.dart:95-96`, `lib/main.dart:247-255`).
+(`lib/infrastructure/platform/platform_io.dart:102-103`, `lib/main.dart:254-264`).
 
 | Callback | Behaviour | Evidence |
 |----------|-----------|----------|
@@ -44,6 +45,15 @@ session identity (`lib/infrastructure/io/desktop_folder_picker.dart:13-21`). No 
 needed: the open panel itself grants the sandboxed app access to the chosen
 folder (`lib/infrastructure/io/desktop_folder_picker.dart:6-7`).
 
+**Open.** macOS contributes a mixed-source picker because `NSOpenPanel` can
+select directories and files together. Dart validates each native record,
+registers its path in the matching local registry, and returns only opaque
+folder or Markdown selections
+(`lib/infrastructure/io/desktop_reader_source_picker.dart:20-59`). Other
+desktop families leave the capability absent rather than pretending a
+file-only or folder-only dialog is the same interaction
+(`lib/infrastructure/platform/platform_io.dart:69-76`).
+
 **Links.** `openWithSystem` shells out per OS: `open` on macOS, `rundll32
 url.dll,FileProtocolHandler` on Windows, `xdg-open` elsewhere
 (`lib/infrastructure/io/desktop_links.dart:4-12`). The controller decides what
@@ -56,6 +66,7 @@ it.
 |---------|----|-----|
 | drop | `DropDoneDetails.files` (`List<DropItem>`) | folder, markdown and dragging streams — `lib/infrastructure/io/desktop_folder_drop.dart:20-28` |
 | picker | a user gesture | `Future<FolderRef?>` |
+| Open | native folder/file records | typed opaque reader-source selections |
 | links | a URL string | a child process; result ignored |
 
 ## Events
@@ -66,7 +77,7 @@ the corresponding library changes.
 ## Lifecycle
 
 Drop and picker are created with the desktop `PlatformAdapters`
-(`lib/infrastructure/platform/platform_io.dart:42-50`). The drop adapter's
+(`lib/infrastructure/platform/platform_io.dart:41-52`). The drop adapter's
 broadcast stream controllers live for the process; the `DropTarget` widget is
 rebuilt with the UI but the adapter is not.
 

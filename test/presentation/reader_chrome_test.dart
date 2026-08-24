@@ -167,6 +167,7 @@ void main() {
     Size size = const Size(1280, 800),
     PanelWidths? panelWidths,
     OpenWorkspace? openWorkspace,
+    Future<void> Function()? openReaderSources,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -209,7 +210,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: libraryTheme(BuiltInThemes.paper),
-        home: ReaderScreen(controller: controller, openExternal: (_) {}),
+        home: ReaderScreen(
+          controller: controller,
+          openExternal: (_) {},
+          openReaderSources: openReaderSources,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -241,7 +246,7 @@ void main() {
   }
 
   testWidgets(
-    'workspace opening uses Shift-O and leaves the standard Open chord free',
+    'Open and Open Workspace keep their distinct keyboard contracts',
     (tester) async {
       final files = _WorkspaceFiles();
       final state = InMemoryReaderState();
@@ -264,13 +269,21 @@ void main() {
         mutations: mutations,
         autosave: autosave,
       );
-      await pumpReader(tester, openWorkspace: openWorkspace);
+      var sourceOpenRequests = 0;
+      await pumpReader(
+        tester,
+        openWorkspace: openWorkspace,
+        openReaderSources: () async {
+          sourceOpenRequests++;
+        },
+      );
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyO);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
       await tester.pump();
-      expect(files.openRequests, 0, reason: 'Command-O remains unclaimed');
+      expect(sourceOpenRequests, 1, reason: 'Command-O opens reader sources');
+      expect(files.openRequests, 0, reason: 'Command-O is not workspace Open');
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
@@ -283,6 +296,11 @@ void main() {
         files.openRequests,
         1,
         reason: 'Command-Shift-O opens a workspace',
+      );
+      expect(
+        sourceOpenRequests,
+        1,
+        reason: 'Command-Shift-O is not reader-source Open',
       );
     },
   );

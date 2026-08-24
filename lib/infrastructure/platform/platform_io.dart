@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
+import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../io/desktop_folder_drop.dart';
@@ -12,6 +13,7 @@ import '../io/desktop_commands.dart';
 import '../io/desktop_folder_picker.dart';
 import '../io/desktop_links.dart';
 import '../io/desktop_markdown_picker.dart';
+import '../io/desktop_reader_source_picker.dart';
 import '../io/desktop_security_scope.dart';
 import '../io/desktop_workspace_files.dart';
 import '../io/desktop_workspace_source_access.dart';
@@ -67,6 +69,11 @@ final class _DesktopAdapters implements PlatformAdapters {
   @override
   late final WorkspaceSourceAccess workspaceSourceAccess =
       DesktopWorkspaceSourceAccess(_registry, _markdownRegistry, _files);
+
+  @override
+  late final ReaderSourcePicker? readerSourcePicker = Platform.isMacOS
+      ? DesktopReaderSourcePicker(_registry, _markdownRegistry)
+      : null;
 
   @override
   Future<FolderRef?> pickFolder() => _picker.pick();

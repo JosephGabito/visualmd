@@ -3,6 +3,7 @@ import 'package:web/web.dart' as web;
 
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
+import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../web/browser_folder.dart';
@@ -52,6 +53,9 @@ final class _WebAdapters implements PlatformAdapters {
         _markdownRegistry,
         BrowserHandleStore(),
       );
+
+  @override
+  ReaderSourcePicker? get readerSourcePicker => null;
 
   @override
   Future<FolderRef?> pickFolder() => _picker.pick();

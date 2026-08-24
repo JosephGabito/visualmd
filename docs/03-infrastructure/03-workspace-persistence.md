@@ -21,7 +21,7 @@ Desktop workspace files use native open/save panels. The adapter preserves the
 exact path returned by the save panel because macOS grants access to that URL,
 not to a renamed sibling (`lib/infrastructure/io/desktop_workspace_files.dart:45-65`).
 On macOS, Foundation writes that selected URL atomically through the native
-channel (`macos/Runner/MainFlutterWindow.swift:60-84`). Windows keeps the
+channel (`macos/Runner/MainFlutterWindow.swift:104-127`). Windows keeps the
 temporary-file replacement and last-good backup implemented by its runner.
 Machine-local source access is keyed by Workspace ID and source ID, so two
 workspaces may grant different authority to the same path.
