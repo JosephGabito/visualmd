@@ -14,4 +14,22 @@ void main() {
       ),
     );
   });
+
+  test('macOS removes native menus that have no reader actions', () {
+    final source = File('macos/Runner/MainFlutterWindow.swift')
+        .readAsStringSync();
+
+    expect(source, contains('["Edit", "Help"]'));
+    expect(source, contains('mainMenu.removeItem(unusedMenu)'));
+  });
+
+  test('macOS does not carry the traffic-light toolbar into fullscreen', () {
+    final source = File('macos/Runner/MainFlutterWindow.swift')
+        .readAsStringSync();
+
+    expect(source, contains('NSWindow.willEnterFullScreenNotification'));
+    expect(source, contains('NSWindow.willExitFullScreenNotification'));
+    expect(source, contains('toolbar?.isVisible = false'));
+    expect(source, contains('toolbar?.isVisible = true'));
+  });
 }
