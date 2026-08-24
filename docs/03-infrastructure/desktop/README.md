@@ -12,21 +12,21 @@ family, but its build still needs verification on a Windows machine.
 
 | Document | What it introduces | Source |
 |----------|--------------------|--------|
-| [Local Folder Scanner](01-local-folder-scanner.md) | Walking a directory and reading its Markdown files | `lib/infrastructure/io/local_folder_scanner.dart:14` |
-| [Desktop Drop, Picker and Links](02-drop-and-picker.md) | Folder drops, the native picker, and external links | `lib/infrastructure/io/desktop_folder_drop.dart:14`, `lib/infrastructure/io/desktop_folder_picker.dart:8`, `lib/infrastructure/io/desktop_links.dart:4` |
-| [Window Chrome](03-window-chrome.md) | The native macOS title bar and Visual MD's top-bar geometry | `macos/Runner/MainFlutterWindow.swift:31-41`, `lib/infrastructure/platform/platform_io.dart:26-35` |
-| [macOS Sandbox](04-macos-sandbox.md) | Entitlements and security-scoped file access | `macos/Runner/Release.entitlements:5-10`, `lib/infrastructure/io/desktop_security_scope.dart:9` |
-| [Reader Files](05-reader-files.md) | Preferences, user themes, workspace files, and machine-local access records | `lib/infrastructure/io/reader_files.dart:11-149` |
-| [Local Markdown Scanner](06-local-markdown-scanner.md) | Opening a directly dropped Markdown file and preserving its source identity | `lib/infrastructure/io/local_markdown_scanner.dart:10-38` |
-| [Desktop Source Change Monitor](07-source-change-monitor.md) | Native directory events, sandbox lifetime, and the five-second failure fallback | `lib/infrastructure/io/desktop_source_change_monitor.dart:15-26` |
+| [Local Folder Scanner](01-local-folder-scanner.md) | Walking a directory and reading its Markdown files | `lib/infrastructure/io/local_folder_scanner.dart` |
+| [Desktop Drop, Picker and Links](02-drop-and-picker.md) | Folder drops, the native picker, and external links | `lib/infrastructure/io/desktop_folder_drop.dart`, `lib/infrastructure/io/desktop_folder_picker.dart`, `lib/infrastructure/io/desktop_links.dart` |
+| [Window Chrome](03-window-chrome.md) | The native macOS title bar and Visual MD's top-bar geometry | `macos/Runner/MainFlutterWindow.swift`, `lib/infrastructure/platform/platform_io.dart` |
+| [macOS Sandbox](04-macos-sandbox.md) | Entitlements and security-scoped file access | `macos/Runner/Release.entitlements`, `lib/infrastructure/io/desktop_security_scope.dart` |
+| [Reader Files](05-reader-files.md) | Preferences, user themes, workspace files, and machine-local access records | `lib/infrastructure/io/reader_files.dart` |
+| [Local Markdown Scanner](06-local-markdown-scanner.md) | Opening a directly dropped Markdown file and preserving its source identity | `lib/infrastructure/io/local_markdown_scanner.dart` |
+| [Desktop Source Change Monitor](07-source-change-monitor.md) | Native directory events, sandbox lifetime, and the five-second failure fallback | `lib/infrastructure/io/desktop_source_change_monitor.dart` |
 
 Two small types make the rest possible. `LocalFolder` carries either one
 directory or a set of local files, with an optional macOS security bookmark;
 `LocalFolderRegistry` keeps that native information behind a `FolderRef`
-(`lib/infrastructure/io/local_folder.dart:6-31`). `ScopedAccess` then gives file
+(`lib/infrastructure/io/local_folder.dart`). `ScopedAccess` then gives file
 reading one interface whether the operating system needs a permission scope or
-not (`lib/infrastructure/io/scoped_access.dart:5-14`,
-`lib/infrastructure/io/desktop_security_scope.dart:9-23`).
+not (`lib/infrastructure/io/scoped_access.dart`,
+`lib/infrastructure/io/desktop_security_scope.dart`).
 
 The implementation uses `desktop_drop` for drop targets and security-scoped
 access, `file_selector` for native file panels, and `window_manager` for window
@@ -38,13 +38,13 @@ Manager, so CocoaPods is not part of the build.
 1. A reader drops a folder onto Visual MD or chooses one in the native panel.
 2. The adapter registers a `LocalDirectory`. A Finder drop may include a
    security bookmark; an open panel already grants access
-   (`lib/infrastructure/io/desktop_folder_drop.dart:40-42`,
-   `lib/infrastructure/io/desktop_folder_picker.dart:16-17`).
+   (`lib/infrastructure/io/desktop_folder_drop.dart`,
+   `lib/infrastructure/io/desktop_folder_picker.dart`).
 3. `AddFolder` receives only the resulting `FolderRef` and asks the
    `FolderScanner` port to read it.
 4. `LocalFolderScanner` opens any required security scope, walks the directory
    without following symlinks, reads Markdown outside hidden folders, and then
-   closes the scope (`lib/infrastructure/io/local_folder_scanner.dart:28-29`).
+   closes the scope (`lib/infrastructure/io/local_folder_scanner.dart`).
 5. `LibraryBuilder` adds the documents and opens the root README when one is
    available.
 

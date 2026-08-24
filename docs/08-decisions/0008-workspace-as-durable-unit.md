@@ -52,9 +52,9 @@ its recovery contract, not a reaction to a Library event.
 
 ## Evidence
 
-- Domain membership and invariants: `lib/domain/workspace/workspace.dart:5-41`.
-- Safe portable paths: `lib/domain/workspace/workspace_source.dart:41-58`.
-- Strict versioned codec: `lib/infrastructure/workspace/workspace_json_codec.dart:13-84`.
-- Transactional restoration and absorption: `lib/application/use_cases/open_workspace.dart:72-173`.
-- Serialized deferred writes: `lib/application/workspace_autosave.dart:31-67`.
+- Domain membership and invariants: `lib/domain/workspace/workspace.dart`.
+- Safe portable paths: `lib/domain/workspace/workspace_source.dart`.
+- Strict versioned codec: `lib/infrastructure/workspace/workspace_json_codec.dart`.
+- Transactional restoration and absorption: `lib/application/use_cases/open_workspace.dart`.
+- Serialized deferred writes: `lib/application/workspace_autosave.dart`.
 - Public schema: `schemas/visualmd-workspace-v1.schema.json`.

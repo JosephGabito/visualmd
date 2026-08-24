@@ -6,7 +6,7 @@
 folders. Each root contains the existing nested folder tree. The
 widget receives domain values and reports select, add, remove and move intent;
 it never changes the aggregate itself
-(`lib/api/widgets/shelf_panel.dart:14-35`).
+(`lib/api/widgets/shelf_panel.dart`).
 
 Root order comes from `Library.roots`; nested document and folder order comes
 from the domain's [Shelving Rules](../01-domain/02-shelving-rules.md).
@@ -15,28 +15,28 @@ from the domain's [Shelving Rules](../01-domain/02-shelving-rules.md).
 
 When standalone sources exist, “Markdowns” and their document rows appear
 above “Library.” The Library heading offers an add-folder action and its count
-describes folders only (`lib/api/widgets/shelf_panel.dart:260-319`). Each
+describes folders only (`lib/api/widgets/shelf_panel.dart`). Each
 standalone row reserves the same quiet action space as a root: its delete icon
 appears only on hover, while semantic dismiss remains available. That intent
 reports the document id and never reaches disk
-(`lib/api/widgets/shelf_panel.dart:703-772`). The body is a
+(`lib/api/widgets/shelf_panel.dart`). The body is a
 stable `ListView`: dragging a root never removes its expanded section from the
 shelf, inserts a proxy, or displaces its documents. Only the prospective root
 boundary changes while the pointer moves
-(`lib/api/widgets/shelf_panel.dart:188-257`).
+(`lib/api/widgets/shelf_panel.dart`).
 
 Expansion has two scopes. `_expandedRoots` decides whether one top-level root
 shows its tree. `_expandedFolders` keys every nested path by both root id and
 path, preventing two `guide/` folders from sharing state
-(`lib/api/widgets/shelf_panel.dart:41-90`). Removed roots are pruned from both
+(`lib/api/widgets/shelf_panel.dart`). Removed roots are pruned from both
 sets. A newly added root stays minimized even though its opening document is
 already in the reader. Later navigation within the existing library reveals
 only the selected document's root and ancestors. An explicit expand request
 first minimizes every branch in the target root, then opens the root and only
-the active document's ancestor chain (`lib/api/widgets/shelf_panel.dart:59-89`).
+the active document's ancestor chain (`lib/api/widgets/shelf_panel.dart`).
 
 `_RootSection` renders its root row, then recursively emits that root's own
-documents and open child folders (`lib/api/widgets/shelf_panel.dart:474-560`).
+documents and open child folders (`lib/api/widgets/shelf_panel.dart`).
 Minimized descendants are not built, which keeps the first frame small for
 folders containing hundreds or thousands of markdown files.
 
@@ -44,27 +44,27 @@ The minimized root row is itself the drag surface, so arrangement needs no
 permanent handle or action menu. Hover reveals only a delete icon; deletion
 means session membership, never a disk operation. Semantics retain arrange and
 dismiss actions for assistive navigation
-(`lib/api/widgets/shelf_panel.dart:448-588`). Its drag feedback is an invisible
+(`lib/api/widgets/shelf_panel.dart`). Its drag feedback is an invisible
 one-pixel token, not a copy of the root section. Pointer movement compares the
 pointer with stable root-header centres and marks the resulting boundary with a
 two-pixel blue line. Edge auto-scroll repeats that calculation as a long shelf
-moves beneath the pointer (`lib/api/widgets/shelf_panel.dart:92-150`,
-`:423-446`, `:484-550`).
+moves beneath the pointer (`lib/api/widgets/shelf_panel.dart`,
+`lib/api/widgets/shelf_panel.dart`, `lib/api/widgets/shelf_panel.dart`).
 
 Reordering is one explicit state machine. `idle` accepts a drag; `dragging`
 owns the source and current insertion boundary; release enters `settling` and
 produces at most one move intent; the frame after release returns to `idle`.
 If the active root disappears during a library update, the machine returns to
-`idle` immediately (`lib/api/widgets/shelf_reorder_machine.dart:3-105`). Root
+`idle` immediately (`lib/api/widgets/shelf_reorder_machine.dart`). Root
 toggle, remove and semantic arrange actions exist only in `idle`. Keeping them
 disabled through `settling` prevents both the active drag recognizer and a tap
 captured before the drag threshold from minimizing the root on release
-(`lib/api/widgets/shelf_panel.dart:151-173`, `:480-550`, `:558-581`).
+(`lib/api/widgets/shelf_panel.dart`, `lib/api/widgets/shelf_panel.dart`, `lib/api/widgets/shelf_panel.dart`).
 
 Nested folder and document rows retain the quiet existing treatment. Depth
 adds a fixed indent; the selected document receives one ground and one weight
 change, and README files keep their book icon
-(`lib/api/widgets/shelf_panel.dart:590-701`).
+(`lib/api/widgets/shelf_panel.dart`).
 
 ## Inputs and outputs
 
@@ -79,7 +79,7 @@ change, and README files keep their book icon
 | hover delete or semantic dismiss action | `onRemoveFolder(root.id)` |
 
 The shell wires these callbacks directly to `ReaderController`
-(`lib/api/screens/reader_screen.dart:389-417`).
+(`lib/api/screens/reader_screen.dart`).
 
 ## Events
 
@@ -91,12 +91,12 @@ mutation and any future events emitted after it.
 Expansion state is session-local widget state. Adding, arranging or removing a
 root preserves expansion for every surviving identity and prunes only removed
 identities. A library mutation therefore does not snap unrelated roots shut
-(`lib/api/widgets/shelf_panel.dart:51-68`).
+(`lib/api/widgets/shelf_panel.dart`).
 
 Widget tests cover standalone placement, hover removal, and the expand contract—including
 minimizing an unrelated open branch while revealing the active nested
 document—alongside minimized startup, navigation, dragging and hover removal
-(`test/presentation/shelf_panel_test.dart:55-128`).
+(`test/presentation/shelf_panel_test.dart`).
 
 ## Failure and recovery
 

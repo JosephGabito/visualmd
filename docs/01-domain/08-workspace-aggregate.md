@@ -15,15 +15,15 @@ portable intent from which that projection is rebuilt.
 
 The aggregate stores a stable `WorkspaceId`, an optional absolute document
 root, two ordered source collections, one theme value, and an optional active
-document address (`lib/domain/workspace/workspace.dart:5-25`). It rejects
+document address (`lib/domain/workspace/workspace.dart`). It rejects
 duplicate source identities and an active document whose source is not a
-member (`lib/domain/workspace/workspace.dart:26-41`).
+member (`lib/domain/workspace/workspace.dart`).
 
 Every source has an opaque stable identity, a display name, and a path relative
-to the document root (`lib/domain/workspace/workspace_source.dart:3-21`). Paths
+to the document root (`lib/domain/workspace/workspace_source.dart`). Paths
 use `/`, may not be absolute, and may not contain empty, `.` or `..` segments,
 so a serialized source cannot escape its declared root
-(`lib/domain/workspace/workspace_source.dart:41-58`).
+(`lib/domain/workspace/workspace_source.dart`).
 
 ## Inputs and outputs
 
@@ -37,9 +37,9 @@ so a serialized source cannot escape its declared root
 | `WorkspaceDocument` | Source identity plus relative path of the active document. |
 
 `sources` yields standalone Markdowns followed by folders, matching the shelf's
-two visible sections (`lib/domain/workspace/workspace.dart:43-55`). `copyWith`
+two visible sections (`lib/domain/workspace/workspace.dart`). `copyWith`
 returns a newly validated aggregate rather than allowing partial mutation
-(`lib/domain/workspace/workspace.dart:57-77`).
+(`lib/domain/workspace/workspace.dart`).
 
 ## Events
 
@@ -57,8 +57,8 @@ the current identity.
 
 Construction fails when identities conflict, the active source is not a
 member, the root is not absolute, or a relative path is unsafe
-(`lib/domain/workspace/workspace.dart:30-39`,
-`lib/domain/workspace/workspace.dart:98-115`). A malformed JSON document is
+(`lib/domain/workspace/workspace.dart`,
+`lib/domain/workspace/workspace.dart`). A malformed JSON document is
 therefore rejected before it can replace the current reading room.
 
 An unavailable platform source remains a Workspace member. It is omitted only

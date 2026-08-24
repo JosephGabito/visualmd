@@ -16,20 +16,20 @@ are the next.
 ## Present wiring
 
 The trigger is wrapped in a `CompositedTransformTarget` and an `OverlayPortal`
-(`lib/api/widgets/anchored_menu.dart:115-129`), with the controller and portal
-held by its state (`lib/api/widgets/anchored_menu.dart:59-65`). Opening shows
+(`lib/api/widgets/anchored_menu.dart`), with the controller and portal
+held by its state (`lib/api/widgets/anchored_menu.dart`). Opening shows
 the portal and drives one `AnimationController` forward; closing reverses it,
 and a status listener hides the portal only once the surface has gone
-(`lib/api/widgets/anchored_menu.dart:67-97`).
+(`lib/api/widgets/anchored_menu.dart`).
 
 The surface hangs off the trigger with `CompositedTransformFollower`, its
 top-right corner pinned to the trigger's bottom-right
-(`lib/api/widgets/anchored_menu.dart:184-195`).
+(`lib/api/widgets/anchored_menu.dart`).
 
 ### It opens on the press
 
 The trigger is a [Pressable](09-pressable.md)
-(`lib/api/widgets/anchored_menu.dart:101-108`), the same press behaviour the
+(`lib/api/widgets/anchored_menu.dart`), the same press behaviour the
 shelf and outline toggles use: it listens for raw pointer events rather than
 taps, so it neither waits for the button to come back up nor can be deferred by
 the gesture arena — which matters under the window-drag handler that wraps the
@@ -48,21 +48,21 @@ from the trigger; it is not worth that today.
 
 | Principle | Here | Where |
 |---|---|---|
-| Staging — spatial continuity | The surface scales from its top-right corner, the corner it hangs from, so it reads as coming *from* the button rather than appearing beside it | `lib/api/widgets/anchored_menu.dart:200-201` |
-| Slow in, slow out | `Easing.emphasizedDecelerate` entering, `Easing.emphasizedAccelerate` leaving — Material 3's asymmetric pair | `lib/api/widgets/anchored_menu.dart:156-160` |
-| Never from zero | Scale runs 0.94 → 1, not 0 → 1: a surface that starts at nothing reads as inflating | `lib/api/widgets/anchored_menu.dart:200` |
-| Follow-through | Rows arrive after the surface and after each other, each fading up 8 px | `lib/api/widgets/anchored_menu.dart:271-285` |
-| Timing | 220 ms in, 140 ms out — dismissal is quicker than arrival, and both stay under a third of a second | `lib/api/widgets/anchored_menu.dart:55-56` |
-| Anticipation | The trigger grows to 1.06 under the pointer and gives to 0.94 under a press — shared with every other control | `lib/api/widgets/pressable.dart:34-35` |
+| Staging — spatial continuity | The surface scales from its top-right corner, the corner it hangs from, so it reads as coming *from* the button rather than appearing beside it | `lib/api/widgets/anchored_menu.dart` |
+| Slow in, slow out | `Easing.emphasizedDecelerate` entering, `Easing.emphasizedAccelerate` leaving — Material 3's asymmetric pair | `lib/api/widgets/anchored_menu.dart` |
+| Never from zero | Scale runs 0.94 → 1, not 0 → 1: a surface that starts at nothing reads as inflating | `lib/api/widgets/anchored_menu.dart` |
+| Follow-through | Rows arrive after the surface and after each other, each fading up 8 px | `lib/api/widgets/anchored_menu.dart` |
+| Timing | 220 ms in, 140 ms out — dismissal is quicker than arrival, and both stay under a third of a second | `lib/api/widgets/anchored_menu.dart` |
+| Anticipation | The trigger grows to 1.06 under the pointer and gives to 0.94 under a press — shared with every other control | `lib/api/widgets/pressable.dart` |
 
 Opacity finishes early — over the first 55 % of the entrance
-(`lib/api/widgets/anchored_menu.dart:151-155`) — so the menu is fully visible
+(`lib/api/widgets/anchored_menu.dart`) — so the menu is fully visible
 while it is still settling, which reads faster than it is.
 
 The cascade is spent by 70 % of the entrance however many rows there are
-(`lib/api/widgets/anchored_menu.dart:271-274`), so a long theme list never
+(`lib/api/widgets/anchored_menu.dart`), so a long theme list never
 feels slower than a short one. On the way out the rows leave together with the
-surface rather than in sequence (`lib/api/widgets/anchored_menu.dart:278`).
+surface rather than in sequence (`lib/api/widgets/anchored_menu.dart`).
 
 Nothing overshoots or bounces; the movement identifies the menu's origin
 without asking for attention of its own.
@@ -87,7 +87,7 @@ of it.
 ## Lifecycle
 
 One `AnimationController` lives as long as the widget
-(`lib/api/widgets/anchored_menu.dart:60`, disposed at `:75-79`). The overlay
+(`lib/api/widgets/anchored_menu.dart`, disposed at `lib/api/widgets/anchored_menu.dart`). The overlay
 child exists only between `show()` and the reverse completing, so a closed menu
 costs nothing but the trigger.
 
@@ -95,17 +95,17 @@ costs nothing but the trigger.
 
 - Pressing the trigger while the menu is open closes it: the dismissal layer
   covers the trigger, so the press lands there
-  (`lib/api/widgets/anchored_menu.dart:170-173`).
-- `Escape` dismisses (`lib/api/widgets/anchored_menu.dart:186`), as does a
-  press anywhere outside (`lib/api/widgets/anchored_menu.dart:170-173`).
+  (`lib/api/widgets/anchored_menu.dart`).
+- `Escape` dismisses (`lib/api/widgets/anchored_menu.dart`), as does a
+  press anywhere outside (`lib/api/widgets/anchored_menu.dart`).
 - The available height comes from layout, not from `MediaQuery`
-  (`lib/api/widgets/anchored_menu.dart:162-167`): an `OverlayPortal`'s child
+  (`lib/api/widgets/anchored_menu.dart`): an `OverlayPortal`'s child
   inherits from the trigger's place in the tree. Using `MediaQuery` there can
   produce a zero-height hit-test area even while the menu paints correctly.
-  `test/presentation/theme_picker_test.dart:62-72` checks every row with a real
+  `test/presentation/theme_picker_test.dart` checks every row with a real
   pointer so this remains visible.
 - A reader who has asked for less motion gets the menu at once, with no
-  transforms (`lib/api/widgets/anchored_menu.dart:97-99`, `:269`).
+  transforms (`lib/api/widgets/anchored_menu.dart`, `lib/api/widgets/anchored_menu.dart`).
 
 ## Transition
 

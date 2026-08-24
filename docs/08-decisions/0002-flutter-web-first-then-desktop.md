@@ -42,8 +42,8 @@ is, and keep mobile and the browser extension on the roadmap.
 
 ## Evidence
 
-- Platform selection at compile time: `lib/infrastructure/platform/platform.dart:3-5`.
-- Web adapter family: `lib/infrastructure/platform/platform_web.dart:12-60`.
-- Desktop adapter family: `lib/infrastructure/platform/platform_io.dart:16-86`.
-- Launch options read on the web only: `lib/infrastructure/platform/platform_web.dart:34-36`, `lib/infrastructure/platform/platform_io.dart:55-56`.
+- Platform selection at compile time: `lib/infrastructure/platform/platform.dart`.
+- Web adapter family: `lib/infrastructure/platform/platform_web.dart`.
+- Desktop adapter family: `lib/infrastructure/platform/platform_io.dart`.
+- Launch options read on the web only: `lib/infrastructure/platform/platform_web.dart`, `lib/infrastructure/platform/platform_io.dart`.
 - Platform notes: [Web](../06-platforms/01-web.md), [macOS](../06-platforms/02-macos.md), [Windows](../06-platforms/03-windows.md).

@@ -12,25 +12,25 @@ the host's File menu, while file I/O remains behind application ports.
 The platform command contract distinguishes Open reader sources, Open
 Workspace, and Open Sample Library, alongside New, Save, Save As, Add Folder,
 and Add Markdown
-(`lib/infrastructure/platform/platform_command.dart:1-11`). Desktop hosts send
+(`lib/infrastructure/platform/platform_command.dart`). Desktop hosts send
 those selections over one method channel, where they become a typed stream
-(`lib/infrastructure/io/desktop_commands.dart:7-30`). The composition root maps
-each command to the matching controller method (`lib/main.dart:209-224`).
+(`lib/infrastructure/io/desktop_commands.dart`). The composition root maps
+each command to the matching controller method (`lib/main.dart`).
 
 The Open boundary is typed before it reaches the controller. A
 `ReaderSourcePicker` returns folder or Markdown selections behind opaque refs
-(`lib/application/ports/reader_source_picker.dart:4-24`). The macOS adapter
+(`lib/application/ports/reader_source_picker.dart`). The macOS adapter
 translates native panel records into those selections and rejects non-Markdown
-files defensively (`lib/infrastructure/io/desktop_reader_source_picker.dart:20-59`).
+files defensively (`lib/infrastructure/io/desktop_reader_source_picker.dart`).
 An API-level opener then sends each selection through the existing `AddFolder`
 or `AddMarkdown` path and prevents a second picker from racing the first
-(`lib/api/reader_source_opener.dart:13-30`).
+(`lib/api/reader_source_opener.dart`).
 
 The controller treats New and Open Workspace as mutually exclusive opening operations,
 updates the active Library only after success, and turns failures into visible
-messages (`lib/api/reader_controller.dart:241-287`). Save and Save As preserve
+messages (`lib/api/reader_controller.dart`). Save and Save As preserve
 the current UI on failure and display the error in the same notice
-(`lib/api/reader_controller.dart:289-311`).
+(`lib/api/reader_controller.dart`).
 
 Flutter `CallbackShortcuts` provides Command shortcuts on macOS and Control
 shortcuts elsewhere, so keyboard behavior remains available on web while the
@@ -51,12 +51,12 @@ desktop menu remains genuinely native.
 
 The native macOS Open panel accepts folders and the supported Markdown
 extensions together, permits multiple selection, and reports whether each URL
-is a directory before Dart sees it (`macos/Runner/MainFlutterWindow.swift:52-91`).
+is a directory before Dart sees it (`macos/Runner/MainFlutterWindow.swift`).
 Command-O invokes that reader-source action, Command-Shift-O invokes Open
 Workspace, and Command-Option-O invokes the sample. The welcome screen and
 native File menu expose those same commands
-(`lib/api/screens/reader_screen.dart:310-337`,
-`macos/Runner/MainFlutterWindow.swift:239-270`).
+(`lib/api/screens/reader_screen.dart`,
+`macos/Runner/MainFlutterWindow.swift`).
 
 ## Events
 

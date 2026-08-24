@@ -8,7 +8,7 @@ themes exist is the [ThemeRegistry's](../04-presentation/05-theme-registry.md) b
 worn is the [Reader Controller's](01-reader-controller.md), and where user
 theme files live is the platform's — the picker is handed all three.
 
-It lives in the API ring (`lib/api/widgets/theme_picker.dart:12-136`) and knows
+It lives in the API ring (`lib/api/widgets/theme_picker.dart`) and knows
 nothing about files, JSON or platforms. The types it displays — `ReaderTheme`,
 `ThemeChoice`, `ThemeRegistry` — come from the `presentation` ring, which may
 import no package at all, so the picker is the only half of the theme system
@@ -17,36 +17,36 @@ that touches Flutter.
 ## Present wiring
 
 `ReaderScreen` builds one and hands it to `_TopBar` as a widget, so the bar
-does not know what a theme is (`lib/api/screens/reader_screen.dart:510-527`,
-`lib/api/screens/reader_screen.dart:597-616`). It is rendered between the app
-name and the outline toggle (`lib/api/screens/reader_screen.dart:628-660`).
+does not know what a theme is (`lib/api/screens/reader_screen.dart`,
+`lib/api/screens/reader_screen.dart`). It is rendered between the app
+name and the outline toggle (`lib/api/screens/reader_screen.dart`).
 
 The menu is an [Anchored Menu](08-anchored-menu.md)
-(`lib/api/widgets/theme_picker.dart:40-42`); choosing a row closes it and
+(`lib/api/widgets/theme_picker.dart`); choosing a row closes it and
 passes the choice straight to `ReaderController.chooseTheme`
-(`lib/api/widgets/theme_picker.dart:48-51`). Its rows are:
+(`lib/api/widgets/theme_picker.dart`). Its rows are:
 
 | Entry | Value | Source |
 |-------|-------|--------|
-| Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart:54-63` |
-| Light group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart:65-72` |
-| Dark group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart:73-80` |
-| Paragraphs: "Separated by space" | `ParagraphMarking.spaced` | `lib/api/widgets/theme_picker.dart:82-95` |
-| Paragraphs: "Indented, set solid" | `ParagraphMarking.indented` | `lib/api/widgets/theme_picker.dart:96-108` |
-| A skipped theme's filename and validation reason | not selectable | `lib/api/widgets/theme_picker.dart:109-115`, `:237-267` |
-| Open themes folder | platform callback | `lib/api/widgets/theme_picker.dart:116-131` |
+| Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart` |
+| Light group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart` |
+| Dark group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart` |
+| Paragraphs: "Separated by space" | `ParagraphMarking.spaced` | `lib/api/widgets/theme_picker.dart` |
+| Paragraphs: "Indented, set solid" | `ParagraphMarking.indented` | `lib/api/widgets/theme_picker.dart` |
+| A skipped theme's filename and validation reason | not selectable | `lib/api/widgets/theme_picker.dart`, `lib/api/widgets/theme_picker.dart` |
+| Open themes folder | platform callback | `lib/api/widgets/theme_picker.dart` |
 
 The menu is no longer only about themes, which is why its tooltip reads
-"Reading: <theme name>" (`lib/api/widgets/theme_picker.dart:41`). Both
+"Reading: <theme name>" (`lib/api/widgets/theme_picker.dart`). Both
 paragraph rows change how the page is *set* rather than what it is set in —
 see [Reading Scale](../04-presentation/07-reading-scale.md) for why the two
 markings are alternatives and never both.
 
 Each row lights up under the pointer before it acts
-(`lib/api/widgets/theme_picker.dart:138-196`). Each carries a `_Swatch`: the word "Aa" drawn in that theme's own accent
+(`lib/api/widgets/theme_picker.dart`). Each carries a `_Swatch`: the word "Aa" drawn in that theme's own accent
 on its own paper, framed in its own border
-(`lib/api/widgets/theme_picker.dart:269-298`). The button itself is the swatch
-of the theme currently in use (`lib/api/widgets/theme_picker.dart:43-46`), so
+(`lib/api/widgets/theme_picker.dart`). The button itself is the swatch
+of the theme currently in use (`lib/api/widgets/theme_picker.dart`), so
 the bar always shows what is being worn.
 
 ## Inputs and outputs
@@ -54,11 +54,11 @@ the bar always shows what is being worn.
 In: a `ThemeRegistry`, the current `ThemeChoice` and `ParagraphMarking`, an
 `onChoose` and an `onMark` callback, and an optional `onOpenThemesFolder`
 callback
-(`lib/api/widgets/theme_picker.dart:13-32`).
+(`lib/api/widgets/theme_picker.dart`).
 Out: one `ThemeChoice` or one `ParagraphMarking` per selection, or one request
 to reveal the custom-theme directory. The picker reads the system brightness
 from `MediaQuery` to decide which theme a "follow system" choice is currently
-resolving to (`lib/api/widgets/theme_picker.dart:36-38`).
+resolving to (`lib/api/widgets/theme_picker.dart`).
 
 ## Events
 
@@ -76,13 +76,13 @@ runs, so adding a theme file means restarting.
 ## Failure and recovery
 
 A chosen theme that no longer exists resolves to the default of the current
-brightness (`lib/presentation/theme/theme_registry.dart:79-85`), so the picker always
+brightness (`lib/presentation/theme/theme_registry.dart`), so the picker always
 has something to draw. Theme files that failed to parse show their filename
 and exact validation reason in the menu, where a release user can act without
-a development console (`lib/api/widgets/theme_picker.dart:103-120`,
-`:237-265`). On the web
+a development console (`lib/api/widgets/theme_picker.dart`,
+`lib/api/widgets/theme_picker.dart`). On the web
 the callback is null and the action is simply absent
-(`lib/infrastructure/platform/platform_web.dart:114-119`).
+(`lib/infrastructure/platform/platform_web.dart`).
 
 ## Transition
 

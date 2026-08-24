@@ -5,75 +5,75 @@
 `MarkdownDocumentParser` implements
 [Document Parser Port](../../02-application/04-document-parser-port.md): Markdown
 source in, [Document Content](../../01-domain/05-document-content.md) out
-(`lib/infrastructure/markdown/markdown_document_parser.dart:17-30`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 It owns exactly one thing: the mapping from `package:markdown`'s
 HTML-shaped tree onto the domain's model. It decides nothing about how
 anything looks — the author's text is carried across as written, and how it is
 *set* is settled later in [Presentation](../../04-presentation/README.md)
-(`lib/infrastructure/markdown/markdown_document_parser.dart:9-16`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Present wiring
 
 `parse` builds an `md.Document` with the GitHub-flavoured extension set and
 `encodeHtml: false` — the reader draws text, not HTML, and escaping here would
 put `&amp;` on the page
-(`lib/infrastructure/markdown/markdown_document_parser.dart:22-27`). The nodes
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). The nodes
 then go to a `_Mapper`, held apart from the parser so a document's anchor
 numbering lives exactly as long as one parse and two documents never share it
-(`lib/infrastructure/markdown/markdown_document_parser.dart:49-52`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 **Front matter** is set aside before parsing, matching how the
 [Document Outline](../../01-domain/03-document-outline.md) does it: a `---` on
 the first line, up to the next `---` or `...`
-(`lib/infrastructure/markdown/markdown_document_parser.dart:32-46`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 **Blocks** are recognised by tag
-(`lib/infrastructure/markdown/markdown_document_parser.dart:54-69`) and mapped
-one by one (`:100-141`):
+(`lib/infrastructure/markdown/markdown_document_parser.dart`) and mapped
+one by one (`lib/infrastructure/markdown/markdown_document_parser.dart`):
 
 | Tag | Becomes | Notes |
 |-----|---------|-------|
-| `p` | `ParagraphBlock` | Empty paragraphs are dropped (`:102-104`) |
-| `h1`–`h6` | `HeadingBlock` | Anchor taken from the *resolved* text, so `## The *shelf*` anchors as `the-shelf` (`:106-117`) |
-| `pre` | `CodeBlock` | Language from `class="language-…"`; the fence's closing newline stripped (`:143-160`) |
-| `blockquote` | `QuoteBlock` | Recurses, so a quotation holds real blocks (`:122-123`) |
-| `ul`, `ol` | `ListBlock` | See below (`:162-183`) |
-| `table` | `TableBlock` | `thead` rows become the head, the rest the body (`:204-225`) |
-| `hr` | `RuleBlock` | (`:131-132`) |
-| `section` | *unwrapped* | How footnote definitions arrive; only a wrapper (`:134-135`) |
-| anything else | `RawBlock` | Its words survive even though its markup does not (`:137-139`) |
+| `p` | `ParagraphBlock` | Empty paragraphs are dropped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `h1`–`h6` | `HeadingBlock` | Anchor taken from the *resolved* text, so `## The *shelf*` anchors as `the-shelf` (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `pre` | `CodeBlock` | Language from `class="language-…"`; the fence's closing newline stripped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `blockquote` | `QuoteBlock` | Recurses, so a quotation holds real blocks (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `ul`, `ol` | `ListBlock` | See below (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `table` | `TableBlock` | `thead` rows become the head, the rest the body (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `hr` | `RuleBlock` | (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `section` | *unwrapped* | How footnote definitions arrive; only a wrapper (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| anything else | `RawBlock` | Its words survive even though its markup does not (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 
 **Lists.** The package strips paragraph tags from the items of a *tight* list,
 so a surviving `p` inside an `li` is exactly the author asking for air between
 items — that is the `loose` signal
-(`lib/infrastructure/markdown/markdown_document_parser.dart:170-172`). `start`
-comes from the attribute, defaulting to 1 (`:180`). A task's tick arrives as an
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). `start`
+comes from the attribute, defaulting to 1 (`lib/infrastructure/markdown/markdown_document_parser.dart`). A task's tick arrives as an
 `input` element, either directly under the item or tucked inside its first
 paragraph, so the item's whole subtree is searched
-(`:185-202`); the `input` itself is then dropped from the runs, because the
-item already carries its state (`:284-286`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`); the `input` itself is then dropped from the runs, because the
+item already carries its state (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 **Tables.** Alignment is read from the cell's `align` attribute, with a
 fallback that parses a `style` in case another syntax ever emits one
-(`lib/infrastructure/markdown/markdown_document_parser.dart:227-240`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
-**Runs** map tag by tag (`:242-303`), with two rules worth stating. A single
+**Runs** map tag by tag (`lib/infrastructure/markdown/markdown_document_parser.dart`), with two rules worth stating. A single
 newline inside a paragraph becomes a **space**, never a break: treating it
-otherwise would impose the source file's own wrapping on the page (`:246-249`).
+otherwise would impose the source file's own wrapping on the page (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 And an element with no shape of its own — `sup`, inline HTML, a footnote
 reference — has its children kept even though its markup is dropped
-(`:288-297`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Inputs and outputs
 
 | | Type | Notes |
 |---|------|-------|
-| In | `String markdown` | Any source; line endings normalised while front matter is stripped (`:36`) |
+| In | `String markdown` | Any source; line endings normalised while front matter is stripped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | Out | `DocumentContent` | Blocks in source order |
 
 May import: `package:markdown`, the port, and the domain
-(`lib/infrastructure/markdown/markdown_document_parser.dart:1-7`). No Flutter,
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). No Flutter,
 no `dart:io` — this adapter reads no bytes, only meaning.
 
 ## Events
@@ -84,17 +84,17 @@ reader action around it.
 ## Lifecycle
 
 `MarkdownDocumentParser` is `const` and stateless
-(`lib/infrastructure/markdown/markdown_document_parser.dart:17-18`); it is
+(`lib/infrastructure/markdown/markdown_document_parser.dart`); it is
 constructed once in `lib/main.dart` and reused.
 
 All per-document state lives on the `_Mapper` created inside `parse`
-(`lib/infrastructure/markdown/markdown_document_parser.dart:21-29`, `:51-52`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Failure and recovery
 
 It does not throw. Markup with no mapping becomes `RawBlock`
-(`lib/infrastructure/markdown/markdown_document_parser.dart:137-139`); an
-unmapped inline keeps its words (`:288-297`); an empty document yields no
+(`lib/infrastructure/markdown/markdown_document_parser.dart`); an
+unmapped inline keeps its words (`lib/infrastructure/markdown/markdown_document_parser.dart`); an empty document yields no
 blocks.
 
 One shared ambiguity is worth knowing: a document whose **first line is `---`
@@ -104,10 +104,10 @@ least self-consistent about it.
 
 Behaviour is covered by 33 tests in
 `test/infrastructure/markdown_document_parser_test.dart`, grouped by the shape
-under test: paragraphs (`:18-51`), inline code (`:53-59`), headings and their
-anchors (`:61-78`), code blocks (`:80-101`), quotations (`:103-110`), lists
-(`:112-156`), tables (`:158-179`), the smaller shapes (`:181-201`) and the
-document as a whole (`:203-234`).
+under test: paragraphs (`test/infrastructure/markdown_document_parser_test.dart`), inline code (`test/infrastructure/markdown_document_parser_test.dart`), headings and their
+anchors (`test/infrastructure/markdown_document_parser_test.dart`), code blocks (`test/infrastructure/markdown_document_parser_test.dart`), quotations (`test/infrastructure/markdown_document_parser_test.dart`), lists
+(`test/infrastructure/markdown_document_parser_test.dart`), tables (`test/infrastructure/markdown_document_parser_test.dart`), the smaller shapes (`test/infrastructure/markdown_document_parser_test.dart`) and the
+document as a whole (`test/infrastructure/markdown_document_parser_test.dart`).
 
 ## Transition
 

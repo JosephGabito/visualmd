@@ -27,12 +27,12 @@ to follow without rewriting its history.
 - **Decision** — what was chosen and the boundary it creates.
 - **Consequences** — what becomes easier, what becomes harder, and what to
   watch as the project changes.
-- **Evidence** — `path:line` citations showing where the decision is visible in
-  current code or tests.
+- **Evidence** — stable source-file references showing where the decision is
+  visible in current code or tests.
 
 ## Adding a decision
 
 Use the next number, keep the same four sections, and add the record to this
 index. If it changes an earlier decision, link the two records so a reader can
 see the transition. [Writing Docs](../09-contributing/04-writing-docs.md)
-explains the citation and link conventions used throughout this library.
+explains the source-reference and link conventions used throughout this library.

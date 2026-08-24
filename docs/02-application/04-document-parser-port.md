@@ -4,7 +4,7 @@
 
 `DocumentParser` is the application's way of asking for a document's blocks
 without knowing how markdown is tokenised
-(`lib/application/ports/document_parser.dart:7-9`). One method: source in,
+(`lib/application/ports/document_parser.dart`). One method: source in,
 [`DocumentContent`](../01-domain/05-document-content.md) out.
 
 The port exists because parsing markdown and *defining* a document are
@@ -12,7 +12,7 @@ different jobs. CommonMark is a large specification with a long tail of
 corners, and keeping up with it is technical work that belongs at the edge;
 what a document *is* — paragraphs, headings, a quotation holding blocks of its
 own — is a domain question and stays in the domain
-(`lib/application/ports/document_parser.dart:3-6`).
+(`lib/application/ports/document_parser.dart`).
 
 ## Present wiring
 
@@ -43,14 +43,14 @@ operation ([Plugin Architecture](../07-roadmap/01-plugin-architecture.md)).
 Stateless by contract. The one implementation is a `const` object built once
 in `lib/main.dart` and shared for the life of the session; any anchor
 numbering it needs is created and discarded per call
-(`lib/infrastructure/markdown/markdown_document_parser.dart:49-52`).
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Failure and recovery
 
 The port has no expected parse failure. A reader opening an unfamiliar markdown
 construct should still receive a useful document, so the adapter returns a
 `RawBlock` for elements the domain does not model
-(`lib/infrastructure/markdown/markdown_document_parser.dart:137-140`), and an
+(`lib/infrastructure/markdown/markdown_document_parser.dart`), and an
 empty document simply has no blocks.
 
 ## Transition

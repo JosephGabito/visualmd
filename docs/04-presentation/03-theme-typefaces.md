@@ -4,7 +4,7 @@
 
 `ThemeTypefaces` names the three voices of the page: a serif for reading, a
 sans for the furniture, a mono for code
-(`lib/presentation/theme/theme_typefaces.dart:5-33`). It owns the *names*
+(`lib/presentation/theme/theme_typefaces.dart`). It owns the *names*
 only. Turning a name into glyphs happens in the API ring, where the font
 layer lives — see [Theme Binding](../05-api/06-theme.md).
 
@@ -22,31 +22,31 @@ rhythm.
 | `mono` | `JetBrains Mono` | Code, inline and block. |
 
 `ThemeTypefaces.library` holds those three defaults
-(`lib/presentation/theme/theme_typefaces.dart:12-19`). Alegreya reads the page:
+(`lib/presentation/theme/theme_typefaces.dart`). Alegreya reads the page:
 a face drawn by Huerta Tipografica for literature and long-form text, with the
 long extenders and the movement of a book rather than the even texture of a
 screen serif. Literata is still bundled and still selectable — a theme may name
 it, and `?serif=<family>` swaps the reading face for one run. It serves three
 purposes at once: the default when a theme omits `typefaces` entirely
-(`lib/presentation/theme/reader_theme.dart:27`), the per-field default when a
+(`lib/presentation/theme/reader_theme.dart`), the per-field default when a
 theme names only some of them
-(`lib/presentation/theme/theme_typefaces.dart:25-29`), and the fallback when a
+(`lib/presentation/theme/theme_typefaces.dart`), and the fallback when a
 named family cannot be resolved at render time.
 
 ## Inputs and outputs
 
 In: an optional JSON object with any of `serif`, `sans`, `mono`
-(`lib/presentation/theme/theme_typefaces.dart:15-30`). Absent keys fall back
+(`lib/presentation/theme/theme_typefaces.dart`). Absent keys fall back
 field by field, so `{"serif": "Lora"}` is a complete and valid declaration.
 
 Out: three family names, or a `ThemeFormatException`. `toJson` always writes
-all three (`lib/presentation/theme/theme_typefaces.dart:29-48`), so a
+all three (`lib/presentation/theme/theme_typefaces.dart`), so a
 round-tripped theme is explicit about what it inherited.
 
 The four shipped families are bundled and resolved without a network request.
 Other names are requested through Google Fonts by the API ring; if a name
 cannot be resolved, the matching library family is used instead
-(`lib/api/theme/library_theme.dart:127-152`).
+(`lib/api/theme/library_theme.dart`).
 
 ## Events
 
@@ -62,13 +62,13 @@ each time a widget asks for a text style, through `context.type`.
 ## Failure and recovery
 
 One failure at parse time: a key present but not a non-empty string
-(`lib/presentation/theme/theme_typefaces.dart:19-21`), reported as
+(`lib/presentation/theme/theme_typefaces.dart`), reported as
 `typefaces."<key>" must be a non-empty string`, which skips the whole theme.
 
 A *valid* name that names no real font is not a parse failure — it cannot be
 detected here, because this ring has no font layer. It surfaces later as a
 silent fallback to the library family
-(`lib/api/theme/library_theme.dart:125-129`). The reader sees a different
+(`lib/api/theme/library_theme.dart`). The reader sees a different
 face than the author intended; nothing breaks.
 
 ## Transition

@@ -3,48 +3,48 @@
 ## Purpose and boundary
 
 Implements both folder scanning ports for folders provided by the browser
-(`lib/infrastructure/web/browser_folder_scanner.dart:17-42`). It reads source
+(`lib/infrastructure/web/browser_folder_scanner.dart`). It reads source
 bytes and returns `FileEntry` values; `LibraryBuilder` remains responsible for
 the library itself. Applying the Markdown and hidden-folder filters before a
 read avoids asking the browser for content the domain would discard
-(`lib/domain/library/library_builder.dart:13-18`).
+(`lib/domain/library/library_builder.dart`).
 
 ## Present wiring
 
-`scan(ref)` (`lib/infrastructure/web/browser_folder_scanner.dart:23-41`)
+`scan(ref)` (`lib/infrastructure/web/browser_folder_scanner.dart`)
 looks the ref up in the `BrowserFolderRegistry`, throws `FolderUnavailable`
-if it is unknown (`:22-23`), then switches on the handle's shape:
+if it is unknown (`lib/infrastructure/web/browser_folder_scanner.dart`), then switches on the handle's shape:
 
 | Handle | Path | Evidence |
 |--------|------|----------|
-| `HandleDirectory` | async iteration over a File System Access directory handle | `:30-31,43-78` |
-| `DroppedDirectory` | recursive `_walk` over the legacy entry API | `:32-33,83-98` |
-| `PickedFiles` | filter each listed path with `_wanted`, then read the retained files | `:34-38,80-81` |
+| `HandleDirectory` | async iteration over a File System Access directory handle | `lib/infrastructure/web/browser_folder_scanner.dart` |
+| `DroppedDirectory` | recursive `_walk` over the legacy entry API | `lib/infrastructure/web/browser_folder_scanner.dart` |
+| `PickedFiles` | filter each listed path with `_wanted`, then read the retained files | `lib/infrastructure/web/browser_folder_scanner.dart` |
 
 The modern handle walk receives child handles directly. It skips hidden
 directories, reads Markdown file handles, and assigns stable session identity
-through `BrowserSourceIdentity` (`:43-78`). That identity lets a directly
+through `BrowserSourceIdentity` (`lib/infrastructure/web/browser_folder_scanner.dart`). That identity lets a directly
 offered file be recognized when the same physical handle also appears inside a
 folder.
 
 The legacy `_walk` lists a directory with `_entriesOf`, then for each entry:
 
 - directories: skip if `HiddenFolders.isHidden(name)`, otherwise recurse with
-  the path prefix extended (`:88-92`);
+  the path prefix extended (`lib/infrastructure/web/browser_folder_scanner.dart`);
 - files: read only if `MarkdownFile.isMarkdown(name)`, via `_fileOf` then
-  `_text` (`:93-95`).
+  `_text` (`lib/infrastructure/web/browser_folder_scanner.dart`).
 
 `_entriesOf` wraps the callback-style `createReader().readEntries()` in a
 loop: the browser returns entries in batches (Chrome: 100 at a time) and an
 empty batch means the directory is exhausted
-(`lib/infrastructure/web/browser_folder_scanner.dart:100-120`). `_fileOf`
-wraps `FileSystemFileEntry.file()` the same way (`:122-129`). `_text` is
-`File.text()` bridged to a Dart `String` (`:131-132`).
+(`lib/infrastructure/web/browser_folder_scanner.dart`). `_fileOf`
+wraps `FileSystemFileEntry.file()` the same way (`lib/infrastructure/web/browser_folder_scanner.dart`). `_text` is
+`File.text()` bridged to a Dart `String` (`lib/infrastructure/web/browser_folder_scanner.dart`).
 
 The domain rules it borrows: `MarkdownFile.isMarkdown`
-(`lib/domain/library/markdown_file.dart:5-9`) and `HiddenFolders.isHidden` /
-`hidesPath` (`lib/domain/library/hidden_folders.dart:24-33`). `LibraryBuilder`
-applies the same two rules again (`lib/domain/library/library_builder.dart:30-31`),
+(`lib/domain/library/markdown_file.dart`) and `HiddenFolders.isHidden` /
+`hidesPath` (`lib/domain/library/hidden_folders.dart`). `LibraryBuilder`
+applies the same two rules again (`lib/domain/library/library_builder.dart`),
 so the scanner's filter is an optimisation, not the source of truth. See
 [Shelving Rules](../../01-domain/02-shelving-rules.md).
 
@@ -52,11 +52,11 @@ so the scanner's filter is an optimisation, not the source of truth. See
 
 | Direction | What | Evidence |
 |-----------|------|----------|
-| in | `FolderRef` issued by the drop or picker | `:24-25` |
-| out | `ScannedFolder(name, files)` — name from the handle, paths `/`-separated relative to the folder | `:40` |
-| out (error) | `FolderUnavailable(ref)` | `:26` |
+| in | `FolderRef` issued by the drop or picker | `lib/domain/library/library_builder.dart` |
+| out | `ScannedFolder(name, files)` — name from the handle, paths `/`-separated relative to the folder | `lib/domain/library/library_builder.dart` |
+| out (error) | `FolderUnavailable(ref)` | `lib/domain/library/library_builder.dart` |
 
-`FileEntry` is the domain's own input type (`lib/domain/library/library_builder.dart:11-16`).
+`FileEntry` is the domain's own input type (`lib/domain/library/library_builder.dart`).
 
 ## Events
 
@@ -65,20 +65,20 @@ None. `AddFolder` owns the library mutation after a successful scan.
 ## Lifecycle
 
 Stateless apart from the registry it reads from; one instance per web
-`PlatformAdapters` (`lib/infrastructure/platform/platform_web.dart:30-46`). Each
+`PlatformAdapters` (`lib/infrastructure/platform/platform_web.dart`). Each
 full `scan` walks the folder afresh. `scanDocument` rereads one path only for a
 modern directory handle; legacy file objects are immutable snapshots and return
-no targeted result (`lib/infrastructure/web/browser_folder_scanner.dart:44-76`).
+no targeted result (`lib/infrastructure/web/browser_folder_scanner.dart`).
 See [Browser Source Change Monitor](05-source-change-monitor.md).
 
 ## Failure and recovery
 
 - Unknown ref → `FolderUnavailable`, which `RoutingFolderScanner` treats as
-  "try the next scanner" (`lib/infrastructure/routing_folder_scanner.dart:13-17`)
+  "try the next scanner" (`lib/infrastructure/routing_folder_scanner.dart`)
   and the controller ultimately shows as "Couldn't open"
-  (`lib/api/reader_controller.dart:158-187`).
+  (`lib/api/reader_controller.dart`).
 - A `DOMException` from a legacy `readEntries` or `file()` callback completes
-  the future with the exception message (`:112-114,126`); the whole scan fails rather than
+  the future with the exception message (`lib/api/reader_controller.dart`); the whole scan fails rather than
   returning a partial library.
 - Files are read sequentially; a very large library is slow but bounded.
 

@@ -66,7 +66,7 @@ responsibility becomes narrower:
    [`DocumentContent`](../01-domain/05-document-content.md), a domain value —
    allowed because infrastructure may import domain (below).
 2. `application` asks for it through a port it declares itself
-   (`lib/application/ports/document_parser.dart:7-9`), inside `DocumentReading`.
+   (`lib/application/ports/document_parser.dart`), inside `DocumentReading`.
 3. `api/render` sets it, deciding nothing about what the document *says*, only
    how it looks.
 
@@ -79,8 +79,8 @@ Adapters apply domain rules at the edge so they do not move bytes the domain
 will discard: the browser and filesystem scanners only read files that
 `MarkdownFile.isMarkdown` accepts and `HiddenFolders` does not hide. Reusing
 those domain decisions at the edge avoids a second, subtly different filter.
-Evidence: `lib/domain/library/markdown_file.dart:5-9`,
-`lib/domain/library/hidden_folders.dart:24-33`.
+Evidence: `lib/domain/library/markdown_file.dart`,
+`lib/domain/library/hidden_folders.dart`.
 
 ## Presentation is framework-free on purpose
 
@@ -92,12 +92,12 @@ described as data without depending on the widget tree.
 A theme is **data**. If its definition could import Flutter, it could also hold
 a widget or reach into the tree at render time. The separate ring makes the
 boundary mechanically checkable
-(`test/architecture/dependency_rules_test.dart:21-24`,
-`:106-109`) instead of leaving it as an easy-to-miss convention.
+(`test/architecture/dependency_rules_test.dart`,
+`test/architecture/dependency_rules_test.dart`) instead of leaving it as an easy-to-miss convention.
 
 The cost is one deliberate duplication: `ThemePalette` carries `dart:ui`
 colours, and `LibraryPalette` re-declares them as a Flutter `ThemeExtension`
-so the widget tree can read them (`lib/api/theme/library_theme.dart:34-45`).
+so the widget tree can read them (`lib/api/theme/library_theme.dart`).
 That bridge is nine lines and lives in `api/`, where Flutter belongs.
 
 ## How the boundary is checked
@@ -107,26 +107,26 @@ extracts its `import` and `export` directives, and reports outward imports. It
 encodes the table above, with two places where the test is broader
 than the prose: the framework-free rings may import any `dart:` library except
 `dart:io`, `dart:js_interop` and `dart:html`
-(`test/architecture/dependency_rules_test.dart:51-52`, `:113-117`), and
+(`test/architecture/dependency_rules_test.dart`, `test/architecture/dependency_rules_test.dart`), and
 `application/` may
 import non-platform packages
-(`test/architecture/dependency_rules_test.dart:106-112`). The application does
+(`test/architecture/dependency_rules_test.dart`). The application does
 not currently use that package allowance; presentation uses only `dart:ui` and
 `dart:convert` from the SDK.
 
 | Rule | Where |
 |------|-------|
-| Which rings each ring may import | `allowedRings` — `test/architecture/dependency_rules_test.dart:26-40` |
-| `presentation/` may import only itself | `test/architecture/dependency_rules_test.dart:30` |
-| `api/` may import `presentation/` | `test/architecture/dependency_rules_test.dart:31` |
-| Platform packages confined to infrastructure | `platformPackages` — `test/architecture/dependency_rules_test.dart:43-49` |
-| Platform SDK libraries confined to infrastructure | `platformSdkLibraries` — `test/architecture/dependency_rules_test.dart:51-52` |
-| `domain/` and `presentation/` import no package at all | `frameworkFreeRings` — `test/architecture/dependency_rules_test.dart:21-24`, applied at `test/architecture/dependency_rules_test.dart:106-109` |
-| `lib/` contains only the five rings and `main.dart` | `test/architecture/dependency_rules_test.dart:82-94` |
-| One test per source file, so a report names the file | `test/architecture/dependency_rules_test.dart:96-124` |
+| Which rings each ring may import | `allowedRings` — `test/architecture/dependency_rules_test.dart` |
+| `presentation/` may import only itself | `test/architecture/dependency_rules_test.dart` |
+| `api/` may import `presentation/` | `test/architecture/dependency_rules_test.dart` |
+| Platform packages confined to infrastructure | `platformPackages` — `test/architecture/dependency_rules_test.dart` |
+| Platform SDK libraries confined to infrastructure | `platformSdkLibraries` — `test/architecture/dependency_rules_test.dart` |
+| `domain/` and `presentation/` import no package at all | `frameworkFreeRings` — `test/architecture/dependency_rules_test.dart`, applied at `test/architecture/dependency_rules_test.dart` |
+| `lib/` contains only the five rings and `main.dart` | `test/architecture/dependency_rules_test.dart` |
+| One test per source file, so a report names the file | `test/architecture/dependency_rules_test.dart` |
 
 Relative imports are normalised against the importing file
-(`test/architecture/dependency_rules_test.dart:59-68`) so `../../domain/...`
+(`test/architecture/dependency_rules_test.dart`) so `../../domain/...`
 is judged by where it lands, not how it is spelled.
 
 ## Boundary test

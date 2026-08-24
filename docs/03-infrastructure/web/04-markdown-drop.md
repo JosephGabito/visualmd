@@ -12,13 +12,13 @@ Inside the DOM drop callback, `BrowserFolderDrop` first asks a single item for
 `getAsFileSystemHandle`. A Markdown handle becomes `BrowserMarkdownHandle`; if
 that API is unavailable or rejected, the captured legacy `File` becomes
 `BrowserMarkdownFile`. Other accepted shapes continue through folder conversion
-(`lib/infrastructure/web/browser_folder_drop.dart:57-145`).
+(`lib/infrastructure/web/browser_folder_drop.dart`).
 
 `BrowserMarkdownRegistry` retains either representation for the session. The
 scanner turns a modern handle into a `File`, reads `File.text()`, and asks
 `BrowserSourceIdentity` to compare handles with `isSameEntry`
-(`lib/infrastructure/web/browser_markdown_scanner.dart:7-30`,
-`lib/infrastructure/web/browser_source_identity.dart:7-19`). A legacy `File`
+(`lib/infrastructure/web/browser_markdown_scanner.dart`,
+`lib/infrastructure/web/browser_source_identity.dart`). A legacy `File`
 has `sourceId: null`; filename, size, and modification time are not used as a
 substitute because unrelated files can share all three.
 
@@ -39,7 +39,7 @@ downstream of a committed use case.
 
 The web platform constructs one folder registry, Markdown registry, drop
 adapter and scanner when the page starts
-(`lib/infrastructure/platform/platform_web.dart:25-43`). The DOM listeners and
+(`lib/infrastructure/platform/platform_web.dart`). The DOM listeners and
 registries last until the page is unloaded.
 
 ## Failure and recovery

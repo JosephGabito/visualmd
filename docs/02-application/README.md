@@ -53,4 +53,4 @@ Application tests replace those adapters with small in-memory versions. The
 workspace suite also exercises recovery and failure paths—unavailable sources,
 standalone-file absorption, Save As identity, browser download fallback, and
 autosave errors—so platform implementations can change without weakening the
-workflow (`test/application/workspace_use_cases_test.dart:31-540`).
+workflow (`test/application/workspace_use_cases_test.dart`).

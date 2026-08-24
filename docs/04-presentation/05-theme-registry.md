@@ -4,7 +4,7 @@
 
 `ThemeRegistry` is every theme the reader can wear, and the one place that
 decides what happens when a theme file is wrong
-(`lib/presentation/theme/theme_registry.dart:21-80`). It merges the built-ins
+(`lib/presentation/theme/theme_registry.dart`). It merges the built-ins
 with whatever the platform found, resolves a
 [ThemeChoice](04-theme-choice.md) into an actual
 [ReaderTheme](01-reader-theme.md), and keeps a list of what it had to skip.
@@ -17,32 +17,32 @@ framework-free while still owning the loading *policy*.
 ## Present wiring
 
 Themes live in an id-keyed map filled built-ins first, user themes second
-(`lib/presentation/theme/theme_registry.dart:32-38`). The second write wins,
+(`lib/presentation/theme/theme_registry.dart`). The second write wins,
 so **a user theme whose `id` matches a built-in replaces it** — that is the
 supported way to tweak a shipped theme rather than fork it.
 
 | Member | Answers |
 |--------|---------|
-| `all` | Every theme, built-ins first (`lib/presentation/theme/theme_registry.dart:63`). |
-| `light` / `dark` | The same list split by brightness, for the picker's two groups (`lib/presentation/theme/theme_registry.dart:65-67`). |
-| `byId` | One theme, or null (`lib/presentation/theme/theme_registry.dart:69`). |
-| `systemPair` | The default `FollowSystem`: Paper and Lamplight (`lib/presentation/theme/theme_registry.dart:73-77`). |
-| `errors` | Files that could not be used (`lib/presentation/theme/theme_registry.dart:23`). |
+| `all` | Every theme, built-ins first (`lib/presentation/theme/theme_registry.dart`). |
+| `light` / `dark` | The same list split by brightness, for the picker's two groups (`lib/presentation/theme/theme_registry.dart`). |
+| `byId` | One theme, or null (`lib/presentation/theme/theme_registry.dart`). |
+| `systemPair` | The default `FollowSystem`: Paper and Lamplight (`lib/presentation/theme/theme_registry.dart`). |
+| `errors` | Files that could not be used (`lib/presentation/theme/theme_registry.dart`). |
 
 `resolve(choice, brightness)` asks the choice for an id, looks it up, and
 falls back to the default theme *of that brightness* when it is missing
-(`lib/presentation/theme/theme_registry.dart:75-79`). A deleted theme file
+(`lib/presentation/theme/theme_registry.dart`). A deleted theme file
 therefore leaves the reader on Paper or Lamplight, never on a blank window.
 
 ## Inputs and outputs
 
 In: `fromDocuments` takes an iterable of `({String origin, String json})`
-records (`lib/presentation/theme/theme_registry.dart:44`). The default
+records (`lib/presentation/theme/theme_registry.dart`). The default
 constructor takes already-built themes, which is how tests build a registry
-without touching JSON (`test/presentation/theme_test.dart:78-84`).
+without touching JSON (`test/presentation/theme_test.dart`).
 
 Out: a registry, plus `errors` as `ThemeLoadError` — an origin and a reason
-(`lib/presentation/theme/theme_registry.dart:10-17`). The composition root
+(`lib/presentation/theme/theme_registry.dart`). The composition root
 prints them and the [Theme Picker](../05-api/07-theme-picker.md) shows the
 count, so a broken file is visible without being fatal.
 
@@ -62,7 +62,7 @@ effect on the next launch — there is no watcher.
 ## Failure and recovery
 
 `fromDocuments` catches two kinds of failure per document and keeps going
-(`lib/presentation/theme/theme_registry.dart:47-59`):
+(`lib/presentation/theme/theme_registry.dart`):
 
 | Failure | Recorded reason |
 |---------|-----------------|

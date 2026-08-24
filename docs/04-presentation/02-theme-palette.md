@@ -4,7 +4,7 @@
 
 `ThemePalette` is the whole colour surface of a theme: nine tokens named for
 what they *mean*, never for the widget that happens to use them
-(`lib/presentation/theme/theme_palette.dart:7-147`). A theme author decides
+(`lib/presentation/theme/theme_palette.dart`). A theme author decides
 once what paper, ink and accent are; every widget follows.
 
 That naming rule is the boundary. A token called `shelfRowHoverColor` would
@@ -17,7 +17,7 @@ palettes, which are recorded in [Built-in Themes](06-built-in-themes.md).
 ## Present wiring
 
 Every token carries the doc comment that defines it
-(`lib/presentation/theme/theme_palette.dart:8-34`):
+(`lib/presentation/theme/theme_palette.dart`):
 
 | Token | Meaning | Required |
 |-------|---------|----------|
@@ -32,22 +32,22 @@ Every token carries the doc comment that defines it
 | `selection` | Text selection highlight. | derived |
 
 The seven required names are listed once and checked before construction
-(`lib/presentation/theme/theme_palette.dart:51-77`).
+(`lib/presentation/theme/theme_palette.dart`).
 
 The two derived tokens are computed when a document omits them
-(`lib/presentation/theme/theme_palette.dart:78-94`):
+(`lib/presentation/theme/theme_palette.dart`):
 
 - `accentSoft` — the accent at 20 % alpha blended over the paper, so it reads
   as "selected" without fighting the text
-  (`lib/presentation/theme/theme_palette.dart:109-112`).
+  (`lib/presentation/theme/theme_palette.dart`).
 - `selection` — the accent at 30 % alpha
-  (`lib/presentation/theme/theme_palette.dart:114`).
+  (`lib/presentation/theme/theme_palette.dart`).
 
 `contrastRatio(foreground, background)` measures the actual colour pair with
 WCAG relative luminance arithmetic, and `minimumTextContrast` records the
 4.5:1 threshold used by the built-in-theme guard
-(`lib/presentation/theme/theme_palette.dart:8-9`,
-`lib/presentation/theme/theme_palette.dart:116-125`).
+(`lib/presentation/theme/theme_palette.dart`,
+`lib/presentation/theme/theme_palette.dart`).
 
 A theme that sets them explicitly overrides the derivation. The two house
 themes use that option to tune those surfaces for their complete palettes.
@@ -56,14 +56,14 @@ themes use that option to tune those surfaces for their complete palettes.
 
 In: a JSON object of token name to colour string. Colours accept `#rgb`,
 `#rrggbb` and `#rrggbbaa`, with or without the leading `#`
-(`lib/presentation/theme/theme_palette.dart:127-138`) — a three-digit value is
+(`lib/presentation/theme/theme_palette.dart`) — a three-digit value is
 doubled, a six-digit one gets full alpha, and anything else is rejected.
 
 Out: a `ThemePalette` of `dart:ui` `Color` values, or a
 `ThemeFormatException`. `toJson` writes every token back
-(`lib/presentation/theme/theme_palette.dart:97-107`) using `hex`, which omits
+(`lib/presentation/theme/theme_palette.dart`) using `hex`, which omits
 the alpha pair when a colour is fully opaque
-(`lib/presentation/theme/theme_palette.dart:140-146`).
+(`lib/presentation/theme/theme_palette.dart`).
 
 ## Events
 
@@ -74,14 +74,14 @@ palette is part of a contributed theme, not something that reacts.
 ## Lifecycle
 
 Immutable, constructed once per theme — at compile time for built-ins
-(`lib/presentation/theme/built_in_themes.dart:13-23`), at startup for user
+(`lib/presentation/theme/built_in_themes.dart`), at startup for user
 themes. Copied into the widget tree's `LibraryPalette` when a theme is
 applied, and otherwise untouched.
 
 ## Failure and recovery
 
 Two failures, both naming the token
-(`lib/presentation/theme/theme_palette.dart:61-77`):
+(`lib/presentation/theme/theme_palette.dart`):
 
 | Problem | Message |
 |---------|---------|

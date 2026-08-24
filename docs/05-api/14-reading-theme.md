@@ -5,11 +5,11 @@
 `ReadingTheme` is every text style and gap the page is set with, derived once
 from the palette, the faces and the
 [Reading Scale](../04-presentation/07-reading-scale.md)
-(`lib/api/render/reading_theme.dart:19-162`).
+(`lib/api/render/reading_theme.dart`).
 
 It is the reader's own vocabulary rather than a rendering package's, because
 the distinctions that matter here are not ones a general-purpose style sheet
-has (`lib/api/render/reading_theme.dart:10-16`): a width for prose and a wider
+has (`lib/api/render/reading_theme.dart`): a width for prose and a wider
 one for code, gaps expressed in lines rather than pixels, and figures that
 differ between running text and tables.
 
@@ -22,70 +22,69 @@ its own; those come from the theme the reader picked, through
 
 `ReadingTheme.of(context, scale)` reads the palette, the typefaces, the
 brightness and `MediaQuery.textScalerOf(context)`, then derives everything
-(`lib/api/render/reading_theme.dart:58-162`). Accessibility scaling is part of
+(`lib/api/render/reading_theme.dart`). Accessibility scaling is part of
 the page geometry, not an afterthought applied only when `Text` paints.
 
 **The leading comes from the face, not from the scale.** It is derived from the
 face's own cap height, descender and x-height by
-[Font Metrics](16-font-metrics.md) (`lib/api/render/reading_theme.dart:76`), so
+[Font Metrics](16-font-metrics.md) (`lib/api/render/reading_theme.dart`), so
 the rhythm follows the face rather than a constant
-(`lib/api/render/reading_theme.dart:27-33`). `renderedBase` is the body size as
+(`lib/api/render/reading_theme.dart`). `renderedBase` is the body size as
 it is *actually set*, after x-height normalisation and accessibility scaling,
 and the beat is measured
 from that rather than from the size asked for — otherwise the grid is counted
 in a unit the page never uses
-(`lib/api/render/reading_theme.dart:30-33`, `:80-81`).
+(`lib/api/render/reading_theme.dart`, `lib/api/render/reading_theme.dart`).
 
 **Two refinements that should never be noticed.** Light type on a dark ground
 optically thickens and closes up, so a dark theme is tracked a hair looser —
-0.008 of the body size (`lib/api/render/reading_theme.dart:61-64`). And prose
+0.008 of the body size (`lib/api/render/reading_theme.dart`). And prose
 is set with old-style figures, which have ascenders and descenders like
 lowercase letters, so a number in a sentence sits *in* the line rather than
 standing up out of it; tables want the opposite, lining and tabular, so their
-columns agree (`lib/api/render/reading_theme.dart:66-70`). Code is given a
+columns agree (`lib/api/render/reading_theme.dart`). Code is given a
 slashed zero, because zero and capital O are the pair a reader of technical
 documents most often has to tell apart
-(`lib/api/render/reading_theme.dart:138-146`).
+(`lib/api/render/reading_theme.dart`).
 
 **Tone as a third cue, under size and weight.** The scale runs `h1` darkest,
 down through the body, to `h5` and `h6` sitting just back from it — small
 headings should recede rather than compete with the sentence beneath them
-(`lib/api/render/reading_theme.dart:80-98`). Two things about how it is
+(`lib/api/render/reading_theme.dart`). Two things about how it is
 written. It is a distance from the running text *towards ink* or *away from
 it*, never a lightness: on a dark page "more emphatic" means lighter, and the
 same numbers have to work both ways round
-(`lib/api/render/reading_theme.dart:88-93`). And the body itself is never
+(`lib/api/render/reading_theme.dart`). And the body itself is never
 dimmed — contrast is what legibility rests on, and a paragraph is the thing
-being read (`lib/api/render/reading_theme.dart:95-98`). `h4` therefore sits
+being read (`lib/api/render/reading_theme.dart`). `h4` therefore sits
 with the text rather than above it.
 
-**Headings** are sized from the scale, with less leading above `h2` because
-display sizes are far enough apart already and loose headings drift from their
-text (`lib/api/render/reading_theme.dart:102-121`). Whatever that comes to is
-then rounded up to a whole beat, so however large a heading is set the text
-beneath it resumes on the grid
-(`lib/api/render/reading_theme.dart:110-116`). Every level takes the same
-weight: size already says which level a heading is, and a second, quieter bold
-would be the same signal said twice and said less legibly
-(`lib/api/render/reading_theme.dart:106-108`). Tracking tightens as the size
-grows, and at body size an `h6` leans on a little extra tracking instead
-(`lib/api/render/reading_theme.dart:117-119`).
+**Headings** use natural display leading: `[1.14, 1.18, 1.24, 1.30, 1.40]`
+from `h1` through `h5`, then the face's measured body leading at `h6`. Display
+lines close up as they grow and open gradually as they approach running text
+(`lib/api/render/reading_theme.dart`). The line is deliberately not
+snapped here; [Document View](12-document-view.md) reconciles the completed
+shaped block, after fallback scripts and inline roles have established its real
+height. Every level takes the same weight: size already says which level a
+heading is, and a second, quieter bold would repeat the signal. Tracking
+tightens as the size grows; at body size `h6` leans on a little extra tracking
+instead (`lib/api/render/reading_theme.dart`).
 
 **Quoting.** `ReadingTheme.quoting(theme)` returns the same page one shade
 back, for matter inside a quotation
-(`lib/api/render/reading_theme.dart:169-182`). The rule down its left already
+(`lib/api/render/reading_theme.dart`). The rule down its left already
 says it is quoted; the colour is the second and last signal.
 
 **Inline roles.** `linkFor(base)` preserves the complete surrounding style and
 adds only link signals. `inlineCodeFor(base)` keeps the mono face but scales it
 relative to the role around it, so headings and tables retain their hierarchy
-(`lib/api/render/reading_theme.dart:184-212`). Its translucent muted underline
+(`lib/api/render/reading_theme.dart`). Its translucent muted underline
 is painted at 1.25 of the face's own stroke inside the existing line box, so it
 does not change selectable flow or vertical rhythm. The text uses the accent;
 if that is below 4.5:1 against paper, `_contrastSafeAccent` finds the smallest
 mix toward ink that meets the threshold.
 
-**The two widths** (`lib/api/render/reading_theme.dart:214-224`):
+**The two widths** (`lib/api/render/reading_theme.dart`):
 
 - `proseWidth(available)` — the measure, or the room available if that is
   narrower. Everything on the page lines up against this, including the
@@ -96,7 +95,7 @@ mix toward ink that meets the threshold.
 
 **The rhythm.** Every gap is spent in whole beats, and a strut holds every
 line box to one so an inline code span cannot push a line off it
-(`lib/api/render/reading_theme.dart:245-306`, `:270-275`). The rule and its
+(`lib/api/render/reading_theme.dart`, `lib/api/render/reading_theme.dart`). The rule and its
 consequences are [Vertical Rhythm](../04-presentation/11-vertical-rhythm.md).
 
 ## Inputs and outputs
@@ -107,10 +106,11 @@ consequences are [Vertical Rhythm](../04-presentation/11-vertical-rhythm.md).
 | `scale` | `ReadingScale` | `ReaderController.readingScale` |
 
 Out: `body`, `code`, `quote`, `marker`, `tableHead`, `tableBody`, `headings`
-(`lib/api/render/reading_theme.dart:35-43`), the role-aware `linkFor` and
-inline-code rules (`lib/api/render/reading_theme.dart:184-212`), `leading`,
+(`lib/api/render/reading_theme.dart`), the role-aware `linkFor` and
+inline-code rules (`lib/api/render/reading_theme.dart`), `leading`,
 `renderedBase`, rendered `em` and `indent`, the two widths, `strutFor`, and the
-rhythm members `baseline`, `snap`, `blockGap`, `spaceAbove` and `gapBefore`.
+rhythm members `baseline`, `snap`, `blockGap`, `headingSpaceAfter` and
+`gapBefore` (`lib/api/render/reading_theme.dart`).
 
 ## Events
 
@@ -118,7 +118,7 @@ None today. It is derived state, rebuilt from the theme and the scale.
 
 ## Lifecycle
 
-`@immutable` (`lib/api/render/reading_theme.dart:18`) and rebuilt whenever the
+`@immutable` (`lib/api/render/reading_theme.dart`) and rebuilt whenever the
 palette, the faces or the scale change — which is to say whenever the reader
 changes theme or text size. Built in the [reading pane](04-reading-pane.md)
 and handed down; nothing caches it.
@@ -126,7 +126,7 @@ and handed down; nothing caches it.
 ## Failure and recovery
 
 Nothing throws. `heading(level)` clamps its argument to 1–6
-(`lib/api/render/reading_theme.dart:164`), so a malformed level renders as `h1`
+(`lib/api/render/reading_theme.dart`), so a malformed level renders as `h1`
 or `h6` rather than crashing. Both widths clamp to the room available, so a very
 narrow window gets a narrow column rather than an overflow. The compact shell
 keeps side panels over that column instead of squeezing it.
@@ -134,7 +134,7 @@ keeps side panels over that column instead of squeezing it.
 ## Transition
 
 The tonal scale — `[0.26, 0.16, 0.07, 0.0]` towards ink and 0.22 away from it
-(`lib/api/render/reading_theme.dart:97-98`) — is judged rather than measured,
+(`lib/api/render/reading_theme.dart`) — is judged rather than measured,
 and is the pair of numbers to revisit if the hierarchy ever reads too flat or
 too stepped. The 1.35 wide-block factor is a judgement too. Per-theme
 typography would enter here as a theme-owned `ReadingScale`.

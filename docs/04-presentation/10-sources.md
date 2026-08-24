@@ -48,7 +48,7 @@ and consistent across the studies it collects.
 - **X-height, not nominal size, decides how large text reads.** This is why a
   size in this reader is a size of letters, worked out per face — see
   [Font Metrics](../05-api/16-font-metrics.md) and
-  `lib/api/theme/font_metrics.dart:1-9`. Measuring it caught a real defect:
+  `lib/api/theme/font_metrics.dart`. Measuring it caught a real defect:
   body text was rendering about 7 % smaller than the sans beside it at the
   same nominal size.
 - **Letter differentiation matters, and old-style faces can be worse at it.**
@@ -81,6 +81,20 @@ The reader now sets its page in **Alegreya**, drawn by Huerta Tipográfica for
 literature and long-form text. Literata — drawn for long reading on screens,
 across rendering technologies, with a real optical-size axis — remains bundled
 and selectable. See [Theme Binding](../05-api/06-theme.md).
+
+## Heading rhythm
+
+[Butterick](https://practicaltypography.com/headings.html) treats headings as
+signposts: prefer subtle space, bold rather than italic, and the smallest size
+change that makes the hierarchy visible. Production reading systems confirm
+that display leading tightens as type grows. [NICE](https://design-system.nice.org.uk/foundations/typography/)
+uses 1.2 for `h1`/`h2`, opening toward 1.6 at body-sized `h6`; the tested
+[GOV.UK scale](https://design-system.service.gov.uk/styles/type-scale/) is
+tighter still at its largest sizes. Visual MD's `[1.14, 1.18, 1.24, 1.30,
+1.40]` follows that progression, then uses measured body leading at `h6`
+(`lib/api/render/reading_theme.dart`). The completed heading, not each
+display line, is reconciled with the body grid. Flutter may therefore expand a
+mixed-script line before the renderer measures it.
 
 ## Technical-document systems
 

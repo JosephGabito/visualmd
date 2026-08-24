@@ -5,7 +5,7 @@
 `AddMarkdown` handles one markdown offered directly instead of through a
 folder. It either adds a standalone document or resolves the offer to the same
 physical document already in the session. It owns orchestration, not path
-rules or file access (`lib/application/use_cases/add_markdown.dart:28-47`).
+rules or file access (`lib/application/use_cases/add_markdown.dart`).
 
 ## Present wiring
 
@@ -13,20 +13,20 @@ The use case scans a `MarkdownRef`, reads the current aggregate, and creates a
 session-scoped `DocumentId` for a new standalone document. When the scanner
 supplies source identity, lookup uses `Library.findBySource`; without one it
 can only recognize the same application ref
-(`lib/application/use_cases/add_markdown.dart:44-56`).
+(`lib/application/use_cases/add_markdown.dart`).
 
 An existing match returns that exact `Document` without saving or duplicating
 it. `containingRoot` is non-null only when the match belongs to a folder root;
 the API uses that fact to expand the tree to the document
-(`lib/application/use_cases/add_markdown.dart:57-64`). A new source becomes a
+(`lib/application/use_cases/add_markdown.dart`). A new source becomes a
 `Document`, joins `Library.markdowns`, and is saved through the repository
 after its workspace membership is synchronized
-(`lib/application/use_cases/add_markdown.dart:67-80`).
+(`lib/application/use_cases/add_markdown.dart`).
 
 The `MarkdownScanner` port keeps platform handles outside the application.
 `MarkdownRef` is identity plus display name; `ScannedMarkdown` is name, text,
 and optional opaque physical identity
-(`lib/application/ports/markdown_scanner.dart:3-33`).
+(`lib/application/ports/markdown_scanner.dart`).
 
 ## Inputs and outputs
 
@@ -45,19 +45,19 @@ belongs after the workspace and library mutation succeeds.
 
 The composition root creates one instance with the same
 `LibraryMutationQueue` used by folder operations. Folder and markdown drops
-therefore commit in invocation order (`lib/main.dart:64-105`).
+therefore commit in invocation order (`lib/main.dart`).
 
 Focused tests prove both the new-document and physical-folder-match branches
-without a filesystem adapter (`test/application/use_cases_test.dart:152-218`).
+without a filesystem adapter (`test/application/use_cases_test.dart`).
 The inverse transition is owned by `AddFolder`: dropping the containing folder
 later removes the standalone entry and returns the folder-scoped document
-(`lib/application/use_cases/add_folder.dart:63-85`).
+(`lib/application/use_cases/add_folder.dart`).
 
 ## Failure and recovery
 
 `MarkdownUnavailable` or a read failure propagates before any save. The
 controller retains the previous aggregate, clears the busy count in `finally`,
-and shows a concise open error (`lib/api/reader_controller.dart:191-212`).
+and shows a concise open error (`lib/api/reader_controller.dart`).
 
 ## Transition
 

@@ -17,10 +17,11 @@ What it explicitly does *not* own. Which ring it lives in
 
 ## Present wiring
 
-How it is connected right now, with evidence. Every claim cites a source
-location in the form `lib/<ring>/<file>.dart:12-20` (a single line is `:12`).
-Citations are checked mechanically by `test/docs/docs_library_test.dart`:
-the file must exist and the range must be inside it.
+How it is connected right now, with evidence. Reference the smallest source
+file that owns the behavior, such as `lib/application/use_cases/add_folder.dart`.
+Source references are checked mechanically by `test/docs/docs_library_test.dart`:
+the file must exist, and exact line citations are rejected because unrelated
+edits make them stale.
 
 ## Inputs and outputs
 

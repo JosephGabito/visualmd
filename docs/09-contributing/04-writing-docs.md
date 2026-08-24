@@ -14,51 +14,31 @@ free-form but still start with a single `#` title.
 
 ## Checking for drift
 
-`test/docs/docs_library_test.dart` proves that a cited range *exists*. A
-refactor can leave that range present while changing what it says, so a valid
-line number is necessary but not sufficient evidence.
+`test/docs/docs_library_test.dart` proves that every referenced source file
+exists and rejects exact line citations. A file reference survives unrelated
+insertions and formatting; a line range does not. Review still decides whether
+the owning file supports the prose, because that is a semantic judgement.
 
-`tool/check_citations.py` is the second pass. For each paragraph it collects
-the symbols the prose names in backticks, and asks whether any cited span
-still mentions one of them:
+## Source references
 
-```sh
-python3 tool/check_citations.py
-```
-
-It reports missing files, out-of-range spans, and paragraphs whose citations
-no longer mention anything they discuss. It is a warning tool, not a gate: a
-paragraph may legitimately cite a caller rather than a declaration, so read
-every hit before changing anything. Run it after any refactor that moves code
-between files or rings.
-
-## Citations
-
-Every claim about code carries evidence: an inline-code path with a line or
-line range.
+Every claim about code carries evidence: the smallest owning source file,
+written as an inline-code path.
 
 ```
-`lib/application/use_cases/add_folder.dart:40-53`
-`lib/main.dart:21`
-`macos/Runner/MainFlutterWindow.swift:14-24`
+`lib/application/use_cases/add_folder.dart`
+`lib/main.dart`
+`macos/Runner/MainFlutterWindow.swift`
 ```
 
 - Paths start with `lib/`, `test/`, `macos/`, `web/`, `windows/` or `docs/`
   and are relative to the repository root; `pubspec.yaml` and `README.md` at
   the root are also citable.
-- Get line numbers from the file, never from memory:
-
-  ```sh
-  cat -n lib/application/use_cases/add_folder.dart
-  grep -n "Future<AddedFolder> execute" lib/application/use_cases/add_folder.dart
-  ```
-
-- Cite the smallest range that supports the claim.
-- When code moves, regenerate the citations in every document that names the
-  file — `grep -rn "add_folder.dart" docs/` finds them.
+- Do not append line numbers. Moving unrelated code must not stale the prose.
+- When ownership moves to another file, update every document that names the
+  old one — `rg "add_folder.dart" docs/` finds them.
 
 Component documents — everything outside `00-foundation/`, `08-decisions/`
-and the READMEs — must contain at least one citation.
+and the READMEs — must contain at least one source reference.
 
 ## Links
 
@@ -86,15 +66,16 @@ and builder, then reports by reason:
 
 | Reason printed | What to fix |
 |----------------|-------------|
-| `folders without a README` | Add a `README.md` to the listed folder (`test/docs/docs_library_test.dart:51-60`). |
-| a list of untitled paths | Give the document a `#` H1 or a `title:` in front matter (`test/docs/docs_library_test.dart:62-65`). |
-| a list of dirty paths | Remove placeholder words (`test/docs/docs_library_test.dart:67-72`). |
-| `broken links` | Each entry says `(no document)` or `(no anchor)` (`test/docs/docs_library_test.dart:74-92`). |
-| `stale citations` | Each entry says `(missing file)` or `(file has N lines)` (`test/docs/docs_library_test.dart:94-115`). |
-| `component documents without any file:line evidence` | Add a citation (`test/docs/docs_library_test.dart:117-124`). |
+| `folders without a README` | Add a `README.md` to the listed folder (`test/docs/docs_library_test.dart`). |
+| a list of untitled paths | Give the document a `#` H1 or a `title:` in front matter (`test/docs/docs_library_test.dart`). |
+| a list of dirty paths | Remove placeholder words (`test/docs/docs_library_test.dart`). |
+| `broken links` | Each entry says `(no document)` or `(no anchor)` (`test/docs/docs_library_test.dart`). |
+| `missing source files` | Update or remove the file reference (`test/docs/docs_library_test.dart`). |
+| `exact line citations` | Remove the line suffix and keep the owning file (`test/docs/docs_library_test.dart`). |
+| `component documents without source evidence` | Add an owning source file (`test/docs/docs_library_test.dart`). |
 
-Citations inside fenced code blocks are checked too; links inside fences are
-not. Run just this suite while writing:
+Source references inside fenced code blocks are checked too; links inside
+fences are not. Run just this suite while writing:
 
 ```sh
 flutter test test/docs

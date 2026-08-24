@@ -48,10 +48,10 @@ before the first frame.
 
 ## Evidence
 
-- The conditional export and its ordering note: `lib/infrastructure/platform/platform.dart:1-5`.
-- The interface: `lib/infrastructure/platform/platform_adapters.dart:7-44`.
-- The stub: `lib/infrastructure/platform/platform_stub.dart:3-4`.
-- Web family: `lib/infrastructure/platform/platform_web.dart:12-60`.
-- Desktop family, including the macOS-only title-bar measurement: `lib/infrastructure/platform/platform_io.dart:16-27`, `lib/infrastructure/platform/platform_io.dart:61-73`.
-- The composition root awaiting it: `lib/main.dart:21`.
-- Platform packages confined to infrastructure by test: `test/architecture/dependency_rules_test.dart:30-33`.
+- The conditional export and its ordering note: `lib/infrastructure/platform/platform.dart`.
+- The interface: `lib/infrastructure/platform/platform_adapters.dart`.
+- The stub: `lib/infrastructure/platform/platform_stub.dart`.
+- Web family: `lib/infrastructure/platform/platform_web.dart`.
+- Desktop family, including the macOS-only title-bar measurement: `lib/infrastructure/platform/platform_io.dart`, `lib/infrastructure/platform/platform_io.dart`.
+- The composition root awaiting it: `lib/main.dart`.
+- Platform packages confined to infrastructure by test: `test/architecture/dependency_rules_test.dart`.

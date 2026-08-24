@@ -19,7 +19,7 @@ the deeper architectural reasoning.
 | [Development Setup](01-dev-setup.md) | Install Flutter and run Visual MD on the web or macOS. |
 | [Testing and Validation](02-testing-and-validation.md) | Choose a focused test and run the complete project checks. |
 | [Adding a Platform](03-adding-a-platform.md) | Follow the path used for the macOS adapter on another target. |
-| [Writing Docs](04-writing-docs.md) | Keep component guides, links, and source citations useful. |
+| [Writing Docs](04-writing-docs.md) | Keep component guides, links, and source references useful. |
 | [Creating a Theme](05-creating-a-theme.md) | Create a theme file and understand its schema and fallback behavior. |
 
 ## A good first loop
@@ -54,12 +54,12 @@ shows the complete map.
 ## A few conventions that save time
 
 - Private fields with public named parameters in constructors are deliberate
-  (`lib/application/use_cases/add_folder.dart:26-38`); the related lint is
+  (`lib/application/use_cases/add_folder.dart`); the related lint is
   silenced locally.
 - Adapters read only what the domain keeps, so platform code can reuse domain
   rules instead of creating a second interpretation.
 - The composition root is the one place that sees every ring
-  (`lib/main.dart:1-55`); new capabilities are connected there so their
+  (`lib/main.dart`); new capabilities are connected there so their
   dependencies remain easy to find.
 
 If you are unsure where a change belongs, trace one similar path from the

@@ -4,7 +4,7 @@
 
 `DocumentSearch` is the application-owned contract for finding a literal in
 the visible text of domain documents
-(`lib/application/ports/document_search.dart:4-13`). The application names the
+(`lib/application/ports/document_search.dart`). The application names the
 need; infrastructure may satisfy it with a scan, index, or platform service.
 The port owns none of those implementation choices.
 
@@ -12,12 +12,12 @@ The port owns none of those implementation choices.
 
 `find(query, documents)` receives a validated `SearchQuery` and an iterable of
 `Document`s, returning grouped domain results
-(`lib/application/ports/document_search.dart:8-12`). The only production
+(`lib/application/ports/document_search.dart`). The only production
 implementation is [LiteralDocumentSearch](../03-infrastructure/search/01-literal-document-search.md).
 
 `SearchDocuments` calls the port after choosing current-document or library
-scope (`lib/application/use_cases/search_documents.dart:19-33`). The composition
-root supplies the adapter to `SearchDocuments` (`lib/main.dart:57-61`).
+scope (`lib/application/use_cases/search_documents.dart`). The composition
+root supplies the adapter to `SearchDocuments` (`lib/main.dart`).
 
 ## Inputs and outputs
 

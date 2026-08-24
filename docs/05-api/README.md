@@ -7,7 +7,7 @@ parsed document into a quiet reading page.
 Widgets call application use cases and present domain objects. Platform work
 arrives through small values and callbacks supplied by the composition root,
 which lets the same reader UI run on desktop and the web
-(`lib/main.dart:67-74`).
+(`lib/main.dart`).
 
 | Document | What it covers |
 |----------|----------------|
@@ -39,26 +39,26 @@ which lets the same reader UI run on desktop and the web
 The API ring brings together three inward-facing parts of the application:
 
 - `application/`: use cases and `DocumentReading`
-  (`lib/api/reader_controller.dart:4-6`,
-  `lib/api/widgets/reading_pane.dart:3`).
+  (`lib/api/reader_controller.dart`,
+  `lib/api/widgets/reading_pane.dart`).
 - `domain/`: the library, folder, document, outline, and content objects that
-  widgets present (`lib/api/widgets/shelf_panel.dart:3-6`,
-  `lib/api/widgets/outline_panel.dart:3-4`).
+  widgets present (`lib/api/widgets/shelf_panel.dart`,
+  `lib/api/widgets/outline_panel.dart`).
 - `presentation/`: the theme contract, which widgets render without redefining
-  (`lib/api/theme/library_theme.dart:4-6`,
-  `lib/api/reader_controller.dart:9-11`).
+  (`lib/api/theme/library_theme.dart`,
+  `lib/api/reader_controller.dart`).
 
 Flutter and `google_fonts` provide the rendering tools
-(`lib/api/theme/library_theme.dart:1-2`). Markdown is not handed to a generic
+(`lib/api/theme/library_theme.dart`). Markdown is not handed to a generic
 widget: `lib/api/render/` renders the domain's content model directly
-(`lib/api/render/document_view.dart:1-7`).
+(`lib/api/render/document_view.dart`).
 
 Platform-specific work stays at the edge. Folder picking, dropped files, and
 window dragging are injected as functions or plain values
-(`lib/api/app.dart:9-33`, `lib/api/reader_controller.dart:34-38`). The top bar
+(`lib/api/app.dart`, `lib/api/reader_controller.dart`). The top bar
 also receives its platform geometry instead of branching on an operating
-system (`lib/api/screens/reader_screen.dart:21`,
-`lib/api/screens/reader_screen.dart:303-312`). This keeps the widgets focused
+system (`lib/api/screens/reader_screen.dart`,
+`lib/api/screens/reader_screen.dart`). This keeps the widgets focused
 on interaction and presentation.
 
 ## A useful reading path

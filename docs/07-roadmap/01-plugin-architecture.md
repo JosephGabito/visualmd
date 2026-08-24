@@ -88,27 +88,27 @@ Evidence for each attachment point in the current kernel:
 
 - **`LibraryOpened`** could be published after a successful folder mutation,
   once the workspace and library projections have both committed
-  (`lib/application/use_cases/add_folder.dart:95-103`).
+  (`lib/application/use_cases/add_folder.dart`).
 - **`DocumentOpened`** would be published at the end of
-  `lib/application/use_cases/read_document.dart:49-58`, once the document is
+  `lib/application/use_cases/read_document.dart`, once the document is
   found.
 - **The bus and the manifest** belong in the composition root, next to the
-  existing platform and use-case wiring in `lib/main.dart:46-70`.
+  existing platform and use-case wiring in `lib/main.dart`.
 - **Shelf-panel slot** — the shelf column is laid out in
-  `lib/api/screens/reader_screen.dart:399-461`; a slot could add tabs beside
+  `lib/api/screens/reader_screen.dart`; a slot could add tabs beside
   `ShelfPanel` there.
 - **Reading-pane block contributors** — every document is rendered by one
-  `DocumentView` in `lib/api/render/document_view.dart:238-258`; a contributor
+  `DocumentView` in `lib/api/render/document_view.dart`; a contributor
   would take over fenced blocks inside that render.
 - **Document footer slot** — after `DocumentView`, before the reading column
-  closes, in `lib/api/widgets/reading_pane.dart:187-197`.
+  closes, in `lib/api/widgets/reading_pane.dart`.
 - **Top-bar actions slot** — the action row in `_TopBar`,
-  `lib/api/screens/reader_screen.dart:629-653`, to the left of the theme
+  `lib/api/screens/reader_screen.dart`, to the left of the theme
   picker and outline button. The picker is the working precedent: the bar
   takes it as a widget without owning its behavior
-  (`lib/api/screens/reader_screen.dart:606-616`).
+  (`lib/api/screens/reader_screen.dart`).
 - **Status strip slot** — a new row in the shell's main column,
-  `lib/api/screens/reader_screen.dart:509-562`.
+  `lib/api/screens/reader_screen.dart`.
 
 These are candidate seams visible in the current layout. Their final contracts
 should be designed alongside the first capabilities that use them.

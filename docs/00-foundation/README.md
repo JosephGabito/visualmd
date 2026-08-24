@@ -37,7 +37,7 @@ to change less often than feature documentation. Update the language when a new
 product concept appears, update the composition walkthrough when its wiring
 changes, and record a meaningful architectural shift in
 [Decisions](../08-decisions/README.md). [Writing Docs](../09-contributing/04-writing-docs.md)
-explains how links and source citations stay aligned with the code.
+explains how links and source references stay aligned with the code.
 
 From here, the most useful next shelves are:
 

@@ -10,10 +10,10 @@ paths, and bookmark bytes; it does not interpret themes or Workspace JSON.
 
 The desktop platform family locates one instance and uses it for preferences,
 themes, and `DesktopWorkspaceSourceAccess`
-(`lib/infrastructure/platform/platform_io.dart:26-50`,
-`lib/infrastructure/platform/platform_io.dart:64-69`). `locate` creates the
+(`lib/infrastructure/platform/platform_io.dart`,
+`lib/infrastructure/platform/platform_io.dart`). `locate` creates the
 application-support root and a self-documenting themes directory
-(`lib/infrastructure/io/reader_files.dart:23-37`).
+(`lib/infrastructure/io/reader_files.dart`).
 
 | Path | Holds |
 |------|-------|
@@ -23,9 +23,9 @@ application-support root and a self-documenting themes directory
 | `Visual MD/themes/README.md` | First-run theme format guide. |
 
 Workspace access records are addressed as `workspaceId/sourceId`
-(`lib/infrastructure/io/reader_files.dart:79-104`). Save As copies only the
+(`lib/infrastructure/io/reader_files.dart`). Save As copies only the
 named source bindings to the new Workspace ID
-(`lib/infrastructure/io/reader_files.dart:106-117`).
+(`lib/infrastructure/io/reader_files.dart`).
 
 ## Inputs and outputs
 
@@ -35,7 +35,7 @@ bookmark bytes; writes and forks retain those values locally.
 
 Every private JSON write uses a `.writing` temporary and the native atomic
 replacement adapter, retaining `.bak` as the previous complete file
-(`lib/infrastructure/io/reader_files.dart:119-130`).
+(`lib/infrastructure/io/reader_files.dart`).
 
 ## Events
 
@@ -50,8 +50,8 @@ manual inspection are deterministic.
 ## Failure and recovery
 
 A missing or malformed preferences or access file reads as empty
-(`lib/infrastructure/io/reader_files.dart:45-53`,
-`lib/infrastructure/io/reader_files.dart:69-77`). A failed replacement leaves
+(`lib/infrastructure/io/reader_files.dart`,
+`lib/infrastructure/io/reader_files.dart`). A failed replacement leaves
 the target and backup available rather than presenting a partial JSON file.
 Non-JSON theme files are ignored; theme-format errors belong to ThemeRegistry.
 

@@ -9,7 +9,7 @@ A quotation mark is mostly white space. Left inside the column it carves a
 notch out of the left edge, and the first line of the paragraph appears to
 start further right than every line beneath it — the eye reads the edge from
 the text, not from the ink of a mark
-(`lib/presentation/theme/hanging_punctuation.dart:1-11`).
+(`lib/presentation/theme/hanging_punctuation.dart`).
 
 Like everything in this ring it is plain data: no Flutter, no measurement, no
 opinion about where a paragraph sits. Measuring the mark's advance and placing
@@ -18,21 +18,21 @@ it belongs to [Paragraph](../05-api/15-paragraph.md), one ring out.
 ## Present wiring
 
 `HangingPunctuation` is a namespace, never instantiated
-(`lib/presentation/theme/hanging_punctuation.dart:12`). It holds one table
+(`lib/presentation/theme/hanging_punctuation.dart`). It holds one table
 mapping a character to the fraction of its own advance that hangs
-(`lib/presentation/theme/hanging_punctuation.dart:13-27`):
+(`lib/presentation/theme/hanging_punctuation.dart`):
 
 | Mark | Hangs | Why |
 |------|-------|-----|
-| `“` `‘` `«` `„` `‚` | 1.0 | Opening quotes in the shapes a typographer sets them: almost entirely white space, so the whole advance goes into the margin (`lib/presentation/theme/hanging_punctuation.dart:14-19`) |
-| `"` `'` | 1.0 | The straight forms, in case a document reaches the page unset (`lib/presentation/theme/hanging_punctuation.dart:20-22`) |
-| `—` `–` | 0.5 | A dash opening a line of dialogue carries real ink; hanging it whole would pull the line visibly out of place (`lib/presentation/theme/hanging_punctuation.dart:23-26`) |
-| everything else | 0 | `fractionFor` falls back to zero (`lib/presentation/theme/hanging_punctuation.dart:31`) |
+| `“` `‘` `«` `„` `‚` | 1.0 | Opening quotes in the shapes a typographer sets them: almost entirely white space, so the whole advance goes into the margin (`lib/presentation/theme/hanging_punctuation.dart`) |
+| `"` `'` | 1.0 | The straight forms, in case a document reaches the page unset (`lib/presentation/theme/hanging_punctuation.dart`) |
+| `—` `–` | 0.5 | A dash opening a line of dialogue carries real ink; hanging it whole would pull the line visibly out of place (`lib/presentation/theme/hanging_punctuation.dart`) |
+| everything else | 0 | `fractionFor` falls back to zero (`lib/presentation/theme/hanging_punctuation.dart`) |
 
 The fractions are of the mark's *own* advance rather than a fixed distance,
 so a wide face and a narrow one both come out aligned. What is being aligned
 is the look of the edge, not the arithmetic
-(`lib/presentation/theme/hanging_punctuation.dart:9-11`).
+(`lib/presentation/theme/hanging_punctuation.dart`).
 
 ## Inputs and outputs
 
@@ -42,8 +42,8 @@ is the look of the edge, not the arithmetic
 
 | Out | Type | Meaning |
 |-----|------|---------|
-| `fractionFor` | `double` | How much of that character's advance hangs; 0 when it does not (`lib/presentation/theme/hanging_punctuation.dart:29-31`) |
-| `hangs` | `bool` | Whether it hangs at all (`lib/presentation/theme/hanging_punctuation.dart:33`) |
+| `fractionFor` | `double` | How much of that character's advance hangs; 0 when it does not (`lib/presentation/theme/hanging_punctuation.dart`) |
+| `hangs` | `bool` | Whether it hangs at all (`lib/presentation/theme/hanging_punctuation.dart`) |
 
 ## Events
 
@@ -54,17 +54,17 @@ theme contract rather than as an event.
 ## Lifecycle
 
 Compile-time constants. The table is `static const` and lives as long as the
-program (`lib/presentation/theme/hanging_punctuation.dart:13`).
+program (`lib/presentation/theme/hanging_punctuation.dart`).
 
 ## Failure and recovery
 
 There is nothing to fail. An unknown character — a letter, a bracket, an
 emoji — returns 0 and simply does not hang
-(`lib/presentation/theme/hanging_punctuation.dart:31`). A caller that passes a
+(`lib/presentation/theme/hanging_punctuation.dart`). A caller that passes a
 multi-character string gets 0 too, because no key is longer than one
 character, so the worst outcome is a mark that stays in the column.
 
-`test/presentation/paragraph_setting_test.dart:217-223` holds the table to its
+`test/presentation/paragraph_setting_test.dart` holds the table to its
 values: quotes whole, a dash halfway, an ordinary letter and an opening
 bracket not at all.
 

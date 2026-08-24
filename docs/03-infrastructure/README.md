@@ -33,15 +33,15 @@ a filesystem path.
 
 | Family | Platform handle | Scanner |
 |--------|-----------------|---------|
-| Web | `BrowserFolder` (`HandleDirectory`, `DroppedDirectory`, or `PickedFiles`) — `lib/infrastructure/web/browser_folder.dart:6-41` | `BrowserFolderScanner` — `lib/infrastructure/web/browser_folder_scanner.dart:17` |
-| Desktop | `LocalFolder` (`LocalDirectory` or `LocalFiles`) — `lib/infrastructure/io/local_folder.dart:6-29` | `LocalFolderScanner` — `lib/infrastructure/io/local_folder_scanner.dart:14` |
-| Memory | The sample uses a constant reference rather than a native handle — `lib/infrastructure/memory/sample_folder_scanner.dart:6` | `SampleFolderScanner` — `lib/infrastructure/memory/sample_folder_scanner.dart:5` |
+| Web | `BrowserFolder` (`HandleDirectory`, `DroppedDirectory`, or `PickedFiles`) — `lib/infrastructure/web/browser_folder.dart` | `BrowserFolderScanner` — `lib/infrastructure/web/browser_folder_scanner.dart` |
+| Desktop | `LocalFolder` (`LocalDirectory` or `LocalFiles`) — `lib/infrastructure/io/local_folder.dart` | `LocalFolderScanner` — `lib/infrastructure/io/local_folder_scanner.dart` |
+| Memory | The sample uses a constant reference rather than a native handle — `lib/infrastructure/memory/sample_folder_scanner.dart` | `SampleFolderScanner` — `lib/infrastructure/memory/sample_folder_scanner.dart` |
 
 `RoutingFolderScanner` presents those folder scanners as one port
-(`lib/infrastructure/routing_folder_scanner.dart:5-21`). The composition root
+(`lib/infrastructure/routing_folder_scanner.dart`). The composition root
 combines the sample and platform scanners, then passes the result to `AddFolder`
-(`lib/main.dart:47-60`, `lib/main.dart:79-84`). Direct files use the platform's
-Markdown scanner (`lib/main.dart:58-62`, `lib/main.dart:85-90`).
+(`lib/main.dart`, `lib/main.dart`). Direct files use the platform's
+Markdown scanner (`lib/main.dart`, `lib/main.dart`).
 
 After bytes have been read, the other adapters take over. The
 [Markdown Adapter](markdown/README.md) implements

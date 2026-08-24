@@ -5,7 +5,7 @@
 `DocumentSourceId` answers one question: did two scans describe the same
 physical markdown? It is an opaque equality value in the domain ring. The
 domain neither parses its value nor assumes that it is a filesystem path
-(`lib/domain/library/document_source_id.dart:1-17`).
+(`lib/domain/library/document_source_id.dart`).
 
 This identity is distinct from `DocumentId`. `DocumentId` scopes navigation
 inside the session; source identity recognizes the same physical input across
@@ -15,13 +15,13 @@ two ways of offering it.
 
 A `Document` may carry a source id. The value is optional because not every
 platform exposes enough information to establish physical identity
-(`lib/domain/library/document.dart:6-16`). Folder scanners attach the value to
+(`lib/domain/library/document.dart`). Folder scanners attach the value to
 `FileEntry`, and `LibraryBuilder` preserves it when constructing the document
-(`lib/domain/library/library_builder.dart:11-18`, `:52-58`).
+(`lib/domain/library/library_builder.dart`, `lib/domain/library/library_builder.dart`).
 
 `Library.findBySource` walks standalone markdowns and folder documents through
 the aggregate's normal document traversal. It compares ids only; it never
-interprets their strings (`lib/domain/library/library.dart:48-74`).
+interprets their strings (`lib/domain/library/library.dart`).
 
 ## Inputs and outputs
 
@@ -43,7 +43,7 @@ Infrastructure creates the id while scanning. It lives with the immutable
 
 The local scanner test proves that a directory scan and a direct scan of the
 same file produce equal identities
-(`test/infrastructure/local_folder_scanner_test.dart:91-115`).
+(`test/infrastructure/local_folder_scanner_test.dart`).
 
 ## Failure and recovery
 
