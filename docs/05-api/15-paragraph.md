@@ -2,9 +2,9 @@
 
 ## Purpose and boundary
 
-One paragraph, set: its first line indented when the rules call for it, its
-opening mark hung outside the column, and its last two words bound so neither
-is left standing alone.
+One paragraph, set flush at its reading edge and ragged at the other: naturally
+reflowing, indented when the rules call for it, its opening mark hung outside
+the column, and its last two words bound so neither is left standing alone.
 
 It is the widget that *applies* three presentation rules — the
 [hanging table](../04-presentation/08-hanging-punctuation.md), the
@@ -28,7 +28,10 @@ it happens in three steps (`lib/api/render/document_view.dart`):
 2. **Bind the widow.** `bindWidow` counts the whole paragraph, then descends
    through styled wrappers to bind its last eligible text leaf
    (`lib/api/render/document_view.dart`).
-3. **Set the line.** The indent goes into the flow as a `WidgetSpan` sized to
+3. **Set the flow.** `TextAlign.start` follows the reading direction without
+   stretching word spaces, and `softWrap` recomposes long prose at the measured
+   column (`lib/api/render/document_view.dart`).
+4. **Set the indent.** The indent goes into the flow as a `WidgetSpan` sized to
    it, baseline-aligned, so it moves the first line and nothing else
    (`lib/api/render/document_view.dart`).
 
@@ -81,6 +84,11 @@ hangs off the line (`lib/api/render/document_view.dart`).
 
 Out: a widget. Nothing is reported back.
 
+The surrounding sequence—not this widget—marks consecutive paragraphs: half
+a beat in spaced mode, or a one-em first-line indent with no gap in indented
+mode. A lone or final paragraph leaves no trailing external space
+(`lib/api/render/reading_theme.dart`).
+
 ## Events
 
 None today. When UI slots land, a paragraph is not where a contribution would
@@ -103,10 +111,10 @@ document of many quoted paragraphs measures each distinct rendering once.
   clamp the column to its full width is the case where a hung mark could reach
   the pane's edge.
 
-`test/presentation/paragraph_setting_test.dart` covers both halves:
-that a mark is split only when the line opens with plain text, and — measured,
-not eyeballed — that the words line up with an unquoted paragraph while the
-mark sits exactly its own advance to the left of them.
+`test/presentation/paragraph_setting_test.dart` covers a lone paragraph,
+half-beat spaced and one-em indented sequences, recursive paragraph marking,
+long reflow at changing widths, stable leading, widow binding and hanging
+punctuation measured against the actual face.
 
 ## Transition
 

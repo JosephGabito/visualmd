@@ -32,25 +32,33 @@ the grid from the requested size instead of the rendered size. Recording that
 distinction here prevents the same drift when another face or scaler is
 introduced.
 
-Four things must come to whole beats for the rule to hold:
+Five things establish the flow and return displayed departures to whole beats:
 
 | What | How | Citation |
 |------|-----|----------|
-| The gap between ordinary blocks | Exactly one beat — a blank line | `lib/api/render/reading_theme.dart` |
+| External spacing | The preceding block alone owns `spaceAfter(current, next)`; no block adds space above itself | `lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart` |
+| Body relationships | Ordinary blocks get one beat; consecutive spaced paragraphs get Lupton's quieter half-beat; indented paragraphs get no gap | `lib/api/render/reading_theme.dart` |
 | A heading's own lines | Natural display leading: tight at `h1`, opening gradually toward the body at `h6` | `lib/api/render/reading_theme.dart` |
-| The complete heading block | Its shaped height plus half a beat below is rounded up; the remainder sits above | `lib/api/render/document_view.dart` |
+| The complete heading block | Its shaped height and outgoing half-beat are reconciled together; only the grid correction remains inside the heading | `lib/api/render/document_view.dart` |
 | A code block | One beat per line of code, half a beat of padding above and below | `lib/api/render/reading_theme.dart`, `lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart` |
 | A horizontal rule | Its complete box is one beat | `lib/api/render/document_view.dart` |
 
 A heading is reconciled only after Flutter has shaped the complete block. Its
-lines therefore stay close enough to read as one display phrase, while the box
-still consumes whole beats. Half a beat is reserved below; whatever remains of
-the final beat sits above, so the heading belongs more closely to what it
+lines therefore stay close enough to read as one display phrase. The sequence
+owns a half-beat after it; the heading accounts for that known outgoing space
+and keeps only the remaining grid correction inside its own box. The combined
+height still consumes whole beats, and the heading remains closer to what it
 introduces (`lib/api/render/reading_theme.dart`,
-`lib/api/render/document_view.dart`). A block following a heading adds
-no second gap because that quiet half-beat is already inside the heading. Two
-consecutive headings therefore remain one structural unit
-(`lib/api/render/document_view.dart`).
+`lib/api/render/document_view.dart`).
+
+This is the **forward-owned spacing rule**: lay out a block, then spend the gap
+it owns before laying out the next one. `spaceAfter(current, next)` sees the
+pair because their relationship matters, but only `current` emits the result.
+The final block returns zero. `_BlockSequence` applies the rule recursively,
+so quotations and list items cannot acquire a competing top-margin convention
+(`lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart`).
+Paragraph spacing is the one half-beat interval inside running text; headings
+account for their half-beat while reconciling their complete display box.
 
 **The strut is what makes the running-text grid real.** Without it a paragraph
 carrying an inline code span — set smaller than the prose around it — can grow
@@ -73,15 +81,15 @@ of a paragraph do; a loose one gets a whole beat
 In: the rendered body size and the leading for the face in hand.
 
 Out: `baseline` (the beat), `snap(height)` rounding up to the next whole one,
-`blockGap`, `headingSpaceAfter` and `gapBefore(afterHeading:)`
+`blockGap` and the pair-aware `spaceAfter(current, next)`
 (`lib/api/render/reading_theme.dart`).
 
 ## Events
 
 None today. The rhythm is arithmetic over the theme in hand. Under the
 [plugin architecture](../07-roadmap/01-plugin-architecture.md) a contributor
-rendering a new kind of block would have to spend whole beats like everything
-else — the obligation belongs to the block, not to the grid.
+rendering a new kind of displayed block would have to return prose on the beat
+like everything else — the obligation belongs to the block, not to the grid.
 
 ## Lifecycle
 
@@ -90,12 +98,17 @@ or the scale changes. Nothing is cached and nothing is stateful.
 
 ## Failure and recovery
 
-Nothing throws: every member is arithmetic, and `spaceAbove` clamps its level
-to 1–6 (`lib/api/render/reading_theme.dart`).
+Nothing throws: every member is arithmetic, `heading(level)` clamps its level
+to 1–6, and `spaceAfter` returns zero at the end of a sequence
+(`lib/api/render/reading_theme.dart`).
 
-The invariant is a test rather than an intention. The heading suite checks all
-six levels for proximity, a multiline `h1` for tight internal leading, and a
-scaled mixed-script heading for clipping and phase
+The invariant is a test rather than an intention. The spacing suite states
+that the current block owns the only external gap and proves the same rule is
+spent at the document root, inside quotations and inside list items
+(`test/presentation/paragraph_setting_test.dart`). It also measures the
+half-beat spaced interval and the solid indented column. The heading suite checks
+all six levels for proximity, a multiline `h1` for tight internal leading, and
+a scaled mixed-script heading for clipping and phase
 (`test/presentation/document_view_test.dart`). The complete rhythm test
 then renders multiline headings, code, a rule and a tight list between
 paragraphs and asserts every later paragraph's offset is a whole number of

@@ -21,12 +21,11 @@ reader marks structure.
 | A good rag is pleasantly uneven, with hyphenation kept to a minimum | *Alignment* |
 | A baseline grid aligns text across a field | *Grid*, p. 198 |
 
-Lupton's paragraph specimens on p. 126 show that a full blank line can feel
-too open. Visual MD nevertheless keeps a whole-line gap in its **spaced** mode:
-the page's existing contract is a strict baseline grid, while the alternative
-**indented** mode already supplies the compact, solid column without combining
-two paragraph signals. Changing that gap requires a new rhythm rule, not a
-smaller number chosen by eye.
+Lupton's paragraph specimens on p. 126 warn that a full blank line is often
+too open and show a half-line alternative. Visual MD's **spaced** mode therefore
+uses half a beat after consecutive paragraphs. Its **indented** mode uses the
+book's one-em first-line indent and no gap; the opening paragraph stays flush.
+Both are pair-aware outcomes of `spaceAfter`, never combined signals.
 
 **Robert Bringhurst, *The Elements of Typographic Style*** — the source for
 the vertical rhythm.
