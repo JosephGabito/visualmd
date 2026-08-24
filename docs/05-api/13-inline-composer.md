@@ -74,6 +74,21 @@ character before spans are cut. The background may therefore cover more code
 units than the literal query, but the glyph can never be broken by a style
 boundary (`lib/api/render/inline_composer.dart`).
 
+### Emphasis
+
+The parser has already resolved both delimiter spellings to
+`InlineMark.emphasis`, so composition never sees or paints a star or
+underscore. It adds `FontStyle.italic` to the surrounding role and nothing
+else: colour, weight, size, leading, decoration, direction and the selectable
+text all remain inherited. Search background is an independent layer, so a
+matched phrase stays italic without gaining a second semantic or accessible
+label (`lib/api/render/inline_composer.dart`).
+
+That restraint is the typography. Emphasis is a local change of voice inside
+running text, not a miniature heading. Its long hostile specimen wraps on the
+ordinary measure and baseline grid, and its Unicode clusters use the same
+composition path as roman prose (`test/presentation/inline_composer_test.dart`).
+
 ### Setting the punctuation
 
 `_text` walks a run grapheme by grapheme
