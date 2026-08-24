@@ -146,6 +146,7 @@ final class LibraryTypefaces extends ThemeExtension<LibraryTypefaces> {
   /// which is fetched at runtime; if that fails, the library's own face stands
   /// in, so a typo in a theme file costs a font rather than the app.
   static TextStyle _font(String family, String fallback, TextStyle base) {
+    base = base.copyWith(fontFamilyFallback: _readingFallbacks);
     if (bundledFontLicences.containsKey(family)) {
       final optical = bundledOpticalSizes[family];
       // The size asked for is a size of letters; this is the font size that
@@ -167,6 +168,28 @@ final class LibraryTypefaces extends ThemeExtension<LibraryTypefaces> {
       return base.copyWith(fontFamily: fallback);
     }
   }
+
+  /// Native desktop reading faces for scripts and emoji outside the bundled
+  /// Latin families. Flutter still falls back to the platform default after
+  /// this list. CanvasKit owns a separate downloadable fallback on the web.
+  static const _readingFallbacks = <String>[
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Noto Color Emoji',
+    'SF Arabic',
+    'Noto Sans Arabic',
+    'SF Hebrew',
+    'Noto Sans Hebrew',
+    'PingFang SC',
+    'Microsoft YaHei',
+    'Noto Sans CJK SC',
+    'Hiragino Sans',
+    'Yu Gothic',
+    'Meiryo',
+    'Noto Sans Devanagari',
+    'Noto Sans Tamil',
+    'Noto Sans Thai',
+  ];
 
   @override
   LibraryTypefaces copyWith({ThemeTypefaces? families}) =>

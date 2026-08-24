@@ -35,6 +35,14 @@ it happens in three steps (`lib/api/render/document_view.dart`):
    it, baseline-aligned, so it moves the first line and nothing else
    (`lib/api/render/document_view.dart`).
 
+Before setting the flow, `ReadingDirection` skips neutral punctuation, emoji,
+numbers and isolated segments until Unicode's first strong character decides
+the paragraph edge. Direction belongs to each paragraph rather than to the
+application chrome. A hanging opening mark is consequently positioned from
+the right edge for RTL prose and from the left edge for LTR prose
+(`lib/api/render/reading_direction.dart`,
+`lib/api/render/document_view.dart`).
+
 **The strut is what keeps the paragraph on the beat.** It holds every line box
 to the same height whatever is set inside it
 (`lib/api/render/document_view.dart`, applied at `lib/api/render/document_view.dart`), so a line

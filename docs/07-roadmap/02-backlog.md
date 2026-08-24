@@ -29,6 +29,7 @@ that touches `domain` begins by modelling the reader-facing rule.
 | macOS signing and notarization | Packaging | none | Needs an Apple Developer account. Adds a signing identity to the Xcode project and a notarization step after `flutter build macos`. |
 | Chrome extension | Platform | infrastructure | A fourth adapter family. Build with `--csp --no-web-resources-cdn`, strip the `<base href>` from `web/index.html`, bundle fonts, and request the file URL permission so local markdown opens in the reader. |
 | Windows build verification | Platform | none | The target is scaffolded and named (`windows/runner/main.cpp`) but has never been compiled; needs a Windows machine with the Visual Studio Desktop C++ workload. |
+| Complete emoji coverage on Flutter Web | Platform | api | Unicode sequences remain intact and desktop builds use native emoji fallbacks, but CanvasKit owns a separate split Noto fallback. Some newer sequences can still render as missing-glyph boxes. Flutter's public preload API remains open, while adding the full colour font as an app asset would add roughly 20 MB and bypass its lazy-loading design. |
 
 ## Done
 

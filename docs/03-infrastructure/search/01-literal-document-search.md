@@ -21,9 +21,14 @@ discarded backslash notation returns nothing.
 
 The query goes through `RegExp.escape`, then a case-insensitive Unicode
 expression (`lib/infrastructure/search/literal_document_search.dart`).
-`allMatches` supplies ordered, non-overlapping offsets, which become
+`allMatches` supplies ordered, non-overlapping UTF-16 offsets, which become
 `TextMatch` values (`lib/infrastructure/search/literal_document_search.dart`). Documents with no occurrence are omitted while
 the input order is retained (`lib/infrastructure/search/literal_document_search.dart`).
+
+Those exact offsets remain the search contract, but excerpts expand their two
+outer cuts to extended grapheme boundaries. A clipped result can therefore
+begin with a complete combining or emoji sequence, never half a surrogate or
+an orphaned modifier (`lib/infrastructure/search/literal_document_search.dart`).
 
 ## Inputs and outputs
 
@@ -50,8 +55,8 @@ The Markdown parser's contract turns unsupported markup into visible raw text
 rather than throwing, so a malformed document still remains searchable.
 
 Focused adapter tests prove punctuation is literal, case is ignored, Markdown
-marks and escape notation are absent, empty documents are omitted, and library
-order survives
+marks and escape notation are absent, Unicode excerpts keep complete
+graphemes, empty documents are omitted, and library order survives
 (`test/infrastructure/literal_document_search_test.dart`).
 
 ## Transition

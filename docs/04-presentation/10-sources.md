@@ -110,10 +110,10 @@ the words including Unicode, replace spaces with hyphens, and number repeats.
 [Flutter's heading-level semantics](https://api.flutter.dev/flutter/semantics/SemanticsProperties/headingLevel.html)
 carry the authored level to screen readers and map it to `aria-level` on the
 web; the renderer supplies that structure in addition to its visual hierarchy.
-The Dart team's current [`intl`](https://pub.dev/packages/intl) bidi utilities
-identify the first strongly directional character. Visual MD uses that signal
-for a heading's base direction, while a heading made only of punctuation
-inherits the surrounding page direction instead of guessing.
+[Unicode UAX #9](https://www.unicode.org/reports/tr9/) defines a paragraph's
+base direction from its first strong `L`, `R`, or `AL` character. Visual MD
+uses that rule for a heading's base direction, while a heading made only of
+punctuation inherits the surrounding page direction instead of guessing.
 
 ## Thematic breaks
 
@@ -229,6 +229,51 @@ permits parsers to discard whether Unicode came directly from source or from a
 reference. Visual MD follows that semantic boundary: once decoded, the
 character enters normal prose setting, search and navigation exactly as if the
 author typed it directly.
+
+## Plain Unicode text
+
+[Unicode UAX #29](https://www.unicode.org/reports/tr29/) defines an extended
+grapheme cluster as the practical unit for a user-perceived character. A base
+plus combining marks, an emoji plus skin tone, a flag pair, and an emoji ZWJ
+sequence can each contain several code points and still be one indivisible
+reading unit. [Unicode UTS #51](https://unicode.org/reports/tr51/) makes the
+emoji case explicit: every emoji sequence is one grapheme cluster. Visual MD
+therefore composes prose and partitions search highlighting with Dart's
+[`characters`](https://api.flutter.dev/flutter/package-characters_characters/)
+implementation of those boundaries. A query may match one constituent in the
+stored text, but the page paints the complete visible character; code and
+prose remain exact strings.
+
+[Unicode UAX #9](https://www.unicode.org/reports/tr9/) resolves bidirectional
+text per paragraph. Rules P2 and P3 skip neutrals, numbers, and isolated
+segments until the first strong `L`, `R`, or `AL` character establishes the
+embedding level. Flutter requires that level as a
+[`TextDirection`](https://api.flutter.dev/flutter/dart-ui/TextDirection.html)
+to disambiguate mixed-script rendering and `TextAlign.start`. Visual MD
+generates its strong-character ranges from Unicode 17's official
+[`DerivedBidiClass.txt`](https://www.unicode.org/Public/17.0.0/ucd/extracted/DerivedBidiClass.txt)
+rather than a BMP-only script heuristic, then applies the result independently
+to paragraphs, headings, list items, table cells, and visible raw text
+(`tool/generate_bidi_classes.dart`).
+
+[Unicode UAX #14](https://www.unicode.org/reports/tr14/) treats combining
+sequences as indivisible for line breaking and distinguishes the Western
+space-and-hyphen model from East Asian text, where a line can generally break
+between ideographs unless punctuation rules prohibit it. Visual MD leaves
+those legal break choices to Flutter's text engine while preserving the
+author's code-point sequence and supplying a real paragraph direction. Narrow
+CJK prose can consequently reflow without inserted Western spaces or a break
+inside a combining or emoji sequence.
+
+Flutter's [`fontFamilyFallback`](https://api.flutter.dev/flutter/painting/TextStyle/fontFamilyFallback.html)
+is an ordered search after the preferred family and before the platform's
+default font. The bundled reading faces deliberately cover Latin; they should
+not counterfeit scripts they do not draw. Visual MD names common native emoji,
+Arabic, Hebrew, CJK and Indic reading faces for desktop hosts while preserving
+the authored string (`lib/api/theme/library_theme.dart`). Flutter Web's
+[open CanvasKit preload issue](https://github.com/flutter/flutter/issues/78422)
+documents the different web boundary: the engine downloads its own split Noto
+fallback and cannot preload it through the public API.
 
 ## Technical-document systems
 

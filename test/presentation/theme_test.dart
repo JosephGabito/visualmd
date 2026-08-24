@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reader_theme.dart';
 import 'package:visualmd/presentation/theme/theme_format_exception.dart';
@@ -202,6 +203,32 @@ void main() {
             reason: '${theme.name}: $use',
           );
         }
+      }
+    });
+  });
+
+  group('reading font fallback', () {
+    test('every page voice names native emoji and script faces before the platform default', () {
+      const typefaces = LibraryTypefaces(ThemeTypefaces.library);
+      final styles = [
+        typefaces.serif(color: const Color(0xFF111111)),
+        typefaces.sans(color: const Color(0xFF111111)),
+        typefaces.mono(color: const Color(0xFF111111)),
+      ];
+
+      for (final style in styles) {
+        expect(
+          style.fontFamilyFallback!.take(3),
+          orderedEquals([
+            'Apple Color Emoji',
+            'Segoe UI Emoji',
+            'Noto Color Emoji',
+          ]),
+        );
+        expect(style.fontFamilyFallback, contains('Noto Sans Arabic'));
+        expect(style.fontFamilyFallback, contains('Noto Sans Hebrew'));
+        expect(style.fontFamilyFallback, contains('Noto Sans CJK SC'));
+        expect(style.fontFamilyFallback, contains('Noto Sans Devanagari'));
       }
     });
   });

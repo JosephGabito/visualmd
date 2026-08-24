@@ -20,7 +20,7 @@ those come from [Reading Theme](14-reading-theme.md) — and no layout, which is
 
 ## Present wiring
 
-`compose(runs, {style, previous})` walks the runs, threading the last character
+`compose(runs, {style, previous})` walks the runs, threading the last grapheme
 actually emitted into the next one, because that decides whether a quote opens
 or closes (`lib/api/render/inline_composer.dart`). The tail walk is
 recursive, so whitespace or text inside nested emphasis and links still gives
@@ -67,9 +67,16 @@ accessible label (`lib/api/render/inline_composer.dart`), guarded with
 a titled-link regression at
 `test/presentation/inline_composer_test.dart`.
 
+Composition advances by extended grapheme cluster rather than UTF-16 code
+unit. Search and syntax boundaries that land inside a combining sequence,
+emoji modifier, flag, or ZWJ sequence are expanded to the complete visible
+character before spans are cut. The background may therefore cover more code
+units than the literal query, but the glyph can never be broken by a style
+boundary (`lib/api/render/inline_composer.dart`).
+
 ### Setting the punctuation
 
-`_text` walks a run character by character
+`_text` walks a run grapheme by grapheme
 (`lib/api/render/inline_composer.dart`), delegating the rules to
 [Typographic Punctuation](../04-presentation/README.md) in the presentation
 ring: a quote is opened or closed based on what precedes it, two or three

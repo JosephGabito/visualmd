@@ -124,6 +124,38 @@ void main() {
     },
   );
 
+  test('keeps excerpts on complete grapheme boundaries', () async {
+    const emoji = '👩🏽‍💻';
+    final document = Document(
+      id: DocumentId(rootId, 'unicode.md'),
+      content:
+          '${List.filled(10, 'a').join()}$emoji'
+          '${List.filled(40, 'b').join()} needle after',
+    );
+
+    final results = await search.find(SearchQuery('needle'), [document]);
+    final excerpt = results.single.matches.single.excerpt;
+
+    expect(excerpt, startsWith('…$emoji'));
+    expect(excerpt, isNot(contains('\u{fffd}')));
+  });
+
+  test('finds exact combining and emoji source without rewriting it', () async {
+    const source = 'A nai\u0308ve 👩🏽‍💻 reader.';
+    final document = Document(
+      id: DocumentId(rootId, 'clusters.md'),
+      content: source,
+    );
+
+    final decomposed = await search.find(SearchQuery('nai\u0308ve'), [
+      document,
+    ]);
+    final emoji = await search.find(SearchQuery('👩🏽‍💻'), [document]);
+
+    expect(decomposed.single.matches.single.excerpt, contains('nai\u0308ve'));
+    expect(emoji.single.matches.single.excerpt, contains('👩🏽‍💻'));
+  });
+
   test('omits documents without a match and preserves library order', () async {
     final documents = [
       Document(id: DocumentId(rootId, 'a.md'), content: 'first needle'),

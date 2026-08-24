@@ -67,17 +67,19 @@ final class InlineComposer {
 
     final boundaries = <int>{0, text.length};
     for (final token in tokens) {
+      final range = CharacterRange.at(text, token.start, token.end);
       boundaries
-        ..add(token.start)
-        ..add(token.end);
+        ..add(range.stringBeforeLength)
+        ..add(text.length - range.stringAfterLength);
     }
     for (final match in matches) {
       final start = (match.start - offset).clamp(0, text.length);
       final end = (match.end - offset).clamp(0, text.length);
       if (start < end) {
+        final range = CharacterRange.at(text, start, end);
         boundaries
-          ..add(start)
-          ..add(end);
+          ..add(range.stringBeforeLength)
+          ..add(text.length - range.stringAfterLength);
       }
     }
     final cuts = boundaries.toList()..sort();
@@ -88,7 +90,7 @@ final class InlineComposer {
       final end = cuts[i + 1];
       if (start == end) continue;
       final tokenIndex = tokens.indexWhere(
-        (token) => token.start <= start && token.end >= end,
+        (token) => token.start < end && token.end > start,
       );
       final base = tokenIndex < 0 ? style : styleFor(tokens[tokenIndex]);
       final matchIndex = matches.indexWhere(
@@ -131,7 +133,7 @@ final class InlineComposer {
     return spans;
   }
 
-  /// The last character composed so far, which decides whether the next
+  /// The last grapheme composed so far, which decides whether the next
   /// quote opens or closes.
   String? _tailOf(List<InlineSpan> spans) {
     for (final span in spans.reversed) {
@@ -148,7 +150,7 @@ final class InlineComposer {
       if (tail != null) return tail;
     }
     final text = span.text;
-    return text == null || text.isEmpty ? null : text[text.length - 1];
+    return text == null || text.isEmpty ? null : text.characters.last;
   }
 
   List<InlineSpan> _run(
@@ -243,14 +245,19 @@ final class InlineComposer {
     cursor.offset += text.length;
     final chunks = <_StyledChunk>[];
     var before = previous;
-    var i = 0;
-    while (i < text.length) {
-      var consumed = 1;
-      var value = text[i];
+    // A style boundary inside a grapheme can prevent the text engine from
+    // shaping its code points as one character. Search may legitimately find
+    // one constituent, so composition expands that paint to the whole cluster.
+    final graphemes = CharacterRange(text);
+    while (graphemes.moveNext()) {
+      final i = graphemes.stringBeforeLength;
+      final character = graphemes.current;
+      var consumed = character.length;
+      var value = character;
       if (setPunctuation) {
-        switch (text[i]) {
+        switch (character) {
           case '"' || "'":
-            value = TypographicPunctuation.quote(text[i], before);
+            value = TypographicPunctuation.quote(character, before);
           case '-' when _runOf(text, i, '-') >= 2:
             consumed = _runOf(text, i, '-');
             value = TypographicPunctuation.dash('-' * consumed);
@@ -267,8 +274,9 @@ final class InlineComposer {
       } else {
         chunks.add(_StyledChunk(matchIndex, StringBuffer(value)));
       }
-      before = value[value.length - 1];
-      i += consumed;
+      before = value.characters.last;
+      final skipped = consumed - character.length;
+      if (skipped > 0) graphemes.moveNext(skipped);
     }
 
     return [
