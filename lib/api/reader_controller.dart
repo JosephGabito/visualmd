@@ -1,4 +1,5 @@
 // ignore_for_file: prefer_initializing_formals — private fields stay private; named params stay public.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart' show ChangeNotifier, Brightness;
@@ -6,12 +7,14 @@ import 'package:flutter/material.dart' show ChangeNotifier, Brightness;
 import '../application/ports/folder_scanner.dart';
 import '../application/ports/markdown_scanner.dart';
 import '../application/ports/workspace_session_repository.dart';
+import '../application/source_watch_coordinator.dart';
 import '../application/use_cases/add_folder.dart';
 import '../application/use_cases/add_markdown.dart';
 import '../application/use_cases/move_folder.dart';
 import '../application/use_cases/create_workspace.dart';
 import '../application/use_cases/open_workspace.dart';
 import '../application/use_cases/read_document.dart';
+import '../application/use_cases/refresh_source.dart';
 import '../application/use_cases/reconnect_workspace_source.dart';
 import '../application/use_cases/remove_folder.dart';
 import '../application/use_cases/remove_markdown.dart';
@@ -69,6 +72,8 @@ final class ReaderController extends ChangeNotifier {
   final Future<WorkspaceSession?> Function()? _currentWorkspace;
   final FolderRef _sampleFolder;
   final Future<void> Function(String key, String value) _savePreference;
+  final SourceWatchCoordinator? _sourceChanges;
+  StreamSubscription<SourceSyncEvent>? _sourceChangeSubscription;
 
   ReaderController({
     required AddFolder addFolder,
@@ -93,6 +98,7 @@ final class ReaderController extends ChangeNotifier {
     ThemeChoice? themeChoice,
     ReadingScale? readingScale,
     PanelWidths? panelWidths,
+    SourceWatchCoordinator? sourceChanges,
     Future<void> Function(String key, String value)? savePreference,
   }) : _addFolder = addFolder,
        _addMarkdown = addMarkdown,
@@ -111,11 +117,16 @@ final class ReaderController extends ChangeNotifier {
        _reconnectWorkspaceSource = reconnectWorkspaceSource,
        _currentWorkspace = currentWorkspace,
        _sampleFolder = sampleFolder,
+       _sourceChanges = sourceChanges,
        _savePreference = savePreference ?? _discard,
        themeChoice = themeChoice ?? themes.systemPair,
        readingScale = readingScale ?? ReadingScale.comfortable,
        panelWidths = panelWidths ?? const PanelWidths(),
-       workspaceSession = workspaceSession;
+       workspaceSession = workspaceSession {
+    _sourceChangeSubscription = sourceChanges?.events.listen(
+      _handleSourceSyncEvent,
+    );
+  }
 
   static Future<void> _discard(String key, String value) async {}
 
@@ -127,6 +138,8 @@ final class ReaderController extends ChangeNotifier {
   ({DocumentId id, int revision})? expandRequest;
   bool dragging = false;
   String? error;
+  String? _sourceSyncError;
+  int contentRevision = 0;
   bool shelfVisible = true;
   bool outlineVisible = true;
   WorkspaceSession? workspaceSession;
@@ -168,6 +181,8 @@ final class ReaderController extends ChangeNotifier {
         atIndex: atIndex,
       );
       library = added.library;
+      _sourceChanges?.watchFolder(ref);
+      _sourceChanges?.retainLibrary(library);
       final next = added.nextDocument;
       if (next != null &&
           (next.id != selected ||
@@ -196,6 +211,10 @@ final class ReaderController extends ChangeNotifier {
     try {
       final added = await _addMarkdown.execute(ref, atIndex: atIndex);
       library = added.library;
+      if (added.containingRoot == null) {
+        _sourceChanges?.watchMarkdown(ref);
+      }
+      _sourceChanges?.retainLibrary(library);
       reading = await _readDocument.execute(added.document.id);
       final containingRoot = added.containingRoot;
       if (containingRoot != null) {
@@ -248,6 +267,7 @@ final class ReaderController extends ChangeNotifier {
       workspaceSession = await create.execute(_workspaceTheme(themeChoice));
       library = null;
       reading = null;
+      _sourceChanges?.replace(folders: const [], markdowns: const []);
       error = null;
     } on Object {
       error = "Couldn't create a new workspace.";
@@ -268,6 +288,10 @@ final class ReaderController extends ChangeNotifier {
       if (result == null) return;
       workspaceSession = result.session;
       library = result.session.workspace.isEmpty ? null : result.library;
+      _sourceChanges?.replace(
+        folders: result.folderRefs,
+        markdowns: result.markdownRefs,
+      );
       final document = result.activeDocument;
       reading = document == null
           ? null
@@ -347,6 +371,7 @@ final class ReaderController extends ChangeNotifier {
         selected: reading?.document.id,
       );
       library = removed.library.isEmpty ? null : removed.library;
+      _sourceChanges?.retainLibrary(library);
       if (reading?.document.id.rootId == id) {
         final next = removed.nextDocument;
         reading = next == null ? null : await _readDocument.execute(next.id);
@@ -366,6 +391,7 @@ final class ReaderController extends ChangeNotifier {
         selected: reading?.document.id,
       );
       library = removed.library.isEmpty ? null : removed.library;
+      _sourceChanges?.retainLibrary(library);
       if (reading?.document.id == id) {
         final next = removed.nextDocument;
         reading = next == null ? null : await _readDocument.execute(next.id);
@@ -539,9 +565,45 @@ final class ReaderController extends ChangeNotifier {
     workspaceSession = await _currentWorkspace?.call() ?? workspaceSession;
   }
 
+  void _handleSourceSyncEvent(SourceSyncEvent event) {
+    switch (event) {
+      case SourceSynchronized(:final result):
+        unawaited(_applySourceRefresh(result));
+      case SourceSynchronizationFailed(:final sourceName, :final reason):
+        final message = "Couldn't keep “$sourceName” up to date: $reason";
+        _sourceSyncError = message;
+        error = message;
+        notifyListeners();
+    }
+  }
+
+  Future<void> _applySourceRefresh(RefreshedSource result) async {
+    final selected = reading?.document.id;
+    library = result.library;
+    _sourceChanges?.retainLibrary(library);
+    if (selected != null &&
+        (result.changedDocuments.contains(selected) ||
+            result.library.find(selected) == null)) {
+      final active = result.activeDocument;
+      reading = active == null ? null : await _readDocument.execute(active);
+    }
+    contentRevision++;
+    await _refreshWorkspaceSession();
+    if (error == _sourceSyncError) error = null;
+    _sourceSyncError = null;
+    notifyListeners();
+  }
+
   void reportReaderSourcePickerFailure(Object failure) {
     error = "Couldn't choose a folder or Markdown file: $failure";
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_sourceChangeSubscription?.cancel());
+    unawaited(_sourceChanges?.dispose());
+    super.dispose();
   }
 }
 

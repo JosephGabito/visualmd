@@ -4,6 +4,7 @@ import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart' as web;
 
+import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../domain/library/hidden_folders.dart';
 import '../../domain/library/library_builder.dart';
@@ -14,7 +15,8 @@ import 'browser_source_identity.dart';
 /// Adapter: reads markdown files out of folders the browser gave us.
 /// Only markdown outside hidden folders is read — the domain would discard
 /// anything else, so there is no point pulling those bytes off disk.
-final class BrowserFolderScanner implements FolderScanner {
+final class BrowserFolderScanner
+    implements FolderScanner, FolderDocumentScanner {
   final BrowserFolderRegistry _registry;
   final BrowserSourceIdentity _identities;
 
@@ -38,6 +40,37 @@ final class BrowserFolderScanner implements FolderScanner {
         }
     }
     return ScannedFolder(name: folder.name, files: files);
+  }
+
+  @override
+  Future<ScannedFolderDocument?> scanDocument(
+    FolderRef ref,
+    String relativePath,
+  ) async {
+    final folder = _registry.lookup(ref);
+    if (folder == null) throw FolderUnavailable(ref);
+    final path = _safeRelativePath(relativePath);
+    if (path == null ||
+        !MarkdownFile.isMarkdown(path) ||
+        HiddenFolders.hidesPath(path)) {
+      return null;
+    }
+    if (folder case HandleDirectory(:var handle)) {
+      final segments = path.split('/');
+      for (final segment in segments.take(segments.length - 1)) {
+        handle = await handle.getDirectoryHandle(segment).toDart;
+      }
+      final fileHandle = await handle.getFileHandle(segments.last).toDart;
+      final file = await fileHandle.getFile().toDart;
+      return ScannedFolderDocument(
+        relativePath: path,
+        content: await _text(file),
+        sourceId: await _identities.identify(fileHandle),
+      );
+    }
+    // Legacy drag and input objects are snapshots. Their monitor never emits
+    // targeted invalidations because the browser cannot promise a fresh read.
+    return null;
   }
 
   Future<void> _walkHandle(
@@ -130,4 +163,16 @@ final class BrowserFolderScanner implements FolderScanner {
 
   static Future<String> _text(web.File file) async =>
       (await file.text().toDart).toDart;
+}
+
+String? _safeRelativePath(String raw) {
+  final portable = raw.replaceAll('\\', '/');
+  if (portable.isEmpty || portable.startsWith('/')) return null;
+  final segments = portable.split('/');
+  if (segments.any(
+    (segment) => segment.isEmpty || segment == '.' || segment == '..',
+  )) {
+    return null;
+  }
+  return segments.join('/');
 }

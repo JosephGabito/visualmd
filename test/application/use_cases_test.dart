@@ -186,47 +186,48 @@ void main() {
     },
   );
 
-  test(
-    'the same physical markdown resolves to its document inside a folder',
-    () async {
-      final repo = FakeRepository();
-      final folderScanner = FakeScanner({
-        'folder': const ScannedFolder(
-          name: 'work',
-          files: [
-            FileEntry(
-              'plan.md',
-              '# Folder plan',
-              sourceId: DocumentSourceId('/work/plan.md'),
-            ),
-          ],
-        ),
-      });
-      await AddFolder(
-        scanner: folderScanner,
-        repository: repo,
-        mutations: LibraryMutationQueue(),
-      ).execute(const FolderRef(id: 'folder', name: 'work'));
-      final source = FakeMarkdownScanner({
-        'single': const ScannedMarkdown(
-          name: 'plan.md',
-          content: '# Standalone copy',
-          sourceId: DocumentSourceId('/work/plan.md'),
-        ),
-      });
+  test('reopening the same physical markdown refreshes its document inside a folder', () async {
+    final repo = FakeRepository();
+    final folderScanner = FakeScanner({
+      'folder': const ScannedFolder(
+        name: 'work',
+        files: [
+          FileEntry(
+            'plan.md',
+            '# Folder plan',
+            sourceId: DocumentSourceId('/work/plan.md'),
+          ),
+        ],
+      ),
+    });
+    await AddFolder(
+      scanner: folderScanner,
+      repository: repo,
+      mutations: LibraryMutationQueue(),
+    ).execute(const FolderRef(id: 'folder', name: 'work'));
+    final source = FakeMarkdownScanner({
+      'single': const ScannedMarkdown(
+        name: 'plan.md',
+        content: '# Standalone copy',
+        sourceId: DocumentSourceId('/work/plan.md'),
+      ),
+    });
 
-      final result = await AddMarkdown(
-        scanner: source,
-        repository: repo,
-        mutations: LibraryMutationQueue(),
-      ).execute(const MarkdownRef(id: 'single', name: 'plan.md'));
+    final result = await AddMarkdown(
+      scanner: source,
+      repository: repo,
+      mutations: LibraryMutationQueue(),
+    ).execute(const MarkdownRef(id: 'single', name: 'plan.md'));
 
-      expect(result.added, isFalse);
-      expect(result.containingRoot, const LibraryRootId('folder'));
-      expect(result.document.title, 'Folder plan');
-      expect(result.library.markdowns, isEmpty);
-    },
-  );
+    expect(result.added, isFalse);
+    expect(result.containingRoot, const LibraryRootId('folder'));
+    expect(result.document.title, 'Standalone copy');
+    expect(
+      result.library.find(result.document.id)?.content,
+      '# Standalone copy',
+    );
+    expect(result.library.markdowns, isEmpty);
+  });
 
   test(
     'a later folder absorbs its standalone markdown into the folder tree',

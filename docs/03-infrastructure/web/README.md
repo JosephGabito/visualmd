@@ -16,6 +16,7 @@ application service.
 | [Browser Folder Picker](02-folder-picker.md) | Choosing a folder through the browser | `lib/infrastructure/web/browser_folder_picker.dart:12` |
 | [Browser Folder Scanner](03-folder-scanner.md) | Reading Markdown from dropped or selected folder handles | `lib/infrastructure/web/browser_folder_scanner.dart:17` |
 | [Browser Markdown Drop](04-markdown-drop.md) | Recognizing one directly dropped Markdown file and keeping its physical identity where possible | `lib/infrastructure/web/browser_markdown_scanner.dart:9` |
+| [Browser Source Change Monitor](05-source-change-monitor.md) | Honest metadata polling for browser sources that can be reread | `lib/infrastructure/web/browser_source_change_monitor.dart:15-24` |
 
 `BrowserFolder` represents either a directory walked lazily or a set of files
 selected up front. `BrowserFolderRegistry` keeps those browser objects behind a

@@ -75,7 +75,7 @@ The controller does not catch these today: the shelf only offers ids that
 exist, and the welcome view is shown until a library opens, so neither can be
 reached through the UI. A stale link resolved by
 `ReaderController.resolveLink` is checked against `library.find` before the
-use case is called (`lib/api/reader_controller.dart:412-434`), so a missing id
+use case is called (`lib/api/reader_controller.dart:438-461`), so a missing id
 indicates stale caller state rather than a document the interface knowingly
 offered.
 

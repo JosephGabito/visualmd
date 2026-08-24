@@ -37,7 +37,7 @@ The build (`lib/api/widgets/reading_pane.dart:128-203`):
   (`lib/api/widgets/reading_pane.dart:136-141`,
   `lib/api/widgets/reading_pane.dart:180-183`).
 - One `DocumentView` for the whole document
-  (`lib/api/widgets/reading_pane.dart:187-195`).
+  (`lib/api/widgets/reading_pane.dart:197-205`).
 
 ### One document, not a stack of sections
 
@@ -59,12 +59,12 @@ Out:
 
 - `onLink(href)` — passed to `DocumentView`, raised by the
   [Inline Composer](13-inline-composer.md) when a link is tapped
-  (`lib/api/widgets/reading_pane.dart:187-195`).
+  (`lib/api/widgets/reading_pane.dart:197-205`).
 - `onActiveHeadingChanged(heading)` whenever the heading nearest the top
-  changes (`lib/api/widgets/reading_pane.dart:122-125`).
+  changes (`lib/api/widgets/reading_pane.dart:112-135`).
 - `scrollToAnchor(anchor)`, called by the shell: `Scrollable.ensureVisible` on
   that heading's context, 320 ms, `easeOutCubic`, aligned to the top
-  (`lib/api/widgets/reading_pane.dart:80-89`).
+  (`lib/api/widgets/reading_pane.dart:90-99`).
 
 Active-heading tracking walks the outline's headings in order, measuring each
 keyed heading's top against the page's top; the last one at or above the
@@ -90,13 +90,18 @@ Changing the text size rebuilds with a new scale; the column follows, because
 it is derived rather than stored
 (`test/presentation/text_size_test.dart:97-125`).
 
+When fresh bytes arrive under the same `DocumentId`, the pane rebuilds heading
+and match anchors but deliberately retains its `ScrollController` offset. Only
+a different identity jumps to the top
+(`lib/api/widgets/reading_pane.dart:53-77`).
+
 ## Failure and recovery
 
 `scrollToAnchor` does nothing for an unknown anchor
-(`lib/api/widgets/reading_pane.dart:80-82`); tracking skips headings with no
-render box yet (`lib/api/widgets/reading_pane.dart:107-111`) and reports nothing
+(`lib/api/widgets/reading_pane.dart:90-92`); tracking skips headings with no
+render box yet (`lib/api/widgets/reading_pane.dart:117-121`) and reports nothing
 for a document with no headings at all
-(`lib/api/widgets/reading_pane.dart:119-121`). Relative images do not resolve
+(`lib/api/widgets/reading_pane.dart:129-135`). Relative images do not resolve
 today; see the [backlog](../07-roadmap/02-backlog.md).
 
 ## Transition

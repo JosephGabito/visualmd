@@ -2,8 +2,8 @@
 
 ## Purpose and boundary
 
-Implements the `FolderScanner` port for folders on the local filesystem
-(`lib/infrastructure/io/local_folder_scanner.dart:13-15`). It is the desktop
+Implements both folder scanning ports for folders on the local filesystem
+(`lib/infrastructure/io/local_folder_scanner.dart:14-15`). It is the desktop
 twin of [Browser Folder Scanner](../web/03-folder-scanner.md): it reads bytes,
 returns `FileEntry` values (`lib/infrastructure/io/local_folder_scanner.dart:21-38`),
 and leaves building the `Library` to the domain. It
@@ -61,7 +61,10 @@ None. `AddFolder` owns the library change after a successful scan.
 ## Lifecycle
 
 One instance per desktop `PlatformAdapters`; stateless beyond the registry.
-Every `scan` walks the tree afresh — no cache, no file watching.
+Every full `scan` walks the tree afresh. `scanDocument` validates one portable
+relative path and rereads only that Markdown after a watcher invalidation
+(`lib/infrastructure/io/local_folder_scanner.dart:52-117`). Watching itself is
+owned separately by [Desktop Source Change Monitor](07-source-change-monitor.md).
 
 ## Failure and recovery
 
@@ -83,9 +86,6 @@ and fail the scan as a whole; the controller shows “Couldn't open”
 
 - Concurrent reads with a bounded pool would speed up large libraries
   without changing the port.
-- Watching the folder for changes is the natural next adapter on desktop; it
-  can publish changes through a separate capability rather than making a
-  one-shot scan stateful.
 - Reading images on request (for relative `![]()` links) is a second port,
   not a loosening of the Markdown filter — see
   [Backlog](../../07-roadmap/02-backlog.md).

@@ -41,42 +41,61 @@ final class AddMarkdown {
        _mutations = mutations,
        _workspace = workspace;
 
-  Future<AddedMarkdown> execute(
-    MarkdownRef ref, {
-    int? atIndex,
-  }) => _mutations.run(() async {
-    final scanned = await _scanner.scan(ref);
-    final current = await _repository.current() ?? Library.empty();
-    final id = DocumentId(
-      LibraryRootId('standalone-markdown:${ref.id}'),
-      scanned.name,
-    );
-    final existing = scanned.sourceId == null
-        ? current.find(id)
-        : current.findBySource(scanned.sourceId!);
-    if (existing != null) {
-      await _workspace?.markdownAdded(ref, current, existing.id, added: false);
-      return AddedMarkdown(
-        library: current,
-        document: existing,
-        containingRoot: current.rootById(existing.id.rootId)?.id,
-        added: false,
-      );
-    }
+  Future<AddedMarkdown> execute(MarkdownRef ref, {int? atIndex}) =>
+      _mutations.run(() async {
+        final scanned = await _scanner.scan(ref);
+        final current = await _repository.current() ?? Library.empty();
+        final id = DocumentId(
+          LibraryRootId('standalone-markdown:${ref.id}'),
+          scanned.name,
+        );
+        final existing = scanned.sourceId == null
+            ? current.find(id)
+            : current.findBySource(scanned.sourceId!);
+        if (existing != null) {
+          final replacement =
+              existing.content == scanned.content &&
+                  existing.sourceId == scanned.sourceId
+              ? existing
+              : Document(
+                  id: existing.id,
+                  content: scanned.content,
+                  sourceId: scanned.sourceId,
+                );
+          final library = identical(replacement, existing)
+              ? current
+              : current.replaceDocument(replacement);
+          await _workspace?.markdownAdded(
+            ref,
+            library,
+            replacement.id,
+            added: false,
+          );
+          if (!identical(library, current)) await _repository.save(library);
+          return AddedMarkdown(
+            library: library,
+            document: replacement,
+            containingRoot: library.rootById(replacement.id.rootId)?.id,
+            added: false,
+          );
+        }
 
-    final document = Document(
-      id: id,
-      content: scanned.content,
-      sourceId: scanned.sourceId,
-    );
-    final library = current.addOrReplaceMarkdown(document, atIndex: atIndex);
-    await _workspace?.markdownAdded(ref, library, document.id, added: true);
-    await _repository.save(library);
-    return AddedMarkdown(
-      library: library,
-      document: document,
-      containingRoot: null,
-      added: true,
-    );
-  });
+        final document = Document(
+          id: id,
+          content: scanned.content,
+          sourceId: scanned.sourceId,
+        );
+        final library = current.addOrReplaceMarkdown(
+          document,
+          atIndex: atIndex,
+        );
+        await _workspace?.markdownAdded(ref, library, document.id, added: true);
+        await _repository.save(library);
+        return AddedMarkdown(
+          library: library,
+          document: document,
+          containingRoot: null,
+          added: true,
+        );
+      });
 }

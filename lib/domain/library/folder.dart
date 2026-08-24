@@ -37,4 +37,17 @@ final class Folder {
     }
     return null;
   }
+
+  /// Replaces one known document without disturbing the surrounding tree.
+  Folder replaceDocument(Document replacement) => Folder(
+    name: name,
+    path: path,
+    folders: [
+      for (final folder in folders) folder.replaceDocument(replacement),
+    ],
+    documents: [
+      for (final document in documents)
+        document.id == replacement.id ? replacement : document,
+    ],
+  );
 }

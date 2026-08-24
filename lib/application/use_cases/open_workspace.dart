@@ -23,11 +23,15 @@ final class OpenedWorkspace {
   final WorkspaceSession session;
   final Library library;
   final Document? activeDocument;
+  final List<FolderRef> folderRefs;
+  final List<MarkdownRef> markdownRefs;
 
   const OpenedWorkspace({
     required this.session,
     required this.library,
     required this.activeDocument,
+    required this.folderRefs,
+    required this.markdownRefs,
   });
 }
 
@@ -74,6 +78,8 @@ final class OpenWorkspace {
     WorkspaceFileRef file,
   ) => _mutations.run(() async {
     final roots = <LibraryRoot>[];
+    final folderRefs = <FolderRef>[];
+    final markdownRefs = <MarkdownRef>[];
     final physicalDocuments = <DocumentSourceId, Document>{};
     final unavailable = <WorkspaceSourceId>{};
 
@@ -87,6 +93,7 @@ final class OpenWorkspace {
           files: scanned.files,
         );
         roots.add(root);
+        folderRefs.add(ref);
         for (final document in root.documents) {
           final physical = document.sourceId;
           if (physical != null) physicalDocuments[physical] = document;
@@ -131,6 +138,7 @@ final class OpenWorkspace {
             sourceId: scanned.sourceId,
           ),
         );
+        markdownRefs.add(ref);
       } on WorkspaceSourceUnavailable {
         unavailable.add(source.id);
       } on MarkdownUnavailable {
@@ -169,6 +177,8 @@ final class OpenWorkspace {
       session: session,
       library: library,
       activeDocument: opening,
+      folderRefs: List.unmodifiable(folderRefs),
+      markdownRefs: List.unmodifiable(markdownRefs),
     );
   });
 }

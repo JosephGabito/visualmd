@@ -12,6 +12,7 @@ import 'api/reader_source_opener.dart';
 import 'presentation/theme/theme_choice.dart';
 import 'presentation/theme/theme_registry.dart';
 import 'application/library_mutation_queue.dart';
+import 'application/source_watch_coordinator.dart';
 import 'application/workspace_autosave.dart';
 import 'application/use_cases/add_folder.dart';
 import 'application/use_cases/add_markdown.dart';
@@ -19,6 +20,7 @@ import 'application/use_cases/create_workspace.dart';
 import 'application/use_cases/move_folder.dart';
 import 'application/use_cases/open_workspace.dart';
 import 'application/use_cases/read_document.dart';
+import 'application/use_cases/refresh_source.dart';
 import 'application/use_cases/reconnect_workspace_source.dart';
 import 'application/use_cases/remove_folder.dart';
 import 'application/use_cases/remove_markdown.dart';
@@ -109,6 +111,14 @@ Future<void> main() async {
     repository: repository,
     search: LiteralDocumentSearch(parser: parser),
   );
+  final refreshSource = RefreshSource(
+    folders: scanner,
+    folderDocuments: platform.folderDocumentScanner,
+    markdowns: platform.markdownScanner,
+    repository: repository,
+    mutations: mutations,
+    workspace: updateWorkspace,
+  );
 
   // Themes: built-ins plus whatever the reader dropped in the themes folder.
   final themes = ThemeRegistry.fromDocuments(
@@ -174,7 +184,13 @@ Future<void> main() async {
   );
 
   // Api
-  final controller = ReaderController(
+  late final ReaderController controller;
+  final sourceChanges = SourceWatchCoordinator(
+    monitor: platform.sourceChangeMonitor,
+    refresh: refreshSource,
+    currentSelection: () => controller.reading?.document.id,
+  );
+  controller = ReaderController(
     addFolder: addFolder,
     addMarkdown: addMarkdown,
     removeFolder: removeFolder,
@@ -197,6 +213,7 @@ Future<void> main() async {
     themeChoice: themeChoice,
     readingScale: readingScale,
     panelWidths: panelWidths,
+    sourceChanges: sourceChanges,
     savePreference: platform.writePreference,
   );
   final openReaderSources = switch (platform.readerSourcePicker) {

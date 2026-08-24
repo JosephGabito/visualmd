@@ -12,12 +12,12 @@ and text were all fixed by the
 
 Mounted in the shell's right column at a remembered width, only while
 `outlineVisible` is on and the table of contents is non-empty
-(`lib/api/screens/reader_screen.dart:300-330`,
-`lib/api/screens/reader_screen.dart:462-503`). Its resize seam sits on the
+(`lib/api/screens/reader_screen.dart:338-390`,
+`lib/api/screens/reader_screen.dart:501-542`). Its resize seam sits on the
 left edge. `activeAnchor` comes from the
 shell's `_activeAnchor`, and `onSelect` scrolls the pane to the heading's
 anchor; selecting inside a compact overlay also closes it
-(`lib/api/screens/reader_screen.dart:439-448`).
+(`lib/api/screens/reader_screen.dart:349-369`).
 
 The build (`lib/api/widgets/outline_panel.dart:21-52`):
 

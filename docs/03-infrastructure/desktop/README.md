@@ -18,6 +18,7 @@ family, but its build still needs verification on a Windows machine.
 | [macOS Sandbox](04-macos-sandbox.md) | Entitlements and security-scoped file access | `macos/Runner/Release.entitlements:5-10`, `lib/infrastructure/io/desktop_security_scope.dart:9` |
 | [Reader Files](05-reader-files.md) | Preferences, user themes, workspace files, and machine-local access records | `lib/infrastructure/io/reader_files.dart:11-149` |
 | [Local Markdown Scanner](06-local-markdown-scanner.md) | Opening a directly dropped Markdown file and preserving its source identity | `lib/infrastructure/io/local_markdown_scanner.dart:10-38` |
+| [Desktop Source Change Monitor](07-source-change-monitor.md) | Native directory events, sandbox lifetime, and the five-second failure fallback | `lib/infrastructure/io/desktop_source_change_monitor.dart:15-26` |
 
 Two small types make the rest possible. `LocalFolder` carries either one
 directory or a set of local files, with an optional macOS security bookmark;

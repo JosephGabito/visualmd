@@ -22,6 +22,9 @@ final class LibraryRoot {
   Document? find(DocumentId documentId) =>
       documentId.rootId == id ? folder.find(documentId) : null;
 
+  LibraryRoot replaceDocument(Document document) =>
+      LibraryRoot(id: id, name: name, folder: folder.replaceDocument(document));
+
   /// Prefer the folder's README, then the first document in shelf order.
   Document? get openingDocument {
     for (final document in folder.documents) {
