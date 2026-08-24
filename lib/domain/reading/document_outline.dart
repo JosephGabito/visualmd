@@ -199,15 +199,7 @@ final class _Parser {
     );
   }
 
-  static String _plainText(String inline) => inline
-      .replaceAllMapped(RegExp(r'!\[([^\]]*)\]\([^)]*\)'), (m) => m[1]!)
-      .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m[1]!)
-      .replaceAllMapped(RegExp(r'\[([^\]]+)\]\[[^\]]*\]'), (m) => m[1]!)
-      .replaceAll(RegExp(r'<[^>]+>'), '')
-      .replaceAll('`', '')
-      .replaceAll(RegExp(r'\*\*|__|\*|~~'), '')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  static String _plainText(String inline) => _InlinePlainText(inline).read();
 
   List<Section> _sections(
     List<(int, Heading?)> boundaries,
@@ -229,5 +221,210 @@ final class _Parser {
       sections.add(Section(heading: heading, markdown: body));
     }
     return sections;
+  }
+}
+
+/// Resolves enough inline grammar for the outline to name the same heading the
+/// page presents, without pulling a Markdown package into the domain ring.
+///
+/// Backslash escapes need one deliberate ordering rule. Code spans and
+/// autolinks are literal regions, where a backslash stays a backslash. They are
+/// therefore set aside before escaped ASCII punctuation is exposed as reading
+/// text. Actual Markdown structure is removed afterwards, so `\*literal\*`
+/// keeps its stars while `\\*emphasis*` keeps one slash and loses only the
+/// genuine emphasis delimiters.
+final class _InlinePlainText {
+  final String source;
+
+  _InlinePlainText(this.source);
+
+  String read() {
+    final literals = _InlineLiterals(source);
+    var text = _protectCodeSpans(source, literals);
+    text = _protectAutolinks(text, literals);
+    text = _protectEscapedPunctuation(text, literals);
+    text = text
+        .replaceAllMapped(RegExp(r'!\[([^\]]*)\]\([^)]*\)'), (m) => m[1]!)
+        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m[1]!)
+        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\[[^\]]*\]'), (m) => m[1]!)
+        .replaceAll(RegExp(r'<[^>]+>'), '');
+    text = _stripPairedMarks(text);
+    final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return literals.restore(normalized);
+  }
+
+  static String _protectCodeSpans(String text, _InlineLiterals literals) {
+    final result = StringBuffer();
+    var cursor = 0;
+    while (cursor < text.length) {
+      if (text.codeUnitAt(cursor) != 0x60 || _isEscaped(text, cursor)) {
+        result.writeCharCode(text.codeUnitAt(cursor++));
+        continue;
+      }
+
+      final openingLength = _backtickRunAt(text, cursor);
+      final closing = _matchingBacktickRun(
+        text,
+        cursor + openingLength,
+        openingLength,
+      );
+      if (closing == -1) {
+        result.write(text.substring(cursor, cursor + openingLength));
+        cursor += openingLength;
+        continue;
+      }
+
+      var content = text
+          .substring(cursor + openingLength, closing)
+          .replaceAll('\r\n', ' ')
+          .replaceAll(RegExp(r'[\r\n]'), ' ');
+      if (content.length >= 2 &&
+          content.startsWith(' ') &&
+          content.endsWith(' ') &&
+          content.trim().isNotEmpty) {
+        content = content.substring(1, content.length - 1);
+      }
+      result.write(literals.keep(content));
+      cursor = closing + openingLength;
+    }
+    return result.toString();
+  }
+
+  static int _matchingBacktickRun(String text, int from, int length) {
+    var cursor = from;
+    while (cursor < text.length) {
+      if (text.codeUnitAt(cursor) != 0x60) {
+        cursor++;
+        continue;
+      }
+      final run = _backtickRunAt(text, cursor);
+      if (run == length) return cursor;
+      cursor += run;
+    }
+    return -1;
+  }
+
+  static int _backtickRunAt(String text, int from) {
+    var end = from;
+    while (end < text.length && text.codeUnitAt(end) == 0x60) {
+      end++;
+    }
+    return end - from;
+  }
+
+  static String _protectAutolinks(String text, _InlineLiterals literals) {
+    final uri = RegExp(r'<([A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*)>');
+    final email = RegExp(
+      r"<([A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)>",
+    );
+    return _replaceUnescapedMatches(
+      _replaceUnescapedMatches(text, uri, (match) => literals.keep(match[1]!)),
+      email,
+      (match) => literals.keep(match[1]!),
+    );
+  }
+
+  static String _replaceUnescapedMatches(
+    String text,
+    RegExp pattern,
+    String Function(RegExpMatch match) replacement,
+  ) {
+    final result = StringBuffer();
+    var cursor = 0;
+    for (final match in pattern.allMatches(text)) {
+      if (_isEscaped(text, match.start)) continue;
+      result
+        ..write(text.substring(cursor, match.start))
+        ..write(replacement(match));
+      cursor = match.end;
+    }
+    result.write(text.substring(cursor));
+    return result.toString();
+  }
+
+  static bool _isEscaped(String text, int offset) {
+    var slashes = 0;
+    for (
+      var cursor = offset - 1;
+      cursor >= 0 && text.codeUnitAt(cursor) == 0x5c;
+      cursor--
+    ) {
+      slashes++;
+    }
+    return slashes.isOdd;
+  }
+
+  static String _protectEscapedPunctuation(
+    String text,
+    _InlineLiterals literals,
+  ) {
+    final result = StringBuffer();
+    var cursor = 0;
+    while (cursor < text.length) {
+      final current = text.codeUnitAt(cursor);
+      if (current == 0x5c && cursor + 1 < text.length) {
+        final next = text.codeUnitAt(cursor + 1);
+        if (_isAsciiPunctuation(next)) {
+          result.write(literals.keep(String.fromCharCode(next)));
+          cursor += 2;
+          continue;
+        }
+      }
+      result.writeCharCode(current);
+      cursor++;
+    }
+    return result.toString();
+  }
+
+  static bool _isAsciiPunctuation(int codeUnit) =>
+      (codeUnit >= 0x21 && codeUnit <= 0x2f) ||
+      (codeUnit >= 0x3a && codeUnit <= 0x40) ||
+      (codeUnit >= 0x5b && codeUnit <= 0x60) ||
+      (codeUnit >= 0x7b && codeUnit <= 0x7e);
+
+  static String _stripPairedMarks(String text) {
+    var result = text;
+    for (final pattern in [
+      RegExp(r'\*\*(.+?)\*\*', dotAll: true),
+      RegExp(r'__(.+?)__', dotAll: true),
+      RegExp(r'~~(.+?)~~', dotAll: true),
+      RegExp(r'\*(.+?)\*', dotAll: true),
+    ]) {
+      result = result.replaceAllMapped(pattern, (match) => match[1]!);
+    }
+    return result;
+  }
+}
+
+/// A collision-free placeholder store for source fragments whose grammar has
+/// already been resolved. The marker is chosen from a private-use sequence
+/// absent from this heading, so even deliberately hostile Unicode input is
+/// restored exactly.
+final class _InlineLiterals {
+  final String _marker;
+  final List<String> _values = [];
+
+  _InlineLiterals(String source) : _marker = _markerAbsentFrom(source);
+
+  String keep(String value) {
+    final token = '$_marker${_values.length}$_marker';
+    _values.add(value);
+    return token;
+  }
+
+  String restore(String text) {
+    var restored = text;
+    for (var index = _values.length - 1; index >= 0; index--) {
+      restored = restored.replaceAll('$_marker$index$_marker', _values[index]);
+    }
+    return restored;
+  }
+
+  static String _markerAbsentFrom(String source) {
+    var marker = '\ue000';
+    while (source.contains(marker)) {
+      marker += '\ue001';
+    }
+    return marker;
   }
 }

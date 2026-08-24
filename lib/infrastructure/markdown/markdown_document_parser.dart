@@ -322,7 +322,28 @@ final class _Mapper {
           continue;
       }
     }
-    return runs;
+    return _coalesceText(runs);
+  }
+
+  /// Parser nodes are grammar boundaries, not reading roles. An escape can
+  /// split one prose phrase into several `md.Text` nodes even though every
+  /// character belongs to the same typographic context. Joining only adjacent
+  /// text runs lets quotes, dashes and ellipses be set across that invisible
+  /// boundary without ever crossing code, a mark, a link or an authored line.
+  static List<Inline> _coalesceText(List<Inline> runs) {
+    final result = <Inline>[];
+    for (final run in runs) {
+      if (run case TextRun(:final text)) {
+        if (text.isEmpty) continue;
+        final previous = result.isEmpty ? null : result.last;
+        if (previous is TextRun) {
+          result[result.length - 1] = TextRun('${previous.text}$text');
+          continue;
+        }
+      }
+      result.add(run);
+    }
+    return result;
   }
 }
 

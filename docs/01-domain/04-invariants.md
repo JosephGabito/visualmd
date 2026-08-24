@@ -35,7 +35,7 @@ behaviour.
 | 19 | Headings inside fenced code blocks are not headings; a fence closes only with the same character and at least the same length | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 20 | Closing hashes on ATX headings are not part of the text | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 21 | A Setext underline promotes every uninterrupted source line in its paragraph, never a rule, table separator, list item, code block or reference definition | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
-| 22 | Heading text has inline markdown stripped | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
+| 22 | Heading text removes genuine inline structure but keeps escaped punctuation and literal-region backslashes, so outline text and anchors agree with the page | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart`, `test/application/use_cases_test.dart` |
 | 23 | Anchors are unique within a document; the empty slug is `section` | `lib/domain/reading/heading_anchor.dart`, `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 24 | Every section includes its own heading line; leading prose is a heading-less section | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
 | 25 | Reference-link definitions appear in every section when there is more than one | `lib/domain/reading/document_outline.dart` | `test/domain/document_outline_test.dart` |
@@ -55,6 +55,7 @@ behaviour.
 | 34 | Every valid thematic-break spelling becomes the same textless `RuleBlock`; near misses remain authored content | `lib/domain/reading/content/block.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart` |
 | 35 | Markup with no shape in the model is kept as words, never dropped | `lib/domain/reading/content/block.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | Untested — see Gaps |
 | 36 | Two trailing spaces or a backslash inside inline content becomes one authored newline; its source markers and following indentation never enter reading text | `lib/domain/reading/content/inline.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart`, `test/infrastructure/literal_document_search_test.dart`, `test/presentation/inline_composer_test.dart`, `test/presentation/paragraph_setting_test.dart` |
+| 37 | A backslash exposes ASCII punctuation as ordinary, continuous reading text everywhere escapes are active; non-escapable and literal-region backslashes remain authored text | `lib/domain/reading/content/inline.dart`, `lib/domain/reading/document_outline.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/domain/document_outline_test.dart`, `test/application/use_cases_test.dart`, `test/infrastructure/markdown_document_parser_test.dart`, `test/infrastructure/literal_document_search_test.dart`, `test/presentation/inline_composer_test.dart` |
 
 ## Gaps
 

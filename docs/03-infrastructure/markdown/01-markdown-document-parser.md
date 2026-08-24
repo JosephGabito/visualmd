@@ -90,6 +90,19 @@ indentation across the complete subtree rather than trusting the package's HTML
 tree, whose leading spaces would collapse in a browser but remain visible in
 Flutter (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+A backslash before ASCII punctuation is an **escape**, so the slash disappears
+and the punctuation becomes ordinary `TextRun` content. A slash before a
+letter, number, space or non-ASCII mark remains authored text; an escaped slash
+leaves the following delimiter free to begin real markup. Escapes are inactive
+inside code spans, code blocks and autolinks, but active in link destinations,
+titles and fenced info strings. These are the grammar boundaries supplied by
+`package:markdown`; the adapter preserves the resulting text and never creates
+an escape-specific domain run. Adjacent text nodes created only by an escape
+are coalesced before they cross the adapter, so ordinary quote, dash and
+ellipsis setting can see one continuous prose phrase without crossing a real
+role such as code, emphasis, a link or an authored line
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
@@ -152,7 +165,11 @@ covers both spellings, excess whitespace, consecutive lines, inline roles,
 containers, headings, code spans and block endings;
 `test/infrastructure/literal_document_search_test.dart` and
 `test/presentation/paragraph_setting_test.dart` prove the resolved text remains
-the same through search and layout.
+the same through search and layout. The backslash-escape group exercises every
+ASCII punctuation mark, non-escapable characters, block and inline delimiters,
+code, links, autolinks, destinations, titles and fence info strings. The
+application test then requires the page and outline to derive identical text
+and anchors from escaped headings.
 
 ## Transition
 
