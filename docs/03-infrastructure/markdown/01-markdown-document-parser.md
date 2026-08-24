@@ -171,6 +171,15 @@ remains the run's only reading text, and CommonMark's prohibition on nested
 links leaves the inner valid link as the interaction when link notation
 overlaps (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+Link text may contain zero inline children. A destination outside angle
+brackets is non-empty, space-free text whose parentheses balance; inside angle
+brackets it may be empty or contain spaces. The adapter neither truncates a
+long destination nor lets it enter reading text. Punctuation inside a valid
+title is ordinary resolved metadata, including escaped delimiters and character
+references. An empty label therefore becomes an empty `children` list rather
+than malformed text, while a malformed destination remains visible source
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
@@ -248,6 +257,11 @@ roles, and the inner-link precedence rule. Search proves that only the visible
 label is indexed; the controller keeps fragment, document and external targets
 distinct; application and composer tests keep the same label in the outline,
 page, pointer target and accessibility tree.
+The hostile extension adds a long destination with nested parentheses and URL
+data, an empty label, and punctuation-rich resolved title metadata. Layout
+coverage makes a long unbroken label reflow inside a narrow measure, taps every
+rendered line, and verifies that the complete phrase remains one accessibility
+node while the empty label creates no invisible action.
 
 ## Transition
 

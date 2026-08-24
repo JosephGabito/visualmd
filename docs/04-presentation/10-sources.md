@@ -373,6 +373,22 @@ token,” while an underline should continue to mean “this can be followed”
 (`lib/api/render/reading_theme.dart`,
 `lib/api/render/inline_composer.dart`).
 
+CommonMark explicitly permits zero inline elements in link text and allows the
+title, text, and even destination to be omitted. That means an empty-label link
+is valid data but has no words from which a reader can discover or understand
+an action. Visual MD preserves the domain shape without manufacturing a
+phantom hit target or accessible name.
+
+For long labels, the [CSS Text overflow-wrapping model](https://www.w3.org/TR/css-text-3/#overflow-wrap-property)
+provides the relevant reading rule: an otherwise unbreakable sequence may break
+at an arbitrary point to prevent overflow, but a grapheme cluster stays whole
+and no hyphen is invented. [WCAG Reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html)
+keeps ordinary multi-line reading content in one scrolling direction. Visual
+MD therefore lets the label reflow inside the prose measure while its hidden
+destination and title contribute no geometry. Every rendered line remains part
+of the same pointer and assistive action
+(`lib/api/render/inline_composer.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code
