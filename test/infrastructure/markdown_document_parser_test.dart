@@ -304,8 +304,79 @@ void main() {
   });
 
   group('the smaller shapes', () {
-    test('a rule is a rule', () {
-      expect(single<RuleBlock>('***\n'), isA<RuleBlock>());
+    test('every CommonMark thematic-break form becomes the same block', () {
+      for (final source in [
+        '***\n',
+        '---\n',
+        '___\n',
+        ' *  *\t*   *   *\n',
+        '  -     -      -      -\t\n',
+        '   _ _ _ _ _ _\n',
+      ]) {
+        expect(
+          single<RuleBlock>(source),
+          isA<RuleBlock>(),
+          reason: source.replaceAll('\t', r'\t'),
+        );
+      }
+    });
+
+    test('near misses remain authored content rather than becoming rules', () {
+      for (final source in [
+        '+++\n',
+        '===\n',
+        '--\n',
+        '**\n',
+        '__\n',
+        '*-*\n',
+        '_ _ _ a\n',
+        '---a---\n',
+        '    ***\n',
+        '&#42;&#42;&#42;\n',
+      ]) {
+        expect(
+          parse(source).blocks.whereType<RuleBlock>(),
+          isEmpty,
+          reason: source,
+        );
+      }
+    });
+
+    test('a rule interrupts prose without borrowing either paragraph', () {
+      final blocks = parse('Before.\n***\nAfter.\n').blocks;
+
+      expect(blocks, [
+        isA<ParagraphBlock>().having((block) => block.text, 'text', 'Before.'),
+        isA<RuleBlock>(),
+        isA<ParagraphBlock>().having((block) => block.text, 'text', 'After.'),
+      ]);
+    });
+
+    test('setext and list precedence preserve the authored structure', () {
+      final setext = parse('A section title\n---\n').blocks;
+      expect(setext, [
+        isA<HeadingBlock>()
+            .having((block) => block.level, 'level', 2)
+            .having((block) => block.text, 'text', 'A section title'),
+      ]);
+
+      final dividedLists = parse('* First\n* * *\n* Second\n').blocks;
+      expect(dividedLists, [
+        isA<ListBlock>().having(
+          (list) => list.items.single.text,
+          'item',
+          'First',
+        ),
+        isA<RuleBlock>(),
+        isA<ListBlock>().having(
+          (list) => list.items.single.text,
+          'item',
+          'Second',
+        ),
+      ]);
+
+      final nested = single<ListBlock>('- First\n- * * *\n');
+      expect(nested.items.last.blocks.single, isA<RuleBlock>());
     });
 
     test('a link keeps where it points and what it was called', () {

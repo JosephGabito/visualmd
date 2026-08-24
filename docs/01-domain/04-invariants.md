@@ -52,11 +52,12 @@ behaviour.
 | 31 | Anchor numbering is per document, never shared between documents | `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart` |
 | 32 | A run of `CodeRun` carries its characters exactly, whatever they are | `lib/domain/reading/content/inline.dart` | `test/infrastructure/markdown_document_parser_test.dart` |
 | 33 | A single newline inside a paragraph is a space, never a break | `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart` |
-| 34 | Markup with no shape in the model is kept as words, never dropped | `lib/domain/reading/content/block.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | Untested — see Gaps |
+| 34 | Every valid thematic-break spelling becomes the same textless `RuleBlock`; near misses remain authored content | `lib/domain/reading/content/block.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | `test/infrastructure/markdown_document_parser_test.dart` |
+| 35 | Markup with no shape in the model is kept as words, never dropped | `lib/domain/reading/content/block.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart` | Untested — see Gaps |
 
 ## Gaps
 
-- Row 34 has no test. Neither the block fallback (`RawBlock`) nor the inline
+- Row 35 has no test. Neither the block fallback (`RawBlock`) nor the inline
   one — an element with no shape keeping its children — is exercised by
   `test/infrastructure/markdown_document_parser_test.dart`. Raw HTML in a
   document is the case to write.
