@@ -117,7 +117,10 @@ long reflow at changing widths, stable leading, widow binding and hanging
 punctuation measured against the actual face. It also renders source-wrapped
 and unwrapped versions of the same Latin and East Asian prose at narrow and
 wide measures and requires identical text and geometry; the editor's line
-length therefore cannot leak into this widget.
+length therefore cannot leak into this widget. Authored hard breaks are tested
+as the opposite: every newline adds exactly one beat without becoming a
+paragraph gap, its accessible and selectable text keeps the newline, and widow
+binding never reaches across it.
 
 ## Transition
 

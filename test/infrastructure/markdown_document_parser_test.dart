@@ -127,15 +127,106 @@ void main() {
       expect(list.items.single.text, 'listed source wraps here');
     });
 
-    test('code spans and explicit breaks remain different grammar', () {
+    test('code spans remain different grammar', () {
       final code = single<ParagraphBlock>('read `one\ntwo` now');
       expect(code.content.whereType<CodeRun>().single.text, 'one two');
+    });
+  });
 
-      for (final source in ['one  \ntwo', 'one\\\ntwo']) {
-        final paragraph = single<ParagraphBlock>(source);
-        expect(paragraph.content.whereType<LineBreakRun>(), hasLength(1));
-        expect(paragraph.text, 'one\ntwo');
-      }
+  group('hard line breaks', () {
+    test(
+      'two or more spaces and a backslash produce the same authored line',
+      () {
+        for (final source in [
+          'first line  \nsecond line',
+          'first line       \nsecond line',
+          'first line\\\nsecond line',
+          'first line  \r\nsecond line',
+          'first line\\\r\nsecond line',
+        ]) {
+          final paragraph = single<ParagraphBlock>(source);
+
+          expect(paragraph.content.whereType<LineBreakRun>(), hasLength(1));
+          expect(paragraph.text, 'first line\nsecond line');
+        }
+      },
+    );
+
+    test(
+      'indentation after an authored line is formatting, not reading text',
+      () {
+        for (final source in [
+          'first line  \n     second line',
+          'first line\\\n\t\tsecond line',
+        ]) {
+          final paragraph = single<ParagraphBlock>(source);
+
+          expect(paragraph.text, 'first line\nsecond line');
+        }
+      },
+    );
+
+    test('authored lines remain inside emphasis and links', () {
+      final paragraph = single<ParagraphBlock>(
+        '*first line  \n     second line* and '
+        '[third line\\\n    fourth line](https://example.com)',
+      );
+      final emphasis = paragraph.content.whereType<MarkedRun>().single;
+      final link = paragraph.content.whereType<LinkRun>().single;
+
+      expect(emphasis.text, 'first line\nsecond line');
+      expect(emphasis.children.whereType<LineBreakRun>(), hasLength(1));
+      expect(link.text, 'third line\nfourth line');
+      expect(link.children.whereType<LineBreakRun>(), hasLength(1));
+      expect(link.href, 'https://example.com');
+    });
+
+    test('authored lines survive headings, quotations, and list items', () {
+      final heading = single<HeadingBlock>('first  \nsecond\n===');
+      final quote =
+          parse('> first  \n>     second').blocks.single as QuoteBlock;
+      final list = parse('- first\\\n      second').blocks.single as ListBlock;
+
+      expect(heading.text, 'first\nsecond');
+      expect(heading.content.whereType<LineBreakRun>(), hasLength(1));
+      expect(quote.text, 'first\nsecond');
+      expect(list.items.single.text, 'first\nsecond');
+    });
+
+    test('consecutive authored lines remain consecutive', () {
+      final paragraph = single<ParagraphBlock>('first  \n\\\nthird');
+
+      expect(paragraph.content.whereType<LineBreakRun>(), hasLength(2));
+      expect(paragraph.text, 'first\n\nthird');
+    });
+
+    test('code spans and block endings do not invent a hard break', () {
+      final spaces = single<ParagraphBlock>('`code  \nspan`');
+      final slash = single<ParagraphBlock>('`code\\\nspan`');
+      expect(spaces.content.whereType<CodeRun>().single.text, 'code   span');
+      expect(slash.content.whereType<CodeRun>().single.text, 'code\\ span');
+
+      final terminalSlash = single<ParagraphBlock>('paragraph\\\n');
+      final terminalSpaces = single<ParagraphBlock>('paragraph  \n');
+      final headingSlash = single<HeadingBlock>('### heading\\\n');
+      final headingSpaces = single<HeadingBlock>('### heading  \n');
+
+      expect(terminalSlash.text, 'paragraph\\');
+      expect(terminalSpaces.text, 'paragraph');
+      expect(headingSlash.text, 'heading\\');
+      expect(headingSpaces.text, 'heading');
+      expect(
+        [terminalSlash, terminalSpaces, headingSlash, headingSpaces]
+            .expand(
+              (block) => switch (block) {
+                ParagraphBlock(:final content) => content,
+                HeadingBlock(:final content) => content,
+                _ => const <Inline>[],
+              },
+            )
+            .whereType<LineBreakRun>(),
+        isEmpty,
+      );
     });
   });
 

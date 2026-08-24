@@ -24,6 +24,11 @@ count and previous, next and close controls
 Escape closes (`lib/api/widgets/search_view.dart`). The page highlights every match and gives the
 active one a stronger ground while preserving typography
 (`lib/api/render/inline_composer.dart`).
+Soft source wrapping has already become reading text before indexing; an
+authored hard break remains one newline. Search offsets therefore describe the
+same characters that selection and the composer expose, while result excerpts
+collapse that newline only for their compact one-line preview
+(`lib/infrastructure/search/literal_document_search.dart`).
 
 Library search temporarily replaces the shelf. Results follow arranged root
 order and are grouped first by top-level folder, then by document, with title,

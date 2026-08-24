@@ -71,8 +71,8 @@ fallback that parses a `style` in case another syntax ever emits one
 **Runs** map tag by tag (`lib/infrastructure/markdown/markdown_document_parser.dart`), with two rules worth stating.
 
 An ordinary newline inside inline content is a **soft break**, never an authored
-line. `_SoftLineBreaks` reads the complete inline subtree before mapping any one
-text node, because the newline may sit at the edge of emphasis or a link. Spaces
+line. `_InlineLineBreaks` reads the complete inline subtree before mapping any
+one text node, because the newline may sit at the edge of emphasis or a link. Spaces
 and tabs beside it disappear. Scripts that separate words receive one space;
 Chinese and Japanese source lines join without a Western word space. The result
 is identical whether the editor hard-wrapped the source or kept the paragraph
@@ -80,6 +80,15 @@ on one line, so the page's measured column — not the source file — owns refl
 (`lib/infrastructure/markdown/markdown_document_parser.dart`). The same resolved
 text is what document search indexes
 (`lib/infrastructure/search/literal_document_search.dart`).
+
+Two or more trailing spaces or a backslash instead creates a **hard break**:
+one `LineBreakRun` whose text is a newline. The syntax works only within inline
+content, never at the end of a paragraph, heading or code span. Leading spaces
+and tabs on the next source line disappear even when the break crosses an
+emphasis, link, quotation or list boundary. `_InlineLineBreaks` normalises that
+indentation across the complete subtree rather than trusting the package's HTML
+tree, whose leading spaces would collapse in a browser but remain visible in
+Flutter (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
@@ -138,7 +147,9 @@ anchors (`test/infrastructure/markdown_document_parser_test.dart`), code blocks 
 (`test/infrastructure/markdown_document_parser_test.dart`), tables (`test/infrastructure/markdown_document_parser_test.dart`), the smaller shapes (`test/infrastructure/markdown_document_parser_test.dart`) and the
 document as a whole (`test/infrastructure/markdown_document_parser_test.dart`).
 The soft-break group adds indentation, inline-boundary, container, CJK,
-Japanese, Korean, Arabic, Hebrew, code-span and explicit-break boundaries;
+Japanese, Korean, Arabic, Hebrew and code-span boundaries. The hard-break group
+covers both spellings, excess whitespace, consecutive lines, inline roles,
+containers, headings, code spans and block endings;
 `test/infrastructure/literal_document_search_test.dart` and
 `test/presentation/paragraph_setting_test.dart` prove the resolved text remains
 the same through search and layout.

@@ -162,6 +162,30 @@ wide rendering test therefore compares source-wrapped and unwrapped paragraphs
 and requires identical text geometry
 (`test/presentation/paragraph_setting_test.dart`).
 
+## Hard line breaks
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#hard-line-breaks)
+defines the authored opposite of a soft break. Two or more spaces or a
+backslash before a line ending produces one hard break inside inline content;
+leading indentation on the next source line is removed. The break may live
+inside emphasis, links and other inline constructs, but neither spelling works
+inside a code span or at the end of a paragraph or heading. Visual MD keeps
+those boundaries as one `LineBreakRun` and verifies both spellings against the
+same domain shape (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+The [WHATWG HTML standard](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-br-element)
+states the semantic reason: a `br` represents a line break that is part of the
+content, as in a poem or address, rather than spacing between thematic groups.
+Visual MD therefore emits a newline in the existing selectable span tree. It
+does not create a widget, a new paragraph or a decorative gap
+(`lib/api/render/inline_composer.dart`).
+
+Lupton's *Marking Paragraphs* makes the typographic distinction operational: a
+line break is used when the author needs a new line without the additional
+space of a paragraph return. A hard break consequently adds exactly one body
+beat. Consecutive hard breaks add consecutive beats; widow binding does not
+rewrite across an authored line (`test/presentation/paragraph_setting_test.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

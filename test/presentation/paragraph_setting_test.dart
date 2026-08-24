@@ -282,6 +282,43 @@ void main() {
     },
   );
 
+  testWidgets('authored lines remain exact beats without paragraph spacing', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    const parser = MarkdownDocumentParser();
+    final block = parser
+        .parse(
+          'First compact line.  \n'
+          '    Second compact line.\\\n'
+          'Last.',
+        )
+        .blocks
+        .single;
+    final theme = await pump(tester, [block], width: 760);
+    final richText = find.descendant(
+      of: find.byType(Paragraph),
+      matching: find.byType(RichText),
+    );
+    final widget = tester.widget<RichText>(richText);
+    final visible = widget.text.toPlainText();
+
+    expect(visible, 'First compact line.\nSecond compact line.\nLast.');
+    expect(
+      visible,
+      isNot(contains('\u00a0')),
+      reason: 'widow binding must not rewrite across an authored line',
+    );
+    expect(
+      tester.getSize(richText).height / theme!.baseline,
+      closeTo(3, 0.01),
+      reason: 'a hard break adds one line, not a paragraph gap',
+    );
+    expect(tester.getSemantics(richText).label, visible);
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets('paragraph marking follows prose into quotes and list items', (
     tester,
   ) async {

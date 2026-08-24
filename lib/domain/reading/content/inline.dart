@@ -78,8 +78,10 @@ final class ImageRun extends Inline {
   String get text => alt;
 }
 
-/// A break the author asked for, with two spaces or a backslash. A single
-/// newline is not one of these: it is a space.
+/// A line the author asked for, with two or more spaces or a backslash.
+///
+/// An ordinary source newline is not one of these: it is formatting for the
+/// source file, resolved into reading text before the domain sees it.
 final class LineBreakRun extends Inline {
   const LineBreakRun();
 
