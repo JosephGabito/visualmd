@@ -25,7 +25,7 @@ reader's private files before returning
 | drops and drag | document streams (`lib/infrastructure/platform/platform_web.dart:62-69`) | desktop drop wrapper (`lib/infrastructure/platform/platform_io.dart:77-84`) |
 | File commands | empty; Flutter shortcuts remain (`lib/infrastructure/platform/platform_web.dart:71-72`) | native menu command stream (`lib/infrastructure/platform/platform_io.dart:86-87`) |
 | chrome | browser-owned (`lib/infrastructure/platform/platform_web.dart:81-88`) | draggable custom macOS top bar; native elsewhere (`lib/infrastructure/platform/platform_io.dart:95-109`) |
-| preferences and themes | localStorage, built-ins only (`lib/infrastructure/platform/platform_web.dart:90-103`) | `ReaderFiles` (`lib/infrastructure/platform/platform_io.dart:112-124`) |
+| preferences and themes | localStorage, built-ins only; no folder action (`lib/infrastructure/platform/platform_web.dart:106-119`) | `ReaderFiles`, plus a callback that reveals its theme directory (`lib/infrastructure/platform/platform_io.dart:131-144`) |
 
 The composition root is the sole consumer of the complete interface. It
 routes scanners into use cases, Workspace ports into the lifecycle, commands
@@ -35,12 +35,12 @@ into the controller, and chrome callbacks into `VisualMdApp`.
 
 | Direction | Contract | Consumer |
 |-----------|----------|----------|
-| out | `FolderScanner`, `MarkdownScanner` | Library mutation use cases (`lib/main.dart:79-110`) |
-| out | `WorkspaceFiles`, `WorkspaceSourceAccess` | Workspace lifecycle (`lib/main.dart:135-173`) |
-| out | pickers and drop streams | controller (`lib/main.dart:175-203`) |
-| out | `Stream<PlatformCommand>` | native command dispatch (`lib/main.dart:204-219`) |
-| out | preference strings and theme documents | startup and controller (`lib/main.dart:112-134`) |
-| out | link and chrome functions | `VisualMdApp` (`lib/main.dart:247-255`) |
+| out | scanners and `SourceChangeMonitor` | Library mutation and synchronization use cases (`lib/main.dart:79-121`, `:185-190`) |
+| out | `WorkspaceFiles`, `WorkspaceSourceAccess` | Workspace lifecycle (`lib/main.dart:143-181`) |
+| out | pickers and drop streams | controller (`lib/main.dart:183-222`) |
+| out | `Stream<PlatformCommand>` | native command dispatch (`lib/main.dart:223-240`) |
+| out | preference strings and theme documents | startup and controller (`lib/main.dart:123-142`) |
+| out | links, chrome, and the theme-folder action | `VisualMdApp` (`lib/main.dart:268-277`) |
 
 Opaque refs flow back into scanners and source-access ports. Concrete paths,
 DOM files, bookmarks, and IndexedDB handles do not cross inward.

@@ -10,7 +10,7 @@ link:
 | `DesktopFolderDrop` | folder and direct-markdown drops become opaque refs | `lib/infrastructure/io/desktop_folder_drop.dart:14-28` |
 | `DesktopFolderPicker` | the native "choose a folder" dialog | `lib/infrastructure/io/desktop_folder_picker.dart:6-8` |
 | `DesktopReaderSourcePicker` | macOS Open records become typed folder or Markdown refs | `lib/infrastructure/io/desktop_reader_source_picker.dart:8-18` |
-| `openWithSystem` | a clicked URL goes to the default browser | `lib/infrastructure/io/desktop_links.dart:3-4` |
+| `openWithSystem` | a URL or local path goes to its system handler | `lib/infrastructure/io/desktop_links.dart:3-10` |
 
 All three stop at the registry or the OS; none reads a file. Their boundary
 with the UI is a wrapper function and three streams, so the API never imports
@@ -20,9 +20,9 @@ with the UI is a wrapper function and three streams, so the API never imports
 
 **Drop.** Desktop drop arrives through a widget, not a document listener, so
 `wrap(child)` returns a `DropTarget` around whatever the UI passes in
-(`lib/infrastructure/io/desktop_folder_drop.dart:30-58`). The composition root
+(`lib/infrastructure/io/desktop_folder_drop.dart:30-56`). The composition root
 applies it to the whole screen via `PlatformAdapters.dropRegion`
-(`lib/infrastructure/platform/platform_io.dart:102-103`, `lib/main.dart:254-264`).
+(`lib/infrastructure/platform/platform_io.dart:114-115`, `lib/main.dart:268-278`).
 
 | Callback | Behaviour | Evidence |
 |----------|-----------|----------|
@@ -54,11 +54,12 @@ desktop families leave the capability absent rather than pretending a
 file-only or folder-only dialog is the same interaction
 (`lib/infrastructure/platform/platform_io.dart:69-76`).
 
-**Links.** `openWithSystem` shells out per OS: `open` on macOS, `rundll32
+**System handoff.** `openWithSystem` shells out per OS: `open` on macOS, `rundll32
 url.dll,FileProtocolHandler` on Windows, `xdg-open` elsewhere
-(`lib/infrastructure/io/desktop_links.dart:4-12`). The controller decides what
-is external (`lib/api/reader_controller.dart:396-434`); this adapter only opens
-it.
+(`lib/infrastructure/io/desktop_links.dart:4-11`). External links and the
+custom-theme directory share this handoff; their callers decide what target is
+appropriate (`lib/infrastructure/platform/platform_io.dart:108-109`,
+`:138-144`).
 
 ## Inputs and outputs
 
@@ -67,7 +68,7 @@ it.
 | drop | `DropDoneDetails.files` (`List<DropItem>`) | folder, markdown and dragging streams — `lib/infrastructure/io/desktop_folder_drop.dart:20-28` |
 | picker | a user gesture | `Future<FolderRef?>` |
 | Open | native folder/file records | typed opaque reader-source selections |
-| links | a URL string | a child process; result ignored |
+| system handoff | a URL or local path | a child process; result ignored |
 
 ## Events
 

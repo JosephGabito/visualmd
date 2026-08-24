@@ -22,8 +22,8 @@ class VisualMdApp extends StatelessWidget {
   /// Lets the platform make the top bar a window-drag handle; identity otherwise.
   final Widget Function(Widget child) windowDragRegion;
 
-  /// Where a reader may add their own theme files; null where they cannot.
-  final String? themesLocation;
+  /// Reveals the custom-theme directory; null where custom files are absent.
+  final Future<void> Function()? openThemesFolder;
 
   const VisualMdApp({
     super.key,
@@ -33,7 +33,7 @@ class VisualMdApp extends StatelessWidget {
     this.dropRegion = _identity,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
-    this.themesLocation,
+    this.openThemesFolder,
   });
 
   static Widget _identity(Widget child) => child;
@@ -85,7 +85,7 @@ class VisualMdApp extends StatelessWidget {
             openReaderSources: openReaderSources,
             topBar: topBar,
             windowDragRegion: windowDragRegion,
-            themesLocation: themesLocation,
+            openThemesFolder: openThemesFolder,
           ),
         ),
       ),

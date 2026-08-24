@@ -1,12 +1,12 @@
 import 'dart:io';
 
-/// Adapter: hands a link to the system's default browser.
-Future<void> openWithSystem(String url) async {
+/// Adapter: hands a URL or local path to the operating system.
+Future<void> openWithSystem(String target) async {
   if (Platform.isMacOS) {
-    await Process.run('open', [url]);
+    await Process.run('open', [target]);
   } else if (Platform.isWindows) {
-    await Process.run('rundll32', ['url.dll,FileProtocolHandler', url]);
+    await Process.run('rundll32', ['url.dll,FileProtocolHandler', target]);
   } else {
-    await Process.run('xdg-open', [url]);
+    await Process.run('xdg-open', [target]);
   }
 }

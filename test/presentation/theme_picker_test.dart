@@ -12,11 +12,13 @@ void main() {
   late ThemeRegistry registry;
   late List<ThemeChoice> chosen;
   late List<ParagraphMarking> marked;
+  late int themeFolderOpens;
 
   setUp(() {
     registry = ThemeRegistry();
     chosen = [];
     marked = [];
+    themeFolderOpens = 0;
   });
 
   Future<void> pumpPicker(
@@ -41,7 +43,9 @@ void main() {
               onChoose: chosen.add,
               marking: ParagraphMarking.spaced,
               onMark: marked.add,
-              themesLocation: '/somewhere/themes',
+              onOpenThemesFolder: () async {
+                themeFolderOpens++;
+              },
             ),
           ),
         ),
@@ -73,7 +77,7 @@ void main() {
     for (final theme in BuiltInThemes.all) {
       expect(find.text(theme.name), findsOneWidget, reason: theme.id);
     }
-    expect(find.textContaining('/somewhere/themes'), findsOneWidget);
+    expect(find.text('Open themes folder'), findsOneWidget);
   });
 
   testWidgets('the menu is clickable where it is drawn', (tester) async {
@@ -211,4 +215,40 @@ void main() {
       reason: 'and the menu closes',
     );
   });
+
+  testWidgets('the theme folder action opens the platform location', (
+    tester,
+  ) async {
+    await pumpPicker(tester);
+    await tester.tap(find.byType(ThemePicker));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Open themes folder'));
+    await tester.tap(find.text('Open themes folder'));
+    await tester.pumpAndSettle();
+
+    expect(themeFolderOpens, 1);
+    expect(find.text('Open themes folder'), findsNothing);
+  });
+
+  testWidgets(
+    'a skipped theme explains itself without sending readers to a console',
+    (tester) async {
+      registry = ThemeRegistry.fromDocuments(const [
+        (origin: 'broken.json', json: '{"id":"oops","name":"Oops"}'),
+      ]);
+      await pumpPicker(tester);
+      await tester.tap(find.byType(ThemePicker));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('broken.json skipped'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('broken.json skipped'), findsOneWidget);
+      expect(
+        find.text('"brightness" must be a non-empty string'),
+        findsOneWidget,
+      );
+      expect(find.text('Open themes folder'), findsOneWidget);
+      expect(find.textContaining('console'), findsNothing);
+    },
+  );
 }

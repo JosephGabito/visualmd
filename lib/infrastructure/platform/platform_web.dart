@@ -116,5 +116,5 @@ final class _WebAdapters implements PlatformAdapters {
       const [];
 
   @override
-  String? get themesLocation => null;
+  Future<void> Function()? get openThemesFolder => null;
 }

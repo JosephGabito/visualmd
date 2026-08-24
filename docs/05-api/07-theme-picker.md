@@ -8,7 +8,7 @@ themes exist is the [ThemeRegistry's](../04-presentation/05-theme-registry.md) b
 worn is the [Reader Controller's](01-reader-controller.md), and where user
 theme files live is the platform's — the picker is handed all three.
 
-It lives in the API ring (`lib/api/widgets/theme_picker.dart:11-82`) and knows
+It lives in the API ring (`lib/api/widgets/theme_picker.dart:12-136`) and knows
 nothing about files, JSON or platforms. The types it displays — `ReaderTheme`,
 `ThemeChoice`, `ThemeRegistry` — come from the `presentation` ring, which may
 import no package at all, so the picker is the only half of the theme system
@@ -28,12 +28,13 @@ passes the choice straight to `ReaderController.chooseTheme`
 
 | Entry | Value | Source |
 |-------|-------|--------|
-| Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart:54-59` |
-| Light group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart:61-68` |
-| Dark group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart:69-76` |
-| Paragraphs: "Separated by space" | `ParagraphMarking.spaced` | `lib/api/widgets/theme_picker.dart:77-87` |
-| Paragraphs: "Indented, set solid" | `ParagraphMarking.indented` | `lib/api/widgets/theme_picker.dart:88-96` |
-| Where user themes live, or how many files were skipped | not selectable | `lib/api/widgets/theme_picker.dart:97-103` |
+| Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart:54-63` |
+| Light group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart:65-72` |
+| Dark group | `FixedTheme(id)` per theme | `lib/api/widgets/theme_picker.dart:73-80` |
+| Paragraphs: "Separated by space" | `ParagraphMarking.spaced` | `lib/api/widgets/theme_picker.dart:82-95` |
+| Paragraphs: "Indented, set solid" | `ParagraphMarking.indented` | `lib/api/widgets/theme_picker.dart:96-108` |
+| A skipped theme's filename and validation reason | not selectable | `lib/api/widgets/theme_picker.dart:109-115`, `:237-267` |
+| Open themes folder | platform callback | `lib/api/widgets/theme_picker.dart:116-131` |
 
 The menu is no longer only about themes, which is why its tooltip reads
 "Reading: <theme name>" (`lib/api/widgets/theme_picker.dart:41`). Both
@@ -42,18 +43,20 @@ see [Reading Scale](../04-presentation/07-reading-scale.md) for why the two
 markings are alternatives and never both.
 
 Each row lights up under the pointer before it acts
-(`lib/api/widgets/theme_picker.dart:135-141`). Each carries a `_Swatch`: the word "Aa" drawn in that theme's own accent
+(`lib/api/widgets/theme_picker.dart:138-196`). Each carries a `_Swatch`: the word "Aa" drawn in that theme's own accent
 on its own paper, framed in its own border
-(`lib/api/widgets/theme_picker.dart:218-242`). The button itself is the swatch
+(`lib/api/widgets/theme_picker.dart:269-298`). The button itself is the swatch
 of the theme currently in use (`lib/api/widgets/theme_picker.dart:43-46`), so
 the bar always shows what is being worn.
 
 ## Inputs and outputs
 
 In: a `ThemeRegistry`, the current `ThemeChoice` and `ParagraphMarking`, an
-`onChoose` and an `onMark` callback, and an optional `themesLocation` string
+`onChoose` and an `onMark` callback, and an optional `onOpenThemesFolder`
+callback
 (`lib/api/widgets/theme_picker.dart:13-32`).
-Out: one `ThemeChoice` or one `ParagraphMarking` per selection. The picker reads the system brightness
+Out: one `ThemeChoice` or one `ParagraphMarking` per selection, or one request
+to reveal the custom-theme directory. The picker reads the system brightness
 from `MediaQuery` to decide which theme a "follow system" choice is currently
 resolving to (`lib/api/widgets/theme_picker.dart:36-38`).
 
@@ -74,16 +77,14 @@ runs, so adding a theme file means restarting.
 
 A chosen theme that no longer exists resolves to the default of the current
 brightness (`lib/presentation/theme/theme_registry.dart:79-85`), so the picker always
-has something to draw. Theme files that failed to parse are counted in the
-menu rather than hidden (`lib/api/widgets/theme_picker.dart:109-118`); the
-reasons are printed at startup (`lib/main.dart:112-118`). On the web
-`themesLocation` is null and that line is simply absent
-(`lib/infrastructure/platform/platform_web.dart:98-103`).
+has something to draw. Theme files that failed to parse show their filename
+and exact validation reason in the menu, where a release user can act without
+a development console (`lib/api/widgets/theme_picker.dart:103-120`,
+`:237-265`). On the web
+the callback is null and the action is simply absent
+(`lib/infrastructure/platform/platform_web.dart:114-119`).
 
 ## Transition
 
-Two things are expected to change. Reloading themes without a restart would
-turn the registry into something observable rather than a constructor
-argument. And the location line wants to be a button that reveals the folder,
-which needs a new platform capability next to
-[`themesLocation`](../03-infrastructure/01-platform-adapters.md).
+Reloading themes without a restart would turn the registry into something
+observable rather than a constructor argument.

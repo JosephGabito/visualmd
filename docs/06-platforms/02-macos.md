@@ -61,8 +61,9 @@ sandboxed, that is inside its container rather than directly under
 | `Visual MD/themes/*.json` | One user theme per file |
 | `Visual MD/themes/README.md` | Written on first run; documents the theme format |
 
-The theme menu prints the exact themes path, which is the reliable way to find
-it (`lib/api/widgets/theme_picker.dart:51-54`). Details in
+The theme menu offers **Open themes folder**, which hands that private directory
+to Finder without exposing its sandbox path in the interface
+(`lib/infrastructure/platform/platform_io.dart:138-144`). Details in
 [Reader Files](../03-infrastructure/desktop/05-reader-files.md) and
 [Creating a Theme](../09-contributing/05-creating-a-theme.md).
 
