@@ -59,6 +59,11 @@ void main() {
       expect(scale.base, 18);
       expect(scale.code, 15);
       expect(scale.codeLineHeight, 22);
+      expect(scale.inlineCodeSize(scale.base), 17);
+      expect(
+        scale.inlineCodeSize(ReadingScale.minimumCodeSize),
+        ReadingScale.minimumCodeSize,
+      );
       expect(scale.tableText, lessThan(scale.base));
     });
 

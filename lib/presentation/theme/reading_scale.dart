@@ -112,6 +112,16 @@ final class ReadingScale {
   /// scale this is a 15 px face on a 22 px line.
   double get codeLineHeight => code + 7;
 
+  /// Inline code is one logical pixel smaller than the role around it.
+  ///
+  /// A code span remains part of a sentence, so it only steps back once. A
+  /// fenced block is a separate reference surface and uses the stronger
+  /// three-pixel reduction above. Both stop at the same legibility floor.
+  double inlineCodeSize(double surroundingSize) {
+    final reduced = surroundingSize - 1;
+    return reduced < minimumCodeSize ? minimumCodeSize : reduced;
+  }
+
   /// Table text, slightly smaller so a table stays a table.
   double get tableText => base * 0.9;
 

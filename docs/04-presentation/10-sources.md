@@ -111,17 +111,21 @@ while code is a reference or example consulted from that prose.
 
 [Primer](https://primer.style/product/primitives/typography/) sets inline code
 at 0.9285 em so it inherits the role around it without shouting over the prose.
+At Visual MD's comfortable 18 px scale that evidence lands close to a 17 px
+inline face. The reader records that decision as an absolute one-logical-pixel
+step from the surrounding role rather than retaining Primer's percentage.
 The [CSS Text Decoration specification](https://www.w3.org/TR/css-text-decor-4/)
 defines an underline as a line decoration painted with the text and treats any
 leak beyond its box as ink overflow rather than layout overflow. Flutter's
 [`decorationThickness`](https://api.flutter.dev/flutter/painting/TextStyle/decorationThickness.html)
-is a multiplier of the face's own underline. Visual MD therefore keeps the
-context-relative mono face and adds a translucent muted underline at 1.25 of
-the face's own stroke: a quiet technical signal that adds no box, padding or
-height. The text takes the theme accent; where that falls below WCAG's 4.5:1
-threshold, it is mixed toward the theme's ink only until the threshold is met.
-The run remains real text, so symbols, paths and commands all select, copy and
-reflow as part of the sentence.
+is a multiplier of the face's own underline. Visual MD therefore normalises
+the surrounding face to its measured letter size, subtracts one logical pixel,
+normalises Geist Mono from that target, and adds a translucent muted underline
+at 1.25 of the face's own stroke. It is a quiet technical signal that adds no
+box, padding or height. The text takes the theme accent; where that falls below
+WCAG's 4.5:1 threshold, it is mixed toward the theme's ink only until the
+threshold is met. The run remains real text, so symbols, paths and commands all
+select, copy and reflow as part of the sentence.
 
 ## Checklists
 

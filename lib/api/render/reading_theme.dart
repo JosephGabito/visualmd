@@ -200,13 +200,21 @@ final class ReadingTheme {
     decorationThickness: 1,
   );
 
-  /// Inline code keeps the x-height of the surrounding role, a shade smaller,
-  /// instead of collapsing every heading and table run to body-code size.
+  /// Inline code steps one logical pixel behind the surrounding role.
+  ///
+  /// The surrounding face is first reduced to its quoted letter size, then
+  /// the mono face is normalised back from that target. This keeps the step
+  /// absolute even when the two faces have different x-heights.
   TextStyle inlineCodeFor(TextStyle base) {
-    final bodySize = body.fontSize ?? scale.base;
-    final baseSize = base.fontSize ?? bodySize;
+    final baseFamily = base.fontFamily ?? body.fontFamily ?? '';
+    final monoFamily = code.fontFamily ?? '';
+    final surroundingSize = FontMetrics.letterSizeFor(
+      baseFamily,
+      base.fontSize ?? body.fontSize ?? scale.base,
+    );
+    final inlineSize = scale.inlineCodeSize(surroundingSize);
     return code.copyWith(
-      fontSize: (code.fontSize ?? scale.code) * baseSize / bodySize,
+      fontSize: FontMetrics.sizeFor(monoFamily, inlineSize),
       color: _contrastSafeAccent(palette),
       // A decoration is ink, not geometry: this identifies a technical
       // reference without padding the run or moving the paragraph off its

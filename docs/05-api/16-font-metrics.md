@@ -2,9 +2,10 @@
 
 ## Purpose and boundary
 
-`FontMetrics` is what the bundled faces actually measure, and the two things
-derived from it: the font size that delivers a given size *of letters*, and the
-line height that leaves the same gap in any face
+`FontMetrics` is what the bundled faces actually measure, and the three things
+derived from it: the font size that delivers a given size *of letters*, the
+letter size produced by a resolved font size, and the line height that leaves
+the same gap in any face
 (`lib/api/theme/font_metrics.dart`).
 
 It exists because legibility research is consistent on one point: it is the
@@ -40,6 +41,11 @@ and 19.5 px in Literata, and both put the same size of letter on the page. It
 is applied where a family is resolved into a style
 (`lib/api/theme/library_theme.dart`).
 
+`letterSizeFor(family, fontSize)` is the inverse. Inline code uses it to recover
+the surrounding role's quoted letter size before taking its absolute one-pixel
+step and resolving Geist Mono from the result
+(`lib/api/render/reading_theme.dart`, `lib/api/theme/font_metrics.dart`).
+
 This measurement exposed a 7 % difference between the body text and the sans
 interface face at the same nominal size: Literata's x-height is 0.507, while
 Inter's is 0.546.
@@ -73,8 +79,9 @@ multiplier, Alegreya would receive nearly twice the visual gap.
 | `size` | `double` | A size of letters, quoted against 0.55 |
 | `fallback` | `double` | The leading to use for a face not measured here |
 
-Out: a font size (`sizeFor`) and a line-height multiplier (`leadingFor`). Both
-are pure functions over constants; there is no state.
+Out: a font size (`sizeFor`), its inverse letter size (`letterSizeFor`) and a
+line-height multiplier (`leadingFor`). All are pure functions over constants;
+there is no state.
 
 ## Events
 

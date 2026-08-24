@@ -85,9 +85,12 @@ traditional quad, a multiple of the type rather than a fixed distance
 | `measure` | `double` | 66 characters |
 | `marking` | `ParagraphMarking` | `spaced` |
 
-Out: `heading(level)`, `indent`, `code`, `codeLineHeight`, `tableText` — all derived — plus the
+Out: `heading(level)`, `indent`, `code`, `codeLineHeight`,
+`inlineCodeSize(surroundingSize)`, `tableText` — all derived — plus the
 55-character `minimumReadableMeasure` used when a component has to protect a
-text column.
+text column. Fenced code steps three logical pixels below prose; an inline code
+span steps one logical pixel below the role around it. Both stop at the 13 px
+code floor (`lib/presentation/theme/reading_scale.dart`).
 `ReadingScale.comfortable` is the default
 (`lib/presentation/theme/reading_scale.dart`).
 

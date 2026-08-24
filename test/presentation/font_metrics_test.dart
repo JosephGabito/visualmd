@@ -68,6 +68,11 @@ void main() {
           closeTo(18 * FontMetrics.referenceXHeight, 0.001),
           reason: family,
         );
+        expect(
+          FontMetrics.letterSizeFor(family, FontMetrics.sizeFor(family, 18)),
+          closeTo(18, 0.001),
+          reason: '$family should round-trip its quoted letter size',
+        );
 
         final leading = FontMetrics.leadingFor(family, 1.5);
         expect(

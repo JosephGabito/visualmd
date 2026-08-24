@@ -77,6 +77,34 @@ void main() {
         expect(code.text, 'git log --oneline "HEAD"');
       },
     );
+
+    test('a longer delimiter carries literal backticks', () {
+      final paragraph = single<ParagraphBlock>(
+        'Use ``one `backtick` here`` safely.',
+      );
+      expect(
+        paragraph.content.whereType<CodeRun>().single.text,
+        'one `backtick` here',
+      );
+    });
+
+    test('one ordinary space is stripped from both edges', () {
+      final paragraph = single<ParagraphBlock>('Read ``  padded code  ``.');
+      expect(
+        paragraph.content.whereType<CodeRun>().single.text,
+        ' padded code ',
+      );
+    });
+
+    test('line endings become spaces while literal syntax stays literal', () {
+      final paragraph = single<ParagraphBlock>(
+        'Read ``first\n\\* &copy; second``.',
+      );
+      expect(
+        paragraph.content.whereType<CodeRun>().single.text,
+        r'first \* &copy; second',
+      );
+    });
   });
 
   group('a heading', () {

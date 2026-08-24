@@ -40,10 +40,13 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 
 A link or code run keeps its full context. A link in an `h2` remains an `h2`,
 a link in a table keeps lining tabular figures, and inline code in a heading
-scales with that heading instead of collapsing to body-code size
+steps one logical pixel below that heading instead of collapsing to body-code
+size
 (`lib/api/render/reading_theme.dart`). Code is never promoted to an
 embedded widget: its muted underline is only a painted decoration, while
 the text remains in the paragraph's selectable, copyable and reflowable span tree.
+Even an unbroken identifier stays in that flow and wraps inside a narrow
+reading column (`test/presentation/inline_composer_test.dart`).
 The explicit span type also stops widow binding from rewriting source text at
 the end of a paragraph (`lib/api/render/inline_composer.dart`,
 `lib/api/render/document_view.dart`). A

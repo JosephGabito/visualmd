@@ -76,8 +76,9 @@ back, for matter inside a quotation
 says it is quoted; the colour is the second and last signal.
 
 **Inline roles.** `linkFor(base)` preserves the complete surrounding style and
-adds only link signals. `inlineCodeFor(base)` keeps the mono face but scales it
-relative to the role around it, so headings and tables retain their hierarchy
+adds only link signals. `inlineCodeFor(base)` measures the surrounding face,
+steps back one logical pixel, and normalises Geist Mono from that target, so
+headings and tables retain their hierarchy without a hidden percentage
 (`lib/api/render/reading_theme.dart`). Its translucent muted underline
 is painted at 1.25 of the face's own stroke inside the existing line box, so it
 does not change selectable flow or vertical rhythm. The text uses the accent;
