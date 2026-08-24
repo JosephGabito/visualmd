@@ -57,6 +57,9 @@ a mark. Both `*emphasis*` and `_emphasis_` become the same
 `MarkedRun(InlineMark.emphasis, ...)`; the stars or underscores have already
 served their grammatical purpose and cannot leak into outlines, search,
 selection or assistive text (`lib/domain/reading/content/inline.dart`).
+The same boundary holds for `**strong**` and `__strong__`: both become one
+`InlineMark.strong`, retaining importance as a typed mark without retaining its
+source notation.
 
 `RawBlock` is the model's promise that nothing is silently dropped: markup the
 reader cannot set still reaches the page as its words

@@ -57,6 +57,32 @@ void main() {
     expect(notation, isEmpty);
   });
 
+  test(
+    'indexes strongly marked words without either delimiter spelling',
+    () async {
+      final document = Document(
+        id: DocumentId(rootId, 'strength.md'),
+        content: 'Find **Critical** beside __warning__.',
+      );
+
+      final critical = await search.find(SearchQuery('critical'), [document]);
+      final warning = await search.find(SearchQuery('warning'), [document]);
+      final notation = await search.find(SearchQuery('__warning__'), [
+        document,
+      ]);
+
+      expect(
+        critical.single.matches.single.excerpt,
+        'Find Critical beside warning.',
+      );
+      expect(
+        warning.single.matches.single.excerpt,
+        'Find Critical beside warning.',
+      );
+      expect(notation, isEmpty);
+    },
+  );
+
   test('matches the reading text across editor wrapping', () async {
     final document = Document(
       id: DocumentId(rootId, 'wrapped.md'),

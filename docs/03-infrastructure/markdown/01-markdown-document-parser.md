@@ -134,6 +134,13 @@ preserved: an asterisk may delimit `foo*bar*`, while an underscore in
 `foo_bar_` remains literal so identifiers are not silently restyled
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+Double delimiter runs follow the same flanking grammar for **strong
+emphasis**. Valid `**` and `__` pairs arrive as `strong` and become
+`InlineMark.strong`; interior spaces, mismatched pairs and unmatched pairs stay
+visible. Double asterisks may work inside a word, while double underscores do
+not, preserving identifier-like text such as `foo__bar__`
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
