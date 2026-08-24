@@ -35,7 +35,7 @@ Two sealed hierarchies and a container.
 | `QuoteBlock` | blocks of its own | `lib/domain/reading/content/block.dart` |
 | `ListBlock` | `ordered`, `start`, `loose`, and `ListItem`s | `lib/domain/reading/content/block.dart` |
 | `TableBlock` | a head row and body rows of `TableCell` | `lib/domain/reading/content/block.dart` |
-| `RuleBlock` | nothing | `lib/domain/reading/content/block.dart` |
+| `RuleBlock` | one structural separation and no searchable text | `lib/domain/reading/content/block.dart` |
 | `RawBlock` | text the reader has no shape for | `lib/domain/reading/content/block.dart` |
 
 **Runs** — what a line of text is made of

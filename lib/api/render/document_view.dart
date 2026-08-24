@@ -315,13 +315,17 @@ class _BlockView extends StatelessWidget {
         );
 
       case RuleBlock():
-        return SizedBox(
-          height: theme.baseline,
-          child: Center(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: theme.palette.border,
+        return Semantics(
+          container: true,
+          label: 'Thematic break',
+          child: SizedBox(
+            height: theme.baseline,
+            child: Center(
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: theme.palette.border,
+              ),
             ),
           ),
         );

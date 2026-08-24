@@ -367,6 +367,29 @@ void main() {
     }
   });
 
+  testWidgets('a thematic break is one quiet, structural beat', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpDocument(tester, [
+      paragraph('Before the change of subject.'),
+      const RuleBlock(),
+      paragraph('After the change of subject.'),
+    ]);
+
+    final rule = find.bySemanticsLabel('Thematic break');
+    expect(rule, findsOneWidget);
+    expect(tester.getSize(rule).height, closeTo(renderedTheme.baseline, 0.01));
+
+    final divider = tester.widget<Divider>(find.byType(Divider));
+    expect(divider.thickness, 1);
+    expect(divider.color, renderedTheme.palette.border);
+    expect(
+      tester.getSize(find.byType(Divider)).width,
+      closeTo(renderedTheme.proseWidth(1100), 0.01),
+    );
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets('a heading following a heading closes up', (tester) async {
     await pumpDocument(tester, [
       paragraph('Some text.'),

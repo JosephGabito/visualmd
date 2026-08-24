@@ -20,12 +20,16 @@ reader marks structure.
 | Light type on a dark ground reads better tracked a little looser | *Tracking*, p. 56 |
 | A good rag is pleasantly uneven, with hyphenation kept to a minimum | *Alignment* |
 | A baseline grid aligns text across a field | *Grid*, p. 198 |
+| Decorative rules divide content, while ornament should echo structure rather than compete with it | *Ornaments*, pp. 60–63 |
 
 Lupton's paragraph specimens on p. 126 warn that a full blank line is often
 too open and show a half-line alternative. Visual MD's **spaced** mode therefore
 uses half a beat after consecutive paragraphs. Its **indented** mode uses the
 book's one-em first-line indent and no gap; the opening paragraph stays flush.
 Both are pair-aware outcomes of `spaceAfter`, never combined signals.
+The book also cautions that white space is not automatically a kindness to the
+reader. A thematic break therefore uses a quiet hairline inside the existing
+grid rather than manufacturing a larger empty field around itself.
 
 **Robert Bringhurst, *The Elements of Typographic Style*** — the source for
 the vertical rhythm.
@@ -110,6 +114,23 @@ The Dart team's current [`intl`](https://pub.dev/packages/intl) bidi utilities
 identify the first strongly directional character. Visual MD uses that signal
 for a heading's base direction, while a heading made only of punctuation
 inherits the surrounding page direction instead of guessing.
+
+## Thematic breaks
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#thematic-breaks)
+defines the complete syntax and its precedence: three or more matching
+asterisks, hyphens or underscores; spaces or tabs between marks; no more than
+three leading spaces; Setext precedence after paragraph text; thematic-break
+precedence over a competing list marker. The parser's hostile cases are taken
+from those rules rather than from only the three shortest spellings.
+
+[WAI-ARIA 1.2](https://www.w3.org/TR/wai-aria/#separator) treats a non-focusable
+horizontal separator as static document structure with an implicit horizontal
+orientation. Flutter does not currently expose a separator member in its
+[`SemanticsRole`](https://api.flutter.dev/flutter/dart-ui/SemanticsRole.html)
+enum, so Visual MD supplies the nearest cross-platform contract: a dedicated,
+non-interactive semantics node named “Thematic break.” It does not invent a
+button, focus target or visible caption.
 
 ## Technical-document systems
 

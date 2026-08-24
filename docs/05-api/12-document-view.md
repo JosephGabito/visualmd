@@ -86,8 +86,11 @@ Each block type is built by `_BlockView`
   row, ragged-row padding and locally scrolling overflow
   (`lib/api/render/document_view.dart`,
   `lib/api/render/reading_theme.dart`).
-- **Rule** — a centred one-pixel divider inside a box exactly one beat tall,
-  so prose after it returns to the grid (`lib/api/render/document_view.dart`).
+- **Rule** — a centred one-pixel divider in the quiet border tone, constrained
+  to the prose measure inside a box exactly one beat tall, so prose after it
+  returns to the grid. A non-interactive semantics node names the structure
+  “Thematic break” without making it a focus target
+  (`lib/api/render/document_view.dart`).
 - **RawBlock** — muted text (`lib/api/render/document_view.dart`).
 
 ### The table-width formula
@@ -138,8 +141,8 @@ words (`lib/api/render/document_view.dart`).
 `test/presentation/document_view_test.dart` covers column widths and table
 overflow, multiline geometry at all six heading levels, scaled mixed-script
 and unbreakable headings, heading-level semantics and authored direction,
-rhythm through rules and lists, tonal hierarchy, anchors, markers, task lists
-and quotation treatment.
+thematic-break geometry and semantics, rhythm through rules and lists, tonal
+hierarchy, anchors, markers, task lists and quotation treatment.
 
 ## Transition
 

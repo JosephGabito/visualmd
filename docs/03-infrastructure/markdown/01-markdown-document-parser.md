@@ -44,6 +44,15 @@ one by one (`lib/infrastructure/markdown/markdown_document_parser.dart`):
 | `section` | *unwrapped* | How footnote definitions arrive; only a wrapper (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | anything else | `RawBlock` | Its words survive even though its markup does not (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 
+**Thematic breaks.** CommonMark's asterisk, hyphen and underscore forms all
+arrive as `hr` and become the same textless `RuleBlock`. The syntax may use
+three or more matching marks, spaces or tabs between them and up to three
+leading spaces. Two marks, mixed marks, foreign characters and four-space
+indentation do not become rules. The parser also preserves CommonMark's block
+precedence: a hyphen line immediately under paragraph text is a Setext heading;
+a valid rule elsewhere interrupts prose and wins over a competing list marker
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 **Lists.** The package strips paragraph tags from the items of a *tight* list,
 so a surviving `p` inside an `li` is exactly the author asking for air between
 items — that is the `loose` signal

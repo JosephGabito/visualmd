@@ -41,7 +41,7 @@ Five things establish the flow and return displayed departures to whole beats:
 | A heading's own lines | Natural display leading: tight at `h1`, opening gradually toward the body at `h6` | `lib/api/render/reading_theme.dart` |
 | The complete heading block | Its shaped height and outgoing half-beat are reconciled together; only the grid correction remains inside the heading | `lib/api/render/document_view.dart` |
 | A code block | Compact source lines at 72 percent of a beat; the completed coloured surface rounds to the prose grid | `lib/api/render/reading_theme.dart`, `lib/api/widgets/code_block.dart` |
-| A horizontal rule | Its complete box is one beat | `lib/api/render/document_view.dart` |
+| A thematic break | A one-pixel hairline centred in a complete one-beat box | `lib/api/render/document_view.dart` |
 
 A heading is reconciled only after Flutter has shaped the complete block. Its
 lines therefore stay close enough to read as one display phrase. The sequence
@@ -59,6 +59,13 @@ so quotations and list items cannot acquire a competing top-margin convention
 (`lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart`).
 Paragraph spacing is the one half-beat interval inside running text; headings
 account for their half-beat while reconciling their complete display box.
+
+A thematic break is already a visible signal, so its mark stays to one
+hairline in the palette's border tone. Its one-beat box preserves phase without
+adding an ornamental symbol or widening into the code column. The ordinary
+forward-owned gaps around it express a deliberate change of subject; the line
+divides that space without becoming the subject itself
+(`lib/api/render/document_view.dart`).
 
 **The strut is what makes the running-text grid real.** Without it a paragraph
 carrying an inline code span — set smaller than the prose around it — can grow
@@ -112,7 +119,7 @@ half-beat spaced interval and the solid indented column. The heading suite check
 all six levels for proximity, a multiline `h1` for tight internal leading, and
 a scaled mixed-script heading for clipping and phase
 (`test/presentation/document_view_test.dart`). The complete rhythm test
-then renders multiline headings, code, a rule and a tight list between
+then renders multiline headings, code, a thematic break and a tight list between
 paragraphs and asserts every later paragraph's offset is a whole number of
 beats (`test/presentation/document_view_test.dart`). The code-block suite also
 measures the compact source line and proves both scrolled and wrapped surfaces
