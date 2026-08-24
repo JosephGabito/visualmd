@@ -155,19 +155,41 @@ void main() {
       );
     });
 
-    testWidgets('every display line remains a whole beat after scaling', (
+    testWidgets('display leading stays tight and proportional after scaling', (
       tester,
     ) async {
+      final normal = await themeAt(tester, TextScaler.noScaling);
       final enlarged = await themeAt(tester, const TextScaler.linear(1.8));
+
+      const maximumLeading = [1.15, 1.2, 1.25, 1.3, 1.4];
       for (var level = 1; level <= 6; level++) {
-        final heading = enlarged.heading(level);
-        final line =
-            enlarged.textScaler.scale(heading.fontSize!) * heading.height!;
+        final normalHeading = normal.heading(level);
+        final enlargedHeading = enlarged.heading(level);
         expect(
-          line / enlarged.baseline,
-          closeTo((line / enlarged.baseline).round(), 0.001),
+          enlargedHeading.height,
+          normalHeading.height,
+          reason: 'scaling changes the letters, not their proportion',
+        );
+        if (level <= 5) {
+          expect(
+            enlargedHeading.height,
+            lessThanOrEqualTo(maximumLeading[level - 1]),
+            reason: 'h$level is display type, not a paragraph',
+          );
+        } else {
+          expect(enlargedHeading.height, closeTo(enlarged.leading, 0.001));
+        }
+      }
+
+      for (var level = 1; level < 6; level++) {
+        expect(
+          enlarged.heading(level).height!,
+          lessThan(enlarged.heading(level + 1).height!),
+          reason:
+              'leading should open gradually as headings approach body size',
         );
       }
+
       final codeLine =
           enlarged.textScaler.scale(enlarged.code.fontSize!) *
           enlarged.code.height!;

@@ -100,29 +100,29 @@ final class ReadingTheme {
     const emphasis = [0.26, 0.16, 0.07, 0.0];
     const recession = 0.22;
 
-    /// A heading's own line box is rounded up to a whole beat, so however
-    /// large it is set, the text beneath it resumes on the grid.
+    // Display type closes up as it grows. These are deliberately not snapped
+    // to the body beat: a heading's lines belong to one another, not to the
+    // running-text grid. DocumentView reconciles the completed heading block
+    // with that grid after Flutter has shaped every line and fallback glyph.
+    const headingLeading = [1.14, 1.18, 1.24, 1.30, 1.40];
+
     TextStyle heading(int level) {
+      final safeLevel = level.clamp(1, 6);
       final drawn = type.serif(
-        color: level <= 4
-            ? emphasised(emphasis[level - 1])
+        color: safeLevel <= 4
+            ? emphasised(emphasis[safeLevel - 1])
             : receded(recession),
-        size: scale.heading(level),
+        size: scale.heading(safeLevel),
         // One weight for every heading. Size already says which level this
         // is; a second, quieter bold would be the same signal said twice.
         weight: FontWeight.w700,
       );
-      // Display sizes want less leading than running text; whatever that
-      // comes to is rounded up to a whole beat, so however large a heading is
-      // set, the text beneath it resumes on the grid.
-      final size = drawn.fontSize ?? scale.heading(level);
-      final renderedSize = textScaler.scale(size);
-      final natural = renderedSize * (level <= 2 ? 1.18 : 1.3);
       return drawn.copyWith(
-        height: (natural / unit).ceil() * unit / renderedSize,
+        height: safeLevel == 6 ? leading : headingLeading[safeLevel - 1],
         // Tighter as the size grows; at body size a heading leans on weight
         // and a little extra tracking instead.
-        letterSpacing: (level <= 3 ? -0.3 : (level == 6 ? 0.2 : 0)) + tracking,
+        letterSpacing:
+            (safeLevel <= 3 ? -0.3 : (safeLevel == 6 ? 0.2 : 0)) + tracking,
       );
     }
 
@@ -280,16 +280,11 @@ final class ReadingTheme {
   /// The gap between ordinary blocks: one beat — a blank line, exactly.
   double get blockGap => baseline;
 
-  /// Extra beats above a heading, beyond [blockGap]. Whole beats only — and
-  /// fewer than the eye expects, because a heading's own box is rounded up to
-  /// a whole beat too and carries some of that space inside it.
-  double spaceAbove(int level) =>
-      baseline *
-      switch (level.clamp(1, 6)) {
-        1 => 0,
-        2 || 3 => 1,
-        _ => 0,
-      };
+  /// The quiet space binding a heading to the content it introduces.
+  ///
+  /// It belongs inside the heading's reconciled box. That lets the complete
+  /// box consume whole beats while its own lines keep their natural leading.
+  double get headingSpaceAfter => baseline / 2;
 
   /// The gap between two blocks, given what sits either side of them.
   ///
@@ -297,13 +292,7 @@ final class ReadingTheme {
   /// above it — unless the thing above it is another heading, in which case
   /// there is no text to be separated from and the pair should read as one
   /// unit. A section title and its first subheading belong together.
-  double gapBefore({required int? headingLevel, bool afterHeading = false}) {
-    if (headingLevel == null) return blockGap;
-    // A heading following a heading has no running text to be separated
-    // from, so it takes the plain beat and the pair reads as one unit.
-    if (afterHeading) return blockGap;
-    return blockGap + spaceAbove(headingLevel);
-  }
+  double gapBefore({bool afterHeading = false}) => afterHeading ? 0 : blockGap;
 }
 
 /// The strongest theme colour that still meets ordinary-text contrast.
