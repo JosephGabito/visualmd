@@ -387,43 +387,39 @@ final class _InlinePlainText {
       (codeUnit >= 0x7b && codeUnit <= 0x7e);
 
   static String _stripPairedMarks(String text, _InlineLiterals literals) {
-    final emphasis = _EmphasisPlainText(text, literals).read();
-    return emphasis.replaceAllMapped(
-      RegExp(r'~~(.+?)~~', dotAll: true),
-      (match) => match[1]!,
-    );
+    return _MarkedPlainText(text, literals).read();
   }
 }
 
-/// Removes only the delimiter characters that CommonMark resolves as marks.
+/// Removes only the delimiter characters that CommonMark and GFM resolve.
 ///
 /// A regex cannot do this recursively: `**outer _inner_**` needs another pass,
 /// while `*foo**bar*` must keep its interior pair under the rule of three. The
 /// outline does not need the resulting mark tree, but it does need the same
 /// delimiter-run decisions as the page so titles and anchors name what is read.
-final class _EmphasisPlainText {
+final class _MarkedPlainText {
   static final _punctuationOrSymbol = RegExp(r'^[\p{P}\p{S}]$', unicode: true);
   static final _whitespace = RegExp(r'^(?:\p{Zs}|[\t\n\f\r])$', unicode: true);
 
   final String source;
   final _InlineLiterals literals;
 
-  _EmphasisPlainText(this.source, this.literals);
+  _MarkedPlainText(this.source, this.literals);
 
   String read() {
     final atoms = _atoms();
-    final delimiters = atoms.whereType<_EmphasisDelimiter>().toList();
+    final delimiters = atoms.whereType<_MarkedDelimiter>().toList();
     _resolve(delimiters);
     return atoms.map((atom) => atom.output).join();
   }
 
-  List<_EmphasisAtom> _atoms() {
-    final atoms = <_EmphasisAtom>[];
+  List<_MarkedAtom> _atoms() {
+    final atoms = <_MarkedAtom>[];
     var cursor = 0;
     while (cursor < source.length) {
       final kept = literals.tokenAt(source, cursor);
       if (kept != null) {
-        atoms.add(_EmphasisText(kept.token, edgeText: kept.value));
+        atoms.add(_MarkedText(kept.token, edgeText: kept.value));
         cursor += kept.token.length;
         continue;
       }
@@ -437,23 +433,29 @@ final class _EmphasisPlainText {
               source.codeUnitAt(cursor + 1) <= 0xdfff
           ? 2
           : 1;
-      if (codeUnit == 0x2a || codeUnit == 0x5f) {
+      if (codeUnit == 0x2a || codeUnit == 0x5f || codeUnit == 0x7e) {
         final character = String.fromCharCode(codeUnit);
         var end = cursor + 1;
         while (end < source.length && source.codeUnitAt(end) == codeUnit) {
           end++;
         }
-        atoms.add(_EmphasisDelimiter(character, end - cursor));
+        final length = end - cursor;
+        if (character == '~' && length > 2) {
+          // GFM makes the entire run literal; it cannot donate a shorter pair.
+          atoms.add(_MarkedText(source.substring(cursor, end)));
+        } else {
+          atoms.add(_MarkedDelimiter(character, length));
+        }
         cursor = end;
       } else {
-        atoms.add(_EmphasisText(source.substring(cursor, cursor + width)));
+        atoms.add(_MarkedText(source.substring(cursor, cursor + width)));
         cursor += width;
       }
     }
 
     for (var index = 0; index < atoms.length; index++) {
       final delimiter = atoms[index];
-      if (delimiter is! _EmphasisDelimiter) continue;
+      if (delimiter is! _MarkedDelimiter) continue;
       final before = index == 0 ? null : _lastScalar(atoms[index - 1].edge);
       final after = index + 1 == atoms.length
           ? null
@@ -479,7 +481,7 @@ final class _EmphasisPlainText {
   static bool _isPunctuation(String? scalar) =>
       scalar != null && _punctuationOrSymbol.hasMatch(scalar);
 
-  static void _resolve(List<_EmphasisDelimiter> stack) {
+  static void _resolve(List<_MarkedDelimiter> stack) {
     var current = 0;
     final openersBottom = <String, List<int>>{};
     while (current < stack.length) {
@@ -534,10 +536,8 @@ final class _EmphasisPlainText {
     }
   }
 
-  static bool _canFormMark(
-    _EmphasisDelimiter opener,
-    _EmphasisDelimiter closer,
-  ) {
+  static bool _canFormMark(_MarkedDelimiter opener, _MarkedDelimiter closer) {
+    if (opener.character == '~') return true;
     if ((opener.canOpen && opener.canClose) ||
         (closer.canOpen && closer.canClose)) {
       return (opener.remaining + closer.remaining) % 3 != 0 ||
@@ -547,17 +547,16 @@ final class _EmphasisPlainText {
   }
 }
 
-sealed class _EmphasisAtom {
+sealed class _MarkedAtom {
   String get output;
   String get edge;
 }
 
-final class _EmphasisText implements _EmphasisAtom {
+final class _MarkedText implements _MarkedAtom {
   final String source;
   final String edgeText;
 
-  _EmphasisText(this.source, {String? edgeText})
-    : edgeText = edgeText ?? source;
+  _MarkedText(this.source, {String? edgeText}) : edgeText = edgeText ?? source;
 
   @override
   String get output => source;
@@ -566,26 +565,26 @@ final class _EmphasisText implements _EmphasisAtom {
   String get edge => edgeText;
 }
 
-final class _EmphasisDelimiter implements _EmphasisAtom {
+final class _MarkedDelimiter implements _MarkedAtom {
   final String character;
   int remaining;
   bool canOpen = false;
   bool canClose = false;
 
-  _EmphasisDelimiter(this.character, int length) : remaining = length;
+  _MarkedDelimiter(this.character, int length) : remaining = length;
 
   void classify({required String? before, required String? after}) {
-    final beforeWhitespace = _EmphasisPlainText._isWhitespace(before);
-    final afterWhitespace = _EmphasisPlainText._isWhitespace(after);
-    final beforePunctuation = _EmphasisPlainText._isPunctuation(before);
-    final afterPunctuation = _EmphasisPlainText._isPunctuation(after);
+    final beforeWhitespace = _MarkedPlainText._isWhitespace(before);
+    final afterWhitespace = _MarkedPlainText._isWhitespace(after);
+    final beforePunctuation = _MarkedPlainText._isPunctuation(before);
+    final afterPunctuation = _MarkedPlainText._isPunctuation(after);
     final leftFlanking =
         !afterWhitespace &&
         (!afterPunctuation || beforeWhitespace || beforePunctuation);
     final rightFlanking =
         !beforeWhitespace &&
         (!beforePunctuation || afterWhitespace || afterPunctuation);
-    final allowIntraWord = character == '*';
+    final allowIntraWord = character == '*' || character == '~';
     canOpen =
         leftFlanking && (!rightFlanking || allowIntraWord || beforePunctuation);
     canClose =

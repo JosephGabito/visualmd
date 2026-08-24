@@ -61,6 +61,12 @@ The same boundary holds for `**strong**` and `__strong__`: both become one
 `InlineMark.strong`, retaining importance as a typed mark without retaining its
 source notation.
 
+GFM's `~correction~` and `~~correction~~` likewise become one
+`InlineMark.strikethrough`. Runs of three or more tildes are not eligible
+notation and therefore remain authored reading text. The model records the
+editorial meaning without deciding whether the page dims, colours or crosses
+the words (`lib/domain/reading/content/inline.dart`).
+
 Marks remain recursive rather than being flattened. `***important***` is an
 emphasis run containing a strong run, while `**important with _voice_ inside**`
 keeps emphasis inside strength. That stack is semantic: presentation can add

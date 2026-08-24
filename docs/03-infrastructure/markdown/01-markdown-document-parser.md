@@ -19,7 +19,10 @@ later in [Presentation](../../04-presentation/README.md)
 `parse` builds an `md.Document` with the GitHub-flavoured extension set and
 `encodeHtml: false` — the reader draws text, not HTML, and escaping here would
 put `&amp;` on the page
-(`lib/infrastructure/markdown/markdown_document_parser.dart`). The nodes
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). A Visual MD-owned
+inline syntax claims runs of three or more tildes before the dependency's
+delimiter resolver can consume a shorter pair from them; formal GFM makes that
+complete run literal (`lib/infrastructure/markdown/markdown_document_parser.dart`). The nodes
 then go to a `_Mapper`, held apart from the parser so a document's anchor
 numbering lives exactly as long as one parse and two documents never share it
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
@@ -148,6 +151,14 @@ and rule of three decide which characters were syntax before this adapter sees
 the tree. It therefore removes no delimiter itself: genuine syntax is absent,
 while literal notation such as the middle `**` in `*foo**bar*` remains in a
 `TextRun` (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+GFM **strikethrough** accepts either one or two tildes. Eligible left- and
+right-flanking runs, including runs inside a word, arrive as `del` and become
+the same `InlineMark.strikethrough`; a shorter eligible pair may leave an
+unmatched tilde as reading text. An interior whitespace edge prevents the mark,
+a blank line ends its search for a closer, and a run of three or more tildes is
+literal in full. Strong, code and link runs inside the deletion remain nested
+rather than flattened (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped

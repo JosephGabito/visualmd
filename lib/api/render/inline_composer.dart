@@ -178,9 +178,10 @@ final class InlineComposer {
           // Italic is the standard mark of emphasis, and one mark is enough.
           InlineMark.emphasis => base.copyWith(fontStyle: FontStyle.italic),
           InlineMark.strong => base.copyWith(fontWeight: FontWeight.w700),
+          // A line through the type already says that the words were deleted.
+          // Keeping their inherited ink avoids adding a second, dimming cue.
           InlineMark.strikethrough => base.copyWith(
             decoration: TextDecoration.lineThrough,
-            color: theme.palette.muted,
           ),
         };
         return [

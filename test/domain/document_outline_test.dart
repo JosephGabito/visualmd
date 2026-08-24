@@ -137,6 +137,35 @@ Text.
       ]);
     });
 
+    test('formal GFM strikethrough keeps only eligible tildes', () {
+      final headings = DocumentOutline.parse(r'''
+# ~single~ and ~~double~~
+
+## before~inside~after and ~shorter~~
+
+### ~ leading~ and ~trailing ~
+
+#### ~~~three~~~ and ~~~~four~~~~
+
+##### ~~old **important** `literal ~` and [guide](https://example.com)~~
+''').tableOfContents.headings;
+
+      expect(headings.map((heading) => heading.text), [
+        'single and double',
+        'beforeinsideafter and shorter~',
+        '~ leading~ and ~trailing ~',
+        '~~~three~~~ and ~~~~four~~~~',
+        'old important literal ~ and guide',
+      ]);
+      expect(headings.map((heading) => heading.anchor), [
+        'single-and-double',
+        'beforeinsideafter-and-shorter',
+        'leading-and-trailing',
+        'three-and-four',
+        'old-important-literal-and-guide',
+      ]);
+    });
+
     test('malformed references and literal regions remain untouched', () {
       final heading = DocumentOutline.parse(
         '# &MadeUpEntity; &copy and '
