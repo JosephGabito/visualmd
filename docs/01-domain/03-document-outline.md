@@ -37,8 +37,14 @@ The private `_Parser` works line by line
   rules, `|---|` table separators and list items out of the outline while a
   genuinely multi-source-line title remains one heading.
 - **Inline cleanup.** Heading text drops images (keeping alt), links (keeping
-  text), HTML tags, backticks, `**`, `__`, `*`, `~~`, and collapses
-  whitespace (`lib/domain/reading/document_outline.dart`).
+  text), HTML tags and genuine paired inline delimiters, then collapses
+  formatting whitespace (`lib/domain/reading/document_outline.dart`). Code
+  spans and autolinks are protected as literal regions before backslash
+  escapes are resolved. Consequently `\*literal\*` keeps both stars,
+  `\\*emphasis*` keeps one backslash but loses the genuine emphasis marks,
+  and a slash inside code or an autolink stays authored text. Collision-free
+  private placeholders keep this small resolver framework-free while making
+  the outline name the same heading the page presents.
 - **Anchors.** GitHub style: lowercase, keep letters, digits, spaces and
   hyphens, spaces to hyphens. Duplicates get `-1`, `-2`, …; an empty slug
   becomes `section`. The rule is not this parser's own — it lives in
@@ -74,6 +80,7 @@ The private `_Parser` works line by line
 | `Title` / `=====`, `Sub` / `---`, then `---`, a table, `- item` / `---` | Title (h1), Sub (h2) | two | `Title` |
 | two paragraph lines / `====`, later two lines / `---` | one joined h1, one joined h2; source positions point to each first line | two | the joined h1 |
 | `# Setup`, `## Setup`, `## Setup`, `## ???` | anchors `setup`, `setup-1`, `setup-2`, `section` | four | `Setup` |
+| an h1 containing every escaped ASCII punctuation mark | every mark without its source backslash; the hyphen-only slug is `-` | one | the resolved punctuation |
 | `intro`, `# One`, `## Two` | One, Two | three: the first has no heading | `One` |
 | `---` / `title: "From Front Matter"` / `---` / `# Body Heading` | Body Heading at line 5 | one, without `tags:` | `From Front Matter` |
 | empty string | none | none | `null` |
@@ -99,6 +106,9 @@ per library build.
   front-matter block is treated as body text.
 - Headings inside blockquotes (`> # x`) or indented four or more spaces are
   not headings, matching CommonMark.
+- Escape resolution is grammar, not styling. Once a slash exposes literal
+  punctuation, the outline stores only that punctuation; no escape-specific
+  domain type or visual treatment survives.
 - Splitting at headings can separate a construct from its context; reference
   definitions are the one case handled explicitly
   (`test/domain/document_outline_test.dart`).

@@ -186,6 +186,26 @@ space of a paragraph return. A hard break consequently adds exactly one body
 beat. Consecutive hard breaks add consecutive beats; widow binding does not
 rewrite across an authored line (`test/presentation/paragraph_setting_test.dart`).
 
+## Backslash escapes
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#backslash-escapes)
+defines the escape alphabet and its boundaries. A backslash may expose any
+ASCII punctuation mark as literal text, but it stays visible before every
+other character. An escaped backslash does not protect the delimiter after it;
+a backslash at a line ending is instead a hard break. Escapes do not operate
+inside code spans, code blocks, autolinks or raw HTML, while link destinations,
+titles, reference definitions and fenced info strings do resolve them.
+
+This is grammar, not a fourth emphasis signal. Lupton describes punctuation as
+part of the standardised, rule-bound apparatus of the printed page and asks the
+designer to replace manuscript notation with the marks it represents. Visual
+MD follows that division: the source backslash disappears, then the exposed
+punctuation enters the ordinary prose setting. Quotes may become typographic
+quotes and manuscript dash or ellipsis sequences may be set normally; code and
+autolinks remain literal because their grammar says they are literal
+(`lib/api/render/inline_composer.dart`). The reader sees punctuation, never a
+special “escaped” colour or run.
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

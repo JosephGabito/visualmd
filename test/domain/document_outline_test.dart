@@ -32,6 +32,51 @@ Text.
       expect(outline.title, 'Purpose and Status');
     });
 
+    test('escaped ASCII punctuation remains visible in a heading', () {
+      final punctuation = String.fromCharCodes([
+        ...List.generate(0x2f - 0x21 + 1, (index) => 0x21 + index),
+        ...List.generate(0x40 - 0x3a + 1, (index) => 0x3a + index),
+        ...List.generate(0x60 - 0x5b + 1, (index) => 0x5b + index),
+        ...List.generate(0x7e - 0x7b + 1, (index) => 0x7b + index),
+      ]);
+      final escaped = punctuation.codeUnits
+          .map((codeUnit) => '\\${String.fromCharCode(codeUnit)}')
+          .join();
+
+      final heading = DocumentOutline.parse('# $escaped')
+          .tableOfContents
+          .headings
+          .single;
+
+      expect(heading.text, punctuation);
+      expect(heading.anchor, '-');
+    });
+
+    test('literal regions and one-sided escapes keep their exact meaning', () {
+      expect(
+        DocumentOutline.parse(r'# \*not emphasis* | \`not code`')
+            .tableOfContents
+            .headings
+            .single
+            .text,
+        r'*not emphasis* | `not code`',
+      );
+      expect(
+        DocumentOutline.parse(
+          r'# \\*emphasis* | `\* code` | <https://example.com?find=\*>',
+        ).tableOfContents.headings.single.text,
+        r'\emphasis | \* code | https://example.com?find=\*',
+      );
+      expect(
+        DocumentOutline.parse('# ``  padded code  ``')
+            .tableOfContents
+            .headings
+            .single
+            .text,
+        ' padded code ',
+      );
+    });
+
     test('ignores headings inside fenced code blocks', () {
       final outline = DocumentOutline.parse('''
 # Real

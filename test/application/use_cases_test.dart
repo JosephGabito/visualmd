@@ -428,6 +428,12 @@ void main() {
                 '\n'
                 '### **Marked** `code` and [a link](https://example.com)\n'
                 '\n'
+                r'### \*literal stars\* and \[brackets\] and \`ticks\`'
+                '\n'
+                '\n'
+                r'### \\*emphasis* and \# hash and `\* code`'
+                '\n'
+                '\n'
                 '## العربية 日本語 中文\n'
                 '\n'
                 '## Duplicate heading\n'
@@ -461,6 +467,8 @@ void main() {
       'section',
       'section-1',
       'marked-code-and-a-link',
+      'literal-stars-and-brackets-and-ticks',
+      'emphasis-and-hash-and-code',
       'العربية-日本語-中文',
       'duplicate-heading',
       'duplicate-heading-1',

@@ -83,6 +83,24 @@ void main() {
     },
   );
 
+  test('indexes escaped punctuation without its source backslashes', () async {
+    final document = Document(
+      id: DocumentId(rootId, 'literal.md'),
+      content: r'Escaped \*literal\* and \[brackets\] remain searchable.',
+    );
+
+    final stars = await search.find(SearchQuery('*literal*'), [document]);
+    final brackets = await search.find(SearchQuery('[brackets]'), [document]);
+    final sourceNotation = await search.find(SearchQuery(r'\*literal'), [
+      document,
+    ]);
+
+    expect(stars.single.matches.single.start, 'Escaped '.length);
+    expect(stars.single.matches.single.excerpt, contains('*literal*'));
+    expect(brackets.single.matches.single.excerpt, contains('[brackets]'));
+    expect(sourceNotation, isEmpty);
+  });
+
   test('omits documents without a match and preserves library order', () async {
     final documents = [
       Document(id: DocumentId(rootId, 'a.md'), content: 'first needle'),

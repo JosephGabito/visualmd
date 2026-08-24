@@ -15,7 +15,9 @@ For each document, the injected `DocumentParser` produces
 `DocumentContent.text`; the result is cached by document identity
 (`lib/infrastructure/search/literal_document_search.dart`). Searching
 therefore ignores Markdown markers and link destinations that the page does
-not show.
+not show. Escape backslashes are grammar markers too: a reader can find
+`*literal*` from source written as `\*literal\*`, while searching for the
+discarded backslash notation returns nothing.
 
 The query goes through `RegExp.escape`, then a case-insensitive Unicode
 expression (`lib/infrastructure/search/literal_document_search.dart`).
@@ -48,7 +50,8 @@ The Markdown parser's contract turns unsupported markup into visible raw text
 rather than throwing, so a malformed document still remains searchable.
 
 Focused adapter tests prove punctuation is literal, case is ignored, Markdown
-marks are absent, empty documents are omitted, and library order survives
+marks and escape notation are absent, empty documents are omitted, and library
+order survives
 (`test/infrastructure/literal_document_search_test.dart`).
 
 ## Transition

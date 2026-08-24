@@ -8,8 +8,10 @@ import 'package:visualmd/api/render/inline_composer.dart';
 import 'package:visualmd/api/render/reading_theme.dart';
 import 'package:visualmd/api/theme/font_metrics.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
+import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/search/search_result.dart';
+import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 import 'package:visualmd/presentation/theme/theme_palette.dart';
@@ -87,6 +89,25 @@ void main() {
     expect(rendered([const TextRun('well-known')]), 'well-known');
     expect(rendered([const TextRun('---"hello"')]), '—“hello”');
   });
+
+  testWidgets(
+    'escaping changes Markdown grammar without adding a visual signal',
+    (tester) async {
+      await makeComposer(tester);
+      final paragraph =
+          const MarkdownDocumentParser()
+                  .parse(r'\*literal\*, \"quoted\", and an ellipsis\...')
+                  .blocks
+                  .single
+              as ParagraphBlock;
+
+      expect(paragraph.content, everyElement(isA<TextRun>()));
+      expect(
+        rendered(paragraph.content),
+        '*literal*, “quoted”, and an ellipsis…',
+      );
+    },
+  );
 
   testWidgets('a match crosses marked runs without changing punctuation', (
     tester,

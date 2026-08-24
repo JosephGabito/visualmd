@@ -230,6 +230,107 @@ void main() {
     });
   });
 
+  group('backslash escapes', () {
+    test('every ASCII punctuation mark can become literal reading text', () {
+      final punctuation = String.fromCharCodes([
+        ...List.generate(0x2f - 0x21 + 1, (index) => 0x21 + index),
+        ...List.generate(0x40 - 0x3a + 1, (index) => 0x3a + index),
+        ...List.generate(0x60 - 0x5b + 1, (index) => 0x5b + index),
+        ...List.generate(0x7e - 0x7b + 1, (index) => 0x7b + index),
+      ]);
+
+      for (final codeUnit in punctuation.codeUnits) {
+        final mark = String.fromCharCode(codeUnit);
+        final paragraph = single<ParagraphBlock>('\\$mark');
+        expect(paragraph.text, mark, reason: 'U+${codeUnit.toRadixString(16)}');
+        expect(paragraph.content, [TextRun(mark)]);
+      }
+    });
+
+    test('a backslash before anything else remains authored text', () {
+      const source = r'\A \3 \→ \φ \« before\ after';
+      expect(single<ParagraphBlock>(source).text, source);
+    });
+
+    test('escaped block and inline markers lose their grammar role', () {
+      final content = parse(r'''
+\# not a heading
+
+\* not a list
+
+1\. not a list
+
+\*not emphasis\* and \`not code\`
+
+\[not a link\](destination) and \&copy;
+
+\[label]: relative/path
+
+\<span>not raw HTML\</span>
+''');
+
+      expect(content.blocks, everyElement(isA<ParagraphBlock>()));
+      expect(content.blocks.map((block) => block.text), [
+        '# not a heading',
+        '* not a list',
+        '1. not a list',
+        '*not emphasis* and `not code`',
+        '[not a link](destination) and &copy;',
+        '[label]: relative/path',
+        '<span>not raw HTML</span>',
+      ]);
+      final runs = content.blocks.whereType<ParagraphBlock>().expand(
+        (paragraph) => paragraph.content,
+      );
+      expect(runs.whereType<MarkedRun>(), isEmpty);
+      expect(runs.whereType<CodeRun>(), isEmpty);
+      expect(runs.whereType<LinkRun>(), isEmpty);
+    });
+
+    test('an escaped backslash exposes the real delimiter after it', () {
+      final paragraph = single<ParagraphBlock>(r'\\*emphasis*');
+
+      expect(paragraph.text, r'\emphasis');
+      expect(paragraph.content.first, const TextRun(r'\'));
+      expect(paragraph.content.last, isA<MarkedRun>());
+    });
+
+    test('escape boundaries do not divide one typographic phrase', () {
+      final paragraph = single<ParagraphBlock>(r'\... and \"quoted\"');
+
+      expect(paragraph.content, [const TextRun('... and "quoted"')]);
+    });
+
+    test(
+      'code keeps escapes while destinations and fence info resolve them',
+      () {
+        final inline = single<ParagraphBlock>(r'`\[\*`');
+        expect(inline.content.single, const CodeRun(r'\[\*'));
+
+        final block = single<CodeBlock>('```foo\\+bar\n\\* literal\n```');
+        expect(block.language, 'foo+bar');
+        expect(block.code, r'\* literal');
+
+        final linked =
+            single<ParagraphBlock>(r'[label](/bar\* "title\*")').content.single
+                as LinkRun;
+        expect(linked.href, '/bar*');
+        expect(linked.title, 'title*');
+      },
+    );
+
+    test('autolinks keep backslashes because they are literal regions', () {
+      final link =
+          single<ParagraphBlock>(r'<https://example.com?find=\*>')
+                  .content
+                  .single
+              as LinkRun;
+
+      expect(link.text, r'https://example.com?find=\*');
+      expect(link.href, contains('%5C*'));
+    });
+  });
+
   group('inline code', () {
     test(
       'keeps every character, including what markdown would otherwise eat',

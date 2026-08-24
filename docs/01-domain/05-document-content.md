@@ -8,9 +8,11 @@ blocks, each block a list of runs
 page is built from, and it belongs to the domain because *what a document is*
 is a domain question, even though parsing markdown is not.
 
-The model's one rule is that it carries the author's text **exactly as
-written**. A straight quote stays a straight quote here; `--` stays two
-hyphens (`lib/domain/reading/content/inline.dart`). Deciding which marks
+The model's one rule is that it carries the author's **reading text** exactly.
+Markdown delimiters and escape backslashes have already served their grammar,
+so `\*literal\*` arrives as `*literal*`; the punctuation itself is not changed.
+A straight quote stays a straight quote here and `--` stays two hyphens
+(`lib/domain/reading/content/inline.dart`). Deciding which marks
 to *set* those as is a presentation decision, made later by the
 [Inline Composer](../05-api/13-inline-composer.md). Keeping the two apart is
 what lets search, outlines and copying see the words the author typed while
@@ -41,7 +43,8 @@ Two sealed hierarchies and a container.
 **Runs** — what a line of text is made of
 (`lib/domain/reading/content/inline.dart`): `TextRun`, whose punctuation and
 internal spacing remain authored while source-formatting soft breaks have
-already become reading text, `CodeRun`
+already become reading text and backslash escapes have become their literal
+ASCII punctuation, `CodeRun`
 (verbatim, never re-set — `lib/domain/reading/content/inline.dart`), `MarkedRun` carrying one of
 `InlineMark.emphasis | strong | strikethrough` over its children (`lib/domain/reading/content/inline.dart`),
 `LinkRun` (`lib/domain/reading/content/inline.dart`), `ImageRun` (`lib/domain/reading/content/inline.dart`) and `LineBreakRun`, which is only
