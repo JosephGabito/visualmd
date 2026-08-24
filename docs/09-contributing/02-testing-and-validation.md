@@ -61,8 +61,9 @@ rules:
 - The workspace codec round-trips version one and rejects unknown fields,
   unsupported versions, and unsafe paths
   (`test/infrastructure/workspace_json_codec_test.dart:11-102`).
-- Desktop workspace replacement retains a last-good copy
-  (`test/infrastructure/desktop_workspace_files_test.dart:9-31`), while the
+- Desktop workspace tests preserve the exact save-panel path, verify the macOS
+  native-write message, and retain a last-good copy in the portable fallback
+  (`test/infrastructure/desktop_workspace_files_test.dart:9-81`), while the
   command bridge proves native File-menu selections reach typed Dart commands
   (`test/infrastructure/desktop_commands_test.dart:9-27`).
 - Registry tests ensure process handles retain durable source identities

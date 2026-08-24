@@ -109,8 +109,9 @@ depth, ignored non-Markdown, hidden folders, malformed bytes, and unknown refs.
 example.
 
 Workspace tests should cover the platform's actual write and authority
-behavior. Desktop replacement retains a last-good copy
-(`test/infrastructure/desktop_workspace_files_test.dart:9-31`), while shared
+behavior. Desktop tests keep the platform-selected path intact, exercise the
+macOS native-write message, and retain a last-good fallback copy
+(`test/infrastructure/desktop_workspace_files_test.dart:9-81`), while shared
 application tests cover transactional restoration, unavailable sources,
 standalone absorption, explicit web downloads, and reconnection
 (`test/application/workspace_use_cases_test.dart:186-596`). Native command

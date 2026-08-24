@@ -40,6 +40,12 @@ bookmarks that bracket filesystem access. The workspace binding retains an
 app-scoped bookmark locally, outside the shared JSON. Full detail in
 [macOS Sandbox](../03-infrastructure/desktop/04-macos-sandbox.md).
 
+Workspace Save As keeps the exact URL returned by `NSSavePanel`. The runner
+writes that URL with Foundation's atomic option, allowing macOS to manage the
+auxiliary file without exposing an ungranted sibling path to Dart
+(`lib/infrastructure/io/desktop_workspace_files.dart:45-65`,
+`macos/Runner/MainFlutterWindow.swift:60-84`).
+
 ## Reader files
 
 Preferences and user themes live in the app's application-support directory,
@@ -75,7 +81,7 @@ bar that doubles as a drag handle with double-click-to-zoom
 The application File menu is native AppKit chrome, inserted beside the app
 menu after AppKit has installed the menu bar. It provides New/Open/Save/Save
 As and Add Folder/Markdown with native Command shortcuts
-(`macos/Runner/MainFlutterWindow.swift:155-190`). The Flutter top bar does not
+(`macos/Runner/MainFlutterWindow.swift:188-219`). The Flutter top bar does not
 duplicate it.
 
 ## Status
@@ -83,8 +89,8 @@ duplicate it.
 Built and launched on 2026-08-24. Verified visually: the native File menu sits
 beside Edit/View/Window/Help, the Flutter top bar contains no duplicate, and
 the single-title-bar chrome keeps the traffic lights centred. Workspace codec,
-atomic replacement, source binding, and lifecycle behavior are covered by
-automated tests.
+selected-path preservation, atomic writing, source binding, and lifecycle
+behavior are covered by automated tests.
 
 Not done: code signing and notarization. The local build is suitable for
 development, but it is not ready for normal distribution because Gatekeeper may

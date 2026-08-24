@@ -52,40 +52,73 @@ class MainFlutterWindow: NSWindow {
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
     atomicFiles.setMethodCallHandler { call, result in
-      guard call.method == "replace",
-        let arguments = call.arguments as? [String: String],
-        let target = arguments["target"],
-        let temporary = arguments["temporary"],
-        let backup = arguments["backup"]
-      else {
-        result(FlutterMethodNotImplemented)
+      guard let arguments = call.arguments as? [String: String] else {
+        result(FlutterError(code: "argument", message: "File data is required.", details: nil))
         return
       }
-      do {
-        let manager = FileManager.default
-        let targetURL = URL(fileURLWithPath: target)
-        let temporaryURL = URL(fileURLWithPath: temporary)
-        let backupURL = URL(fileURLWithPath: backup)
-        if manager.fileExists(atPath: backup) {
-          try manager.removeItem(at: backupURL)
+
+      switch call.method {
+      case "writeSelected":
+        guard let target = arguments["target"], let contents = arguments["contents"] else {
+          result(
+            FlutterError(
+              code: "argument", message: "A target and contents are required.", details: nil))
+          return
         }
-        if manager.fileExists(atPath: target) {
-          _ = try manager.replaceItemAt(
-            targetURL,
-            withItemAt: temporaryURL,
-            backupItemName: backupURL.lastPathComponent
+        do {
+          // NSSavePanel extends the sandbox to its exact URL. Foundation owns
+          // the auxiliary file used by .atomic, so no ungranted sibling path
+          // crosses the Flutter boundary.
+          try Data(contents.utf8).write(
+            to: URL(fileURLWithPath: target),
+            options: .atomic
           )
-        } else {
-          try manager.moveItem(at: temporaryURL, to: targetURL)
+          result(nil)
+        } catch {
+          result(
+            FlutterError(
+              code: "atomic-write",
+              message: error.localizedDescription,
+              details: nil
+            ))
         }
-        result(nil)
-      } catch {
-        result(
-          FlutterError(
-            code: "atomic-replace",
-            message: error.localizedDescription,
-            details: nil
-          ))
+      case "replace":
+        guard
+          let target = arguments["target"],
+          let temporary = arguments["temporary"],
+          let backup = arguments["backup"]
+        else {
+          result(FlutterError(code: "argument", message: "File paths are required.", details: nil))
+          return
+        }
+        do {
+          let manager = FileManager.default
+          let targetURL = URL(fileURLWithPath: target)
+          let temporaryURL = URL(fileURLWithPath: temporary)
+          let backupURL = URL(fileURLWithPath: backup)
+          if manager.fileExists(atPath: backup) {
+            try manager.removeItem(at: backupURL)
+          }
+          if manager.fileExists(atPath: target) {
+            _ = try manager.replaceItemAt(
+              targetURL,
+              withItemAt: temporaryURL,
+              backupItemName: backupURL.lastPathComponent
+            )
+          } else {
+            try manager.moveItem(at: temporaryURL, to: targetURL)
+          }
+          result(nil)
+        } catch {
+          result(
+            FlutterError(
+              code: "atomic-replace",
+              message: error.localizedDescription,
+              details: nil
+            ))
+        }
+      default:
+        result(FlutterMethodNotImplemented)
       }
     }
 
