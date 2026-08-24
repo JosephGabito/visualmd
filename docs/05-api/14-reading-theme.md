@@ -93,10 +93,10 @@ mix toward ink that meets the threshold.
   not bound by the measure, because a line of code is as long as it is, but
   they still belong to the same page.
 
-**The rhythm.** Every gap is spent in whole beats, and a strut holds every
-line box to one so an inline code span cannot push a line off it
-(`lib/api/render/reading_theme.dart`, `lib/api/render/reading_theme.dart`). The rule and its
-consequences are [Vertical Rhythm](../04-presentation/11-vertical-rhythm.md).
+**The rhythm.** Displayed departures return in whole beats; consecutive spaced
+paragraphs use a half-beat and indented paragraphs use none. A strut holds every
+line box to one so inline code cannot push it off the grid
+(`lib/api/render/reading_theme.dart`); see [Vertical Rhythm](../04-presentation/11-vertical-rhythm.md).
 
 ## Inputs and outputs
 
@@ -109,8 +109,8 @@ Out: `body`, `code`, `quote`, `marker`, `tableHead`, `tableBody`, `headings`
 (`lib/api/render/reading_theme.dart`), the role-aware `linkFor` and
 inline-code rules (`lib/api/render/reading_theme.dart`), `leading`,
 `renderedBase`, rendered `em` and `indent`, the two widths, `strutFor`, and the
-rhythm members `baseline`, `snap`, `blockGap`, `headingSpaceAfter` and
-`gapBefore` (`lib/api/render/reading_theme.dart`).
+rhythm members `baseline`, `snap`, `blockGap` and the single external-spacing
+contract `spaceAfter(current, next)` (`lib/api/render/reading_theme.dart`).
 
 ## Events
 

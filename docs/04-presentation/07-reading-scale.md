@@ -64,7 +64,7 @@ again, so a table stays a table
 
 | Marking | What the page does | Convention |
 |---------|--------------------|------------|
-| `spaced` | A gap between paragraphs, no indent | The screen's (`lib/presentation/theme/reading_scale.dart`) |
+| `spaced` | Half a line between paragraphs, no indent | The screen's, using Lupton's precise paragraph spacing rather than a blank line (`lib/api/render/reading_theme.dart`) |
 | `indented` | An indented first line, no gap | The book's — wastes no vertical room and keeps a column solid (`lib/presentation/theme/reading_scale.dart`) |
 
 A space and an indent are the same signal said twice

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart' hide TableCell;
 import 'package:flutter/rendering.dart';
 
@@ -25,17 +23,6 @@ abstract final class ParagraphRules {
   /// would be the same signal said twice.
   static bool indents(Block? previous, ParagraphMarking marking) =>
       marking == ParagraphMarking.indented && previous is ParagraphBlock;
-
-  /// An indented column is solid. A gap and an indent are the same signal
-  /// said twice, and a page that says it twice is a handbill.
-  static bool separates(
-    Block? previous,
-    Block block,
-    ParagraphMarking marking,
-  ) =>
-      !(marking == ParagraphMarking.indented &&
-          previous is ParagraphBlock &&
-          block is ParagraphBlock);
 }
 
 /// Sets a document on the page.
@@ -49,8 +36,8 @@ abstract final class ParagraphRules {
 ///   length and may not be re-wrapped, so it is given more room and scrolls
 ///   when it still does not fit.
 /// * **The vertical rhythm is a rule, not a series of paddings.** Every gap
-///   is cut from one line of body text, and the space above a heading
-///   belongs to the heading rather than to the paragraph above it.
+///   is cut from one line of body text and emitted after the block that owns
+///   it. Nothing adds external space above itself.
 /// * **Paragraphs are marked by one signal, not two.** See [ParagraphRules].
 class DocumentView extends StatelessWidget {
   final DocumentContent content;
@@ -113,9 +100,11 @@ class DocumentView extends StatelessWidget {
       };
 }
 
-/// Sets a run of blocks by the reader's paragraph-marking choice. The same
-/// rules apply at every depth, so a quotation or list item does not quietly
-/// switch back to spaced paragraphs when the reader chose an indented page.
+/// Sets a run of blocks from top to bottom.
+///
+/// Every external gap is emitted after the block that owns it. The same rule
+/// applies at every depth, so a quotation or list item cannot introduce a
+/// second spacing convention of its own.
 class _BlockSequence extends StatelessWidget {
   final List<Block> blocks;
   final ReadingTheme theme;
@@ -145,13 +134,8 @@ class _BlockSequence extends StatelessWidget {
     for (var i = 0; i < blocks.length; i++) {
       final block = blocks[i];
       final previous = i == 0 ? null : blocks[i - 1];
-      if (i > 0 && ParagraphRules.separates(previous, block, marking)) {
-        children.add(
-          SizedBox(
-            height: theme.gapBefore(afterHeading: previous is HeadingBlock),
-          ),
-        );
-      }
+      final next = i + 1 < blocks.length ? blocks[i + 1] : null;
+      final followingSpace = theme.spaceAfter(block, next);
 
       final view = _BlockView(
         block: block,
@@ -161,6 +145,7 @@ class _BlockSequence extends StatelessWidget {
         matchKeys: matchKeys,
         offset: offset,
         indent: ParagraphRules.indents(previous, marking) ? theme.indent : 0,
+        followingSpace: followingSpace,
       );
       final width = widthFor?.call(block);
       children.add(
@@ -171,6 +156,9 @@ class _BlockSequence extends StatelessWidget {
                 child: SizedBox(width: width, child: view),
               ),
       );
+      if (followingSpace > 0) {
+        children.add(SizedBox(height: followingSpace));
+      }
       offset += block.text.length + separatorLength;
     }
     return Column(
@@ -187,6 +175,7 @@ class _BlockView extends StatelessWidget {
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
+  final double followingSpace;
 
   /// The first-line indent this paragraph is set with; 0 for every other kind
   /// of block, and for a paragraph that opens a document or a section.
@@ -199,6 +188,7 @@ class _BlockView extends StatelessWidget {
     required this.keys,
     required this.matchKeys,
     required this.offset,
+    required this.followingSpace,
     this.indent = 0,
   });
 
@@ -224,7 +214,7 @@ class _BlockView extends StatelessWidget {
             key: keys.putIfAbsent(anchor, GlobalKey.new),
             child: _RhythmicHeading(
               beat: theme.baseline,
-              spaceAfter: theme.headingSpaceAfter,
+              followingSpace: followingSpace,
               child: Text.rich(
                 TextSpan(
                   children: composer.compose(
@@ -331,25 +321,25 @@ class _BlockView extends StatelessWidget {
   }
 }
 
-/// Lets display lines use their natural leading, then returns the completed
-/// heading to the running-text grid.
+/// Lets display lines use their natural leading, then reconciles the completed
+/// heading with the running-text grid.
 ///
-/// The unused fraction of the final beat sits above the heading. The fixed
-/// half-beat below it keeps the heading attached to the content it introduces;
-/// the following block therefore needs no separate gap.
+/// [_BlockSequence] owns the external [followingSpace]. This render object
+/// accounts for that known outgoing gap and places only the remaining rhythm
+/// correction before the heading. It therefore owns no inter-block spacing.
 final class _RhythmicHeading extends SingleChildRenderObjectWidget {
   final double beat;
-  final double spaceAfter;
+  final double followingSpace;
 
   const _RhythmicHeading({
     required this.beat,
-    required this.spaceAfter,
+    required this.followingSpace,
     required super.child,
   });
 
   @override
   RenderObject createRenderObject(BuildContext context) =>
-      _RenderRhythmicHeading(beat, spaceAfter);
+      _RenderRhythmicHeading(beat, followingSpace);
 
   @override
   void updateRenderObject(
@@ -358,12 +348,12 @@ final class _RhythmicHeading extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..beat = beat
-      ..spaceAfter = spaceAfter;
+      ..followingSpace = followingSpace;
   }
 }
 
 final class _RenderRhythmicHeading extends RenderShiftedBox {
-  _RenderRhythmicHeading(this._beat, this._spaceAfter, [RenderBox? child])
+  _RenderRhythmicHeading(this._beat, this._followingSpace, [RenderBox? child])
     : super(child);
 
   double _beat;
@@ -374,26 +364,26 @@ final class _RenderRhythmicHeading extends RenderShiftedBox {
     markNeedsLayout();
   }
 
-  double _spaceAfter;
-  double get spaceAfter => _spaceAfter;
-  set spaceAfter(double value) {
-    if (_spaceAfter == value) return;
-    _spaceAfter = value;
+  double _followingSpace;
+  double get followingSpace => _followingSpace;
+  set followingSpace(double value) {
+    if (_followingSpace == value) return;
+    _followingSpace = value;
     markNeedsLayout();
   }
 
   BoxConstraints _childConstraints(BoxConstraints constraints) =>
       constraints.copyWith(minHeight: 0, maxHeight: double.infinity);
 
-  double _snappedHeight(double childHeight) =>
-      ((childHeight + spaceAfter) / beat).ceil() * beat;
+  double _reconciledHeight(double childHeight) =>
+      ((childHeight + followingSpace) / beat).ceil() * beat - followingSpace;
 
   @override
   Size computeDryLayout(BoxConstraints constraints) {
     final childSize = child?.getDryLayout(_childConstraints(constraints));
     if (childSize == null) return constraints.smallest;
     return constraints.constrain(
-      Size(childSize.width, _snappedHeight(childSize.height)),
+      Size(childSize.width, _reconciledHeight(childSize.height)),
     );
   }
 
@@ -407,13 +397,11 @@ final class _RenderRhythmicHeading extends RenderShiftedBox {
 
     child.layout(_childConstraints(constraints), parentUsesSize: true);
     size = constraints.constrain(
-      Size(child.size.width, _snappedHeight(child.size.height)),
+      Size(child.size.width, _reconciledHeight(child.size.height)),
     );
 
-    final padding = math.max(0.0, size.height - child.size.height);
-    final trailing = math.min(spaceAfter, padding);
     final childParentData = child.parentData! as BoxParentData;
-    childParentData.offset = Offset(0, padding - trailing);
+    childParentData.offset = Offset(0, size.height - child.size.height);
   }
 }
 
@@ -495,7 +483,6 @@ class _List extends StatelessWidget {
     final children = <Widget>[];
     var itemOffset = offset;
     for (var i = 0; i < list.items.length; i++) {
-      if (i > 0) children.add(SizedBox(height: between));
       children.add(
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,6 +505,9 @@ class _List extends StatelessWidget {
           ],
         ),
       );
+      if (i + 1 < list.items.length && between > 0) {
+        children.add(SizedBox(height: between));
+      }
       itemOffset += list.items[i].text.length + 1;
     }
     return Column(
@@ -734,6 +724,11 @@ class Paragraph extends StatelessWidget {
 
     final flow = Text.rich(
       strutStyle: strut,
+      // Running prose follows the reading direction: flush at the edge where
+      // the eye begins each line, ragged at the edge where it leaves. Unlike
+      // justification, this never stretches word spaces into rivers.
+      textAlign: TextAlign.start,
+      softWrap: true,
       TextSpan(
         children: [
           if (indent > 0)

@@ -41,6 +41,7 @@ void main() {
     WidgetTester tester,
     List<Block> blocks, {
     ParagraphMarking marking = ParagraphMarking.spaced,
+    double width = 900,
   }) async {
     ReadingTheme? theme;
     await tester.pumpWidget(
@@ -48,7 +49,7 @@ void main() {
         theme: libraryTheme(BuiltInThemes.paper),
         home: Scaffold(
           body: SizedBox(
-            width: 900,
+            width: width,
             child: Builder(
               builder: (context) {
                 theme = ReadingTheme.of(
@@ -104,36 +105,60 @@ void main() {
       );
     });
 
-    test(
-      'an indented column is solid: the indent and a gap are one signal twice',
-      () {
-        expect(
-          ParagraphRules.separates(
-            para('a'),
-            para('b'),
-            ParagraphMarking.indented,
-          ),
-          isFalse,
-        );
-        expect(
-          ParagraphRules.separates(
-            para('a'),
-            para('b'),
-            ParagraphMarking.spaced,
-          ),
-          isTrue,
-        );
-        expect(
-          ParagraphRules.separates(
-            para('a'),
-            heading,
-            ParagraphMarking.indented,
-          ),
-          isTrue,
-          reason: 'a heading still needs its air',
-        );
-      },
+    testWidgets('every external gap belongs to the block before it', (
+      tester,
+    ) async {
+      final first = para('a');
+      final second = para('b');
+      final indented = await pump(tester, [
+        first,
+        second,
+      ], marking: ParagraphMarking.indented);
+
+      expect(
+        indented!.spaceAfter(first, second),
+        0,
+        reason: 'an indent and a gap would say the same thing twice',
+      );
+      expect(
+        indented.spaceAfter(first, heading),
+        indented.blockGap,
+        reason: 'a heading still needs separation from the prose before it',
+      );
+      expect(
+        indented.spaceAfter(heading, second),
+        indented.baseline / 2,
+        reason: 'a heading binds more closely to what it introduces',
+      );
+      expect(
+        indented.spaceAfter(second, null),
+        0,
+        reason: 'the final block must not leave an external trailing gap',
+      );
+
+      final spaced = await pump(tester, [first, second]);
+      expect(
+        spaced!.spaceAfter(first, second),
+        spaced.baseline / 2,
+        reason: 'a precise paragraph gap should not skip a full blank line',
+      );
+    });
+  });
+
+  testWidgets('one paragraph begins flush and leaves no trailing gap', (
+    tester,
+  ) async {
+    final block = para(
+      'A single paragraph follows the reading direction without inventing another edge.',
     );
+    final theme = await pump(tester, [block]);
+    final paragraph = tester.widget<Paragraph>(find.byType(Paragraph));
+    final text = tester.widget<Text>(find.textContaining('single paragraph'));
+
+    expect(paragraph.indent, 0);
+    expect(text.textAlign, TextAlign.start);
+    expect(text.softWrap, isTrue);
+    expect(theme!.spaceAfter(block, null), 0);
   });
 
   testWidgets('indented paragraphs start further in, except the first', (
@@ -174,7 +199,7 @@ void main() {
         tester.getTopLeft(find.textContaining('Second')).dy -
         tester.getBottomLeft(find.textContaining('First')).dy;
 
-    await pump(tester, [
+    final spacedTheme = await pump(tester, [
       para('First paragraph here.'),
       para('Second paragraph here.'),
     ]);
@@ -186,8 +211,32 @@ void main() {
     ], marking: ParagraphMarking.indented);
     final indented = gap(tester);
 
-    expect(indented, lessThan(spaced));
+    expect(spaced, closeTo(spacedTheme!.baseline / 2, 0.01));
     expect(indented, lessThan(4), reason: 'the column should be solid');
+  });
+
+  testWidgets('long prose reflows inside the measure and stays on its beat', (
+    tester,
+  ) async {
+    const prose =
+        'Long-form technical prose carries ordinary sentences alongside identifiers, version numbers, parenthetical qualifications, and links described in words. A reader may narrow the window or enlarge the shelf, but the paragraph must recompose into reachable lines instead of preserving accidental source wrapping or creating horizontal page overflow. Its line spacing remains deliberate from the first line to the last.';
+    final block = para(prose);
+
+    final wideTheme = await pump(tester, [block], width: 760);
+    final wide = tester.getSize(find.textContaining('Long-form technical'));
+
+    final narrowTheme = await pump(tester, [block], width: 340);
+    final narrow = tester.getSize(find.textContaining('Long-form technical'));
+
+    expect(narrow.width, lessThanOrEqualTo(340));
+    expect(narrow.height, greaterThan(wide.height));
+    expect(
+      narrow.height / narrowTheme!.baseline,
+      closeTo((narrow.height / narrowTheme.baseline).roundToDouble(), 0.01),
+      reason: 'every recomposed line should keep the measured leading',
+    );
+    expect(wideTheme!.proseWidth(760), lessThanOrEqualTo(760));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('paragraph marking follows prose into quotes and list items', (
@@ -212,6 +261,44 @@ void main() {
       0,
       theme.indent,
     ]);
+
+    double gap(String first, String second) =>
+        tester.getTopLeft(find.textContaining(second)).dy -
+        tester.getBottomLeft(find.textContaining(first)).dy;
+    expect(gap('Quote first.', 'Quote second.'), lessThan(4));
+    expect(gap('Item first.', 'Item second.'), lessThan(4));
+  });
+
+  testWidgets('the same forward gap is spent in every nested block sequence', (
+    tester,
+  ) async {
+    final theme = await pump(tester, [
+      para('Top first.'),
+      para('Top second.'),
+      QuoteBlock([para('Quote first.'), para('Quote second.')]),
+      ListBlock(
+        ordered: false,
+        items: [
+          ListItem([para('Item first.'), para('Item second.')]),
+        ],
+      ),
+    ]);
+
+    double gap(String first, String second) =>
+        tester.getTopLeft(find.text(second)).dy -
+        tester.getBottomLeft(find.text(first)).dy;
+
+    for (final pair in [
+      ('Top first.', 'Top second.'),
+      ('Quote first.', 'Quote second.'),
+      ('Item first.', 'Item second.'),
+    ]) {
+      expect(
+        gap(pair.$1, pair.$2),
+        closeTo(theme!.baseline / 2, 0.01),
+        reason: '${pair.$1} owns the gap after it',
+      );
+    }
   });
 
   group('hanging punctuation', () {

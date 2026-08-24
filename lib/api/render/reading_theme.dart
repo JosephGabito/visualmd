@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../domain/reading/content/block.dart';
 import '../theme/reading_measure.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../../presentation/theme/theme_palette.dart';
@@ -280,19 +281,25 @@ final class ReadingTheme {
   /// The gap between ordinary blocks: one beat — a blank line, exactly.
   double get blockGap => baseline;
 
-  /// The quiet space binding a heading to the content it introduces.
+  /// The only external vertical space between document blocks.
   ///
-  /// It belongs inside the heading's reconciled box. That lets the complete
-  /// box consume whole beats while its own lines keep their natural leading.
-  double get headingSpaceAfter => baseline / 2;
-
-  /// The gap between two blocks, given what sits either side of them.
-  ///
-  /// Space above a heading belongs to the heading rather than to the text
-  /// above it — unless the thing above it is another heading, in which case
-  /// there is no text to be separated from and the pair should read as one
-  /// unit. A section title and its first subheading belong together.
-  double gapBefore({bool afterHeading = false}) => afterHeading ? 0 : blockGap;
+  /// A sequence spends this *after* [current], never before [next]. That gives
+  /// every gap one owner and lets the same top-down rule work in the document,
+  /// quotations and list items. The pair still matters: headings bind to what
+  /// follows with half a beat; spaced paragraphs use that same quiet interval
+  /// rather than skipping a wasteful full line; indented paragraphs form a
+  /// solid column. The final block leaves no trailing space.
+  double spaceAfter(Block current, Block? next) {
+    if (next == null) return 0;
+    if (current is HeadingBlock) return baseline / 2;
+    if (current is ParagraphBlock && next is ParagraphBlock) {
+      return switch (scale.marking) {
+        ParagraphMarking.spaced => baseline / 2,
+        ParagraphMarking.indented => 0,
+      };
+    }
+    return blockGap;
+  }
 }
 
 /// The strongest theme colour that still meets ordinary-text contrast.

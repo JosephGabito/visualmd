@@ -14,9 +14,9 @@ widget, because the central rules cannot be expressed in a style sheet
 - **Prose, code and tables want different overflow rules.** Prose reflows;
   code keeps its lines; tables keep short fields natural and long cells
   readable. Code and tables scroll locally when they do not fit.
-- **The vertical rhythm is a rule, not a series of paddings.** Every gap is a
-  whole number of beats, and the space above a heading belongs to the heading
-  rather than to the paragraph above it. See
+- **The vertical rhythm is a rule, not a series of paddings.** Every external
+  gap is emitted after the block that owns it; nothing adds space above itself.
+  See
   [Vertical Rhythm](../04-presentation/11-vertical-rhythm.md).
 - **Paragraphs use one signal.** Indented prose is solid; spaced prose is
   flush. The same sequence rule is applied recursively inside quotations and
@@ -31,10 +31,11 @@ code grounds span their column and prose wraps at its measure
 width; everything else takes prose (`lib/api/render/document_view.dart`).
 
 `_BlockSequence` owns order-sensitive gaps and indents at every depth
-(`lib/api/render/document_view.dart`). Its `theme.gapBefore(…)` spends
-one beat between ordinary blocks and none after a heading, because the
-heading's own reconciled box already carries its quieter half-beat below
-(`lib/api/render/document_view.dart`).
+(`lib/api/render/document_view.dart`). After rendering the current block it
+spends `theme.spaceAfter(current, next)`, then advances. The final block spends
+nothing. Quotations and list items recurse through the same sequence, so there
+is one spacing direction and one owner everywhere
+(`lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart`).
 
 ### The paragraph rules
 
@@ -45,26 +46,26 @@ page saying the same thing twice:
 | Rule | Answer | Why |
 |------|--------|-----|
 | `indents` | Only when the previous block is a paragraph (`lib/api/render/document_view.dart`) | An indent signals separation. The paragraph opening a document or a section has nothing behind it; one resuming after a list, quotation or code block is already separated by that block's space |
-| `separates` | No gap between consecutive paragraphs when indented (`lib/api/render/document_view.dart`) | An indented column is solid. A gap *and* an indent would repeat the same separation signal |
+| `spaceAfter` | Half a beat for spaced paragraphs; none for indented ones (`lib/api/render/reading_theme.dart`) | A full blank line is too open; a gap *and* an indent would repeat the same signal |
 
-The marking comes from the scale and the sequence passes each block its indent;
-the block does not work out whether it is indented (`lib/api/render/document_view.dart`).
+The scale supplies the marking; the sequence passes each block its indent
+(`lib/api/render/document_view.dart`).
 
 Each block type is built by `_BlockView`
 (`lib/api/render/document_view.dart`):
 
 - **Paragraph** — composed with the theme in hand, which inside a quotation is
   the quoting one, handed its indent, and given the theme's strut so a code span
-  cannot push a line off the beat
-  (`lib/api/render/document_view.dart`). Setting it is
+  cannot push a line off the beat. It sets flush-start/ragged-end and reflows
+  at the measured prose width (`lib/api/render/document_view.dart`). Setting it is
   [Paragraph](15-paragraph.md)'s job.
 - **Heading** — wrapped in a `KeyedSubtree` keyed by anchor so the outline can
   bring it into view, then handed to `_RhythmicHeading`. Its lines keep their
-  natural display leading; after shaping, the render object adds half a beat
-  below and only enough above to make the complete box consume whole beats
-  (`lib/api/render/document_view.dart`, `lib/api/render/document_view.dart`). There is no forced
-  strut, so a taller fallback script may establish the height it actually
-  needs.
+  natural display leading. The sequence owns its outgoing half-beat; after
+  shaping, the render object accounts for that known space and keeps only the
+  grid correction inside the heading. There is no forced strut, so a taller
+  fallback script may establish the height it actually needs
+  (`lib/api/render/document_view.dart`).
 - **Code** — a [`ReadableCodeBlock`](11-code-block.md) with half a beat of
   padding above and below and **no border**: its own ground already says what
   it is, and a border is both a second signal and a height that breaks the grid
@@ -136,5 +137,4 @@ task lists and quotation treatment.
 
 Everything builds at once inside one scroll view, which keeps `ensureVisible`
 exact but is the first thing to revisit for very long documents. Wider code
-and tables whose content-driven height is still off the beat remain in the
-[backlog](../07-roadmap/02-backlog.md).
+and off-beat tables remain in the [backlog](../07-roadmap/02-backlog.md).

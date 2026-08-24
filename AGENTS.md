@@ -139,7 +139,7 @@ plausible.
    .fractionFor(mark)` — a rule with a name is a rule that can be found,
    questioned and changed on purpose.
 5. **Write a test that states the invariant in prose.** *"The running text
-   returns on the beat after every departure"* is a test. *"gapBefore returns
+   returns on the beat after every departure"* is a test. *"spaceAfter returns
    34"* is a restatement of the implementation and guards nothing.
 6. **Render it and look.** Measurement proves the rule holds; only looking
    catches the thing you did not think to measure.
@@ -173,7 +173,7 @@ Each value below has a recorded derivation and a corresponding test.
 | **Size** | A size of letters. `fontSize = size × 0.55 / xHeight(face)`, x-height read from the font's `OS/2` table. Alegreya's is 0.452, so an "18" renders at 21.9px; Literata's is 0.507, so 19.5px. |
 | **Measure** | 66 characters, from the mean advance of the face actually in use (`ReadingMeasure`), not a fixed pixel width. A wider face gets a wider column, not a longer line. |
 | **Leading** | `cap + descender + 1.26 × x-height`, per face. Only the 1.26 was chosen by reading — and it is the value that reproduces the 1.65 the reader had already settled on for Literata, which is why it is trusted elsewhere. Alegreya wants *less* leading than Literata, because Literata's ascenders are unusually tall. |
-| **Vertical rhythm** | Bringhurst: the space taken by any departure from the running text comes to a whole number of body lines. Gaps are whole beats; heading boxes round up; a code block is *n+1* beats; a strut stops an inline code span pushing a line off the beat. |
+| **Vertical rhythm** | Bringhurst: the space taken by any departure from the running text comes to a whole number of body lines. External gaps are forward-owned by the preceding block through `spaceAfter(current, next)`; Lupton's spaced paragraphs use a half-beat rather than a wasteful blank line; heading boxes round up; a code block is *n+1* beats; a strut stops an inline code span pushing a line off the beat. |
 | **Hierarchy** | Size, **one** weight, and tone. Tone is a distance from the running text toward ink or away from it — never a lightness, or it inverts on a dark page. The body is never dimmed: contrast is what legibility rests on. |
 | **Detail** | Hanging punctuation by each mark's own advance (quotes whole, dashes half); widow binding; old-style figures in prose and lining tabular in tables; a slashed zero in code; a little extra tracking on dark grounds. |
 
