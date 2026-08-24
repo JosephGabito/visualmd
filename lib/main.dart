@@ -228,6 +228,8 @@ Future<void> main() async {
         controller.openWorkspace();
       case PlatformCommand.openReaderSources:
         openReaderSources?.call();
+      case PlatformCommand.openSampleLibrary:
+        controller.openSampleLibrary();
       case PlatformCommand.saveWorkspace:
         controller.saveWorkspace();
       case PlatformCommand.saveWorkspaceAs:

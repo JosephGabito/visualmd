@@ -87,9 +87,10 @@ resizable down to the smaller minimum above
 The application File menu is native AppKit chrome, inserted beside the app
 menu after AppKit has installed the menu bar. Its Command-O Open panel accepts
 folders and Markdown files in one multi-selection operation; Command-Shift-O
-opens a workspace instead. New, Save, Save As, Add Folder, and Add Markdown
-remain explicit actions (`macos/Runner/MainFlutterWindow.swift:231-266`). The
-Flutter top bar does not duplicate the menu.
+opens a workspace, while Command-Option-O opens the bundled sample library.
+New, Save, Save As, Add Folder, and Add Markdown remain explicit actions
+(`macos/Runner/MainFlutterWindow.swift:231-271`). The Flutter top bar does not
+duplicate the menu.
 
 ## Status
 

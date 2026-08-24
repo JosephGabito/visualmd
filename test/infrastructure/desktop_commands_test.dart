@@ -43,4 +43,20 @@ void main() {
       expect(await received, PlatformCommand.openReaderSources);
     },
   );
+
+  test('the native sample item reaches its distinct command', () async {
+    final commands = DesktopCommands();
+    final received = commands.stream.first;
+
+    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .handlePlatformMessage(
+          'com.visualmd.visualmd/commands',
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('openSampleLibrary'),
+          ),
+          (_) {},
+        );
+
+    expect(await received, PlatformCommand.openSampleLibrary);
+  });
 }

@@ -16,6 +16,7 @@ final class DesktopCommands {
         'newWorkspace' => PlatformCommand.newWorkspace,
         'openWorkspace' => PlatformCommand.openWorkspace,
         'openReaderSources' => PlatformCommand.openReaderSources,
+        'openSampleLibrary' => PlatformCommand.openSampleLibrary,
         'saveWorkspace' => PlatformCommand.saveWorkspace,
         'saveWorkspaceAs' => PlatformCommand.saveWorkspaceAs,
         'addFolder' => PlatformCommand.addFolder,

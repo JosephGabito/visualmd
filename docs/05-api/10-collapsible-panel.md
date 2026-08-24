@@ -71,7 +71,7 @@ dispose. When the value reaches 0 the subtree is dropped entirely.
   the value currently is, so a fast double-toggle reverses smoothly instead of
   jumping.
 - The panel's contents keep their layout while leaving, which
-  `test/presentation/reader_chrome_test.dart:90-101` guards by measuring the
+  `test/presentation/reader_chrome_test.dart:406-421` guards by measuring the
   child's width partway through the animation.
 
 ## Transition

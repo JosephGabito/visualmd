@@ -68,8 +68,8 @@ next larger and next smaller values, and increase/decrease actions
 
 Widget tests drag both physical seams, exercise keyboard movement and
 double-click reset, and verify compact mode contains no handle
-(`test/presentation/reader_chrome_test.dart:235-287`,
-`test/presentation/reader_chrome_test.dart:309-319`).
+(`test/presentation/reader_chrome_test.dart:483-525`,
+`test/presentation/reader_chrome_test.dart:573-595`).
 
 ## Transition
 

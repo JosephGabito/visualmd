@@ -17,10 +17,10 @@ access.
 | [Sample Library](02-sample-library.md) | The bundled “Welcome” folder available on every platform | `lib/infrastructure/memory/sample_folder_scanner.dart:5` |
 
 The composition root shares one `InMemoryLibraryRepository` across the folder
-mutation use cases and `ReadDocument` (`lib/main.dart:79-106`). It also places
+mutation use cases and `ReadDocument` (`lib/main.dart:60-121`). It also places
 `SampleFolderScanner` first in the routing list, so the sample's constant
 reference is handled before the active platform scanner is consulted
-(`lib/main.dart:47-60`).
+(`lib/main.dart:49-63`).
 
 | Adapter | Application port | Declaration |
 |---------|------------------|-------------|

@@ -44,12 +44,12 @@ wraps the bar in `window_manager`'s `DragToMoveArea` (a native `performDrag`)
 inside a `GestureDetector` whose double-tap toggles `maximize`/`unmaximize`,
 matching the native title-bar gesture; elsewhere it returns the child
 untouched because the system title bar is still there
-(`lib/infrastructure/platform/platform_io.dart:99-109`).
+(`lib/infrastructure/platform/platform_io.dart:118-128`).
 
 **API.** `VisualMdApp` receives `topBar` and `windowDragRegion` from `main.dart`
-(`lib/main.dart:247-255`) and passes them to `ReaderScreen`, which sizes and
+(`lib/main.dart:268-278`) and passes them to `ReaderScreen`, which sizes and
 insets the bar and applies the wrapper
-(`lib/api/screens/reader_screen.dart:511-514`). Platform checks stay out of the
+(`lib/api/screens/reader_screen.dart:39-46`). Platform checks stay out of the
 UI. See [Shell](../../05-api/02-shell.md).
 
 ## Inputs and outputs

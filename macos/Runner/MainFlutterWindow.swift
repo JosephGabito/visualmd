@@ -12,6 +12,7 @@ private final class NativeFileMenuController: NSObject {
   @objc func newWorkspace() { channel.invokeMethod("newWorkspace", arguments: nil) }
   @objc func openReaderSources() { channel.invokeMethod("openReaderSources", arguments: nil) }
   @objc func openWorkspace() { channel.invokeMethod("openWorkspace", arguments: nil) }
+  @objc func openSampleLibrary() { channel.invokeMethod("openSampleLibrary", arguments: nil) }
   @objc func saveWorkspace() { channel.invokeMethod("saveWorkspace", arguments: nil) }
   @objc func saveWorkspaceAs() { channel.invokeMethod("saveWorkspaceAs", arguments: nil) }
   @objc func addFolder() { channel.invokeMethod("addFolder", arguments: nil) }
@@ -247,6 +248,10 @@ class MainFlutterWindow: NSWindow {
       item(
         "Open Workspace…", key: "o", modifiers: [.command, .shift],
         action: #selector(NativeFileMenuController.openWorkspace), target: controller))
+    submenu.addItem(
+      item(
+        "Open Sample Library", key: "o", modifiers: [.command, .option],
+        action: #selector(NativeFileMenuController.openSampleLibrary), target: controller))
     submenu.addItem(.separator())
     submenu.addItem(
       item(

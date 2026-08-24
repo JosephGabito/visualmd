@@ -178,6 +178,24 @@ void main() {
   );
 
   test(
+    'the sample command opens its existing root without duplicating it',
+    () async {
+      await controller.addFolder(alpha);
+      await controller.addFolder(beta);
+      expect(controller.reading?.document.id, DocumentId(betaId, 'README.md'));
+
+      await controller.openSampleLibrary();
+      await controller.openSampleLibrary();
+
+      expect(controller.library!.roots.map((root) => root.id), [
+        alphaId,
+        betaId,
+      ]);
+      expect(controller.reading?.document.id, DocumentId(alphaId, 'README.md'));
+    },
+  );
+
+  test(
     'refresh keeps a surviving selection and replaces its content',
     () async {
       await controller.addFolder(alpha);

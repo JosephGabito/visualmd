@@ -28,21 +28,22 @@ platform's drop region (`lib/api/app.dart:62-89`).
 Wide windows place those areas in a row. Below 1180 logical pixels, the page
 keeps the full window and one side panel may overlay it at a time
 (`lib/api/screens/reader_screen.dart:193-220`,
-`lib/api/screens/reader_screen.dart:538-559`).
+`lib/api/screens/reader_screen.dart:595-616`).
 
 ### Shortcuts and search
 
 One autofocus shortcut scope provides Command bindings on macOS and Control
 bindings elsewhere. It covers shelf and outline visibility, document and
-library search, match navigation, text size, and New/Open/Save/Save As
-(`lib/api/screens/reader_screen.dart:223-300`). Native File-menu commands reach
+library search, match navigation, text size, workspace actions, source Open,
+and the sample library (`lib/api/screens/reader_screen.dart:251-351`). Native File-menu commands reach
 the same controller methods through the composition root; see
 [Workspace Actions](21-workspace-actions.md).
 
 Current-document search places [Search](17-search.md)'s find bar over the page.
 Library search temporarily replaces the shelf contents, while selecting a
 result returns to the open document with that occurrence active
-(`lib/api/screens/reader_screen.dart:354-439`).
+(`lib/api/screens/reader_screen.dart:406-449`,
+`lib/api/screens/reader_screen.dart:461-471`).
 
 ### Panels and reading measure
 
@@ -55,21 +56,21 @@ On wide windows, a [Panel Resize Handle](19-panel-resize-handle.md) sits at each
 inner edge. The shell asks [Panel Widths](18-panel-widths.md) to fit both
 preferences around the measured prose width plus its gutters, so side
 furniture yields before the reading measure
-(`lib/api/screens/reader_screen.dart:315-352`,
-`lib/api/screens/reader_screen.dart:399-503`). Compact overlays keep the same
+(`lib/api/screens/reader_screen.dart:367-404`,
+`lib/api/screens/reader_screen.dart:451-556`). Compact overlays keep the same
 preferences but have no resize seam.
 
 The shelf receives both the projected `Library` and durable workspace state.
 That lets it keep unavailable sources in their saved positions with reconnect
 and remove actions while ordinary folder and document rows remain domain
-values (`lib/api/screens/reader_screen.dart:420-439`).
+values (`lib/api/screens/reader_screen.dart:472-490`).
 
 ### Top bar and transient layers
 
 `_TopBar` contains the shelf toggle, product mark and name, theme picker, and
 outline toggle. The picker arrives as a complete widget, so the bar owns its
 position without owning theme behavior
-(`lib/api/screens/reader_screen.dart:598-664`). Both toggles use
+(`lib/api/screens/reader_screen.dart:655-720`). Both toggles use
 [Pressable](09-pressable.md) and remain disabled until a library exists.
 
 Three layers may sit above the room:
@@ -79,30 +80,35 @@ Three layers may sit above the room:
 - `DropOverlay` while a folder or Markdown file is over the window.
 
 They are derived from controller state and mounted in the shell's final stack
-(`lib/api/screens/reader_screen.dart:506-590`).
+(`lib/api/screens/reader_screen.dart:558-647`).
 
 ## Inputs and outputs
 
-Inputs are controller state, `openExternal`, platform top-bar geometry, the
-drop/window wrappers, and an optional user-theme location
-(`lib/api/screens/reader_screen.dart:28-45`). Outputs are controller calls from
+Inputs are controller state, `openExternal`, an optional mixed-source opener,
+platform top-bar geometry, the drop/window wrappers, and an optional callback
+that reveals the user-theme directory
+(`lib/api/screens/reader_screen.dart:28-47`). Outputs are controller calls from
 buttons and shortcuts, plus external URLs passed back to the platform.
 
 `_followLink` switches over the controller's typed link target. Anchors scroll
 the current pane; document links open the new document before scrolling to an
 optional anchor; external links leave through `openExternal`
-(`lib/api/screens/reader_screen.dart:172-188`).
+(`lib/api/screens/reader_screen.dart:200-217`).
 
-`WelcomeView` provides folder open, sample library, drop guidance, and errors
-before a library exists. Once a library exists but contains no readable
-document, `_EmptyLibrary` offers another folder instead
-(`lib/api/screens/reader_screen.dart:531-537`,
-`lib/api/screens/reader_screen.dart:708-739`).
+`WelcomeView` presents Open, Open Workspace, and Open Sample Library as one
+command surface. Every row carries an icon, supporting copy, and a real
+platform-appropriate shortcut; the mixed-source description appears only
+where the platform provides that capability
+(`lib/api/widgets/welcome_view.dart:68-104`, `:240-258`). Drop guidance and
+inline errors remain below the commands. Once a library exists but contains no
+readable document, `_EmptyLibrary` offers another folder instead
+(`lib/api/screens/reader_screen.dart:583-594`,
+`lib/api/screens/reader_screen.dart:765-797`).
 
 The welcome composition centres itself inside the available height at normal
 desktop sizes. Below its preferred height it scrolls instead of overflowing,
 so deliberately compact windows remain usable
-(`lib/api/widgets/welcome_view.dart:21-40`, `:137-154`).
+(`lib/api/widgets/welcome_view.dart:31-47`, `:144-156`).
 
 ## Events
 

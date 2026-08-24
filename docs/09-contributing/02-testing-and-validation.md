@@ -70,7 +70,7 @@ rules:
   reader-source picker proves native records become typed opaque refs
   (`test/infrastructure/desktop_reader_source_picker_test.dart:11-60`), and the
   command bridge proves native File-menu selections reach typed Dart commands
-  (`test/infrastructure/desktop_commands_test.dart:9-45`).
+  (`test/infrastructure/desktop_commands_test.dart:9-61`).
 - Registry tests ensure process handles retain durable source identities
   without aliasing paths across workspaces
   (`test/infrastructure/folder_registry_test.dart:6-70`).
@@ -92,10 +92,11 @@ Widget tests protect what a reader can observe:
 - Chrome tests cover distinct Open shortcuts, the full launch composition,
   search, panel motion and resizing, error notices, compact-window behavior,
   and reduced-motion behavior
-  (`test/presentation/reader_chrome_test.dart:248-579`).
-- Welcome tests hold both launch-size centring and short-window scrolling, while
+  (`test/presentation/reader_chrome_test.dart:249-595`).
+- Welcome tests hold the three launcher commands, platform labels,
+  launch-size centring, and short-window scrolling, while
   the native configuration test protects the 1280 × 800 macOS launch frame
-  (`test/presentation/welcome_view_test.dart:28-55`,
+  (`test/presentation/welcome_view_test.dart:38-113`,
   `test/infrastructure/macos_window_configuration_test.dart:5-16`).
 - Shelf tests hold the root-reorder state machine, expansion preservation,
   standalone adaptation, hover removal, and accessible arrange actions

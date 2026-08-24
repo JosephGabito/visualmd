@@ -116,7 +116,7 @@ application tests cover transactional restoration, unavailable sources,
 standalone absorption, explicit web downloads, and reconnection
 (`test/application/workspace_use_cases_test.dart:186-596`). Native command
 bridges also deserve a focused test
-(`test/infrastructure/desktop_commands_test.dart:9-27`).
+(`test/infrastructure/desktop_commands_test.dart:9-61`).
 
 ## Verify on the target
 

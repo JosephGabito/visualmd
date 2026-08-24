@@ -45,7 +45,7 @@ The notice is a semantic live region, so newly mounted feedback is announced.
 Its close control has a tooltip and remains reachable without a pointer
 (`lib/api/widgets/error_notice.dart:19-23`, `:49-68`). A widget test proves the
 open document and shelf survive a failed drop and that dismissal clears only
-the error (`test/presentation/reader_chrome_test.dart:187-213`).
+the error (`test/presentation/reader_chrome_test.dart:378-404`).
 
 ## Transition
 

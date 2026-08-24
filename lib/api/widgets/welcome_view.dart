@@ -7,20 +7,27 @@ import 'brand_mark.dart';
 class WelcomeView extends StatelessWidget {
   final bool opening;
   final String? error;
-  final VoidCallback onOpenFolder;
+  final VoidCallback onOpen;
+  final VoidCallback onOpenWorkspace;
   final VoidCallback onOpenSample;
+
+  /// Whether Open can choose either a Markdown file or a folder in one action.
+  final bool opensMixedSources;
 
   const WelcomeView({
     super.key,
     required this.opening,
     required this.error,
-    required this.onOpenFolder,
+    required this.onOpen,
+    required this.onOpenWorkspace,
     required this.onOpenSample,
+    required this.opensMixedSources,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final shortcuts = _ShortcutLabels.forPlatform(Theme.of(context).platform);
     return LayoutBuilder(
       builder: (context, constraints) {
         const verticalInset = 24.0;
@@ -36,7 +43,7 @@ class WelcomeView extends StatelessWidget {
             constraints: BoxConstraints(minHeight: minimumHeight),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
+                constraints: const BoxConstraints(maxWidth: 540),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -53,97 +60,90 @@ class WelcomeView extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'The last markdown reader you need.',
+                      'A quiet place to read Markdown.',
                       textAlign: TextAlign.center,
-                      style: context.type.serif(
-                        color: p.muted,
-                        size: 19,
-                        style: FontStyle.italic,
-                      ),
+                      style: context.type.serif(color: p.muted, size: 18),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 34),
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 44,
-                        horizontal: 24,
-                      ),
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: p.panel.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: p.border, width: 1.5),
+                        border: Border.all(color: p.border),
                       ),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.drive_folder_upload_outlined,
-                            size: 30,
-                            color: p.muted,
+                          _LaunchAction(
+                            icon: Icons.folder_open_outlined,
+                            title: 'Open…',
+                            description: opensMixedSources
+                                ? 'Open a Markdown file or folder'
+                                : 'Open a folder of Markdown files',
+                            shortcut: shortcuts.open,
+                            onPressed: opening ? null : onOpen,
                           ),
-                          const SizedBox(height: 14),
-                          Text(
-                            opening
-                                ? 'Shelving your documents…'
-                                : 'Drop a folder or markdown anywhere',
-                            style: context.type.sans(
-                              color: p.ink,
-                              size: 15,
-                              weight: FontWeight.w500,
-                            ),
+                          const _ActionDivider(),
+                          _LaunchAction(
+                            icon: Icons.grid_view_outlined,
+                            title: 'Open Workspace…',
+                            description: 'Restore a saved workspace',
+                            shortcut: shortcuts.workspace,
+                            onPressed: opening ? null : onOpenWorkspace,
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Open one file, or every markdown nested in a folder.',
-                            textAlign: TextAlign.center,
-                            style: context.type.sans(color: p.muted, size: 13),
-                          ),
-                          const SizedBox(height: 22),
-                          FilledButton.icon(
-                            onPressed: opening ? null : onOpenFolder,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: p.accent,
-                              foregroundColor: p.paper,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 14,
-                              ),
-                              textStyle: context.type.sans(
-                                color: p.paper,
-                                size: 14,
-                                weight: FontWeight.w600,
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.folder_open_outlined,
-                              size: 18,
-                            ),
-                            label: const Text('Open a folder'),
+                          const _ActionDivider(),
+                          _LaunchAction(
+                            icon: Icons.menu_book_outlined,
+                            title: 'Open Sample Library',
+                            description: 'Explore a ready-made library',
+                            shortcut: shortcuts.sample,
+                            onPressed: opening ? null : onOpenSample,
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    TextButton(
-                      onPressed: opening ? null : onOpenSample,
-                      child: Text(
-                        'or browse the sample library',
-                        style: context.type.sans(
-                          color: p.accent,
-                          size: 13.5,
-                          weight: FontWeight.w500,
+                    const SizedBox(height: 22),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (opening)
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.8,
+                              color: p.muted,
+                            ),
+                          )
+                        else
+                          Icon(
+                            Icons.drive_folder_upload_outlined,
+                            size: 18,
+                            color: p.muted,
+                          ),
+                        const SizedBox(width: 9),
+                        Flexible(
+                          child: Text(
+                            opening
+                                ? 'Shelving your documents…'
+                                : 'Or drop Markdown files or folders anywhere',
+                            textAlign: TextAlign.center,
+                            style: context.type.sans(color: p.muted, size: 13),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                     if (error != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         error!,
+                        textAlign: TextAlign.center,
                         style: context.type.sans(color: p.accent, size: 13),
                       ),
                     ],
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 26),
                     Text(
-                      'Nothing leaves your machine.',
+                      'Your files stay on your device.',
                       style: context.type.sans(color: p.muted, size: 12),
                     ),
                   ],
@@ -155,4 +155,105 @@ class WelcomeView extends StatelessWidget {
       },
     );
   }
+}
+
+class _LaunchAction extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final String shortcut;
+  final VoidCallback? onPressed;
+
+  const _LaunchAction({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.shortcut,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        hoverColor: p.accent.withValues(alpha: 0.07),
+        focusColor: p.accent.withValues(alpha: 0.09),
+        highlightColor: p.accent.withValues(alpha: 0.05),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 21, color: p.muted),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: context.type.sans(
+                        color: p.ink,
+                        size: 14.5,
+                        weight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      description,
+                      style: context.type.sans(color: p.muted, size: 12.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                shortcut,
+                style: context.type.sans(
+                  color: p.muted,
+                  size: 12,
+                  weight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionDivider extends StatelessWidget {
+  const _ActionDivider();
+
+  @override
+  Widget build(BuildContext context) => Divider(
+    height: 1,
+    thickness: 1,
+    indent: 54,
+    color: context.palette.border,
+  );
+}
+
+final class _ShortcutLabels {
+  final String open;
+  final String workspace;
+  final String sample;
+
+  const _ShortcutLabels({
+    required this.open,
+    required this.workspace,
+    required this.sample,
+  });
+
+  factory _ShortcutLabels.forPlatform(TargetPlatform platform) =>
+      platform == TargetPlatform.macOS
+      ? const _ShortcutLabels(open: '⌘O', workspace: '⇧⌘O', sample: '⌥⌘O')
+      : const _ShortcutLabels(
+          open: 'Ctrl+O',
+          workspace: 'Ctrl+Shift+O',
+          sample: 'Ctrl+Alt+O',
+        );
 }

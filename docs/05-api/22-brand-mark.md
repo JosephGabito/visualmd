@@ -18,9 +18,9 @@ the original full-resolution design source is not added to the application
 bundle (`pubspec.yaml:25-35`).
 
 The welcome screen and drag overlay render the detailed mark at 64 logical
-pixels (`lib/api/widgets/welcome_view.dart:27-33`,
+pixels (`lib/api/widgets/welcome_view.dart:50`,
 `lib/api/widgets/drop_overlay.dart:23-29`). The top bar uses the same source at
-18 pixels beside the product name (`lib/api/screens/reader_screen.dart:630-648`).
+18 pixels beside the product name (`lib/api/screens/reader_screen.dart:697-707`).
 
 macOS consumes the complete 16–1024 pixel asset catalog
 (`macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json:1-67`). Windows
