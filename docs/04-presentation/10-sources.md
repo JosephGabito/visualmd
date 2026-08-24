@@ -132,6 +132,36 @@ enum, so Visual MD supplies the nearest cross-platform contract: a dedicated,
 non-interactive semantics node named “Thematic break.” It does not invent a
 button, focus target or visible caption.
 
+## Soft line breaks
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#soft-line-breaks)
+defines an ordinary line ending inside inline content as a soft break unless
+two spaces or a backslash make it explicit. Whitespace at the end of the first
+source line and beginning of the next is removed, and a conforming renderer may
+join the lines with a space. Visual MD chooses reflow rather than a hard break:
+an editor's wrapping is source formatting, not document structure.
+
+That space cannot be unconditional. The current
+[CSS Text Module](https://www.w3.org/TR/css-text-4/#line-break-transform)
+describes segment-break transformation as “unbreaking” source text: languages
+with word separators need a space, while Chinese source lines join with no
+intervening whitespace. Its model also removes adjoining spaces and tabs before
+the join. Visual MD applies that distinction to Han, Hiragana, Katakana and
+Bopomofo context, even when punctuation or an inline mark sits beside the
+break; Korean, Arabic, Hebrew and Latin keep a word separator
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). Flutter then
+chooses actual rendered lines from the available measure. This follows
+[Unicode UAX #14](https://www.unicode.org/reports/tr14/): the source supplies
+text and legal break opportunities, while the layout system selects line
+positions for the width in hand.
+
+Lupton's *Alignment* chapter supplies the typographic consequence. Flush-left,
+ragged-right text respects the flow of language, and its rag should be
+pleasantly uneven rather than an editor's repeated column shape. The narrow and
+wide rendering test therefore compares source-wrapped and unwrapped paragraphs
+and requires identical text geometry
+(`test/presentation/paragraph_setting_test.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

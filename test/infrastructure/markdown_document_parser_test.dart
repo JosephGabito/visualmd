@@ -51,18 +51,91 @@ void main() {
       final paragraph = single<ParagraphBlock>('He said "no" -- twice...');
       expect(paragraph.text, 'He said "no" -- twice...');
     });
+  });
 
-    test('treats a single newline as a space, not a break', () {
+  group('soft line breaks', () {
+    test('source wrapping disappears into one word separator', () {
       final paragraph = single<ParagraphBlock>(
-        'one line\nand its continuation',
+        'one line\nand its continuation\r\nacross another source line',
       );
+
       expect(paragraph.content.whereType<LineBreakRun>(), isEmpty);
-      expect(paragraph.text, 'one line and its continuation');
+      expect(
+        paragraph.text,
+        'one line and its continuation across another source line',
+      );
     });
 
-    test('keeps a break the author asked for with two spaces', () {
-      final paragraph = single<ParagraphBlock>('one line  \nand a new one');
-      expect(paragraph.content.whereType<LineBreakRun>(), hasLength(1));
+    test('adjoining indentation disappears but internal spacing remains', () {
+      final paragraph = single<ParagraphBlock>(
+        'one line \n   continues\t\n\tthrough tabs and  keeps an internal pair',
+      );
+
+      expect(
+        paragraph.text,
+        'one line continues through tabs and  keeps an internal pair',
+      );
+    });
+
+    test(
+      'normalises wrapping inside marks and links without flattening them',
+      () {
+        final paragraph = single<ParagraphBlock>(
+          'one *soft\n break* and [linked\n words](https://example.com)',
+        );
+        final emphasis = paragraph.content.whereType<MarkedRun>().single;
+        final link = paragraph.content.whereType<LinkRun>().single;
+
+        expect(emphasis.text, 'soft break');
+        expect(link.text, 'linked words');
+        expect(link.href, 'https://example.com');
+        expect(paragraph.text, 'one soft break and linked words');
+      },
+    );
+
+    test('Chinese and Japanese source wrapping adds no Western word space even across marks', () {
+      final paragraph = single<ParagraphBlock>(
+        '中文源代码\n*继续阅读*\n日本語の文書\n[詳細](https://example.com)',
+      );
+
+      expect(paragraph.text, '中文源代码继续阅读日本語の文書詳細');
+    });
+
+    test('space-separated scripts keep their word separator', () {
+      expect(
+        single<ParagraphBlock>('مرحبا بالعالم\nهذا سطر ملفوف').text,
+        'مرحبا بالعالم هذا سطر ملفوف',
+      );
+      expect(
+        single<ParagraphBlock>('עברית בשורה\nממשיכה כאן').text,
+        'עברית בשורה ממשיכה כאן',
+      );
+      expect(
+        single<ParagraphBlock>('한국어 문장이\n여기서 계속됩니다').text,
+        '한국어 문장이 여기서 계속됩니다',
+      );
+    });
+
+    test('the same joining rule survives quotation and list containers', () {
+      final blocks = parse(
+        '> quoted source\n> wraps here\n\n- listed source\n  wraps here',
+      ).blocks;
+      final quote = blocks.first as QuoteBlock;
+      final list = blocks.last as ListBlock;
+
+      expect(quote.text, 'quoted source wraps here');
+      expect(list.items.single.text, 'listed source wraps here');
+    });
+
+    test('code spans and explicit breaks remain different grammar', () {
+      final code = single<ParagraphBlock>('read `one\ntwo` now');
+      expect(code.content.whereType<CodeRun>().single.text, 'one two');
+
+      for (final source in ['one  \ntwo', 'one\\\ntwo']) {
+        final paragraph = single<ParagraphBlock>(source);
+        expect(paragraph.content.whereType<LineBreakRun>(), hasLength(1));
+        expect(paragraph.text, 'one\ntwo');
+      }
     });
   });
 

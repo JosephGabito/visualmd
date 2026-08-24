@@ -11,9 +11,9 @@ import '../../domain/reading/heading_anchor.dart';
 /// The specification is large and full of corners, so the parsing itself is
 /// borrowed from `package:markdown`; this class only maps that package's HTML
 /// shaped tree onto the model the reader is written against. Nothing here
-/// decides how anything looks: the author's text is carried across exactly as
-/// written, and how it is *set* — which quote marks, which figures — is
-/// settled later, in presentation.
+/// decides how anything looks: formatting whitespace is resolved into reading
+/// text, authorial punctuation remains source, and how it is *set* — which
+/// quote marks, which figures — is settled later, in presentation.
 final class MarkdownDocumentParser implements DocumentParser {
   const MarkdownDocumentParser();
 
@@ -250,32 +250,44 @@ final class _Mapper {
   }
 
   List<Inline> inlines(List<md.Node>? nodes) {
+    final source = nodes ?? const <md.Node>[];
+    return _inlines(source, _SoftLineBreaks(source));
+  }
+
+  List<Inline> _inlines(List<md.Node>? nodes, _SoftLineBreaks softBreaks) {
     final runs = <Inline>[];
     for (final node in nodes ?? const <md.Node>[]) {
       switch (node) {
         case md.Text():
-          // A single newline inside a paragraph is a space. Treating it as a
-          // break would impose the source file's wrapping on the page.
-          runs.add(TextRun(node.text.replaceAll('\n', ' ')));
+          runs.add(TextRun(softBreaks.textFor(node)));
 
         case md.Element(tag: 'code'):
           runs.add(CodeRun(node.textContent));
 
         case md.Element(tag: 'em'):
-          runs.add(MarkedRun(InlineMark.emphasis, inlines(node.children)));
+          runs.add(
+            MarkedRun(InlineMark.emphasis, _inlines(node.children, softBreaks)),
+          );
 
         case md.Element(tag: 'strong'):
-          runs.add(MarkedRun(InlineMark.strong, inlines(node.children)));
+          runs.add(
+            MarkedRun(InlineMark.strong, _inlines(node.children, softBreaks)),
+          );
 
         case md.Element(tag: 'del'):
-          runs.add(MarkedRun(InlineMark.strikethrough, inlines(node.children)));
+          runs.add(
+            MarkedRun(
+              InlineMark.strikethrough,
+              _inlines(node.children, softBreaks),
+            ),
+          );
 
         case md.Element(tag: 'a'):
           runs.add(
             LinkRun(
               href: node.attributes['href'] ?? '',
               title: node.attributes['title'],
-              children: inlines(node.children),
+              children: _inlines(node.children, softBreaks),
             ),
           );
 
@@ -301,7 +313,7 @@ final class _Mapper {
           // even though the markup around them is dropped.
           final children = node.children;
           if (children != null && children.isNotEmpty) {
-            runs.addAll(inlines(children));
+            runs.addAll(_inlines(children, softBreaks));
           } else if (node.textContent.isNotEmpty) {
             runs.add(TextRun(node.textContent));
           }
@@ -312,4 +324,158 @@ final class _Mapper {
     }
     return runs;
   }
+}
+
+/// Resolves source wrapping before it enters the domain.
+///
+/// CommonMark calls an ordinary newline inside inline content a soft break.
+/// It is not an authored line: spaces and tabs beside it disappear, and the
+/// renderer decides how the two source lines join. Languages that separate
+/// words need one space. Chinese and Japanese do not; inserting a Western
+/// word space there would make the editor's wrapping visible on the page.
+///
+/// The package keeps soft breaks inside `md.Text`, including breaks at the
+/// edge of a marked or linked run. This resolver therefore reads the complete
+/// inline subtree before changing any one text node. Package-shaped nodes do
+/// not escape this adapter.
+final class _SoftLineBreaks {
+  static const _object = '\u{fffc}';
+  static final _aroundBreak = RegExp(r'[ \t]*\n[ \t]*');
+  static final _punctuationOrMark = RegExp(
+    r'^(?:\p{Punctuation}|\p{Mark})$',
+    unicode: true,
+  );
+  static final _unspacedEastAsian = RegExp(
+    r'^(?:\p{Script_Extensions=Han}|'
+    r'\p{Script_Extensions=Hiragana}|'
+    r'\p{Script_Extensions=Katakana}|'
+    r'\p{Script_Extensions=Bopomofo})$',
+    unicode: true,
+  );
+
+  final Map<md.Text, String> _resolved = Map.identity();
+
+  _SoftLineBreaks(List<md.Node> nodes) {
+    final fullText = StringBuffer();
+    final pieces = <_TextPiece>[];
+    _collect(nodes, fullText, pieces);
+    final context = fullText.toString();
+    final scripts = _ScriptContext(context);
+
+    for (final piece in pieces) {
+      _resolved[piece.node] = piece.node.text.replaceAllMapped(_aroundBreak, (
+        match,
+      ) {
+        final before = scripts.before(piece.start + match.start);
+        final after = scripts.after(piece.start + match.end);
+        return before != null &&
+                after != null &&
+                _unspacedEastAsian.hasMatch(before) &&
+                _unspacedEastAsian.hasMatch(after)
+            ? ''
+            : ' ';
+      });
+    }
+  }
+
+  String textFor(md.Text node) => _resolved[node] ?? node.text;
+
+  static void _collect(
+    Iterable<md.Node> nodes,
+    StringBuffer fullText,
+    List<_TextPiece> pieces,
+  ) {
+    for (final node in nodes) {
+      switch (node) {
+        case md.Text():
+          pieces.add(_TextPiece(node, fullText.length));
+          fullText.write(node.text);
+
+        case md.Element(tag: 'br' || 'code' || 'img' || 'input'):
+          // An explicit break or atomic inline is a real boundary. Context on
+          // its far side must not decide how a nearby soft break joins.
+          fullText.write(_object);
+
+        case md.Element(:final children):
+          _collect(children ?? const <md.Node>[], fullText, pieces);
+
+        default:
+          continue;
+      }
+    }
+  }
+
+  static bool _ignorableForScript(String character) =>
+      character == ' ' ||
+      character == '\t' ||
+      character == '\n' ||
+      _punctuationOrMark.hasMatch(character);
+}
+
+final class _TextPiece {
+  final md.Text node;
+  final int start;
+
+  const _TextPiece(this.node, this.start);
+}
+
+/// Nearest script-bearing characters around every break, indexed once.
+///
+/// Looking outward from every newline independently would become quadratic in
+/// a punctuation-heavy paragraph. One linear pass plus binary searches keeps
+/// source-wrap normalisation responsive even for hostile input.
+final class _ScriptContext {
+  final List<_ScriptCharacter> _characters = [];
+
+  _ScriptContext(String text) {
+    var offset = 0;
+    while (offset < text.length) {
+      final first = text.codeUnitAt(offset);
+      final next = offset + 1 < text.length ? text.codeUnitAt(offset + 1) : -1;
+      final isSurrogatePair =
+          first >= 0xd800 &&
+          first <= 0xdbff &&
+          next >= 0xdc00 &&
+          next <= 0xdfff;
+      final end = isSurrogatePair ? offset + 2 : offset + 1;
+      final character = text.substring(offset, end);
+      if (!_SoftLineBreaks._ignorableForScript(character)) {
+        _characters.add(_ScriptCharacter(offset, character));
+      }
+      offset = end;
+    }
+  }
+
+  String? before(int end) {
+    final insertion = _lowerBound(end);
+    return insertion == 0 ? null : _characters[insertion - 1].character;
+  }
+
+  String? after(int start) {
+    final insertion = _lowerBound(start);
+    return insertion == _characters.length
+        ? null
+        : _characters[insertion].character;
+  }
+
+  int _lowerBound(int offset) {
+    var low = 0;
+    var high = _characters.length;
+    while (low < high) {
+      final middle = low + ((high - low) >> 1);
+      if (_characters[middle].offset < offset) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    return low;
+  }
+}
+
+final class _ScriptCharacter {
+  final int offset;
+  final String character;
+
+  const _ScriptCharacter(this.offset, this.character);
 }
