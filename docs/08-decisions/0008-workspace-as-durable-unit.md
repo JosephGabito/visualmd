@@ -28,9 +28,11 @@ unavailable sources, normalize standalone absorption, then replace the Library
 and WorkspaceSession together. Save As creates a new Workspace ID and forks
 local bindings.
 
-Desktop writes replace a temporary file atomically and retain a last-good
-backup. Browsers use writable handles where available; upload/download fallback
-requires explicit Save and never generates automatic downloads.
+Desktop writes remain platform-native. macOS atomically writes the exact URL
+authorised by its save panel; Windows replaces a temporary file and retains a
+last-good backup. Browsers use writable handles where available;
+upload/download fallback requires explicit Save and never generates automatic
+downloads.
 
 This decision supersedes the “remember last folder as a reactor” persistence
 direction in [0007 — Plugins as Typed Hooks](0007-plugins-as-typed-hooks.md).
