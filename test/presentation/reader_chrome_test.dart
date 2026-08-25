@@ -23,7 +23,9 @@ import 'package:visualmd/application/use_cases/add_folder.dart';
 import 'package:visualmd/application/use_cases/add_markdown.dart';
 import 'package:visualmd/application/use_cases/move_folder.dart';
 import 'package:visualmd/application/use_cases/open_workspace.dart';
+import 'package:visualmd/domain/library/document_id.dart';
 import 'package:visualmd/domain/library/library_builder.dart';
+import 'package:visualmd/domain/library/library_root_id.dart';
 import 'package:visualmd/domain/workspace/workspace.dart';
 import 'package:visualmd/domain/workspace/workspace_id.dart';
 import 'package:visualmd/domain/workspace/workspace_source.dart';
@@ -49,6 +51,39 @@ const _library = ScannedFolder(
       '# Notes\n\n## First\n\ntext\n\n## Second\n\nmore\n',
     ),
     FileEntry('other.md', '# Other\n'),
+    FileEntry('links.md', '''
+# Link routes
+
+[Jump to the second repeated heading](#repeated-heading-1).
+
+## Repeated heading
+
+This first section carries enough reading text to move the next target below
+the initial viewport. A fragment should identify a heading by its generated
+anchor rather than by whichever visible title happens to occur first.
+
+The same title can appear more than once in a real handbook. Its words remain
+the same while the document's anchor counter gives each occurrence one stable
+destination for the lifetime of this reading.
+
+Readers should arrive without a page reload, a document replacement, or a
+surprise handoff to the operating system. This is navigation inside the open
+document, so the current library and reading context remain untouched.
+
+One more paragraph establishes enough distance for the animation to be
+observable in a compact test viewport while remaining ordinary prose.
+
+## Repeated heading
+
+The duplicate target has the generated anchor `repeated-heading-1`.
+
+Content after the target gives `ensureVisible` enough scroll extent to align
+the heading with the reading viewport instead of stopping at the document's
+bottom edge.
+
+A final paragraph keeps that geometry deterministic across bundled reading
+faces and text metrics.
+'''),
   ],
 );
 
@@ -168,6 +203,7 @@ void main() {
     PanelWidths? panelWidths,
     OpenWorkspace? openWorkspace,
     Future<void> Function()? openReaderSources,
+    void Function(String url)? openExternal,
     bool withLibrary = true,
   }) async {
     tester.view.physicalSize = size;
@@ -213,7 +249,7 @@ void main() {
         theme: libraryTheme(BuiltInThemes.paper),
         home: ReaderScreen(
           controller: controller,
-          openExternal: (_) {},
+          openExternal: openExternal ?? (_) {},
           openReaderSources: openReaderSources,
         ),
       ),
@@ -436,6 +472,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('1 of 1'), findsOneWidget);
+  });
+
+  testWidgets('a fragment reaches the numbered anchor of a duplicate heading', (
+    tester,
+  ) async {
+    await pumpReader(tester, size: const Size(960, 560));
+    await controller.openDocument(
+      DocumentId(const LibraryRootId('sample'), 'links.md'),
+    );
+    await tester.pumpAndSettle();
+
+    final readingScroll = find.descendant(
+      of: find.byType(ReadingPane),
+      matching: find.byType(SingleChildScrollView),
+    );
+    final position = tester.state<ScrollableState>(
+      find.descendant(of: readingScroll, matching: find.byType(Scrollable)),
+    );
+    expect(position.position.pixels, 0);
+
+    expect(controller.reading?.document.id.path, 'links.md');
+    await tester.tap(
+      find.textContaining('Jump to the second repeated heading'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(position.position.pixels, greaterThan(0));
+    final repeated = find.text('Repeated heading');
+    expect(repeated, findsNWidgets(2));
+    final paneTop = tester.getTopLeft(find.byType(ReadingPane)).dy;
+    expect(tester.getTopLeft(repeated.first).dy, lessThan(paneTop));
+    expect(
+      tester.getTopLeft(repeated.last).dy,
+      inInclusiveRange(paneTop, paneTop + 30),
+    );
   });
 
   testWidgets('command-shift-f searches the library and opens a result', (

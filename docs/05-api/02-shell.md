@@ -91,7 +91,9 @@ that reveals the user-theme directory
 buttons and shortcuts, plus external URLs passed back to the platform.
 
 `_followLink` switches over the controller's typed link target. Anchors scroll
-the current pane; document links open the new document before scrolling to an
+the current pane by the generated anchor string, so `#setup-1` reaches the
+second identically titled heading rather than searching by visible words.
+Document links open the new document before scrolling to an
 optional anchor; external links leave through `openExternal`
 (`lib/api/screens/reader_screen.dart`).
 

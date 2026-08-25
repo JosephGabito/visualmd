@@ -250,6 +250,7 @@ final class _InlinePlainText {
     final literals = _InlineLiterals(source);
     var text = _resolveReferenceLinks(source, references);
     text = _protectCodeSpans(text, literals);
+    text = _protectAutolinkNearMisses(text, literals);
     text = _protectAutolinks(text, literals);
     text = _protectEscapedPunctuation(text, literals);
     text = text
@@ -409,10 +410,38 @@ final class _InlinePlainText {
     return end - from;
   }
 
+  static final _autolinkUri = RegExp(
+    r'^[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*$',
+  );
+  static final _autolinkEmail = RegExp(
+    r'''^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]'''
+    r'''(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?'''
+    r'''(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$''',
+  );
+  static final _autolinkCandidate = RegExp(
+    r'<((?:[A-Za-z][A-Za-z0-9+.-]*:[^<>\n]*)|(?:[^<>\x00-\x20]+@[^<>\x00-\x20]+))>',
+  );
+
+  /// Malformed autolink-shaped text is not HTML. Protecting it before the
+  /// lightweight HTML cleanup keeps headings such as `<m:literal>` visible,
+  /// matching the page parser's CommonMark precedence.
+  static String _protectAutolinkNearMisses(
+    String text,
+    _InlineLiterals literals,
+  ) => _replaceUnescapedMatches(text, _autolinkCandidate, (match) {
+    final candidate = match[1]!;
+    return _autolinkUri.hasMatch(candidate) ||
+            _autolinkEmail.hasMatch(candidate)
+        ? match[0]!
+        : literals.keep(match[0]!);
+  });
+
   static String _protectAutolinks(String text, _InlineLiterals literals) {
-    final uri = RegExp(r'<([A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*)>');
+    final uri = RegExp(
+      '<(${_autolinkUri.pattern.substring(1, _autolinkUri.pattern.length - 1)})>',
+    );
     final email = RegExp(
-      r"<([A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)>",
+      '<(${_autolinkEmail.pattern.substring(1, _autolinkEmail.pattern.length - 1)})>',
     );
     return _replaceUnescapedMatches(
       _replaceUnescapedMatches(text, uri, (match) => literals.keep(match[1]!)),

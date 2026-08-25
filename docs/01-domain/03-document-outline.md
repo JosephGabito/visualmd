@@ -58,6 +58,16 @@ The private `_Parser` works line by line
   presents (`lib/domain/reading/character_references.dart`,
   `lib/domain/reading/named_character_references.g.dart`,
   `lib/domain/reading/document_outline.dart`).
+- **Autolink precedence.** Valid angle-bracket URI and email forms lose only
+  their brackets, because the reader sees their complete inner spelling. GFM
+  extended autolinks need no cleanup: their bare source is already their
+  visible label. Malformed angle-shaped candidates are protected before the
+  lightweight HTML cleanup, so `<m:literal>` and invalid email forms remain
+  authored heading text rather than disappearing as empty tags. The same
+  CommonMark patterns are held at the infrastructure adapter and domain
+  outline boundaries so page text, title, anchor and outline cannot diverge
+  (`lib/domain/reading/document_outline.dart`,
+  `lib/infrastructure/markdown/markdown_document_parser.dart`).
 - **Reference links.** Definitions are read before headings so a definition may
   appear above or below its use. Full, collapsed and shortcut notation loses
   its brackets only when its normalized label is actually defined; unresolved
@@ -107,6 +117,7 @@ The private `_Parser` works line by line
 | headings with triple marks, marks inside marks, overlapping runs and escaped delimiters | nested grammar disappears; unmatched and rule-of-three delimiters remain reading text; anchors follow the resolved words | one per heading | the first resolved h1 |
 | headings with one-, two-, three- and four-tilde runs, whitespace edges and nested roles | eligible strikethrough notation disappears; ineligible long runs and unmatched tildes remain reading text | one per heading | the resolved h1 |
 | headings using full, collapsed, shortcut and missing reference forms, with definitions after them | resolved labels lose notation; missing labels keep it; anchors use exactly the page's words | one per heading | the first resolved h1 |
+| headings containing angle URI and email autolinks, bare GFM autolinks, and malformed angle-shaped near misses | valid angle forms lose brackets; bare forms remain their visible source; near misses remain literal | one per heading | the first visible autolink label |
 | `intro`, `# One`, `## Two` | One, Two | three: the first has no heading | `One` |
 | `---` / `title: "From Front Matter"` / `---` / `# Body Heading` | Body Heading at line 5 | one, without `tags:` | `From Front Matter` |
 | empty string | none | none | `null` |

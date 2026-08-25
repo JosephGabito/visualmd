@@ -407,6 +407,27 @@ same words and anchor in navigation as it has on the page
 `lib/domain/reading/document_outline.dart`,
 `lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+[CommonMark autolinks](https://spec.commonmark.org/0.31.2/#autolinks) make an
+absolute URI or email address inside angle brackets one link whose label is the
+inner spelling; email destinations gain `mailto:`. The grammar deliberately
+rejects one-character schemes, whitespace and malformed addresses. The
+[formal GFM extension](https://github.github.com/gfm/#autolinks-extension-)
+adds bare `http://` and `https://` URLs, `www.` addresses and emails, with
+specific left boundaries and trailing-punctuation rules. Visual MD delegates
+valid recognition to the current GFM parser, maps every resulting anchor to
+the existing `LinkRun`, and protects invalid angle-shaped candidates from the
+parser's competing inline-HTML extension. That last boundary is why malformed
+source stays readable instead of becoming an empty element
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+GitHub's section-link rules cited under Heading rhythm also settle fragment
+navigation. A fragment uses the generated anchor, not a search for heading
+words; repeated headings are therefore addressed by `-1`, `-2`, and later
+suffixes. Visual MD retains the fragment through `LinkRun` and
+`ReaderController`, then the reading pane resolves it against the same anchor
+keys that the outline uses (`lib/api/reader_controller.dart`,
+`lib/api/widgets/reading_pane.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

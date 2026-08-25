@@ -386,17 +386,28 @@ void main() {
       await controller.openDocument(DocumentId(alphaId, 'README.md'));
 
       final anchor = controller.resolveLink('#setup')! as AnchorLink;
+      final duplicate = controller.resolveLink('#setup-1')! as AnchorLink;
       final document =
           controller.resolveLink('guide.md#details')! as DocumentLink;
       final external =
           controller.resolveLink('https://example.com/guide')! as ExternalLink;
+      final email =
+          controller.resolveLink('mailto:reader@example.com')! as ExternalLink;
+      final chat =
+          controller.resolveLink('xmpp:reader@example.com')! as ExternalLink;
 
       expect(anchor.anchor, 'setup');
+      expect(duplicate.anchor, 'setup-1');
       expect(document.id, DocumentId(alphaId, 'guide.md'));
       expect(document.anchor, 'details');
       expect(external.url, 'https://example.com/guide');
+      expect(email.url, 'mailto:reader@example.com');
+      expect(chat.url, 'xmpp:reader@example.com');
       expect(controller.resolveLink(''), isNull);
       expect(controller.resolveLink('missing.md'), isNull);
+      expect(controller.resolveLink('javascript:alert(1)'), isNull);
+      expect(controller.resolveLink('data:text/html,unsafe'), isNull);
+      expect(controller.resolveLink('vbscript:msgbox(1)'), isNull);
     },
   );
 }

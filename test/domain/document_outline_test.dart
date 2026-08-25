@@ -224,6 +224,23 @@ Text.
       expect(heading.anchor, 'madeupentity-copy-and-copy-httpsexamplecomqcopy');
     });
 
+    test('autolink headings keep only the words a reader sees', () {
+      final headings = DocumentOutline.parse('''
+# <https://example.com/angle> and <reader@example.com>
+
+## https://example.com/bare and www.example.com
+''').tableOfContents.headings;
+
+      expect(headings.map((heading) => heading.text), [
+        'https://example.com/angle and reader@example.com',
+        'https://example.com/bare and www.example.com',
+      ]);
+      expect(headings.map((heading) => heading.anchor), [
+        'httpsexamplecomangle-and-readerexamplecom',
+        'httpsexamplecombare-and-wwwexamplecom',
+      ]);
+    });
+
     test('ignores headings inside fenced code blocks', () {
       final outline = DocumentOutline.parse('''
 # Real

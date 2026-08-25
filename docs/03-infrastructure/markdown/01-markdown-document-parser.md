@@ -183,6 +183,18 @@ precedence over shortcut interpretation, while an inline destination takes
 precedence over all reference forms
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+CommonMark **autolinks** place an absolute URI or email address inside angle
+brackets. GFM's extension additionally recognises bare `http://` and
+`https://` URLs, `www.` addresses and email addresses. Every valid form arrives
+as the same `a` element and therefore the same `LinkRun`; a bare `www.` label
+receives an `http://` destination, while either email spelling receives
+`mailto:`. Sentence punctuation excluded by the GFM grammar remains an adjacent
+`TextRun`, and search indexes only the visible spelling. A small adapter syntax
+claims malformed angle-shaped near misses before the package's inline-HTML
+extension can swallow them: candidates such as a one-character URI scheme or
+an invalid email remain authored text on the page exactly as they do in the
+framework-free outline (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 Link text may contain zero inline children. A destination outside angle
 brackets is non-empty, space-free text whose parentheses balance; inside angle
 brackets it may be empty or contain spaces. The adapter neither truncates a

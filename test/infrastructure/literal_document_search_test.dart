@@ -196,6 +196,29 @@ void main() {
     },
   );
 
+  test('indexes the visible spelling of every autolink form', () async {
+    final document = Document(
+      id: DocumentId(rootId, 'autolinks.md'),
+      content: '''
+<https://example.com/angle> <angle@example.com>
+https://example.com/bare www.example.com reader@example.com
+''',
+    );
+
+    for (final visible in [
+      'https://example.com/angle',
+      'angle@example.com',
+      'https://example.com/bare',
+      'www.example.com',
+      'reader@example.com',
+    ]) {
+      final results = await search.find(SearchQuery(visible), [document]);
+      expect(results.single.matches.single.excerpt, contains(visible));
+    }
+    expect(await search.find(SearchQuery('mailto:'), [document]), isEmpty);
+    expect(await search.find(SearchQuery('http://www'), [document]), isEmpty);
+  });
+
   test('matches the reading text across editor wrapping', () async {
     final document = Document(
       id: DocumentId(rootId, 'wrapped.md'),
