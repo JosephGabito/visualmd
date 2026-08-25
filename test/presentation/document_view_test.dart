@@ -538,6 +538,187 @@ void main() {
     },
   );
 
+  testWidgets('tight lists compact their gaps without tightening prose', (
+    tester,
+  ) async {
+    const wrapped =
+        'A deliberately long list item wraps across several lines while keeping the same body leading as prose outside the container.';
+    await pumpDocument(tester, [
+      paragraph('Running prose.'),
+      ListBlock(
+        ordered: false,
+        items: [
+          ListItem([paragraph(wrapped)]),
+          ListItem([paragraph('Second item.')]),
+        ],
+      ),
+    ], width: 360);
+
+    final paragraphs = find.byType(Paragraph);
+    final prose = tester.widget<Paragraph>(paragraphs.at(0));
+    final item = tester.widget<Paragraph>(paragraphs.at(1));
+    final firstItem = tester.getTopLeft(paragraphs.at(1)).dy;
+    final secondItem = tester.getTopLeft(paragraphs.at(2)).dy;
+
+    expect(item.style.height, prose.style.height);
+    expect(item.strut, prose.strut);
+    expect(
+      secondItem - firstItem,
+      closeTo(tester.getSize(paragraphs.at(1)).height, 0.5),
+      reason: 'a tight list adds no gap after its wrapped item',
+    );
+  });
+
+  testWidgets('loose lists spend half a beat between items', (tester) async {
+    await pumpDocument(tester, [
+      ListBlock(
+        ordered: false,
+        loose: true,
+        items: [
+          ListItem([paragraph('First loose item.')]),
+          ListItem([paragraph('Second loose item.')]),
+        ],
+      ),
+    ]);
+
+    final first = tester.getTopLeft(find.text('First loose item.')).dy;
+    final second = tester.getTopLeft(find.text('Second loose item.')).dy;
+    expect(
+      second - first,
+      closeTo(renderedTheme.baseline + renderedTheme.containerGap, 0.5),
+    );
+  });
+
+  testWidgets('an already-whole container never acquires a phantom beat', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      ListBlock(
+        ordered: true,
+        items: [
+          ListItem([paragraph('First.')]),
+          ListItem([paragraph('Second.')]),
+        ],
+      ),
+      ListBlock(
+        ordered: true,
+        items: [
+          ListItem([paragraph('Third.')]),
+        ],
+      ),
+    ]);
+
+    final second = tester.getTopLeft(find.text('Second.')).dy;
+    final third = tester.getTopLeft(find.text('Third.')).dy;
+    expect(
+      third - second,
+      closeTo(renderedTheme.baseline * 2, 0.5),
+      reason: 'one final item line plus one root-level block gap',
+    );
+  });
+
+  testWidgets('wide markers grow their gutter without moving item text', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      ListBlock(
+        ordered: true,
+        start: 999999,
+        items: [
+          ListItem([paragraph('A wide first marker.')]),
+          ListItem([paragraph('The next item keeps the established edge.')]),
+        ],
+      ),
+    ], width: 420);
+
+    final marker = find.text('999999.');
+    final firstText = find.byType(Paragraph).at(0);
+    final secondText = find.byType(Paragraph).at(1);
+
+    expect(tester.getSize(marker).height, closeTo(renderedTheme.baseline, 0.5));
+    expect(
+      tester.getTopRight(marker).dx,
+      lessThan(tester.getTopLeft(firstText).dx),
+    );
+    expect(
+      tester.getTopLeft(firstText).dx,
+      closeTo(tester.getTopLeft(secondText).dx, 0.5),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('nested containers return following prose to the body grid', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      paragraph('Before.'),
+      QuoteBlock([
+        paragraph('Quoted first paragraph.'),
+        ListBlock(
+          ordered: false,
+          loose: true,
+          items: [
+            ListItem([paragraph('First nested item.')]),
+            ListItem([
+              paragraph('Second nested item.'),
+              QuoteBlock([paragraph('A quotation inside the list.')]),
+            ]),
+          ],
+        ),
+      ]),
+      paragraph('After.'),
+    ], width: 430);
+
+    final before = tester.getTopLeft(find.text('Before.')).dy;
+    final after = tester.getTopLeft(find.text('After.')).dy;
+    final beats = (after - before) / renderedTheme.baseline;
+    expect((beats - beats.round()).abs(), lessThan(0.02));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('only the outermost list reconciles a nested tree', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      ListBlock(
+        ordered: false,
+        loose: true,
+        items: [
+          ListItem([
+            paragraph('Parent.'),
+            ListBlock(
+              ordered: false,
+              loose: true,
+              items: [
+                ListItem([paragraph('First child.')]),
+                ListItem([
+                  paragraph('Second child.'),
+                  ListBlock(
+                    ordered: false,
+                    loose: true,
+                    items: [
+                      ListItem([paragraph('First grandchild.')]),
+                      ListItem([paragraph('Second grandchild.')]),
+                    ],
+                  ),
+                ]),
+              ],
+            ),
+          ]),
+        ],
+      ),
+      paragraph('Following prose.'),
+    ]);
+
+    final parent = tester.getTopLeft(find.text('Parent.')).dy;
+    final following = tester.getTopLeft(find.text('Following prose.')).dy;
+    expect(
+      following - parent,
+      closeTo(renderedTheme.baseline * 8, 0.5),
+      reason: 'five prose lines, four half-beat relationships and one root gap',
+    );
+  });
+
   testWidgets('a task list shows what is done and what is not', (tester) async {
     await pumpDocument(tester, [
       ListBlock(
@@ -551,6 +732,14 @@ void main() {
 
     expect(find.byIcon(Icons.check_box_outlined), findsOneWidget);
     expect(find.byIcon(Icons.check_box_outline_blank), findsOneWidget);
+    expect(find.bySemanticsLabel('Completed task'), findsOneWidget);
+    expect(find.bySemanticsLabel('Incomplete task'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('done')).dx -
+          tester.getTopRight(find.byIcon(Icons.check_box_outlined)).dx,
+      closeTo(renderedTheme.em * 0.5, 0.5),
+      reason: 'the marker gutter remains visible between icon and label',
+    );
   });
 
   testWidgets('an RTL list hangs its marker from the reading edge', (
@@ -592,6 +781,37 @@ void main() {
       isNot(FontStyle.italic),
       reason: 'italic is for emphasis, not for reading a paragraph in',
     );
+  });
+
+  testWidgets('a quotation rule follows the authored reading edge', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      QuoteBlock([paragraph('العربية تبدأ من اليمين')]),
+    ]);
+
+    final decorated = tester
+        .widgetList<Container>(find.byType(Container))
+        .where(
+          (container) =>
+              container.decoration is BoxDecoration &&
+              (container.decoration! as BoxDecoration).border
+                  is BorderDirectional,
+        )
+        .single;
+    final border =
+        (decorated.decoration! as BoxDecoration).border! as BorderDirectional;
+    final directionality = tester.widget<Directionality>(
+      find
+          .ancestor(
+            of: find.byWidget(decorated),
+            matching: find.byType(Directionality),
+          )
+          .first,
+    );
+
+    expect(border.start.style, BorderStyle.solid);
+    expect(directionality.textDirection, TextDirection.rtl);
   });
 
   testWidgets('a short table row is padded rather than collapsing the table', (

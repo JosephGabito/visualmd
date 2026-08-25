@@ -44,7 +44,10 @@ lowercase letters, so a number in a sentence sits *in* the line rather than
 standing up out of it; tables want the opposite, lining and tabular, so their
 columns agree (`lib/api/render/reading_theme.dart`). Code is given a
 slashed zero, because zero and capital O are the pair a reader of technical
-documents most often has to tell apart
+documents most often has to tell apart. Standard, contextual and discretionary
+ligatures are disabled: source such as `===`, `---` and repeated Markdown marks
+must show how many characters the author wrote rather than joining into a
+display glyph
 (`lib/api/render/reading_theme.dart`).
 
 **Tone as a third cue, under size and weight.** The scale runs `h1` darkest,

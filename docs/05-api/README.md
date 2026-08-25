@@ -34,6 +34,7 @@ which lets the same reader UI run on desktop and the web
 | [Workspace Actions](21-workspace-actions.md) | Native File commands, shortcuts, controller transitions, and errors |
 | [Brand Mark](22-brand-mark.md) | Bundled product artwork and its Flutter, macOS, Windows, and web surfaces |
 | [Document Image](23-document-image.md) | Local and remote Markdown artwork, sizing, semantics, and recovery |
+| [Container Typography](24-container-typography.md) | Recursive quotations, lists, markers, task states, and compact rhythm |
 
 ## How it connects
 
@@ -79,6 +80,8 @@ shows how a reader changes it through [Anchored Menu](08-anchored-menu.md).
 to see what goes where, how text is shaped, and where the measurements come
 from. [Document Image](23-document-image.md) follows the image path from an
 authored destination to bounded artwork or useful alternative text.
+[Container Typography](24-container-typography.md) explains why recursive
+quotes and lists become denser without changing the leading of their prose.
 [Code Block](11-code-block.md) explains why fenced code is allowed a
 wider measure than prose. [Pressable](09-pressable.md) and
 [Collapsible Panel](10-collapsible-panel.md) are the small interaction pieces

@@ -1183,6 +1183,20 @@ void main() {
   });
 
   group('a list', () {
+    test('accepts every unordered marker as the same reading structure', () {
+      final lists = parse('- hyphen\n\n* asterisk\n\n+ plus\n').blocks
+          .whereType<ListBlock>()
+          .toList();
+
+      expect(lists, hasLength(3));
+      expect(lists.every((list) => !list.ordered), isTrue);
+      expect(lists.map((list) => list.items.single.text), [
+        'hyphen',
+        'asterisk',
+        'plus',
+      ]);
+    });
+
     test('is tight when the author left no blank lines between items', () {
       final list = single<ListBlock>('- one\n- two\n');
       expect(list.ordered, isFalse);
@@ -1201,6 +1215,15 @@ void main() {
       final list = single<ListBlock>('5. five\n6. six\n');
       expect(list.ordered, isTrue);
       expect(list.start, 5);
+    });
+
+    test('accepts both ordered-list delimiters', () {
+      final period = single<ListBlock>('1. one\n2. two\n');
+      final parenthesis = single<ListBlock>('1) one\n2) two\n');
+
+      expect(period.ordered, isTrue);
+      expect(parenthesis.ordered, isTrue);
+      expect(parenthesis.items.map((item) => item.text), ['one', 'two']);
     });
 
     test('starts at one when the author did not say otherwise', () {
@@ -1224,6 +1247,67 @@ void main() {
       final item = list.items.single;
       expect(item.blocks.whereType<ParagraphBlock>(), isNotEmpty);
       expect(item.blocks.whereType<CodeBlock>().single.code, 'code');
+    });
+
+    test('items retain quotations, tables, code, and multiple paragraphs', () {
+      final list = single<ListBlock>('''
+- opening paragraph
+
+  second paragraph
+
+  > quoted paragraph
+
+  | Key | Value |
+  | --- | --- |
+  | one | two |
+
+  ```dart
+  final answer = 42;
+  ```
+''');
+      final blocks = list.items.single.blocks;
+
+      expect(blocks.whereType<ParagraphBlock>(), hasLength(2));
+      expect(blocks.whereType<QuoteBlock>(), hasLength(1));
+      expect(blocks.whereType<TableBlock>(), hasLength(1));
+      expect(blocks.whereType<CodeBlock>(), hasLength(1));
+      expect(list.loose, isTrue);
+    });
+
+    test('nested task items retain their state and inline markup', () {
+      final outer = single<ListBlock>('''
+- [ ] parent with **strength**
+  - [x] child with `code` and [a link](https://example.com)
+''');
+      final parent = outer.items.single;
+      final nested = parent.blocks.whereType<ListBlock>().single;
+      final parentParagraph = parent.blocks.whereType<ParagraphBlock>().single;
+      final childParagraph = nested.items.single.blocks
+          .whereType<ParagraphBlock>()
+          .single;
+
+      expect(parent.checked, isFalse);
+      expect(nested.items.single.checked, isTrue);
+      expect(
+        parentParagraph.content,
+        contains(
+          isA<MarkedRun>().having((run) => run.mark, 'mark', InlineMark.strong),
+        ),
+      );
+      expect(childParagraph.content, contains(isA<CodeRun>()));
+      expect(childParagraph.content, contains(isA<LinkRun>()));
+    });
+
+    test('a checked descendant never changes its ordinary parent', () {
+      final outer = single<ListBlock>('''
+- ordinary parent
+  - [x] checked child
+''');
+      final parent = outer.items.single;
+      final nested = parent.blocks.whereType<ListBlock>().single;
+
+      expect(parent.checked, isNull);
+      expect(nested.items.single.checked, isTrue);
     });
   });
 

@@ -180,6 +180,79 @@ rendered document, just as it does for a reference link.
 
 [visual-mark]: ../../images/visual-md-logo.png "The same Visual MD artwork"
 '''),
+    FileEntry('guide/advanced/containers.md', '''
+# Quotes and Lists
+
+Containers organise prose without changing how prose itself is read. Wrapped
+lines keep the body leading; only the relationships between blocks become more
+compact.
+
+## Quotations
+
+> A quotation can carry more than one paragraph without turning the entire
+> passage italic or shrinking its text.
+>
+> ## Structure remains structure
+>
+> - A list can live inside quoted matter.
+> - Its markers remain quiet signposts.
+>
+> > A nested quotation adds one reading-edge rule and no extra ornament.
+
+## Tight and loose lists
+
+- Tight items follow one another as continuously as lines of prose.
+- A long item may wrap over several lines while every continuation keeps the
+  body's ordinary leading and aligns with the first word rather than the mark.
+- Density belongs between items, not between their baselines.
+
+Loose items ask for a visible relationship:
+
+- The first loose item has an opening paragraph.
+
+  Its second paragraph remains part of the same item.
+
+- The next item begins after a restrained half-line interval.
+
+## Ordered, nested, and task lists
+
+7. This sequence starts where its author started it.
+8. Its next marker uses the established text edge.
+
+1) Parenthesis delimiters are ordinary ordered lists.
+2) Their authoring punctuation does not change their reading hierarchy.
+
+1. A mixed tree begins here.
+   - Its unordered child aligns under the parent's text.
+     1. An ordered grandchild can contain `code` and **strong text**.
+     2. Long wrapping prose keeps its readable measure as the available column
+        narrows through the hierarchy.
+   - [x] A completed nested task
+   - [ ] An incomplete task with [a link](https://example.com)
+2. The parent sequence resumes at the same text edge.
+
+123456789. A nine-digit marker receives the room it actually needs without
+           clipping, wrapping, or pushing earlier items onto another edge.
+
+## Deep but valid nesting
+
+- Level one has a long sentence which wraps before its descendants begin, so
+  the parent item's continuation and the child's marker cannot share a gutter.
+  - Level two
+    - Level three
+      - Level four
+        - Level five
+          - Level six
+            - Level seven with `code`, **strength**, and a
+              [link](https://example.com/deep)
+              1. Ordered level eight
+              2. The tree must remain finite, aligned, and reachable
+
+The completed tree returns directly to prose with one ordinary root-level gap.
+
+Repeated Markdown marks remain individually legible: `######`, `===`, and
+`---` show every character the author wrote.
+'''),
     FileEntry('notes/colophon.md', '''
 # Colophon
 
