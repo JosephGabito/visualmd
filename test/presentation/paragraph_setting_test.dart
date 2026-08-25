@@ -525,7 +525,7 @@ void main() {
     expect(gap('Item first.', 'Item second.'), lessThan(4));
   });
 
-  testWidgets('the same forward gap is spent in every nested block sequence', (
+  testWidgets('each nested sequence spends its contextual forward gap', (
     tester,
   ) async {
     final theme = await pump(tester, [
@@ -544,15 +544,15 @@ void main() {
         tester.getTopLeft(find.text(second)).dy -
         tester.getBottomLeft(find.text(first)).dy;
 
-    for (final pair in [
-      ('Top first.', 'Top second.'),
-      ('Quote first.', 'Quote second.'),
-      ('Item first.', 'Item second.'),
+    for (final expectation in [
+      ('Top first.', 'Top second.', theme!.baseline / 2),
+      ('Quote first.', 'Quote second.', theme.baseline / 2),
+      ('Item first.', 'Item second.', 0.0),
     ]) {
       expect(
-        gap(pair.$1, pair.$2),
-        closeTo(theme!.baseline / 2, 0.01),
-        reason: '${pair.$1} owns the gap after it',
+        gap(expectation.$1, expectation.$2),
+        closeTo(expectation.$3, 0.01),
+        reason: '${expectation.$1} owns the gap its context assigns',
       );
     }
   });

@@ -249,22 +249,31 @@ final class _Mapper {
   /// arrives as an `input` element, either directly under the item or tucked
   /// inside its first paragraph.
   static bool? _taskState(md.Element item) {
-    final checkbox = _findCheckbox(item);
+    final children = item.children ?? const <md.Node>[];
+    // The package inserts a tight task's checkbox directly under `li` and a
+    // loose task's checkbox directly under its opening `p`. Descendant lists
+    // belong to other items; walking into them would let a checked child
+    // falsely promote its parent to checked.
+    final checkbox =
+        _directCheckbox(children) ??
+        _directCheckbox(
+          children
+                  .whereType<md.Element>()
+                  .where((child) => child.tag == 'p')
+                  .firstOrNull
+                  ?.children ??
+              const <md.Node>[],
+        );
     if (checkbox == null) return null;
     return checkbox.attributes['checked'] == 'true';
   }
 
-  static md.Element? _findCheckbox(md.Node node) {
-    if (node is! md.Element) return null;
-    if (node.tag == 'input' && node.attributes['type'] == 'checkbox') {
-      return node;
-    }
-    for (final child in node.children ?? const <md.Node>[]) {
-      final found = _findCheckbox(child);
-      if (found != null) return found;
-    }
-    return null;
-  }
+  static md.Element? _directCheckbox(List<md.Node> nodes) => nodes
+      .whereType<md.Element>()
+      .where(
+        (node) => node.tag == 'input' && node.attributes['type'] == 'checkbox',
+      )
+      .firstOrNull;
 
   TableBlock _table(md.Element table) {
     final head = <TableCell>[];

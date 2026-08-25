@@ -21,6 +21,8 @@ reader marks structure.
 | A good rag is pleasantly uneven, with hyphenation kept to a minimum | *Alignment* |
 | A baseline grid aligns text across a field | *Grid*, p. 198 |
 | Decorative rules divide content, while ornament should echo structure rather than compete with it | *Ornaments*, pp. 60–63 |
+| Reducing leading creates denser colour but risks collisions; increasing it separates lines into independent elements | *Line spacing*, p. 108 |
+| Long lists depend on hierarchy, alignment and consistent styles for scanning | *Exercise: long lists*, p. 146 |
 
 Lupton's paragraph specimens on p. 126 warn that a full blank line is often
 too open and show a half-line alternative. Visual MD's **spaced** mode therefore
@@ -30,6 +32,15 @@ Both are pair-aware outcomes of `spaceAfter`, never combined signals.
 The book also cautions that white space is not automatically a kindness to the
 reader. A thematic break therefore uses a quiet hairline inside the existing
 grid rather than manufacturing a larger empty field around itself.
+
+The line-spacing and long-list guidance settle a related distinction. Lists
+should be denser than consecutive root paragraphs, but reducing the leading of
+wrapped item prose would change its typographic colour and risk collisions.
+Visual MD therefore keeps the body strut inside every container and reduces
+only the external interval: none in a tight list and half a beat in a loose
+list or quotation. Marker alignment and a shared text edge supply the remaining
+hierarchy (`lib/api/render/reading_theme.dart`,
+`lib/api/render/document_view.dart`).
 
 **Robert Bringhurst, *The Elements of Typographic Style*** — the source for
 the vertical rhythm.

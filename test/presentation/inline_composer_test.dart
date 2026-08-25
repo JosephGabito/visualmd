@@ -515,6 +515,14 @@ void main() {
       );
       expect(span.style!.decorationColor, isNull);
       expect(span.style!.decorationThickness, isNull);
+      final features = {
+        for (final feature in span.style!.fontFeatures!)
+          feature.feature: feature.value,
+      };
+      expect(features['zero'], 1);
+      expect(features['liga'], 0);
+      expect(features['calt'], 0);
+      expect(features['dlig'], 0);
     },
   );
 

@@ -148,7 +148,15 @@ final class ReadingTheme {
             // Zero and capital O are the pair a reader of technical documents
             // most often has to tell apart, and guessing is how a command gets
             // typed wrong.
-            fontFeatures: const [FontFeature.slashedZero()],
+            fontFeatures: const [
+              FontFeature.slashedZero(),
+              // Code is a transcription, not a display phrase. Programming
+              // ligatures can turn `===`, `---` or repeated Markdown marks
+              // into one joined glyph and hide how many characters exist.
+              FontFeature.disable('liga'),
+              FontFeature.disable('calt'),
+              FontFeature.disable('dlig'),
+            ],
           ),
       quote: body.copyWith(color: p.muted),
       marker: body.copyWith(color: p.muted),
@@ -332,6 +340,36 @@ final class ReadingTheme {
 
   /// The gap between ordinary blocks: one beat — a blank line, exactly.
   double get blockGap => baseline;
+
+  /// The quieter interval between distinct blocks inside one container.
+  ///
+  /// Lupton's dense lists are made by reducing the *space between entries*,
+  /// not the leading inside their prose. Half a beat keeps a loose list or a
+  /// quotation visibly articulated without turning every child into a new
+  /// root-level departure.
+  double get containerGap => baseline / 2;
+
+  /// External space inside a quotation or list item.
+  ///
+  /// A tight list is a solid run: its child blocks hand directly to one
+  /// another. A loose list and a quotation retain a half-beat relationship,
+  /// except between consecutive paragraphs when the reader chose indents.
+  /// Indentation and paragraph spacing are alternatives, not two signals for
+  /// the same boundary. Neither case changes [body] or its strut, so wrapped
+  /// item prose keeps the same leading as running text.
+  double spaceAfterInContainer(
+    Block current,
+    Block? next, {
+    required bool tight,
+  }) {
+    if (next == null || tight) return 0;
+    if (current is ParagraphBlock &&
+        next is ParagraphBlock &&
+        scale.marking == ParagraphMarking.indented) {
+      return 0;
+    }
+    return containerGap;
+  }
 
   /// The only external vertical space between document blocks.
   ///

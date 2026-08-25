@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide TableCell;
 import 'package:flutter/rendering.dart';
 
@@ -128,6 +130,8 @@ class _BlockSequence extends StatelessWidget {
   final double Function(Block block)? widthFor;
   final int startOffset;
   final int separatorLength;
+  final double Function(Block current, Block? next)? spaceAfter;
+  final bool reconcileContainers;
 
   const _BlockSequence({
     required this.blocks,
@@ -139,6 +143,8 @@ class _BlockSequence extends StatelessWidget {
     this.widthFor,
     this.startOffset = 0,
     this.separatorLength = 2,
+    this.spaceAfter,
+    this.reconcileContainers = true,
   });
 
   @override
@@ -150,7 +156,8 @@ class _BlockSequence extends StatelessWidget {
       final block = blocks[i];
       final previous = i == 0 ? null : blocks[i - 1];
       final next = i + 1 < blocks.length ? blocks[i + 1] : null;
-      final followingSpace = theme.spaceAfter(block, next);
+      final followingSpace =
+          spaceAfter?.call(block, next) ?? theme.spaceAfter(block, next);
 
       final view = _BlockView(
         block: block,
@@ -162,6 +169,7 @@ class _BlockSequence extends StatelessWidget {
         offset: offset,
         indent: ParagraphRules.indents(previous, marking) ? theme.indent : 0,
         followingSpace: followingSpace,
+        reconcileContainer: reconcileContainers,
       );
       final width = widthFor?.call(block);
       children.add(
@@ -193,6 +201,7 @@ class _BlockView extends StatelessWidget {
   final Map<int, GlobalKey> matchKeys;
   final int offset;
   final double followingSpace;
+  final bool reconcileContainer;
 
   /// The first-line indent this paragraph is set with; 0 for every other kind
   /// of block, and for a paragraph that opens a document or a section.
@@ -207,6 +216,7 @@ class _BlockView extends StatelessWidget {
     required this.matchKeys,
     required this.offset,
     required this.followingSpace,
+    required this.reconcileContainer,
     this.indent = 0,
   });
 
@@ -299,6 +309,8 @@ class _BlockView extends StatelessWidget {
           keys: keys,
           matchKeys: matchKeys,
           offset: offset,
+          followingSpace: followingSpace,
+          reconcile: reconcileContainer,
         );
 
       case ListBlock():
@@ -310,6 +322,8 @@ class _BlockView extends StatelessWidget {
           keys: keys,
           matchKeys: matchKeys,
           offset: offset,
+          followingSpace: followingSpace,
+          reconcile: reconcileContainer,
         );
 
       case TableBlock():
@@ -426,7 +440,7 @@ final class _RenderRhythmicHeading extends RenderShiftedBox {
       constraints.copyWith(minHeight: 0, maxHeight: double.infinity);
 
   double _reconciledHeight(double childHeight) =>
-      ((childHeight + followingSpace) / beat).ceil() * beat - followingSpace;
+      _ceilToBeat(childHeight + followingSpace, beat) - followingSpace;
 
   @override
   Size computeDryLayout(BoxConstraints constraints) {
@@ -464,6 +478,8 @@ class _Quote extends StatelessWidget {
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
+  final double followingSpace;
+  final bool reconcile;
 
   const _Quote({
     required this.blocks,
@@ -473,36 +489,50 @@ class _Quote extends StatelessWidget {
     required this.keys,
     required this.matchKeys,
     required this.offset,
+    required this.followingSpace,
+    required this.reconcile,
   });
 
   @override
   Widget build(BuildContext context) {
     final quoted = ReadingTheme.quoting(theme);
-    return Container(
-      padding: EdgeInsets.only(left: theme.em),
+    final direction = ReadingDirection.of(
+      blocks.map((block) => block.text).join('\n'),
+      fallback: Directionality.of(context),
+    );
+    final content = Container(
+      padding: EdgeInsetsDirectional.only(start: theme.em),
       decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
+        border: BorderDirectional(
+          start: BorderSide(
             color: theme.palette.accent.withValues(alpha: 0.5),
             width: 2,
           ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _BlockSequence(
-            blocks: blocks,
-            theme: quoted,
-            composer: composer,
-            codeHighlighter: codeHighlighter,
-            keys: keys,
-            matchKeys: matchKeys,
-            startOffset: offset,
-            separatorLength: 1,
-          ),
-        ],
+      child: _BlockSequence(
+        blocks: blocks,
+        theme: quoted,
+        composer: composer,
+        codeHighlighter: codeHighlighter,
+        keys: keys,
+        matchKeys: matchKeys,
+        startOffset: offset,
+        separatorLength: 1,
+        spaceAfter: (current, next) =>
+            theme.spaceAfterInContainer(current, next, tight: false),
+        reconcileContainers: false,
       ),
+    );
+    return Directionality(
+      textDirection: direction,
+      child: reconcile
+          ? _RhythmicContainer(
+              beat: theme.baseline,
+              followingSpace: followingSpace,
+              child: content,
+            )
+          : content,
     );
   }
 }
@@ -517,6 +547,8 @@ class _List extends StatelessWidget {
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
+  final double followingSpace;
+  final bool reconcile;
 
   const _List({
     required this.list,
@@ -526,15 +558,17 @@ class _List extends StatelessWidget {
     required this.keys,
     required this.matchKeys,
     required this.offset,
+    required this.followingSpace,
+    required this.reconcile,
   });
 
   @override
   Widget build(BuildContext context) {
-    final gutter = theme.em * (list.ordered ? 1.7 : 1.2);
-    // A list the author spaced out gets a whole beat between items; a tight
-    // one gets none, so its lines follow each other exactly as the lines of a
-    // paragraph do.
-    final between = list.loose ? theme.blockGap : 0.0;
+    final gutter = _gutterWidth();
+    // Density belongs between blocks, never inside their line boxes. Tight
+    // items are solid; authored loose items spend the same half-beat interval
+    // used by spaced prose.
+    final between = list.loose ? theme.containerGap : 0.0;
     final children = <Widget>[];
     var itemOffset = offset;
     for (var i = 0; i < list.items.length; i++) {
@@ -563,6 +597,12 @@ class _List extends StatelessWidget {
                   matchKeys: matchKeys,
                   startOffset: itemOffset,
                   separatorLength: 1,
+                  spaceAfter: (current, next) => theme.spaceAfterInContainer(
+                    current,
+                    next,
+                    tight: !list.loose,
+                  ),
+                  reconcileContainers: false,
                 ),
               ),
             ],
@@ -574,10 +614,37 @@ class _List extends StatelessWidget {
       }
       itemOffset += list.items[i].text.length + 1;
     }
-    return Column(
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: children,
     );
+    if (!reconcile) return content;
+    return _RhythmicContainer(
+      beat: theme.baseline,
+      followingSpace: followingSpace,
+      child: content,
+    );
+  }
+
+  /// The marker column follows the widest marker the author actually needs.
+  /// A fixed em gutter clips high starting numbers and makes wrapped text look
+  /// as though it belongs to the marker rather than to the item.
+  double _gutterWidth() {
+    var markerWidth = list.items.any((item) => item.checked != null)
+        ? theme.em
+        : 0.0;
+    for (var i = 0; i < list.items.length; i++) {
+      if (list.items[i].checked != null) continue;
+      markerWidth = math.max(
+        markerWidth,
+        ReadingMeasure.widthOf(
+          _markerLabel(list, i),
+          theme.marker,
+          scaler: theme.textScaler,
+        ),
+      );
+    }
+    return markerWidth + theme.em * 0.5;
   }
 }
 
@@ -593,23 +660,126 @@ class _Marker extends StatelessWidget {
     final item = list.items[index];
     if (item.checked != null) {
       return Padding(
-        padding: EdgeInsets.only(top: theme.em * 0.25),
-        child: Icon(
-          item.checked!
-              ? Icons.check_box_outlined
-              : Icons.check_box_outline_blank,
-          size: theme.em,
-          color: item.checked! ? theme.palette.accent : theme.palette.muted,
+        padding: EdgeInsetsDirectional.only(end: theme.em * 0.5),
+        child: Semantics(
+          checked: item.checked,
+          label: item.checked! ? 'Completed task' : 'Incomplete task',
+          child: ExcludeSemantics(
+            child: SizedBox(
+              height: theme.baseline,
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Icon(
+                  item.checked!
+                      ? Icons.check_box_outlined
+                      : Icons.check_box_outline_blank,
+                  size: theme.em,
+                  color: item.checked!
+                      ? theme.palette.accent
+                      : theme.palette.muted,
+                ),
+              ),
+            ),
+          ),
         ),
       );
     }
     // Markers are signposts: they mark the line without competing with it.
-    final label = list.ordered ? '${list.start + index}.' : '•';
+    final label = _markerLabel(list, index);
     return Padding(
       padding: EdgeInsetsDirectional.only(end: theme.em * 0.5),
-      child: Text(label, textAlign: TextAlign.end, style: theme.marker),
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        textAlign: TextAlign.end,
+        style: theme.marker,
+      ),
     );
   }
+}
+
+String _markerLabel(ListBlock list, int index) =>
+    list.ordered ? '${list.start + index}.' : '•';
+
+/// Reconciles a recursive container after its children have established their
+/// real height.
+///
+/// Half-beat relationships are useful inside a quote or loose list, but the
+/// complete departure plus its forward-owned external space must still hand
+/// the following prose back on the body grid. The correction belongs below
+/// the container's content; putting it above would invent a second top-margin
+/// convention.
+final class _RhythmicContainer extends SingleChildRenderObjectWidget {
+  final double beat;
+  final double followingSpace;
+
+  const _RhythmicContainer({
+    required this.beat,
+    required this.followingSpace,
+    required super.child,
+  });
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderRhythmicContainer(beat, followingSpace);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderRhythmicContainer renderObject,
+  ) {
+    renderObject
+      ..beat = beat
+      ..followingSpace = followingSpace;
+  }
+}
+
+final class _RenderRhythmicContainer extends RenderShiftedBox {
+  _RenderRhythmicContainer(this._beat, this._followingSpace, [RenderBox? child])
+    : super(child);
+
+  double _beat;
+  double _followingSpace;
+
+  set beat(double value) {
+    if (_beat == value) return;
+    _beat = value;
+    markNeedsLayout();
+  }
+
+  set followingSpace(double value) {
+    if (_followingSpace == value) return;
+    _followingSpace = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+
+    child.layout(constraints.loosen(), parentUsesSize: true);
+    final complete = child.size.height + _followingSpace;
+    final reconciled = _ceilToBeat(complete, _beat) - _followingSpace;
+    size = constraints.constrain(Size(child.size.width, reconciled));
+    final childParentData = child.parentData! as BoxParentData;
+    childParentData.offset = Offset.zero;
+  }
+}
+
+/// Rounds a completed surface up without charging a phantom beat for shaping
+/// noise at an already-whole boundary.
+double _ceilToBeat(double height, double beat) {
+  final beats = height / beat;
+  final nearest = beats.roundToDouble();
+  final reconciled = (beats - nearest).abs() < 0.01
+      ? nearest
+      : beats.ceilToDouble();
+  return reconciled * beat;
 }
 
 /// A table: aligned as the author asked, figures lining up in their columns,

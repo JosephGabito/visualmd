@@ -77,13 +77,18 @@ Each block type is built by `_BlockView`
   padding above and below and **no border**: its own ground already says what
   it is, and a border is both a second signal and a height that breaks the grid
   (`lib/api/render/document_view.dart`).
-- **Quotation** — `_Quote`: a 2 px accent rule and blocks re-rendered one shade
-  back with `ReadingTheme.quoting`. Two signals, not three: no italic
+- **Quotation** — `_Quote`: a 2 px accent rule at the authored reading edge and
+  blocks re-rendered one shade back with `ReadingTheme.quoting`. Its child
+  blocks use compact half-beat relationships while their prose keeps body
+  leading. Two signals, not three: no italic
   (`lib/api/render/document_view.dart`).
 - **List** — `_List`: markers hang in a gutter at each item's reading edge.
   An RTL item places its marker to the right; an LTR item places it to the left.
-  Loose items get one beat; tight items follow like paragraph lines. Markers
-  are muted signposts, and task items show a checkbox
+  The widest marker establishes the gutter, so large authored starts remain
+  one line and every item keeps a shared text edge. Loose items get half a beat;
+  tight items follow like paragraph lines without changing their leading.
+  Markers are muted signposts, and task items expose their checked state both
+  visually and through semantics
   (`lib/api/render/document_view.dart`).
 - **Table** — `_Table`: alignment as the author asked, a panel-coloured head
   row, ragged-row padding and locally scrolling overflow. Each cell resolves
@@ -148,7 +153,9 @@ overflow, multiline geometry at all six heading levels, scaled mixed-script
 and unbreakable headings, heading-level semantics and authored direction for
 paragraphs, lists and table cells,
 thematic-break geometry and semantics, rhythm through rules and lists, tonal
-hierarchy, anchors, markers, task lists and quotation treatment.
+hierarchy, anchors, marker geometry, nested container rhythm, task semantics and
+bidirectional quotation treatment. The full recursive contract is documented in
+[Container Typography](24-container-typography.md).
 
 ## Transition
 

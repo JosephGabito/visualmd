@@ -32,7 +32,7 @@ the grid from the requested size instead of the rendered size. Recording that
 distinction here prevents the same drift when another face or scaler is
 introduced.
 
-Five things establish the flow and return displayed departures to whole beats:
+Seven things establish the flow and return displayed departures to whole beats:
 
 | What | How | Citation |
 |------|-----|----------|
@@ -42,6 +42,7 @@ Five things establish the flow and return displayed departures to whole beats:
 | The complete heading block | Its shaped height and outgoing half-beat are reconciled together; only the grid correction remains inside the heading | `lib/api/render/document_view.dart` |
 | A code block | Compact source lines at 72 percent of a beat; the completed coloured surface rounds to the prose grid | `lib/api/render/reading_theme.dart`, `lib/api/widgets/code_block.dart` |
 | A thematic break | A one-pixel hairline centred in a complete one-beat box | `lib/api/render/document_view.dart` |
+| A recursive container | Body leading remains one beat; quotes and loose lists spend half-beat child relationships, tight lists spend none, and the completed container reconciles before returning prose | `lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart` |
 
 A heading is reconciled only after Flutter has shaped the complete block. Its
 lines therefore stay close enough to read as one display phrase. The sequence
@@ -75,15 +76,23 @@ and push itself off the beat. `strutFor` fixes paragraph lines to the body box
 (`lib/api/render/document_view.dart`). Headings intentionally opt out: their
 complete shaped block is reconciled instead.
 
-Two knock-on decisions follow from the rule rather than from taste. Code lines
+Three knock-on decisions follow from the rule rather than from taste. Code lines
 must be allowed a denser texture than prose, so the completed body reconciles
 its shaped height instead of forcing every source line onto the prose beat
 (`lib/api/widgets/code_block.dart`). The block has no border, because its own
 ground already says what it is and a border is both a second signal and a
-height that breaks the grid (`lib/api/render/document_view.dart`). A tight list has no space
-between its items at all, so its lines follow one another exactly as the lines
-of a paragraph do; a loose one gets a whole beat
-(`lib/api/render/document_view.dart`).
+height that breaks the grid (`lib/api/render/document_view.dart`). A container
+does not tighten its prose leading: Lupton's denser list texture comes from the
+relationships between entries. A tight list has no space between its items, and
+a loose list or quotation gets half a beat. The reader's indented paragraph
+setting keeps consecutive paragraphs solid because indent and space are
+alternative signals. Only the outermost
+`_RhythmicContainer` reconciles the completed recursive surface plus its known
+outgoing space. Nested containers retain their intrinsic height, preventing
+each level from accumulating another invisible beat. The single correction
+stays below the content so the top-down spacing rule remains intact
+(`lib/api/render/reading_theme.dart`,
+`lib/api/render/document_view.dart`).
 
 ## Inputs and outputs
 
@@ -124,6 +133,9 @@ paragraphs and asserts every later paragraph's offset is a whole number of
 beats (`test/presentation/document_view_test.dart`). The code-block suite also
 measures the compact source line and proves both scrolled and wrapped surfaces
 finish on a whole prose beat (`test/presentation/code_block_test.dart`).
+The container suite separately proves unchanged prose leading, zero and
+half-beat list relationships, wide-marker geometry and the return to phase after
+nested quotes and lists (`test/presentation/document_view_test.dart`).
 
 ## Transition
 
