@@ -444,7 +444,15 @@ final class ReaderController extends ChangeNotifier {
     if (href.isEmpty) return null;
     if (href.startsWith('#')) return AnchorLink(href.substring(1));
     final uri = Uri.tryParse(href);
-    if (uri != null && uri.hasScheme) return ExternalLink(href);
+    if (uri != null && uri.hasScheme) {
+      // Markdown admits arbitrary URI schemes, but these three execute or
+      // embed authored payloads instead of handing a destination to another
+      // application. They must never cross the platform-opening boundary.
+      const executable = {'javascript', 'data', 'vbscript'};
+      return executable.contains(uri.scheme.toLowerCase())
+          ? null
+          : ExternalLink(href);
+    }
 
     final current = reading?.document;
     final open = library;

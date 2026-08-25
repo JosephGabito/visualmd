@@ -575,6 +575,107 @@ void main() {
     });
   });
 
+  group('autolinks', () {
+    test('angle-bracket URI and email forms become ordinary domain links', () {
+      final paragraph = single<ParagraphBlock>(
+        '<https://example.com/a?workspace=visual-md> and '
+        '<reader+notes@example.com>',
+      );
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links.map((link) => link.text), [
+        'https://example.com/a?workspace=visual-md',
+        'reader+notes@example.com',
+      ]);
+      expect(links.map((link) => link.href), [
+        'https://example.com/a?workspace=visual-md',
+        'mailto:reader+notes@example.com',
+      ]);
+      expect(links.map((link) => link.title), everyElement(isNull));
+      expect(
+        paragraph.text,
+        'https://example.com/a?workspace=visual-md and '
+        'reader+notes@example.com',
+      );
+    });
+
+    test('invalid angle-bracket candidates remain authored text', () {
+      final paragraph = single<ParagraphBlock>(
+        '<> <m:one-character-scheme> <example.com> '
+        '<https://example.com/a path> <reader@example.com->',
+      );
+
+      expect(paragraph.content.whereType<LinkRun>(), isEmpty);
+      expect(
+        paragraph.text,
+        '<> <m:one-character-scheme> <example.com> '
+        '<https://example.com/a path> <reader@example.com->',
+      );
+    });
+
+    test('invalid angle-bracket candidates remain visible in headings', () {
+      final heading = single<HeadingBlock>(
+        '# <m:one-character-scheme> and <reader@bad..example.com>',
+      );
+
+      expect(
+        heading.text,
+        '<m:one-character-scheme> and <reader@bad..example.com>',
+      );
+    });
+
+    test('GFM recognises bare web addresses and email addresses', () {
+      final paragraph = single<ParagraphBlock>(
+        'https://example.com/guide, www.example.com/help, and '
+        'reader.notes+visual@example.com.',
+      );
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links.map((link) => link.text), [
+        'https://example.com/guide',
+        'www.example.com/help',
+        'reader.notes+visual@example.com',
+      ]);
+      expect(links.map((link) => link.href), [
+        'https://example.com/guide',
+        'http://www.example.com/help',
+        'mailto:reader.notes+visual@example.com',
+      ]);
+      expect(paragraph.text, endsWith('reader.notes+visual@example.com.'));
+    });
+
+    test('GFM keeps sentence punctuation outside a bare URL', () {
+      final paragraph = single<ParagraphBlock>(
+        '(Visit https://example.com/search?q=Markup+(business)). '
+        'Then www.example.com/a.b.',
+      );
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links.map((link) => link.text), [
+        'https://example.com/search?q=Markup+(business)',
+        'www.example.com/a.b',
+      ]);
+      expect(
+        paragraph.text,
+        '(Visit https://example.com/search?q=Markup+(business)). '
+        'Then www.example.com/a.b.',
+      );
+    });
+
+    test('a bare URL needs a valid left boundary', () {
+      final paragraph = single<ParagraphBlock>(
+        'prefixhttps://example.com is literal; '
+        '(https://example.com) is linked.',
+      );
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links, hasLength(1));
+      expect(links.single.text, 'https://example.com');
+      expect(links.single.href, 'https://example.com');
+      expect(paragraph.text, contains('prefixhttps://example.com'));
+    });
+  });
+
   group('soft line breaks', () {
     test('source wrapping disappears into one word separator', () {
       final paragraph = single<ParagraphBlock>(

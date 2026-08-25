@@ -489,6 +489,36 @@ void main() {
     ]);
   });
 
+  test('the page and outline agree on autolinks and their near misses', () {
+    const sources = [
+      '<https://example.com/angle>',
+      '<reader+notes@example.com>',
+      'https://example.com/bare',
+      'www.example.com/help',
+      'reader.notes+visual@example.com',
+      '<m:one-character-scheme>',
+      '<https://example.com/a path>',
+      '<reader@bad..example.com>',
+    ];
+    const parser = MarkdownDocumentParser();
+
+    for (var index = 0; index < sources.length; index++) {
+      final markdown = '# ${sources[index]}';
+      final document = Document(
+        id: DocumentId(
+          const LibraryRootId('autolink-corpus'),
+          'case-$index.md',
+        ),
+        content: markdown,
+      );
+      final outline = document.outline.tableOfContents.headings.single;
+      final page = parser.parse(markdown).headings.single;
+
+      expect(outline.text, page.text, reason: sources[index]);
+      expect(outline.anchor, page.anchor, reason: sources[index]);
+    }
+  });
+
   test('the outline and page agree on combined delimiter precedence', () {
     const sources = [
       '***foo***',

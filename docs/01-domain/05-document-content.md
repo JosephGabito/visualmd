@@ -67,6 +67,13 @@ label children, destination and title before entering the domain. An unresolved
 reference does not become a `LinkRun`; its brackets remain ordinary authored
 text instead.
 
+The same economy applies to autolinks. Angle-bracket URI and email forms, bare
+GFM web addresses and bare GFM emails all become `LinkRun`; the model records
+their visible label and resolved destination, not which source spelling found
+the link. A fragment destination is likewise ordinary `href` data here. The
+API edge decides whether it scrolls inside the current document, opens another
+library document, or leaves through a safe external scheme.
+
 CommonMark also permits an empty inline-link label. The domain keeps that valid
 shape — including its destination and title — while its `text` remains empty.
 That is data fidelity, not permission to invent visible or accessible words at

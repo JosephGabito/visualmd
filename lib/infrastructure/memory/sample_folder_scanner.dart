@@ -118,6 +118,35 @@ or after their use, the first duplicate wins, and a missing definition such as
 false action. A reference-linked heading also keeps the same words and anchor
 in the page and the outline.
 
+## Automatic links
+
+Angle brackets make a CommonMark URI or email explicit:
+<https://visualmd.dev/guide> and <reader@visualmd.dev>. GFM also recognises
+https://visualmd.dev/notes, www.visualmd.dev/help, and reader@visualmd.dev in
+ordinary prose. Sentence punctuation stays outside each interaction.
+
+## Local navigation
+
+Fragments stay inside the open document. [Visit the first repeated note](#repeated-note)
+or [the second one](#repeated-note-1); duplicate headings receive numbered
+anchors in source order.
+
+### Repeated note
+
+The first heading owns `repeated-note`.
+
+### Repeated note
+
+The duplicate owns `repeated-note-1`, exactly as shown by the outline's shared
+anchor rule.
+
+The page keeps reading after the destination, so following the fragment can
+settle the named heading at the top of the pane instead of merely revealing it
+at the bottom edge.
+
+That distinction matters when the same words appear twice: the destination
+should be obvious before the reader resumes the surrounding prose.
+
 [docs]: https://commonmark.org/help/
 [collapsed reference]: https://spec.commonmark.org/0.31.2/#collapsed-reference-link
 [shortcut reference]: https://spec.commonmark.org/0.31.2/#shortcut-reference-link

@@ -24,7 +24,10 @@ final class MarkdownDocumentParser implements DocumentParser {
       // package:markdown currently lets its delimiter resolver consume a
       // shorter pair from a run of three or more tildes. GFM makes the whole
       // run literal, so claim it before the extension syntax sees it.
-      inlineSyntaxes: [_LiteralLongTildeRunSyntax()],
+      inlineSyntaxes: [
+        _LiteralAngleAutolinkNearMissSyntax(),
+        _LiteralLongTildeRunSyntax(),
+      ],
       extensionSet: md.ExtensionSet.gitHubFlavored,
       // The reader draws text, not HTML: escaping it here would put `&amp;`
       // on the page.
@@ -49,6 +52,47 @@ final class MarkdownDocumentParser implements DocumentParser {
     }
     return source;
   }
+}
+
+/// Keeps malformed autolink-shaped text from being swallowed as inline HTML.
+///
+/// `package:markdown` evaluates the GFM HTML extension before its default
+/// autolink syntaxes. A one-character URI scheme or a malformed email can
+/// therefore arrive as an empty HTML element even though CommonMark says it is
+/// literal text. Valid candidates are deliberately left to the package; this
+/// syntax claims only the near misses so the page and framework-free outline
+/// retain the same authored characters.
+final class _LiteralAngleAutolinkNearMissSyntax extends md.InlineSyntax {
+  static final _uri = RegExp(r'^[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*$');
+  static final _email = RegExp(
+    r'''^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]'''
+    r'''(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?'''
+    r'''(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$''',
+  );
+
+  _LiteralAngleAutolinkNearMissSyntax()
+    : super(
+        r'<((?:[A-Za-z][A-Za-z0-9+.-]*:[^<>\n]*)|(?:[^<>\x00-\x20]+@[^<>\x00-\x20]+))>',
+        startCharacter: 0x3c,
+      );
+
+  @override
+  bool tryMatch(md.InlineParser parser, [int? startMatchPos]) {
+    startMatchPos ??= parser.pos;
+    final match = pattern.matchAsPrefix(parser.source, startMatchPos);
+    if (match == null) return false;
+    final candidate = match[1]!;
+    if (_uri.hasMatch(candidate) || _email.hasMatch(candidate)) return false;
+
+    parser
+      ..writeText()
+      ..addNode(md.Text(match[0]!))
+      ..consume(match[0]!.length);
+    return true;
+  }
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) => false;
 }
 
 /// Keeps GFM's ineligible long tilde runs out of the delimiter stack.
