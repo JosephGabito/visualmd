@@ -307,8 +307,11 @@ Known gaps:
   text engine does not expose.
 - **Relative images do not resolve.**
 - **Windows is scaffolded but never built** — it needs a Windows machine.
-- **The macOS app is unsigned**, so it runs for whoever built it and Gatekeeper
-  refuses it for anyone else.
+- **Apple credentials remain machine-local.** The repository enables hardened
+  runtime, ships its privacy declaration, and audits the release bundle. A
+  distributable artifact still requires a Developer ID identity and
+  notarization on the release machine; see
+  [Releasing for macOS](docs/09-contributing/06-releasing-for-macos.md).
 
 ## Before calling a change complete
 

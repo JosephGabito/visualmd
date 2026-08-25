@@ -21,6 +21,7 @@ the deeper architectural reasoning.
 | [Adding a Platform](03-adding-a-platform.md) | Follow the path used for the macOS adapter on another target. |
 | [Writing Docs](04-writing-docs.md) | Keep component guides, links, and source references useful. |
 | [Creating a Theme](05-creating-a-theme.md) | Create a theme file and understand its schema and fallback behavior. |
+| [Releasing for macOS](06-releasing-for-macos.md) | Build, sign, notarize, and audit the Apple distribution artifact. |
 
 ## A good first loop
 

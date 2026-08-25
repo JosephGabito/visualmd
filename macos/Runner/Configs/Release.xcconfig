@@ -1,2 +1,9 @@
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
+
+// Apple notarizes Developer ID applications only when every executable uses
+// the hardened runtime. Keep debug entitlement injection out of distribution
+// builds as well: get-task-allow is useful to a debugger and rejected by the
+// notary service.
+ENABLE_HARDENED_RUNTIME = YES
+CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO
