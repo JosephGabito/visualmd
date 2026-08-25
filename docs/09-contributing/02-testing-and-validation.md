@@ -131,6 +131,10 @@ The scripts under `bin/tools/` are the shared local and CI interface:
   checks documentation, and builds web plus the native target supported by the
   host.
 - `beautipass.sh` formats first, then runs validation.
+- `validate-macos-bundle.sh` audits release metadata, sandbox entitlements,
+  hardened runtime, privacy declarations, nested signatures, and native
+  library portability. Its `--distribution` mode additionally requires a
+  notarized Developer ID artifact that Gatekeeper accepts.
 
 ## Complete local check
 
