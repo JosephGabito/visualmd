@@ -462,6 +462,119 @@ void main() {
     });
   });
 
+  group('reference links', () {
+    test('full collapsed and shortcut forms become the same domain link', () {
+      final blocks = parse('''
+[before definition][guide]
+
+[guide]: /manual "Manual title"
+
+[full][guide], [guide][], and [guide].
+''').blocks.whereType<ParagraphBlock>().toList();
+      final links = blocks
+          .expand((block) => block.content)
+          .whereType<LinkRun>()
+          .toList();
+
+      expect(links.map((link) => link.text), [
+        'before definition',
+        'full',
+        'guide',
+        'guide',
+      ]);
+      expect(links.map((link) => link.href), everyElement('/manual'));
+      expect(links.map((link) => link.title), everyElement('Manual title'));
+      expect(parse('[guide]: /manual').blocks, isEmpty);
+    });
+
+    test('labels match by folded case and collapsed whitespace', () {
+      final paragraph = single<ParagraphBlock>('''
+[read **important** *voice* and `code`][  ẞ
+ GUIDE ]
+
+[SS Guide]: /unicode
+''');
+      final link = paragraph.content.whereType<LinkRun>().single;
+
+      expect(link.href, '/unicode');
+      expect(link.text, 'read important voice and code');
+      expect(link.children.whereType<MarkedRun>(), hasLength(2));
+      expect(link.children.whereType<CodeRun>().single.text, 'code');
+    });
+
+    test('the first duplicate definition remains authoritative', () {
+      final link =
+          single<ParagraphBlock>('''
+[guide]
+
+[guide]: /first "First"
+[GUIDE]: /second "Second"
+''').content.single
+              as LinkRun;
+
+      expect(link.href, '/first');
+      expect(link.title, 'First');
+    });
+
+    test('a destination and title may continue on following source lines', () {
+      final paragraph =
+          parse('''
+[destination] and [title]
+
+[destination]:
+  <https://example.com/a path?q=&copy;>
+[title]: /manual
+  "A title
+  over two lines"
+''').blocks.single
+              as ParagraphBlock;
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links.map((link) => link.href), [
+        'https://example.com/a%20path?q=%C2%A9',
+        '/manual',
+      ]);
+      expect(links.map((link) => link.title), [
+        null,
+        'A title\n  over two lines',
+      ]);
+    });
+
+    test('unresolved forms stay literal and precedence stays local', () {
+      final paragraph = single<ParagraphBlock>('''
+[missing][unknown], [missing][], [missing], and [guide][unknown][guide].
+
+[guide]: /resolved
+''');
+      final links = paragraph.content.whereType<LinkRun>().toList();
+
+      expect(links, hasLength(1));
+      expect(links.single.text, 'unknown');
+      expect(links.single.href, '/resolved');
+      expect(
+        paragraph.text,
+        '[missing][unknown], [missing][], [missing], and '
+        '[guide]unknown.',
+      );
+    });
+
+    test('a reference label may contain 999 characters but not 1000', () {
+      final maximum = List.filled(999, 'a').join();
+      final overlong = '${maximum}a';
+      final blocks = parse('''
+[valid][$maximum] and [literal][$overlong]
+
+[$maximum]: /maximum
+[$overlong]: /overlong
+''').blocks;
+      final paragraph = blocks.first as ParagraphBlock;
+
+      expect(paragraph.content.whereType<LinkRun>().single.href, '/maximum');
+      expect(paragraph.text, contains('[literal][$overlong]'));
+      expect(blocks.last.text, contains('[$overlong]: /overlong'));
+    });
+  });
+
   group('soft line breaks', () {
     test('source wrapping disappears into one word separator', () {
       final paragraph = single<ParagraphBlock>(

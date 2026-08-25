@@ -106,16 +106,22 @@ Anchors are GitHub-style, so links like `[Levels](#levels)` behave.
     FileEntry('guide/advanced/reference-links.md', '''
 # Reference Links
 
-Some writers keep their links at the bottom of the file, [like this][docs].
-They keep working here, from any section.
+Some writers keep destinations at the bottom of a file. A [full reference][docs],
+a [collapsed reference][], and a [shortcut reference] keep the prose quiet
+while remaining ordinary links to the reader.
 
-## Why mention it?
+## [Why mention it?][reason]
 
-Because the reader cuts documents into sections at each heading so the
-outline can scroll precisely — and it makes sure link definitions travel
-with every section.
+The three spellings resolve to one kind of link. Definitions may live before
+or after their use, the first duplicate wins, and a missing definition such as
+[this missing reference][nowhere] remains visible source rather than becoming a
+false action. A reference-linked heading also keeps the same words and anchor
+in the page and the outline.
 
 [docs]: https://commonmark.org/help/
+[collapsed reference]: https://spec.commonmark.org/0.31.2/#collapsed-reference-link
+[shortcut reference]: https://spec.commonmark.org/0.31.2/#shortcut-reference-link
+[reason]: https://spec.commonmark.org/0.31.2/#link-reference-definitions
 '''),
     FileEntry('notes/colophon.md', '''
 # Colophon

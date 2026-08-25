@@ -58,6 +58,17 @@ The private `_Parser` works line by line
   presents (`lib/domain/reading/character_references.dart`,
   `lib/domain/reading/named_character_references.g.dart`,
   `lib/domain/reading/document_outline.dart`).
+- **Reference links.** Definitions are read before headings so a definition may
+  appear above or below its use. Full, collapsed and shortcut notation loses
+  its brackets only when its normalized label is actually defined; unresolved
+  notation remains authored text. Whitespace collapsing and Unicode case
+  folding come from `LinkLabel`, whose generated table is synchronized with
+  the page parser. This keeps heading text, anchors, outline labels and the
+  rendered page identical without importing a Markdown package into the domain
+  (`lib/domain/reading/link_reference_definitions.dart`,
+  `lib/domain/reading/link_label.dart`,
+  `lib/domain/reading/link_label_case_folding.g.dart`,
+  `lib/domain/reading/document_outline.dart`).
 - **Anchors.** GitHub style: lowercase, keep letters, digits, spaces and
   hyphens, spaces to hyphens. Duplicates get `-1`, `-2`, …; an empty slug
   becomes `section`. The rule is not this parser's own — it lives in
@@ -67,16 +78,14 @@ The private `_Parser` works line by line
   `lib/domain/reading/document_outline.dart`). The
   [content model](05-document-content.md) takes its anchors from the same
   rule, which is what makes a link found in the outline resolve on the page.
-- **Reference definitions** (`[id]: url`) are collected outside fences
-  (`lib/domain/reading/document_outline.dart`, `lib/domain/reading/document_outline.dart`).
 - **Sections.** Each heading starts a section that includes its own heading
   line; text before the first heading is a heading-less section unless blank.
   Sections are no longer what the page renders — see
   [ADR 0004](../08-decisions/0004-sections-as-navigation-unit.md) — but the
-  parser still produces them and they are still tested.
-  When there is more than one section and any reference definitions exist,
-  the definitions are appended to every section so links resolve wherever
-  they appear (`lib/domain/reading/document_outline.dart`).
+  parser still produces them and they are still tested. Each section is an
+  exact source slice; the obsolete section renderer no longer requires
+  reference definitions to be copied into other slices
+  (`lib/domain/reading/document_outline.dart`).
 - **Title.** `title:` in front matter (quotes stripped), else the first h1,
   else `null` (`lib/domain/reading/document_outline.dart`).
 
@@ -97,6 +106,7 @@ The private `_Parser` works line by line
 | an h1 mixing named, decimal, hexadecimal, structural, escaped and code-literal references | valid prose references become Unicode; encoded structural marks stay text; protected forms stay source | one | the resolved reading text |
 | headings with triple marks, marks inside marks, overlapping runs and escaped delimiters | nested grammar disappears; unmatched and rule-of-three delimiters remain reading text; anchors follow the resolved words | one per heading | the first resolved h1 |
 | headings with one-, two-, three- and four-tilde runs, whitespace edges and nested roles | eligible strikethrough notation disappears; ineligible long runs and unmatched tildes remain reading text | one per heading | the resolved h1 |
+| headings using full, collapsed, shortcut and missing reference forms, with definitions after them | resolved labels lose notation; missing labels keep it; anchors use exactly the page's words | one per heading | the first resolved h1 |
 | `intro`, `# One`, `## Two` | One, Two | three: the first has no heading | `One` |
 | `---` / `title: "From Front Matter"` / `---` / `# Body Heading` | Body Heading at line 5 | one, without `tags:` | `From Front Matter` |
 | empty string | none | none | `null` |

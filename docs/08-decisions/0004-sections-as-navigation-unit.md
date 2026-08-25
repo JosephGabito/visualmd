@@ -34,9 +34,10 @@ is found by measuring the keyed render boxes against a line 120 px below the
 top of the page.
 
 Because reference-style link definitions may live in a different section than
-the links that use them, the parser appends every definition to every section
-when a document has more than one. *(No longer needed for rendering: the
-document is parsed once, whole.)*
+the links that use them, the original section renderer required every
+definition to be copied into every section. *(No longer needed: the document is
+parsed once, whole. The obsolete copying was removed; sections are again exact
+source slices.)*
 
 ## Consequences
 
@@ -58,10 +59,10 @@ document is parsed once, whole.)*
 ## Evidence
 
 - `Section` and its contract: `lib/domain/reading/section.dart`.
-- Cutting at boundaries and appending reference definitions: `lib/domain/reading/document_outline.dart`.
+- Cutting exact source slices at boundaries: `lib/domain/reading/document_outline.dart`.
 - Fenced code blocks are skipped while scanning for headings: `lib/domain/reading/document_outline.dart`.
 - The pane owns the anchor keys and clears them per document: `lib/api/widgets/reading_pane.dart`, `lib/api/widgets/reading_pane.dart`.
 - Scroll to an anchor: `lib/api/widgets/reading_pane.dart`.
 - Heading keys registered as blocks build: `lib/api/render/document_view.dart`.
-- Tests: `test/domain/document_outline_test.dart` (sections and shared reference links), `test/domain/document_outline_test.dart` (fences).
+- Tests: `test/domain/document_outline_test.dart` (exact sections, reference-linked headings and fences).
 - Written description: [Reading Pane](../05-api/04-reading-pane.md), [Document Outline](../01-domain/03-document-outline.md).

@@ -1,6 +1,7 @@
 import 'character_references.dart';
 import 'heading_anchor.dart';
 import 'heading.dart';
+import 'link_reference_definitions.dart';
 import 'section.dart';
 import 'table_of_contents.dart';
 
@@ -61,7 +62,7 @@ final class _Parser {
   static final _closingHashes = RegExp(r'^(.*?)[ \t]+#+$');
   static final _setextH1 = RegExp(r'^ {0,3}=+[ \t]*$');
   static final _setextH2 = RegExp(r'^ {0,3}-+[ \t]*$');
-  static final _refDefinition = RegExp(r'^ {0,3}\[[^\]]+\]:[ \t]*\S');
+  static final _refDefinition = RegExp(r'^ {0,3}\[[^\]]+\]:');
   static final _paragraphInterrupt = RegExp(
     r'^ {0,3}(?:#{1,6}(?:[ \t]+|$)|>|[-*+](?:[ \t]+|$)|\d{1,9}[.)](?:[ \t]+|$)|`{3,}|~{3,})',
   );
@@ -75,7 +76,7 @@ final class _Parser {
   DocumentOutline parse() {
     final (frontMatter, start) = _frontMatter();
     final headings = <Heading>[];
-    final refDefinitions = <String>[];
+    final references = LinkReferenceDefinitions.fromLines(lines, start);
     // (startLine, heading) for each section; first may be heading-less.
     final boundaries = <(int, Heading?)>[(start, null)];
 
@@ -101,11 +102,14 @@ final class _Parser {
         continue;
       }
 
-      if (_refDefinition.hasMatch(line)) refDefinitions.add(line);
+      if (references.ownsLine(i)) {
+        i++;
+        continue;
+      }
 
       final atx = _atx.firstMatch(line);
       if (atx != null) {
-        final heading = _heading(atx[1]!.length, atx[2] ?? '', i);
+        final heading = _heading(atx[1]!.length, atx[2] ?? '', i, references);
         headings.add(heading);
         boundaries.add((i, heading));
         i++;
@@ -114,7 +118,7 @@ final class _Parser {
 
       final setext = _setextStartingAt(i);
       if (setext != null) {
-        final heading = _heading(setext.level, setext.source, i);
+        final heading = _heading(setext.level, setext.source, i, references);
         headings.add(heading);
         boundaries.add((i, heading));
         i = setext.after;
@@ -126,7 +130,7 @@ final class _Parser {
     return DocumentOutline(
       frontMatter: frontMatter,
       tableOfContents: TableOfContents(List.unmodifiable(headings)),
-      sections: List.unmodifiable(_sections(boundaries, refDefinitions)),
+      sections: List.unmodifiable(_sections(boundaries)),
     );
   }
 
@@ -186,12 +190,17 @@ final class _Parser {
     return (null, 0);
   }
 
-  Heading _heading(int level, String raw, int line) {
+  Heading _heading(
+    int level,
+    String raw,
+    int line,
+    LinkReferenceDefinitions references,
+  ) {
     var text = raw.trim();
     final closing = _closingHashes.firstMatch(text);
     if (closing != null) text = closing[1]!;
     if (RegExp(r'^#+$').hasMatch(text)) text = '';
-    text = _plainText(text);
+    text = _plainText(text, references);
     return Heading(
       level: level,
       text: text,
@@ -200,25 +209,20 @@ final class _Parser {
     );
   }
 
-  static String _plainText(String inline) => _InlinePlainText(inline).read();
+  static String _plainText(
+    String inline,
+    LinkReferenceDefinitions references,
+  ) => _InlinePlainText(inline, references).read();
 
-  List<Section> _sections(
-    List<(int, Heading?)> boundaries,
-    List<String> refDefinitions,
-  ) {
+  List<Section> _sections(List<(int, Heading?)> boundaries) {
     final sections = <Section>[];
     for (var b = 0; b < boundaries.length; b++) {
       final (from, heading) = boundaries[b];
       final to = b + 1 < boundaries.length
           ? boundaries[b + 1].$1
           : lines.length;
-      var body = lines.sublist(from, to).join('\n');
+      final body = lines.sublist(from, to).join('\n');
       if (heading == null && body.trim().isEmpty) continue;
-      // Reference-style links may be defined in another section; every
-      // section gets the definitions so links resolve wherever they are used.
-      if (boundaries.length > 1 && refDefinitions.isNotEmpty) {
-        body = '$body\n\n${refDefinitions.join('\n')}';
-      }
       sections.add(Section(heading: heading, markdown: body));
     }
     return sections;
@@ -238,23 +242,112 @@ final class _Parser {
 /// becoming a delimiter the source never authored.
 final class _InlinePlainText {
   final String source;
+  final LinkReferenceDefinitions references;
 
-  _InlinePlainText(this.source);
+  _InlinePlainText(this.source, this.references);
 
   String read() {
     final literals = _InlineLiterals(source);
-    var text = _protectCodeSpans(source, literals);
+    var text = _resolveReferenceLinks(source, references);
+    text = _protectCodeSpans(text, literals);
     text = _protectAutolinks(text, literals);
     text = _protectEscapedPunctuation(text, literals);
     text = text
         .replaceAllMapped(RegExp(r'!\[([^\]]*)\]\([^)]*\)'), (m) => m[1]!)
-        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m[1]!)
-        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\[[^\]]*\]'), (m) => m[1]!)
-        .replaceAll(RegExp(r'<[^>]+>'), '');
+        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m[1]!);
+    text = text.replaceAll(RegExp(r'<[^>]+>'), '');
     text = _stripPairedMarks(text, literals);
     text = CharacterReferences.decode(text);
     final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     return literals.restore(normalized);
+  }
+
+  /// Reference notation disappears only when the document actually defines
+  /// its label. An unresolved form is authored text and must remain visible in
+  /// the outline exactly as it does on the page.
+  static String _resolveReferenceLinks(
+    String text,
+    LinkReferenceDefinitions references,
+  ) {
+    final result = StringBuffer();
+    var cursor = 0;
+    while (cursor < text.length) {
+      if (text.codeUnitAt(cursor) != 0x5b || _isEscaped(text, cursor)) {
+        result.writeCharCode(text.codeUnitAt(cursor++));
+        continue;
+      }
+
+      final textEnd = _matchingBracket(text, cursor);
+      if (textEnd == -1) {
+        result.writeCharCode(text.codeUnitAt(cursor++));
+        continue;
+      }
+      final visible = text.substring(cursor + 1, textEnd);
+      final labelStart = textEnd + 1;
+
+      if (labelStart < text.length && text.codeUnitAt(labelStart) == 0x28) {
+        result.write(text.substring(cursor, textEnd + 1));
+        cursor = textEnd + 1;
+        continue;
+      } else if (labelStart < text.length &&
+          text.codeUnitAt(labelStart) == 0x5b) {
+        final labelEnd = _referenceLabelEnd(text, labelStart);
+        if (labelEnd != -1) {
+          final explicit = text.substring(labelStart + 1, labelEnd);
+          final label = explicit.isEmpty ? visible : explicit;
+          if (references.contains(label)) {
+            result.write(visible);
+            cursor = labelEnd + 1;
+            continue;
+          }
+        }
+      } else if (references.contains(visible)) {
+        result.write(visible);
+        cursor = textEnd + 1;
+        continue;
+      }
+
+      result.write(text.substring(cursor, textEnd + 1));
+      cursor = textEnd + 1;
+    }
+    return result.toString();
+  }
+
+  static int _matchingBracket(String text, int opening) {
+    var depth = 1;
+    for (var cursor = opening + 1; cursor < text.length; cursor++) {
+      if (_isEscaped(text, cursor)) continue;
+      final character = text.codeUnitAt(cursor);
+      if (character == 0x5b) {
+        depth++;
+      } else if (character == 0x5d && --depth == 0) {
+        return cursor;
+      }
+    }
+    return -1;
+  }
+
+  static int _referenceLabelEnd(String text, int opening) {
+    var characters = 0;
+    for (var cursor = opening + 1; cursor < text.length; cursor++) {
+      final character = text.codeUnitAt(cursor);
+      if (character == 0x5c && cursor + 1 < text.length) {
+        cursor++;
+        characters += 2;
+      } else if (character == 0x5b) {
+        return -1;
+      } else if (character == 0x5d) {
+        final label = text.substring(opening + 1, cursor);
+        return characters <= 999 &&
+                (label.isEmpty || RegExp(r'\S').hasMatch(label))
+            ? cursor
+            : -1;
+      } else {
+        characters++;
+      }
+      if (characters > 999) return -1;
+    }
+    return -1;
   }
 
   static String _protectCodeSpans(String text, _InlineLiterals literals) {
