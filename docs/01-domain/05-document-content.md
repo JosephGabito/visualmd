@@ -61,6 +61,12 @@ document's prose (`lib/domain/reading/content/inline.dart`). Nested marks and
 code remain children rather than being flattened, so a linked phrase keeps its
 real typographic roles.
 
+The model deliberately does not remember whether a reference link was full,
+collapsed or shortcut notation. All three have already resolved to the same
+label children, destination and title before entering the domain. An unresolved
+reference does not become a `LinkRun`; its brackets remain ordinary authored
+text instead.
+
 CommonMark also permits an empty inline-link label. The domain keeps that valid
 shape — including its destination and title — while its `text` remains empty.
 That is data fidelity, not permission to invent visible or accessible words at

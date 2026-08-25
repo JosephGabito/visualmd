@@ -389,6 +389,24 @@ destination and title contribute no geometry. Every rendered line remains part
 of the same pointer and assistive action
 (`lib/api/render/inline_composer.dart`).
 
+The same CommonMark link chapter defines three reference forms:
+[full](https://spec.commonmark.org/0.31.2/#full-reference-link),
+[collapsed](https://spec.commonmark.org/0.31.2/#collapsed-reference-link), and
+[shortcut](https://spec.commonmark.org/0.31.2/#shortcut-reference-link). Their
+shared definition may appear before or after use and is not visible content.
+Labels are limited to 999 source characters, must contain non-whitespace, and
+match after formatting whitespace is collapsed and Unicode case is folded;
+the first duplicate definition wins. Inline links take precedence, then full
+and collapsed references, then shortcut references. A missing definition makes
+no link and leaves the attempted notation literal. Visual MD treats these as
+grammar differences only: every resolved form becomes the same `LinkRun`, and
+the domain outline repeats the matching rule solely so a linked heading has the
+same words and anchor in navigation as it has on the page
+(`lib/domain/reading/link_label.dart`,
+`lib/domain/reading/link_reference_definitions.dart`,
+`lib/domain/reading/document_outline.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

@@ -171,6 +171,18 @@ remains the run's only reading text, and CommonMark's prohibition on nested
 links leaves the inner valid link as the interaction when link notation
 overlaps (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+Full (`[words][label]`), collapsed (`[words][]`) and shortcut (`[words]`)
+**reference links** arrive as that same `a` element and therefore cross the
+adapter as the same `LinkRun`. Their source spelling has already served the
+grammar and creates no second domain or presentation component. Definitions
+may precede or follow a use and never become blocks of their own. Labels match
+after formatting whitespace is collapsed and Unicode case is folded; the first
+duplicate definition owns the label. A missing definition resolves nothing, so
+its brackets remain authored reading text. Full and collapsed forms take
+precedence over shortcut interpretation, while an inline destination takes
+precedence over all reference forms
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 Link text may contain zero inline children. A destination outside angle
 brackets is non-empty, space-free text whose parentheses balance; inside angle
 brackets it may be empty or contain spaces. The adapter neither truncates a

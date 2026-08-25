@@ -162,6 +162,40 @@ void main() {
     },
   );
 
+  test(
+    'indexes every reference form but not definitions or link metadata',
+    () async {
+      final document = Document(
+        id: DocumentId(rootId, 'reference-links.md'),
+        content: '''
+[Full visible words][guide], [Collapsed visible words][], and
+[Shortcut visible words].
+
+[guide]: /private/full "Full advisory"
+[Collapsed visible words]: /private/collapsed
+[Shortcut visible words]: /private/shortcut
+''',
+      );
+
+      for (final phrase in [
+        'Full visible words',
+        'Collapsed visible words',
+        'Shortcut visible words',
+      ]) {
+        final results = await search.find(SearchQuery(phrase), [document]);
+        expect(results.single.matches.single.excerpt, contains(phrase));
+      }
+      expect(
+        await search.find(SearchQuery('private/full'), [document]),
+        isEmpty,
+      );
+      expect(
+        await search.find(SearchQuery('Full advisory'), [document]),
+        isEmpty,
+      );
+    },
+  );
+
   test('matches the reading text across editor wrapping', () async {
     final document = Document(
       id: DocumentId(rootId, 'wrapped.md'),

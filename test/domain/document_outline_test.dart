@@ -115,6 +115,51 @@ Text.
       ]);
     });
 
+    test('reference link headings agree with the rendered page', () {
+      final headings = DocumentOutline.parse(r'''
+# [Full **heading**][Guide]
+## [Collapsed *heading*][]
+### [Shortcut `heading`]
+#### [Missing][unknown]
+##### [Also missing][]
+###### [Still missing]
+
+[guide]: /manual
+[collapsed *heading*]: /collapsed
+[shortcut `heading`]: /shortcut
+''').tableOfContents.headings;
+
+      expect(headings.map((heading) => heading.text), [
+        'Full heading',
+        'Collapsed heading',
+        'Shortcut heading',
+        '[Missing][unknown]',
+        '[Also missing][]',
+        '[Still missing]',
+      ]);
+      expect(headings.map((heading) => heading.anchor), [
+        'full-heading',
+        'collapsed-heading',
+        'shortcut-heading',
+        'missingunknown',
+        'also-missing',
+        'still-missing',
+      ]);
+    });
+
+    test('reference labels fold Unicode case and formatting whitespace', () {
+      final heading = DocumentOutline.parse('''
+[ẞ Guide][  SS
+ GUIDE ]
+========
+
+[SS Guide]: /unicode
+''').tableOfContents.headings.single;
+
+      expect(heading.text, 'ẞ Guide');
+      expect(heading.anchor, 'ß-guide');
+    });
+
     test('delimiter precedence preserves only genuinely literal marks', () {
       final headings = DocumentOutline.parse(r'''
 # *foo**bar*
@@ -303,14 +348,21 @@ Sub
       expect(s[2].markdown, '## Two\nbody two\n');
     });
 
-    test('shares reference link definitions with every section', () {
-      final outline = DocumentOutline.parse(
-        '[see][ref]\n\n# A\n\nuse [ref]\n\n[ref]: https://example.com\n',
-      );
-      for (final section in outline.sections) {
-        expect(section.markdown, contains('[ref]: https://example.com'));
-      }
-    });
+    test(
+      'sections remain exact source slices around reference definitions',
+      () {
+        final outline = DocumentOutline.parse(
+          '[see][ref]\n\n# A\n\nuse [ref]\n\n[ref]: https://example.com\n',
+        );
+
+        expect(outline.sections, hasLength(2));
+        expect(outline.sections.first.markdown, '[see][ref]\n');
+        expect(
+          outline.sections.last.markdown,
+          '# A\n\nuse [ref]\n\n[ref]: https://example.com\n',
+        );
+      },
+    );
 
     test('sets front matter aside and reads its title', () {
       final outline = DocumentOutline.parse(
