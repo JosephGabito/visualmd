@@ -41,8 +41,9 @@ External links use `openInBrowser`, which opens a new tab with
    available.
 
 Browser entries, files, and DOM events remain in infrastructure throughout
-that journey. The application receives references and source strings, so its
-behavior stays shared with desktop.
+that journey. The application receives references and metadata while building
+the shelf, then requests one source string through `FolderDocumentScanner` when
+reading or search needs it. The behavior stays shared with desktop.
 
 ## Workspace files and browser support
 

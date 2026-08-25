@@ -97,7 +97,9 @@ The private `_Parser` works line by line
   reference definitions to be copied into other slices
   (`lib/domain/reading/document_outline.dart`).
 - **Title.** `title:` in front matter (quotes stripped), else the first h1,
-  else `null` (`lib/domain/reading/document_outline.dart`).
+  else `null`. `DocumentOutline.titleOf` follows the same grammar but stops
+  after finding that title; it does not build sections or a table of contents
+  for an unopened document (`lib/domain/reading/document_outline.dart`).
 
 `Heading` carries `level`, `text`, `anchor` and the zero-based source `line`
 (`lib/domain/reading/heading.dart`). `TableOfContents` adds `baseLevel`
@@ -132,9 +134,12 @@ which owns the completed reading operation.
 
 ## Lifecycle
 
-Invoked lazily by `Document.outline` and cached on the document
-(`lib/domain/library/document.dart`). A document is parsed at most once
-per library build.
+`DocumentOutline.titleOf` indexes the shelf title while a scanner holds one
+source transiently. The complete outline is invoked lazily on the
+source-backed document returned by `ReadDocument` and lives only as long as
+that bounded reading-cache entry (`lib/domain/library/document.dart`,
+`lib/application/use_cases/read_document.dart`). Their agreement is asserted
+in `test/domain/document_outline_test.dart`.
 
 ## Failure and recovery
 

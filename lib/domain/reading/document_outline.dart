@@ -22,7 +22,7 @@ final class DocumentOutline {
   /// A title the document declares about itself: `title:` in front matter,
   /// else the first h1.
   String? get title {
-    final declared = _frontMatterTitle;
+    final declared = _frontMatterTitle(frontMatter);
     if (declared != null) return declared;
     for (final heading in tableOfContents.headings) {
       if (heading.level == 1) return heading.text;
@@ -30,21 +30,24 @@ final class DocumentOutline {
     return null;
   }
 
-  String? get _frontMatterTitle {
-    final fm = frontMatter;
-    if (fm == null) return null;
-    final match = RegExp(
-      r'^title:\s*(.+?)\s*$',
-      multiLine: true,
-    ).firstMatch(fm);
-    if (match == null) return null;
-    final value = match[1]!;
-    final quoted = RegExp(r'''^(["'])(.*)\1$''').firstMatch(value);
-    final title = quoted == null ? value : quoted[2]!;
-    return title.isEmpty ? null : title;
-  }
-
   static DocumentOutline parse(String markdown) => _Parser(markdown).parse();
+
+  /// Indexes only the declared title, without building sections or a table of
+  /// contents for a document the reader has not opened.
+  static String? titleOf(String markdown) => _Parser(markdown).title();
+}
+
+String? _frontMatterTitle(String? frontMatter) {
+  if (frontMatter == null) return null;
+  final match = RegExp(
+    r'^title:\s*(.+?)\s*$',
+    multiLine: true,
+  ).firstMatch(frontMatter);
+  if (match == null) return null;
+  final value = match[1]!;
+  final quoted = RegExp(r'''^(["'])(.*)\1$''').firstMatch(value);
+  final title = quoted == null ? value : quoted[2]!;
+  return title.isEmpty ? null : title;
 }
 
 final class _Parser {
@@ -132,6 +135,55 @@ final class _Parser {
       tableOfContents: TableOfContents(List.unmodifiable(headings)),
       sections: List.unmodifiable(_sections(boundaries)),
     );
+  }
+
+  String? title() {
+    final (frontMatter, start) = _frontMatter();
+    final declared = _frontMatterTitle(frontMatter);
+    if (declared != null) return declared;
+    final references = LinkReferenceDefinitions.fromLines(lines, start);
+
+    String? fenceMarker;
+    var i = start;
+    while (i < lines.length) {
+      final line = lines[i];
+      final fence = _fence.firstMatch(line);
+      if (fence != null) {
+        final marker = fence[1]!;
+        if (fenceMarker == null) {
+          fenceMarker = marker;
+        } else if (marker[0] == fenceMarker[0] &&
+            marker.length >= fenceMarker.length) {
+          fenceMarker = null;
+        }
+        i++;
+        continue;
+      }
+      if (fenceMarker != null || references.ownsLine(i)) {
+        i++;
+        continue;
+      }
+
+      final atx = _atx.firstMatch(line);
+      if (atx != null) {
+        if (atx[1]!.length == 1) {
+          return _heading(1, atx[2] ?? '', i, references).text;
+        }
+        i++;
+        continue;
+      }
+
+      final setext = _setextStartingAt(i);
+      if (setext != null) {
+        if (setext.level == 1) {
+          return _heading(1, setext.source, i, references).text;
+        }
+        i = setext.after;
+        continue;
+      }
+      i++;
+    }
+    return null;
   }
 
   /// A Setext underline promotes the complete paragraph before it, not merely

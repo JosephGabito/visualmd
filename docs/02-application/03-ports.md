@@ -18,7 +18,7 @@ Reads the files beneath a folder the reader offered
 | Type | Defined at | Meaning |
 |------|------------|---------|
 | `FolderRef(id, name)` | `lib/application/ports/folder_scanner.dart` | Opaque handle. Equality and hash by `id` only (`lib/application/ports/folder_scanner.dart`). The `name` is what the library will be called. |
-| `ScannedFolder(name, files)` | `lib/application/ports/folder_scanner.dart` | Name plus a flat list of `FileEntry` (`lib/domain/library/library_builder.dart`). |
+| `ScannedFolder(name, files)` | `lib/application/ports/folder_scanner.dart` | Name plus a flat list of metadata-first `FileEntry`; bundled sources may embed content (`lib/domain/library/library_builder.dart`). |
 | `FolderUnavailable(ref)` | `lib/application/ports/folder_scanner.dart` | The ref is unknown to this scanner, or the folder is gone. |
 
 ### Implementations
@@ -39,6 +39,22 @@ picked-file paths (`lib/infrastructure/web/browser_folder_scanner.dart`),
 while the local scanner does not need to because loose files carry only a base
 name (`lib/infrastructure/io/local_folder_scanner.dart`) — an
 optimisation that borrows domain rules, not a second copy of them.
+
+## FolderDocumentScanner
+
+Reads one Markdown source inside an already-open folder
+(`lib/application/ports/folder_document_scanner.dart`). A full
+`FolderScanner` builds the shelf without retaining bytes; this port supplies
+the exact document later when reading, search, or source synchronization needs
+it.
+
+| Member | Type | Contract |
+|--------|------|----------|
+| `scanDocument(folder, relativePath)` | `Future<ScannedFolderDocument?>` | Return content and physical identity for one readable Markdown, or `null` when the path no longer names one. |
+
+Desktop and browser folder scanners implement both contracts. The relative
+path remains scoped to its offered root; infrastructure owns filesystem,
+browser-handle, bookmark and traversal safety.
 
 ## LibraryRepository
 

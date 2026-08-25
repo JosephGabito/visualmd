@@ -44,14 +44,20 @@ void main() {
   setUpAll(() async {
     final registry = LocalFolderRegistry('docs');
     final ref = registry.register('docs', const LocalDirectory('docs'));
-    final scanned = await LocalFolderScanner(registry).scan(ref);
+    final scanner = LocalFolderScanner(registry);
+    final scanned = await scanner.scan(ref);
+    final loaded = <FileEntry>[];
+    for (final entry in scanned.files) {
+      final source = await scanner.scanDocument(ref, entry.path);
+      if (source != null) {
+        loaded.add(
+          FileEntry(entry.path, source.content, sourceId: source.sourceId),
+        );
+      }
+    }
     docs = Library(
       roots: [
-        LibraryBuilder.buildRoot(
-          id: docsId,
-          name: scanned.name,
-          files: scanned.files,
-        ),
+        LibraryBuilder.buildRoot(id: docsId, name: scanned.name, files: loaded),
       ],
     );
   });

@@ -10,7 +10,6 @@ import '../../domain/search/search_result.dart';
 /// engine. The expression is escaped, so reader input is always literal.
 final class LiteralDocumentSearch implements DocumentSearch {
   final DocumentParser _parser;
-  final _text = <Document, String>{};
 
   LiteralDocumentSearch({required DocumentParser parser}) : _parser = parser;
 
@@ -26,10 +25,7 @@ final class LiteralDocumentSearch implements DocumentSearch {
     );
     final results = <DocumentSearchResult>[];
     for (final document in documents) {
-      final text = _text.putIfAbsent(
-        document,
-        () => _parser.parse(document.content).text,
-      );
+      final text = _parser.parse(document.content).text;
       final matches = [
         for (final match in pattern.allMatches(text))
           TextMatch(

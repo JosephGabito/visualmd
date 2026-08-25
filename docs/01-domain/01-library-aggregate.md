@@ -16,7 +16,7 @@ Six types make up the library:
 | `Library` | standalone markdowns, ordered roots and aggregate operations | `lib/domain/library/library.dart` |
 | `LibraryRoot` | one named top-level folder and its tree | `lib/domain/library/library_root.dart` |
 | `Folder` | one nested shelf of folders and documents | `lib/domain/library/folder.dart` |
-| `Document` | markdown source, optional source identity and lazy outline | `lib/domain/library/document.dart` |
+| `Document` | shelf identity and metadata, optional embedded source, optional physical identity | `lib/domain/library/document.dart` |
 | `DocumentId` | root identity plus a relative path | `lib/domain/library/document_id.dart` |
 | `DocumentSourceId` | opaque equality for one physical source | `lib/domain/library/document_source_id.dart` |
 
@@ -84,9 +84,13 @@ creates a new aggregate and saves it; unchanged values are reused. Removing the
 last source returns to the welcome view only when neither roots nor standalone
 markdowns remain (`lib/api/reader_controller.dart`).
 
-Document outlines remain lazy and are parsed once per `Document`
-(`lib/domain/library/document.dart`). Refreshing a root creates new
-documents only for that root.
+Normal platform scans keep no source text in the aggregate. A `Document`
+retains identity, source identity and the title indexed during the sequential
+scan; bundled and in-memory
+documents may still embed source they already own
+(`lib/domain/library/document.dart`). Opening creates a transient
+source-backed document outside the aggregate. Refreshing a root creates new
+metadata values only for that root.
 
 ## Failure and recovery
 
@@ -100,7 +104,7 @@ documents only for that root.
 
 ## Transition
 
-`Library` remains the live, in-memory projection. Durable membership, order,
+`Library` remains the live, source-free projection. Durable membership, order,
 theme, and reading intent belong to the [Workspace Aggregate](08-workspace-aggregate.md),
 which can be restored using fresh platform access. If measurements show that
 document lookup is expensive in large libraries, an index keyed by the

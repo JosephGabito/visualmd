@@ -4,8 +4,8 @@ import '../../domain/library/document.dart';
 import '../../domain/library/document_id.dart';
 import '../../domain/library/library.dart';
 import '../../domain/library/library_builder.dart';
-import '../../domain/library/library_root.dart';
 import '../../domain/library/library_root_id.dart';
+import '../../domain/reading/document_outline.dart';
 import '../library_mutation_queue.dart';
 import '../ports/folder_document_scanner.dart';
 import '../ports/folder_scanner.dart';
@@ -116,14 +116,14 @@ final class RefreshSource {
       for (final document in root.documents)
         document.id.path: FileEntry(
           document.id.path,
-          document.content,
+          document.loadedContent,
           sourceId: document.sourceId,
+          title: document.indexedTitle,
         ),
     };
     final changed = <DocumentId>{};
     for (final rawPath in change.relativePaths) {
       final path = DocumentId(root.id, rawPath).path;
-      final previous = entries[path];
       final scanned = await _folderDocuments.scanDocument(change.folder, path);
       if (scanned == null) {
         if (entries.remove(path) != null) {
@@ -133,10 +133,10 @@ final class RefreshSource {
       }
       final next = FileEntry(
         scanned.relativePath,
-        scanned.content,
+        null,
         sourceId: scanned.sourceId,
+        title: DocumentOutline.parse(scanned.content).title,
       );
-      if (_sameEntry(previous, next)) continue;
       entries[path] = next;
       changed.add(DocumentId(root.id, path));
     }
@@ -171,7 +171,12 @@ final class RefreshSource {
       name: scanned.name,
       files: scanned.files,
     );
-    final changed = _changedDocuments(existing, nextRoot);
+    // A rescan is itself an invalidation. Paths that survive may have new
+    // bytes even when their lightweight metadata is unchanged.
+    final changed = {
+      for (final document in existing.documents) document.id,
+      for (final document in nextRoot.documents) document.id,
+    };
     if (changed.isEmpty) {
       return RefreshedSource(library: current, activeDocument: selected);
     }
@@ -196,14 +201,10 @@ final class RefreshSource {
       return RefreshedSource(library: current, activeDocument: selected);
     }
     final scanned = await _markdowns.scan(ref);
-    if (previous.content == scanned.content &&
-        previous.sourceId == scanned.sourceId) {
-      return RefreshedSource(library: current, activeDocument: selected);
-    }
     final replacement = Document(
       id: previous.id,
-      content: scanned.content,
       sourceId: scanned.sourceId,
+      title: DocumentOutline.parse(scanned.content).title,
     );
     final library = current.replaceDocument(replacement);
     return RefreshedSource(
@@ -213,30 +214,6 @@ final class RefreshSource {
     );
   }
 }
-
-bool _sameEntry(FileEntry? previous, FileEntry next) =>
-    previous != null &&
-    previous.path == next.path &&
-    previous.content == next.content &&
-    previous.sourceId == next.sourceId;
-
-Set<DocumentId> _changedDocuments(LibraryRoot before, LibraryRoot after) {
-  final previous = {
-    for (final document in before.documents) document.id: document,
-  };
-  final next = {for (final document in after.documents) document.id: document};
-  final ids = {...previous.keys, ...next.keys};
-  return {
-    for (final id in ids)
-      if (!_sameDocument(previous[id], next[id])) id,
-  };
-}
-
-bool _sameDocument(Document? before, Document? after) =>
-    before != null &&
-    after != null &&
-    before.content == after.content &&
-    before.sourceId == after.sourceId;
 
 DocumentId? _survivingSelection(Library library, DocumentId? selected) {
   if (selected == null || library.find(selected) != null) return selected;

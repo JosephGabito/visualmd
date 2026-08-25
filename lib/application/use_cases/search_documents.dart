@@ -1,4 +1,5 @@
 // ignore_for_file: prefer_initializing_formals — private fields keep public constructor names.
+import '../document_source_reader.dart';
 import '../../domain/library/document_id.dart';
 import '../../domain/search/search_result.dart';
 import '../ports/document_search.dart';
@@ -9,12 +10,15 @@ import 'read_document.dart';
 final class SearchDocuments {
   final LibraryRepository _repository;
   final DocumentSearch _search;
+  final DocumentSourceReader? _sources;
 
   const SearchDocuments({
     required LibraryRepository repository,
     required DocumentSearch search,
+    DocumentSourceReader? sources,
   }) : _repository = repository,
-       _search = search;
+       _search = search,
+       _sources = sources;
 
   Future<List<DocumentSearchResult>> execute(
     String text, {
@@ -24,11 +28,26 @@ final class SearchDocuments {
     final library = await _repository.current();
     if (library == null) throw const NoLibraryOpen();
 
-    if (within == null) {
-      return _search.find(SearchQuery(text), library.documents);
+    final documents = within == null
+        ? library.documents
+        : [library.find(within) ?? (throw DocumentNotFound(within))];
+    final query = SearchQuery(text);
+    final results = <DocumentSearchResult>[];
+    // Whole-library search deliberately does not warm the reading cache. One
+    // source is loaded, searched, and released before the next one is read.
+    for (final document in documents) {
+      final reader = _sources;
+      final source =
+          document.loadedContent ??
+          (reader == null
+              ? throw DocumentSourceUnavailable(document)
+              : await reader.read(library, document));
+      final found = await _search.find(query, [document.withContent(source)]);
+      results.addAll([
+        for (final result in found)
+          DocumentSearchResult(document: document, matches: result.matches),
+      ]);
     }
-    final document = library.find(within);
-    if (document == null) throw DocumentNotFound(within);
-    return _search.find(SearchQuery(text), [document]);
+    return results;
   }
 }

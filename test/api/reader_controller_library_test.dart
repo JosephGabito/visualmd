@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/reader_controller.dart';
 import 'package:visualmd/api/reader_source_opener.dart';
+import 'package:visualmd/application/document_source_reader.dart';
 import 'package:visualmd/application/library_mutation_queue.dart';
+import 'package:visualmd/application/ports/folder_document_scanner.dart';
 import 'package:visualmd/application/ports/folder_scanner.dart';
 import 'package:visualmd/application/ports/markdown_scanner.dart';
 import 'package:visualmd/application/ports/reader_source_picker.dart';
@@ -23,7 +25,7 @@ import 'package:visualmd/infrastructure/memory/in_memory_library_repository.dart
 import 'package:visualmd/infrastructure/search/literal_document_search.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
 
-final class _Scanner implements FolderScanner {
+final class _Scanner implements FolderScanner, FolderDocumentScanner {
   final folders = <String, ScannedFolder>{
     'a': const ScannedFolder(
       name: 'alpha',
@@ -43,6 +45,24 @@ final class _Scanner implements FolderScanner {
 
   @override
   Future<ScannedFolder> scan(FolderRef ref) async => folders[ref.id]!;
+
+  @override
+  Future<ScannedFolderDocument?> scanDocument(
+    FolderRef folder,
+    String relativePath,
+  ) async {
+    final entry = folders[folder.id]!.files
+        .where((candidate) => candidate.path == relativePath)
+        .firstOrNull;
+    final content = entry?.content;
+    return content == null
+        ? null
+        : ScannedFolderDocument(
+            relativePath: relativePath,
+            content: content,
+            sourceId: entry?.sourceId,
+          );
+  }
 }
 
 final class _MarkdownScanner implements MarkdownScanner {
@@ -88,6 +108,10 @@ void main() {
     final repository = InMemoryLibraryRepository();
     final mutations = LibraryMutationQueue();
     const parser = MarkdownDocumentParser();
+    final sources = DocumentSourceReader(
+      folderDocuments: scanner,
+      markdowns: markdownScanner,
+    );
     controller = ReaderController(
       addFolder: AddFolder(
         scanner: scanner,
@@ -105,10 +129,15 @@ void main() {
         mutations: mutations,
       ),
       moveFolder: MoveFolder(repository: repository, mutations: mutations),
-      readDocument: ReadDocument(repository: repository, parser: parser),
+      readDocument: ReadDocument(
+        repository: repository,
+        parser: parser,
+        sources: sources,
+      ),
       searchDocuments: SearchDocuments(
         repository: repository,
         search: LiteralDocumentSearch(parser: parser),
+        sources: sources,
       ),
       pickFolder: () async => null,
       sampleFolder: alpha,

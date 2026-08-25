@@ -7,6 +7,7 @@ import '../../domain/library/library.dart';
 import '../../domain/library/library_builder.dart';
 import '../../domain/library/library_root.dart';
 import '../../domain/library/library_root_id.dart';
+import '../../domain/reading/document_outline.dart';
 import '../../domain/workspace/workspace.dart';
 import '../../domain/workspace/workspace_id.dart';
 import '../library_mutation_queue.dart';
@@ -134,8 +135,8 @@ final class OpenWorkspace {
               LibraryRootId('standalone-markdown:${source.id.value}'),
               scanned.name,
             ),
-            content: scanned.content,
             sourceId: scanned.sourceId,
+            title: DocumentOutline.parse(scanned.content).title,
           ),
         );
         markdownRefs.add(ref);

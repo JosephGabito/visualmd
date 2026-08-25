@@ -8,14 +8,18 @@ import 'library_root_id.dart';
 import 'markdown_file.dart';
 import 'natural_order.dart';
 
-/// A file as it arrives from whatever scanned the folder: path + content.
-/// Adapters produce these; the domain decides what becomes of them.
+/// A file as it arrives from whatever scanned the folder.
+///
+/// Production adapters provide path, identity, and an indexed title. [content]
+/// exists for bundled/in-memory sources, while [title] lets an adapter retain
+/// what it learned without retaining the complete document source.
 final class FileEntry {
   final String path;
-  final String content;
+  final String? content;
   final DocumentSourceId? sourceId;
+  final String? title;
 
-  const FileEntry(this.path, this.content, {this.sourceId});
+  const FileEntry(this.path, this.content, {this.sourceId, this.title});
 }
 
 /// Turns one flat scan into a [LibraryRoot]: keeps only markdown outside
@@ -54,6 +58,7 @@ abstract final class LibraryBuilder {
           id: documentId,
           content: file.content,
           sourceId: file.sourceId,
+          title: file.title,
         ),
       );
     }

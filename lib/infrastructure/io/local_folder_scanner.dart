@@ -7,6 +7,7 @@ import '../../application/ports/folder_scanner.dart';
 import '../../domain/library/hidden_folders.dart';
 import '../../domain/library/library_builder.dart';
 import '../../domain/library/markdown_file.dart';
+import '../../domain/reading/document_outline.dart';
 import 'local_folder.dart';
 import 'local_markdown.dart';
 import 'scoped_access.dart';
@@ -40,11 +41,7 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
             final name = baseName(path);
             if (!MarkdownFile.isMarkdown(name)) continue;
             files.add(
-              FileEntry(
-                name,
-                await _access.within(bookmark, () => _read(File(path))),
-                sourceId: localDocumentSourceId(path),
-              ),
+              await _access.within(bookmark, () => _entry(name, File(path))),
             );
           }
       }
@@ -52,6 +49,16 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
     } on FileSystemException {
       throw FolderUnavailable(ref);
     }
+  }
+
+  static Future<FileEntry> _entry(String path, File file) async {
+    final source = await _read(file);
+    return FileEntry(
+      path,
+      null,
+      sourceId: localDocumentSourceId(file.path),
+      title: DocumentOutline.titleOf(source),
+    );
   }
 
   @override
@@ -124,13 +131,7 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
         if (HiddenFolders.isHidden(name)) continue;
         await _walk(entry, '$path/', out);
       } else if (entry is File && MarkdownFile.isMarkdown(name)) {
-        out.add(
-          FileEntry(
-            path,
-            await _read(entry),
-            sourceId: localDocumentSourceId(entry.path),
-          ),
-        );
+        out.add(await _entry(path, entry));
       }
     }
   }

@@ -184,6 +184,10 @@ final class ReaderController extends ChangeNotifier {
       _sourceChanges?.watchFolder(ref);
       _sourceChanges?.retainLibrary(library);
       final next = added.nextDocument;
+      if (added.refreshed) {
+        _readDocument.invalidate(added.root.documents.map((item) => item.id));
+      }
+      _readDocument.retain(added.library.documents.map((item) => item.id));
       if (next != null &&
           (next.id != selected ||
               (added.refreshed && selected?.rootId == added.root.id))) {
@@ -215,6 +219,8 @@ final class ReaderController extends ChangeNotifier {
         _sourceChanges?.watchMarkdown(ref);
       }
       _sourceChanges?.retainLibrary(library);
+      _readDocument.invalidate([added.document.id]);
+      _readDocument.retain(added.library.documents.map((item) => item.id));
       reading = await _readDocument.execute(added.document.id);
       final containingRoot = added.containingRoot;
       if (containingRoot != null) {
@@ -272,6 +278,7 @@ final class ReaderController extends ChangeNotifier {
       workspaceSession = await create.execute(_workspaceTheme(themeChoice));
       library = null;
       reading = null;
+      _readDocument.clear();
       _sourceChanges?.replace(folders: const [], markdowns: const []);
       error = null;
     } on Object {
@@ -293,6 +300,7 @@ final class ReaderController extends ChangeNotifier {
       if (result == null) return;
       workspaceSession = result.session;
       library = result.session.workspace.isEmpty ? null : result.library;
+      _readDocument.clear();
       _sourceChanges?.replace(
         folders: result.folderRefs,
         markdowns: result.markdownRefs,
@@ -376,6 +384,7 @@ final class ReaderController extends ChangeNotifier {
         selected: reading?.document.id,
       );
       library = removed.library.isEmpty ? null : removed.library;
+      _readDocument.retain(removed.library.documents.map((item) => item.id));
       _sourceChanges?.retainLibrary(library);
       if (reading?.document.id.rootId == id) {
         final next = removed.nextDocument;
@@ -396,6 +405,7 @@ final class ReaderController extends ChangeNotifier {
         selected: reading?.document.id,
       );
       library = removed.library.isEmpty ? null : removed.library;
+      _readDocument.retain(removed.library.documents.map((item) => item.id));
       _sourceChanges?.retainLibrary(library);
       if (reading?.document.id == id) {
         final next = removed.nextDocument;
@@ -593,6 +603,8 @@ final class ReaderController extends ChangeNotifier {
   Future<void> _applySourceRefresh(RefreshedSource result) async {
     final selected = reading?.document.id;
     library = result.library;
+    _readDocument.invalidate(result.changedDocuments);
+    _readDocument.retain(result.library.documents.map((item) => item.id));
     _sourceChanges?.retainLibrary(library);
     if (selected != null &&
         (result.changedDocuments.contains(selected) ||
@@ -614,6 +626,7 @@ final class ReaderController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _readDocument.clear();
     unawaited(_sourceChangeSubscription?.cancel());
     unawaited(_sourceChanges?.dispose());
     super.dispose();

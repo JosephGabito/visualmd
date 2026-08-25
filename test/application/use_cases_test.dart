@@ -70,7 +70,7 @@ final class FakeSearch implements DocumentSearch {
     SearchQuery query,
     Iterable<Document> documents,
   ) async {
-    received = documents.toList();
+    received = [...received, ...documents];
     return const [];
   }
 }
@@ -222,10 +222,7 @@ void main() {
     expect(result.added, isFalse);
     expect(result.containingRoot, const LibraryRootId('folder'));
     expect(result.document.title, 'Standalone copy');
-    expect(
-      result.library.find(result.document.id)?.content,
-      '# Standalone copy',
-    );
+    expect(result.library.find(result.document.id)?.loadedContent, isNull);
     expect(result.library.markdowns, isEmpty);
   });
 
@@ -619,6 +616,7 @@ void main() {
     await useCase.execute('start');
     expect(search.received, hasLength(2));
 
+    search.received = const [];
     await useCase.execute('start', within: DocumentId(notesId, 'README.md'));
     expect(search.received.map((document) => document.id.path), ['README.md']);
   });

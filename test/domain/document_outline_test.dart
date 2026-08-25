@@ -391,6 +391,23 @@ Sub
       expect(outline.sections.first.heading!.line, 5);
     });
 
+    test('the lightweight title index agrees with a complete outline', () {
+      final sources = [
+        '---\ntitle: "From Front Matter"\n---\n# Body\n',
+        '```md\n# Not the title\n```\n\n# Actual **title**\n',
+        '# A [reference][later]\n\n[later]: https://example.com\n',
+        'First *line*\ncontinues with `code`\n====\n\n## Later\n',
+        '## No level one\n',
+      ];
+
+      for (final source in sources) {
+        expect(
+          DocumentOutline.titleOf(source),
+          DocumentOutline.parse(source).title,
+        );
+      }
+    });
+
     test('handles CRLF and an empty document', () {
       expect(
         DocumentOutline.parse('# A\r\n\r\ntext\r\n')
