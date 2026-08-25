@@ -3,11 +3,14 @@ import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../application/ports/document_image_loader.dart';
+import '../../domain/library/document_id.dart';
 import '../../domain/reading/content/inline.dart';
 import '../../domain/search/search_result.dart';
 import '../../presentation/code/code_highlighter.dart';
 import '../../presentation/theme/typographic_punctuation.dart';
 import 'reading_theme.dart';
+import '../widgets/document_image.dart';
 
 /// Turns the domain's runs into spans, and sets the punctuation properly on
 /// the way past.
@@ -18,12 +21,16 @@ import 'reading_theme.dart';
 /// none of it touches code, which is composed verbatim.
 final class InlineComposer {
   final ReadingTheme theme;
+  final DocumentId? document;
+  final DocumentImageLoader? imageLoader;
   final void Function(String href)? onTapLink;
   final List<TextMatch> matches;
   final int activeMatch;
 
   const InlineComposer({
     required this.theme,
+    this.document,
+    this.imageLoader,
     this.onTapLink,
     this.matches = const [],
     this.activeMatch = -1,
@@ -219,16 +226,37 @@ final class InlineComposer {
           ),
         ];
 
-      case ImageRun(:final alt):
-        // Images are not resolved yet; the alt text is what the author meant
-        // the reader to get either way.
-        return _text(
-          alt,
-          base.copyWith(color: theme.palette.muted),
-          cursor,
-          previous: previous,
-          setPunctuation: false,
-        );
+      case ImageRun(:final source, :final title, :final alt):
+        final uri = Uri.tryParse(source);
+        final remote =
+            uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+        if (!remote && (document == null || imageLoader == null)) {
+          return _text(
+            alt,
+            base.copyWith(color: theme.palette.muted),
+            cursor,
+            previous: previous,
+            setPunctuation: false,
+          );
+        }
+        // The image occupies one inline placeholder in Flutter, while the
+        // domain's reading text is its complete alternative. Advancing by the
+        // alternative keeps search offsets after the image in source order.
+        cursor.offset += alt.length;
+        return [
+          WidgetSpan(
+            alignment: PlaceholderAlignment.top,
+            style: base,
+            child: DocumentImage(
+              document: document,
+              source: source,
+              alt: alt,
+              title: title,
+              loader: imageLoader,
+              theme: theme,
+            ),
+          ),
+        ];
 
       case LineBreakRun():
         return _text(

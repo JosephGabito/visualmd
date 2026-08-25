@@ -428,6 +428,43 @@ suffixes. Visual MD retains the fragment through `LinkRun` and
 keys that the outline uses (`lib/api/reader_controller.dart`,
 `lib/api/widgets/reading_pane.dart`).
 
+## Images
+
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#images) defines images
+with the same inline, full-reference, collapsed-reference and
+shortcut-reference shapes as links. The description becomes plain alternative
+text: formatting and nested links contribute their words, not visual styling,
+while an empty description remains valid. Visual MD therefore resolves every
+source form to one `ImageRun`, flattens its authored reading words for `alt`,
+and preserves an empty alternative as a deliberate decorative choice
+(`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`lib/domain/reading/content/inline.dart`).
+
+Flutter's [`Image.network`](https://api.flutter.dev/flutter/widgets/Image/Image.network.html)
+and [`Image.memory`](https://api.flutter.dev/flutter/widgets/Image/Image.memory.html)
+document the same layout constraint: an image needs bounded geometry, and
+omitting a known width and height allows layout to change when pixels arrive.
+CommonMark supplies neither dimension; reserving a fixed rectangle would
+invent geometry and enlarge small artwork. Visual MD accepts that one local
+reflow but bounds it: the reading measure horizontally, 72 percent of the
+viewport vertically,
+and [`BoxFit.scaleDown`](https://api.flutter.dev/flutter/painting/BoxFit.html)
+to retain the intrinsic size whenever it already fits. Only the decode width
+is requested, because specifying both decode axes can replace rather than preserve
+the source aspect ratio. The painted child retains that natural geometry; its
+outer box rounds up to a whole body line so later prose returns to the baseline
+grid (`lib/api/widgets/document_image.dart`).
+
+The same Flutter APIs supply `semanticLabel`, `excludeFromSemantics`, and
+`errorBuilder`. Those map directly to the authored contract: a non-empty
+alternative names successful artwork, an empty one is excluded as decorative,
+and a failed provider paints the alternative rather than a raw exception. On
+web, `WebHtmlElementStrategy.fallback` permits an HTML image when cross-origin
+policy prevents CanvasKit from reading remote bytes. It is a rendering fallback
+only; local document files still travel through the capability-bound
+`DocumentImageLoader` (`lib/application/ports/document_image_loader.dart`,
+`lib/api/widgets/document_image.dart`).
+
 ## Technical-document systems
 
 [Geist Mono](https://github.com/vercel/geist-font) was designed for code

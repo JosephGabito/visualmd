@@ -95,6 +95,40 @@ void main() {
     );
   });
 
+  testWidgets('an image placeholder owns its full height in the document', (
+    tester,
+  ) async {
+    final imageKey = GlobalKey();
+    final followingKey = GlobalKey();
+    const style = TextStyle(fontSize: 18, height: 1.5);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              Paragraph(
+                spans: [
+                  WidgetSpan(
+                    child: SizedBox(key: imageKey, width: 180, height: 180),
+                  ),
+                ],
+                style: style,
+                strut: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
+              ),
+              SizedBox(key: followingKey, height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byKey(imageKey)), const Size(180, 180));
+    expect(
+      tester.getTopLeft(find.byKey(followingKey)).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(find.byKey(imageKey)).dy),
+    );
+  });
+
   testWidgets('every heading belongs more closely to what it introduces', (
     tester,
   ) async {

@@ -6,10 +6,10 @@ state, and return a result the interface can present. These sequences are the
 use cases under `lib/application/`.
 
 Whenever a use case needs something from the outside world, it asks through a
-small interface called a **port**. `FolderScanner`, `LibraryRepository`, and
-`DocumentParser` describe what the use case needs without choosing a filesystem,
-browser API, or markdown package. Infrastructure provides those implementations
-when the app starts.
+small interface called a **port**. `FolderScanner`, `LibraryRepository`,
+`DocumentParser`, and `DocumentImageLoader` describe what the application needs
+without choosing a filesystem, browser API, or markdown package.
+Infrastructure provides those implementations when the app starts.
 
 This keeps the application focused on orchestration. Domain behaviour remains
 in `lib/domain/`, while loading indicators, drag interactions, and selected-row

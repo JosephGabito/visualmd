@@ -16,7 +16,6 @@ that touches `domain` begins by modelling the reader-facing rule.
 
 | Item | Kind | Ring(s) | Notes |
 |------|------|---------|-------|
-| Relative images | Kernel fix | application, infrastructure, api | `![](./diagram.png)` shows its alt text today (`lib/api/render/inline_composer.dart`): scanners read only markdown, so there are no bytes to draw. The scanner port grows an image lookup, each scanner supplies it, and the composer resolves relative paths against the document's folder. |
 | Let code blocks run wider still | Kernel fix | api | Done in part: code and tables already get 1.35 × the prose column (`lib/api/render/reading_theme.dart`). The factor is a judgement, not a measurement, and on a large screen there is room to go further. |
 | Bring tables onto the beat | Kernel fix | api | Table columns now size from their widest bounded cell and overflow locally; their **height** remains content-driven and is not rounded (`lib/api/render/document_view.dart`). The running text does not resume in phase after one. Snapping row heights, or the block as a whole, is the remaining gap in [Vertical Rhythm](../04-presentation/11-vertical-rhythm.md). |
 | Read font metrics rather than transcribe them | Kernel fix | api | The x-heights, cap heights and descenders are hand-copied from each font's `OS/2` table (`lib/api/theme/font_metrics.dart`). A face added to `pubspec.yaml` without an entry is silently un-normalised. Reading the table at startup removes the failure mode, at the cost of parsing font binaries. |
@@ -35,6 +34,7 @@ that touches `domain` begins by modelling the reader-facing rule.
 
 | Item | Landed as |
 |------|-----------|
+| Document images | Inline and reference images share one domain shape; local sources resolve against the Markdown directory through an application port; desktop, browser and sample adapters keep source authority at the edge; remote and oversized artwork stays bounded; every loading failure preserves the authored alternative. See [Document Image](../05-api/23-document-image.md). |
 | Reveal the themes folder | The theme menu presents one **Open themes folder** action instead of exposing the sandbox path. Desktop delegates the directory to the operating system; web omits the unavailable action (`lib/api/widgets/theme_picker.dart`, `lib/infrastructure/platform/platform_io.dart`). |
 | Structured themes | A `ReaderTheme` contract, six built-ins, a registry that loads user JSON files, a picker, and a persisted choice. The seams live in the `presentation` ring (`lib/presentation/theme/reader_theme.dart`), which may import no package, so the `api` ring binds them to Flutter and a theme stays data. See [Presentation](../04-presentation/README.md) and [Creating a Theme](../09-contributing/05-creating-a-theme.md). |
 | Bundle fonts as assets | Alegreya, Literata, Inter and Geist Mono ship inside the app as variable fonts with their OFL notices (`pubspec.yaml`), registered for the licence page (`lib/api/theme/font_licences.dart`). `GoogleFonts` is now only a fallback for a family a theme names that we do not ship (`lib/api/theme/library_theme.dart`). Text draws with no network and no flash of a fallback face — and the metrics became measurable, which is what everything after it was built on. |
@@ -57,9 +57,8 @@ that touches `domain` begins by modelling the reader-facing rule.
 
 Roughly by how soon a reader hits the gap:
 
-1. Relative images — the first thing a real docs folder exposes.
-2. Recents — the first reactor and slot; it proves the shell can host plugin UI.
-3. Everything else, as those first extensions reveal a reusable shape.
+1. Recents — the first reactor and slot; it proves the shell can host plugin UI.
+2. Everything else, as that first extension reveals a reusable shape.
 
 ## Out of scope for now
 

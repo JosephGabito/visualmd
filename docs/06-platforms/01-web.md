@@ -74,8 +74,14 @@ surprise downloads (`lib/infrastructure/platform/platform_web.dart`).
   (`pubspec.yaml`), so the page does not depend on a network font fetch.
   A user theme may still name an unbundled family, in which case the fallback
   loader can require the network (`lib/api/theme/library_theme.dart`).
-- Relative images in documents do not resolve; only the markdown bytes are
-  read off the dropped folder.
+- Relative images resolve through a folder handle, dropped directory, or file
+  list already offered to the page. A Markdown file uploaded alone has no
+  browser capability for its neighbouring files, so its relative images fall
+  back to their alternatives (`lib/infrastructure/web/browser_document_image_loader.dart`).
+- Remote images use Flutter's network provider. When a server blocks CanvasKit
+  from reading cross-origin bytes, the web build may fall back to an HTML image
+  element; loading failure still leaves the authored alternative visible
+  (`lib/api/widgets/document_image.dart`).
 - The web build currently offers the built-in themes. It has no reader-owned
   theme folder, so `readThemeDocuments` is empty and the theme menu shows no
   location line (`lib/infrastructure/platform/platform_web.dart`).

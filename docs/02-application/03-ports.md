@@ -106,6 +106,30 @@ records why matching belongs behind a port and the stable offset contract:
 The production implementation is `LiteralDocumentSearch`
 (`lib/infrastructure/search/literal_document_search.dart`).
 
+## DocumentImageLoader
+
+Reads one image named by a parsed document without granting the API ring direct
+filesystem or browser access (`lib/application/ports/document_image_loader.dart`).
+
+| Member | Type | Contract |
+|--------|------|----------|
+| `load(document, source)` | `Future<Uint8List?>` | Return the bytes reachable through the document's offered source, or `null` when the destination is missing, unsafe, or unavailable. |
+
+`DocumentImagePath.resolve` supplies the shared portable rule. Destinations
+begin beside the Markdown document; percent-encoded path segments are decoded;
+dot segments may move within the opened root. Schemes, authorities, absolute
+paths, encoded separators, and a parent step above that root are not local
+assets. Remote HTTP and HTTPS sources bypass this port and remain network
+images at the API edge.
+
+Production composes `SampleDocumentImageLoader` before the platform loader
+through `RoutingDocumentImageLoader` (`lib/main.dart`). Desktop reads only
+canonical files inside an offered directory or an explicitly offered loose
+file set. Browser adapters traverse the retained folder handle or selected
+file list. A directly uploaded browser Markdown has no parent-directory
+capability, so its neighbouring images remain unavailable rather than being
+guessed from a local path.
+
 ## Workspace ports
 
 Workspace use cases need two kinds of outside help: access to the user's JSON

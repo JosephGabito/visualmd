@@ -33,6 +33,7 @@ which lets the same reader UI run on desktop and the web
 | [Error Notice](20-error-notice.md) | Persistent, dismissible feedback when a drop fails over an open library |
 | [Workspace Actions](21-workspace-actions.md) | Native File commands, shortcuts, controller transitions, and errors |
 | [Brand Mark](22-brand-mark.md) | Bundled product artwork and its Flutter, macOS, Windows, and web surfaces |
+| [Document Image](23-document-image.md) | Local and remote Markdown artwork, sizing, semantics, and recovery |
 
 ## How it connects
 
@@ -76,7 +77,9 @@ shows how a reader changes it through [Anchored Menu](08-anchored-menu.md).
 [Inline Composer](13-inline-composer.md), and
 [Reading Theme](14-reading-theme.md) form the renderer. Read them in that order
 to see what goes where, how text is shaped, and where the measurements come
-from. [Code Block](11-code-block.md) explains why fenced code is allowed a
+from. [Document Image](23-document-image.md) follows the image path from an
+authored destination to bounded artwork or useful alternative text.
+[Code Block](11-code-block.md) explains why fenced code is allowed a
 wider measure than prose. [Pressable](09-pressable.md) and
 [Collapsible Panel](10-collapsible-panel.md) are the small interaction pieces
 used throughout the shell. [Panel Widths](18-panel-widths.md) and

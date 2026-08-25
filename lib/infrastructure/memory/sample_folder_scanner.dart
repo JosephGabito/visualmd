@@ -152,6 +152,34 @@ should be obvious before the reader resumes the surrounding prose.
 [shortcut reference]: https://spec.commonmark.org/0.31.2/#shortcut-reference-link
 [reason]: https://spec.commonmark.org/0.31.2/#link-reference-definitions
 '''),
+    FileEntry('guide/advanced/images.md', '''
+# Images
+
+An image description is reading text when artwork cannot be shown. A title is
+advisory: hover the image to read it without adding another caption to the page.
+
+## Relative artwork
+
+![The Visual MD open-book mark](../../images/visual-md-logo.png "Visual MD")
+
+The artwork keeps its intrinsic square shape, but its 2048-pixel source never
+forces the reading column wider than the window.
+
+## Reference image
+
+![The same open-book mark by reference][visual-mark]
+
+Both spellings become the same image run. The definition stays out of the
+rendered document, just as it does for a reference link.
+
+## Remote and unavailable
+
+![The CommonMark mark](https://commonmark.org/help/images/favicon.png)
+
+![A deliberately unavailable remote image](https://visualmd.invalid/missing.png)
+
+[visual-mark]: ../../images/visual-md-logo.png "The same Visual MD artwork"
+'''),
     FileEntry('notes/colophon.md', '''
 # Colophon
 

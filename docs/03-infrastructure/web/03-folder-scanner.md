@@ -86,6 +86,7 @@ See [Browser Source Change Monitor](05-source-change-monitor.md).
 
 - A bounded pool of concurrent reads could improve large-library performance
   without changing the port.
-- Images referenced by documents are not read today. Supporting them means
-  reading non-Markdown files by request through a separate capability. It is
-  tracked in [Backlog](../../07-roadmap/02-backlog.md).
+- `BrowserDocumentImageLoader` now reads a requested relative image through
+  the retained directory handle, legacy dropped entry, or selected file list.
+  This remains a separate capability, so scanning still reads Markdown only
+  (`lib/infrastructure/web/browser_document_image_loader.dart`).

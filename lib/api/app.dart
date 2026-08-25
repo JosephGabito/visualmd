@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../application/ports/document_image_loader.dart';
 import 'reader_controller.dart';
 import '../presentation/code/code_highlighter.dart';
 import 'screens/reader_screen.dart';
@@ -12,6 +13,7 @@ import '../presentation/theme/theme_choice.dart';
 class VisualMdApp extends StatelessWidget {
   final ReaderController controller;
   final CodeHighlighter codeHighlighter;
+  final DocumentImageLoader imageLoader;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
 
@@ -31,6 +33,7 @@ class VisualMdApp extends StatelessWidget {
     super.key,
     required this.controller,
     required this.codeHighlighter,
+    required this.imageLoader,
     required this.openExternal,
     this.openReaderSources,
     this.dropRegion = _identity,
@@ -85,6 +88,7 @@ class VisualMdApp extends StatelessWidget {
           ReaderScreen(
             controller: controller,
             codeHighlighter: codeHighlighter,
+            imageLoader: imageLoader,
             openExternal: openExternal,
             openReaderSources: openReaderSources,
             topBar: topBar,

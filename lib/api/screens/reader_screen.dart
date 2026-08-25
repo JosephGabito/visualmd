@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../application/ports/document_image_loader.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/reading/table_of_contents.dart';
 import '../../domain/search/search_result.dart';
@@ -30,6 +31,7 @@ enum _SearchMode { closed, document, library }
 class ReaderScreen extends StatefulWidget {
   final ReaderController controller;
   final CodeHighlighter codeHighlighter;
+  final DocumentImageLoader? imageLoader;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
   final ({double height, double leadingInset}) topBar;
@@ -43,6 +45,7 @@ class ReaderScreen extends StatefulWidget {
     required this.controller,
     required this.openExternal,
     this.codeHighlighter = const PlainCodeHighlighter(),
+    this.imageLoader,
     this.openReaderSources,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
@@ -416,6 +419,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 reading: reading,
                 scale: c.readingScale,
                 codeHighlighter: widget.codeHighlighter,
+                imageLoader: widget.imageLoader,
                 matches: _searchMode == _SearchMode.document
                     ? result?.matches ?? const []
                     : const [],
