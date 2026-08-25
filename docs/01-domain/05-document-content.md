@@ -34,6 +34,8 @@ Two sealed hierarchies and a container.
 | `ParagraphBlock` | runs | `lib/domain/reading/content/block.dart` |
 | `HeadingBlock` | `level` 1–6, runs, and the `anchor` a link reaches it by | `lib/domain/reading/content/block.dart` |
 | `CodeBlock` | verbatim `code` and the `language` the author named | `lib/domain/reading/content/block.dart` |
+| `MathBlock` | exact TeX for one display equation | `lib/domain/reading/content/block.dart` |
+| `MermaidBlock` | exact Mermaid source for one diagram | `lib/domain/reading/content/block.dart` |
 | `QuoteBlock` | blocks of its own | `lib/domain/reading/content/block.dart` |
 | `ListBlock` | `ordered`, `start`, `loose`, and `ListItem`s | `lib/domain/reading/content/block.dart` |
 | `TableBlock` | a head row and body rows of `TableCell` | `lib/domain/reading/content/block.dart` |
@@ -47,7 +49,9 @@ already become reading text and backslash escapes have become their literal
 ASCII punctuation, `CodeRun`
 (verbatim, never re-set — `lib/domain/reading/content/inline.dart`), `MarkedRun` carrying one of
 `InlineMark.emphasis | strong | strikethrough` over its children (`lib/domain/reading/content/inline.dart`),
-`LinkRun` (`lib/domain/reading/content/inline.dart`), `ImageRun` (`lib/domain/reading/content/inline.dart`) and `LineBreakRun`, which is only
+`MathRun` carrying exact inline TeX, `LinkRun`
+(`lib/domain/reading/content/inline.dart`), `ImageRun`
+(`lib/domain/reading/content/inline.dart`) and `LineBreakRun`, which is only
 ever a line the author asked for with two trailing spaces or a backslash
 (`lib/domain/reading/content/inline.dart`). Its text is one newline; the source
 markers and indentation after them are formatting, not domain content.
@@ -114,6 +118,20 @@ for example, the middle `**` in `*foo**bar*` is reading text, not decoration
 `RawBlock` is the model's promise that nothing is silently dropped: markup the
 reader cannot set still reaches the page as its words
 (`lib/domain/reading/content/block.dart`).
+
+Mathematics follows the same source-authority rule as code without becoming
+code. `MathRun` belongs to the sentence around it; `MathBlock` is a display
+departure in the block sequence. Both expose only the TeX between delimiters as
+their reading text. Delimiters are grammar, while typesetting, overflow and
+rendering failure belong to the page
+(`lib/domain/reading/content/block.dart`,
+`lib/domain/reading/content/inline.dart`).
+
+A Mermaid diagram follows that boundary at block scale. `MermaidBlock` keeps
+the exact fence body as both source and searchable text. It knows nothing about
+SVG, graph layout, zoom, or full screen; those are adapter and page concerns.
+If rendering fails, the same value is sufficient to show and copy everything
+the author supplied (`lib/domain/reading/content/block.dart`).
 
 Anchors come from one rule, `HeadingAnchors`
 (`lib/domain/reading/heading_anchor.dart`), which both this model and the

@@ -25,9 +25,11 @@ final class MarkdownDocumentParser implements DocumentParser {
       // shorter pair from a run of three or more tildes. GFM makes the whole
       // run literal, so claim it before the extension syntax sees it.
       inlineSyntaxes: [
+        _InlineMathSyntax(),
         _LiteralAngleAutolinkNearMissSyntax(),
         _LiteralLongTildeRunSyntax(),
       ],
+      blockSyntaxes: const [_DisplayMathBlockSyntax()],
       extensionSet: md.ExtensionSet.gitHubFlavored,
       // The reader draws text, not HTML: escaping it here would put `&amp;`
       // on the page.
@@ -52,6 +54,136 @@ final class MarkdownDocumentParser implements DocumentParser {
     }
     return source;
   }
+}
+
+/// GitHub's `$$` display-math extension, before ordinary paragraphs claim it.
+///
+/// A delimiter pair may live on one line or surround several lines. An
+/// unclosed opener is deliberately left to ordinary Markdown: malformed
+/// notation must keep the author's text visible rather than consuming the
+/// remainder of the document as an equation.
+final class _DisplayMathBlockSyntax extends md.BlockSyntax {
+  static final _opener = RegExp(r'^ {0,3}\$\$[ \t]*$');
+  static final _singleLine = RegExp(r'^ {0,3}\$\$(.+?)\$\$[ \t]*$');
+
+  const _DisplayMathBlockSyntax();
+
+  @override
+  RegExp get pattern => RegExp(r'^ {0,3}\$\$');
+
+  @override
+  bool canParse(md.BlockParser parser) {
+    final line = parser.current.content;
+    if (_singleLine.hasMatch(line)) return true;
+    if (!_opener.hasMatch(line)) return false;
+
+    for (var ahead = 1; ; ahead++) {
+      final candidate = parser.peek(ahead);
+      if (candidate == null) return false;
+      if (_opener.hasMatch(candidate.content)) return true;
+    }
+  }
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    final single = _singleLine.firstMatch(parser.current.content);
+    if (single != null) {
+      parser.advance();
+      return _mathElement(single[1]!);
+    }
+
+    parser.advance();
+    final source = <String>[];
+    while (!parser.isDone && !_opener.hasMatch(parser.current.content)) {
+      source.add(parser.current.content);
+      parser.advance();
+    }
+    if (!parser.isDone) parser.advance();
+    return _mathElement(source.join('\n'));
+  }
+
+  static md.Element _mathElement(String source) {
+    final element = md.Element.text('math', source);
+    element.attributes['display'] = 'block';
+    return element;
+  }
+}
+
+/// GitHub's two inline-math forms: `$…$` and `$`backticked`$`.
+///
+/// This scanner is intentionally small and linear. It never crosses a source
+/// line, never treats `$$` as inline notation, and ignores escaped dollars.
+/// Those boundaries keep ordinary Markdown and currency intact as far as the
+/// GitHub contract permits while allowing TeX to contain its own `\$`.
+final class _InlineMathSyntax extends md.InlineSyntax {
+  _InlineMathSyntax() : super(r'\$', startCharacter: 0x24);
+
+  @override
+  bool tryMatch(md.InlineParser parser, [int? startMatchPos]) {
+    final start = startMatchPos ?? parser.pos;
+    final source = parser.source;
+    if (source.codeUnitAt(start) != 0x24 || source.startsWith(r'$$', start)) {
+      return false;
+    }
+
+    final backticked = source.startsWith(r'$`', start);
+    final contentStart = start + (backticked ? 2 : 1);
+    if (contentStart >= source.length ||
+        (!backticked && _isWhitespace(source.codeUnitAt(contentStart)))) {
+      return false;
+    }
+
+    final closing = backticked
+        ? _backtickClosing(source, contentStart)
+        : _dollarClosing(source, contentStart);
+    if (closing == null || closing == contentStart) return false;
+
+    final content = source.substring(contentStart, closing);
+    parser
+      ..writeText()
+      ..addNode(_mathElement(content))
+      ..consume(closing - start + (backticked ? 2 : 1));
+    return true;
+  }
+
+  static int? _backtickClosing(String source, int start) {
+    final closing = source.indexOf(r'`$', start);
+    if (closing < 0 || source.substring(start, closing).contains('\n')) {
+      return null;
+    }
+    return closing;
+  }
+
+  static int? _dollarClosing(String source, int start) {
+    for (var i = start; i < source.length; i++) {
+      final code = source.codeUnitAt(i);
+      if (code == 0x0a || code == 0x0d) return null;
+      if (code != 0x24 || _isEscaped(source, i)) continue;
+      if (i == start || _isWhitespace(source.codeUnitAt(i - 1))) continue;
+      return i;
+    }
+    return null;
+  }
+
+  static bool _isEscaped(String source, int index) {
+    var slashes = 0;
+    for (var i = index - 1; i >= 0 && source.codeUnitAt(i) == 0x5c; i--) {
+      slashes++;
+    }
+    return slashes.isOdd;
+  }
+
+  static bool _isWhitespace(int code) =>
+      code == 0x20 || code == 0x09 || code == 0x0a || code == 0x0d;
+
+  static md.Element _mathElement(String source) {
+    final element = md.Element.text('math', source);
+    element.attributes['display'] = 'inline';
+    return element;
+  }
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) => false;
 }
 
 /// Keeps malformed autolink-shaped text from being swallowed as inline HTML.
@@ -126,6 +258,7 @@ final class _Mapper {
     'table',
     'hr',
     'section',
+    'math',
   };
 
   List<Block> blocks(List<md.Node>? nodes) {
@@ -177,7 +310,10 @@ final class _Mapper {
         ];
 
       case 'pre':
-        return [_code(element)];
+        return [_verbatimBlock(element)];
+
+      case 'math':
+        return [MathBlock(element.textContent)];
 
       case 'blockquote':
         return [QuoteBlock(blocks(element.children))];
@@ -200,7 +336,7 @@ final class _Mapper {
     }
   }
 
-  CodeBlock _code(md.Element pre) {
+  Block _verbatimBlock(md.Element pre) {
     md.Element? code;
     for (final child in pre.children ?? const <md.Node>[]) {
       if (child is md.Element && child.tag == 'code') {
@@ -218,6 +354,12 @@ final class _Mapper {
     final language = className.startsWith('language-')
         ? className.substring(9)
         : '';
+    switch (language.toLowerCase()) {
+      case 'math':
+        return MathBlock(text);
+      case 'mermaid':
+        return MermaidBlock(text);
+    }
     return CodeBlock(code: text, language: language.isEmpty ? null : language);
   }
 
@@ -332,6 +474,9 @@ final class _Mapper {
 
         case md.Element(tag: 'code'):
           runs.add(CodeRun(node.textContent));
+
+        case md.Element(tag: 'math'):
+          runs.add(MathRun(node.textContent));
 
         case md.Element(tag: 'em'):
           runs.add(
@@ -513,7 +658,7 @@ final class _InlineLineBreaks {
           pieces.add(const _HardBreakPiece());
           fullText.write(_object);
 
-        case md.Element(tag: 'code' || 'img' || 'input'):
+        case md.Element(tag: 'code' || 'math' || 'img' || 'input'):
           // An atomic inline is a real boundary. Context on its far side must
           // not decide how a nearby soft break joins.
           pieces.add(const _AtomicPiece());

@@ -33,6 +33,7 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 |-----|---------|
 | `TextRun` | A `TextSpan` whose text has been set (`lib/api/render/inline_composer.dart`) |
 | `CodeRun` | A selectable `InlineCodeSpan` in the surrounding role, set verbatim in contrast-safe accent mono and never underlined (`lib/api/render/inline_composer.dart`) |
+| `MathRun` | A baseline-aligned `MathInlineSpan`, optically sized to the surrounding role and flattening back to authored TeX for copying (`lib/api/render/inline_composer.dart`) |
 | `MarkedRun` | Italic, weight 700, or one inherited-ink line through the text — one signal for each meaning (`lib/api/render/inline_composer.dart`) |
 | `LinkRun` | `linkFor(base)`, which preserves the complete heading, table or marked style and adds only link colour, underline and interaction (`lib/api/render/inline_composer.dart`) |
 | `ImageRun` | A `DocumentImage` widget when the source is remote or a document loader is present; otherwise its alternative in `muted` (`lib/api/render/inline_composer.dart`) |
@@ -53,6 +54,14 @@ the end of a paragraph (`lib/api/render/inline_composer.dart`,
 `lib/api/render/document_view.dart`). A
 mouse-selection test copies only the code run and asserts its exact source text
 (`test/presentation/inline_composer_test.dart`).
+
+Inline mathematics is a painted widget because its fractions, limits and
+radicals are not one font run. `MathInlineSpan` restores what an ordinary
+`WidgetSpan` would lose: plain-text copying and semantics receive the TeX
+source instead of an object-replacement character. Search still advances by
+that source and paints a matching background behind the complete equation
+(`lib/api/widgets/math_expression.dart`,
+`test/presentation/math_expression_test.dart`).
 
 An authored line stays inside the same span tree as its surrounding emphasis or
 link. Its newline advances the same offset cursor used by document search, so a

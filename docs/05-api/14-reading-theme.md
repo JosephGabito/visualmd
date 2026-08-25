@@ -88,6 +88,13 @@ reserved for content the reader can follow. The text uses the accent;
 if that is below 4.5:1 against paper, `_contrastSafeAccent` finds the smallest
 mix toward ink that meets the threshold.
 
+**Mathematics.** `mathSizeFor(base)` treats a KaTeX em as another measured
+face rather than trusting equal nominal sizes. It reduces the surrounding role
+to its quoted letter size, then normalises from KaTeX Main's measured 0.431 em
+x-height. Inline notation therefore retains a heading, table or prose role;
+display notation uses body size and lets mathematical display style establish
+its hierarchy (`lib/api/render/reading_theme.dart`).
+
 **The two widths** (`lib/api/render/reading_theme.dart`):
 
 - `proseWidth(available)` — the measure, or the room available if that is
@@ -111,7 +118,7 @@ line box to one so inline code cannot push it off the grid
 
 Out: `body`, `code`, `quote`, `marker`, `tableHead`, `tableBody`, `headings`
 (`lib/api/render/reading_theme.dart`), the role-aware `linkFor` and
-inline-code rules (`lib/api/render/reading_theme.dart`), `leading`,
+inline-code and math-size rules (`lib/api/render/reading_theme.dart`), `leading`,
 `renderedBase`, rendered `em` and `indent`, the two widths, `strutFor`, and the
 rhythm members `baseline`, `snap`, `blockGap` and the single external-spacing
 contract `spaceAfter(current, next)` (`lib/api/render/reading_theme.dart`).
