@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/reader_controller.dart';
+import 'package:visualmd/application/document_source_reader.dart';
 import 'package:visualmd/application/library_mutation_queue.dart';
 import 'package:visualmd/application/ports/folder_document_scanner.dart';
 import 'package:visualmd/application/ports/folder_scanner.dart';
@@ -40,13 +41,18 @@ void main() {
     final repository = InMemoryLibraryRepository();
     final mutations = LibraryMutationQueue();
     const parser = MarkdownDocumentParser();
+    final markdowns = _MarkdownScanner();
+    final sources = DocumentSourceReader(
+      folderDocuments: source,
+      markdowns: markdowns,
+    );
     late final SourceWatchCoordinator changes;
     changes = SourceWatchCoordinator(
       monitor: monitor,
       refresh: RefreshSource(
         folders: source,
         folderDocuments: source,
-        markdowns: _MarkdownScanner(),
+        markdowns: markdowns,
         repository: repository,
         mutations: mutations,
       ),
@@ -60,7 +66,7 @@ void main() {
         mutations: mutations,
       ),
       addMarkdown: AddMarkdown(
-        scanner: _MarkdownScanner(),
+        scanner: markdowns,
         repository: repository,
         mutations: mutations,
       ),
@@ -70,10 +76,15 @@ void main() {
         mutations: mutations,
       ),
       moveFolder: MoveFolder(repository: repository, mutations: mutations),
-      readDocument: ReadDocument(repository: repository, parser: parser),
+      readDocument: ReadDocument(
+        repository: repository,
+        parser: parser,
+        sources: sources,
+      ),
       searchDocuments: SearchDocuments(
         repository: repository,
         search: LiteralDocumentSearch(parser: parser),
+        sources: sources,
       ),
       pickFolder: () async => null,
       sampleFolder: folder,

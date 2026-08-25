@@ -5,7 +5,7 @@
 `LibraryBuilder.buildRoot` is the single place that turns one flat folder scan
 into a `LibraryRoot` (`lib/domain/library/library_builder.dart`). It owns
 every decision about what goes on the shelf and in what order. Adapters hand
-it `FileEntry(path, content)` pairs
+it `FileEntry(path, content?, sourceId:, title:)` values
 (`lib/domain/library/library_builder.dart`) and nothing else; they do
 not sort, prune or filter — even when they skip non-markdown files early to
 save I/O, they are applying this module's rules, not their own.
@@ -51,7 +51,7 @@ then converts the tree to immutable `Folder`s:
 | `10-deploy.md`, `2-setup.md`, `README.md`, `1-intro.md`, `Zebra.md`, `apple.md` | root: `README.md`, `1-intro.md`, `2-setup.md`, `10-deploy.md`, `apple.md`, `Zebra.md` |
 | `README.md`, `assets/logo.png`, `guide/intro.markdown`, `guide/images/diagram.svg` | root: `README.md`; `guide/`: `intro.markdown` — `assets/` and `guide/images/` never built |
 | `01-system-wiring/a.md`, `00-foundation/b.md`, `00-foundation/deep/er/c.md` | `00-foundation/` (`b.md`, `deep/er/c.md`) before `01-system-wiring/` (`a.md`) |
-| `a\b.md` (content "first"), `/a/b.md` (content "second") | `a/`: one document `b.md` with content "first" |
+| `a\b.md` (first entry), `/a/b.md` (duplicate entry) | `a/`: one document `b.md`, preserving the first entry's metadata |
 | `notes/.git/x.md`, `notes/.drafts/y.md`, `node_modules/p/README.md`, `vendor/p/README.md`, `notes/z.md` | `notes/`: `z.md` only |
 | `a.txt` | an empty root (`documentCount` is zero, `openingDocument` is `null`) |
 
@@ -68,10 +68,10 @@ where scanning and persistence complete.
 ## Lifecycle
 
 Called once per add, refresh, or workspace restoration. It runs synchronously
-over an in-memory list and keeps no state between calls (`abstract final class`
-with a static method, `lib/domain/library/library_builder.dart`). Large
-folder performance should be judged with representative scans rather than an
-assumed file-count threshold.
+over an in-memory metadata list and keeps no state between calls (`abstract
+final class` with a static method, `lib/domain/library/library_builder.dart`).
+Production folder entries carry no source bytes; source residency is therefore
+independent of library size.
 
 ## Failure and recovery
 

@@ -2,23 +2,29 @@
 
 ## Purpose and boundary
 
-`SearchDocuments` chooses the documents in scope and delegates matching
-through the [Document Search Port](06-document-search-port.md)
+`SearchDocuments` chooses the documents in scope, streams their sources, and
+delegates matching through the [Document Search Port](06-document-search-port.md)
 (`lib/application/use_cases/search_documents.dart`). It searches either
-the whole open `Library` or one `DocumentId`; it does not parse Markdown,
-match strings, construct excerpts, or render results.
+the whole open `Library` or one `DocumentId`; it does not retain source,
+parse Markdown, match strings, construct excerpts, or render results.
 
 ## Present wiring
 
 `execute(text, within:)` returns immediately for an empty field, then reads the
 current library through `LibraryRepository` (`lib/application/use_cases/search_documents.dart`).
-Without `within`, every document is handed to the search port in shelf order
-(`lib/application/use_cases/search_documents.dart`). With an id, the use case resolves exactly that document and hands
-the adapter a one-item iterable (`lib/application/use_cases/search_documents.dart`).
+Without `within`, documents are visited in shelf order. For each one,
+`DocumentSourceReader` obtains the source, the search port receives a
+source-backed one-item iterable, and the source is released before the next
+document is visited (`lib/application/use_cases/search_documents.dart`). With
+an id, the same pipeline visits exactly that document.
 
-The composition root constructs one instance from the session repository and
-the literal search adapter, then injects it into `ReaderController`
-(`lib/main.dart`, `lib/main.dart`).
+Results are rebound to the metadata-only `Document` from the library. Search
+therefore neither fills the reading cache nor accidentally retains every
+matched source through its result list. The search and reading cache contract
+is exercised together in `test/application/read_document_cache_test.dart`.
+
+The composition root gives reading and search the same `DocumentSourceReader`,
+then injects the use case into `ReaderController` (`lib/main.dart`).
 
 ## Inputs and outputs
 
@@ -37,8 +43,10 @@ uses the existing document-opening path in the API.
 
 ## Lifecycle
 
-One stateless, `const` use-case instance lives for the application session.
-The adapter behind it may cache prepared text; that state is outside this ring.
+One stateless use-case instance lives for the application session. A search
+has bounded source residency: at most one source-backed document is handed to
+the adapter at a time. `LiteralDocumentSearch` does not cache source text
+(`lib/infrastructure/search/literal_document_search.dart`).
 
 ## Failure and recovery
 
@@ -48,7 +56,8 @@ The UI only offers search after a library opens and only scopes to its current
 document, so both failures indicate stale caller state.
 
 The scope selection and empty-query short circuit are covered in
-`test/application/use_cases_test.dart`.
+`test/application/use_cases_test.dart`. Streaming without warming or leaking
+the reading cache is covered in `test/application/read_document_cache_test.dart`.
 
 ## Transition
 

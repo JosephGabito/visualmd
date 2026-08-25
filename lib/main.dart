@@ -13,6 +13,7 @@ import 'api/reader_source_opener.dart';
 import 'presentation/theme/theme_choice.dart';
 import 'presentation/theme/theme_registry.dart';
 import 'application/library_mutation_queue.dart';
+import 'application/document_source_reader.dart';
 import 'application/source_watch_coordinator.dart';
 import 'application/workspace_autosave.dart';
 import 'application/use_cases/add_folder.dart';
@@ -101,6 +102,10 @@ Future<void> main() async {
     mutations: mutations,
     workspace: updateWorkspace,
   );
+  final documentSources = DocumentSourceReader(
+    folderDocuments: platform.folderDocumentScanner,
+    markdowns: platform.markdownScanner,
+  );
   final removeFolder = RemoveFolder(
     repository: repository,
     mutations: mutations,
@@ -116,10 +121,15 @@ Future<void> main() async {
     mutations: mutations,
     workspace: updateWorkspace,
   );
-  final readDocument = ReadDocument(repository: repository, parser: parser);
+  final readDocument = ReadDocument(
+    repository: repository,
+    parser: parser,
+    sources: documentSources,
+  );
   final searchDocuments = SearchDocuments(
     repository: repository,
     search: LiteralDocumentSearch(parser: parser),
+    sources: documentSources,
   );
   final refreshSource = RefreshSource(
     folders: scanner,

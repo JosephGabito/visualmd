@@ -9,6 +9,8 @@ import '../../application/ports/folder_scanner.dart';
 import '../../domain/library/hidden_folders.dart';
 import '../../domain/library/library_builder.dart';
 import '../../domain/library/markdown_file.dart';
+import '../../domain/library/document_source_id.dart';
+import '../../domain/reading/document_outline.dart';
 import 'browser_folder.dart';
 import 'browser_source_identity.dart';
 
@@ -36,7 +38,7 @@ final class BrowserFolderScanner
       case PickedFiles(files: final picked):
         for (final (path, file) in picked) {
           if (!_wanted(path)) continue;
-          files.add(FileEntry(path, await _text(file)));
+          files.add(await _entry(path, file));
         }
     }
     return ScannedFolder(name: folder.name, files: files);
@@ -68,9 +70,21 @@ final class BrowserFolderScanner
         sourceId: await _identities.identify(fileHandle),
       );
     }
-    // Legacy drag and input objects are snapshots. Their monitor never emits
-    // targeted invalidations because the browser cannot promise a fresh read.
-    return null;
+    final file = switch (folder) {
+      DroppedDirectory(:final entry) => await _fileAt(entry, path),
+      PickedFiles(:final files) =>
+        files
+            .where((candidate) => candidate.$1 == path)
+            .map((candidate) => candidate.$2)
+            .firstOrNull,
+      HandleDirectory() => null,
+    };
+    if (file == null) return null;
+    return ScannedFolderDocument(
+      relativePath: path,
+      content: await _text(file),
+      sourceId: null,
+    );
   }
 
   Future<void> _walkHandle(
@@ -100,9 +114,9 @@ final class BrowserFolderScanner
         final fileHandle = handle as web.FileSystemFileHandle;
         final file = await fileHandle.getFile().toDart;
         out.add(
-          FileEntry(
+          await _entry(
             path,
-            await _text(file),
+            file,
             sourceId: await _identities.identify(fileHandle),
           ),
         );
@@ -124,8 +138,9 @@ final class BrowserFolderScanner
         if (HiddenFolders.isHidden(entry.name)) continue;
         await _walk(entry as web.FileSystemDirectoryEntry, '$path/', out);
       } else if (entry.isFile && MarkdownFile.isMarkdown(entry.name)) {
-        final file = await _fileOf(entry as web.FileSystemFileEntry);
-        out.add(FileEntry(path, await _text(file)));
+        out.add(
+          await _entry(path, await _fileOf(entry as web.FileSystemFileEntry)),
+        );
       }
     }
   }
@@ -161,8 +176,43 @@ final class BrowserFolderScanner
     return completer.future;
   }
 
+  static Future<web.File?> _fileAt(
+    web.FileSystemDirectoryEntry directory,
+    String path,
+  ) async {
+    final segments = path.split('/');
+    web.FileSystemDirectoryEntry current = directory;
+    for (var index = 0; index < segments.length; index++) {
+      final entries = await _entriesOf(current);
+      final entry = entries
+          .where((candidate) => candidate.name == segments[index])
+          .firstOrNull;
+      if (entry == null) return null;
+      if (index == segments.length - 1) {
+        return entry.isFile ? _fileOf(entry as web.FileSystemFileEntry) : null;
+      }
+      if (!entry.isDirectory) return null;
+      current = entry as web.FileSystemDirectoryEntry;
+    }
+    return null;
+  }
+
   static Future<String> _text(web.File file) async =>
       (await file.text().toDart).toDart;
+
+  static Future<FileEntry> _entry(
+    String path,
+    web.File file, {
+    DocumentSourceId? sourceId,
+  }) async {
+    final source = await _text(file);
+    return FileEntry(
+      path,
+      null,
+      sourceId: sourceId,
+      title: DocumentOutline.titleOf(source),
+    );
+  }
 }
 
 String? _safeRelativePath(String raw) {

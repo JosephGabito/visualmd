@@ -55,8 +55,15 @@ void main() {
         scanned.files
             .firstWhere((f) => f.path == 'guide/deep/er/page.markdown')
             .content,
-        'deep',
+        isNull,
       );
+      expect(
+        scanned.files.firstWhere((f) => f.path == 'README.md').title,
+        'Root',
+      );
+      final opened = await LocalFolderScanner(registry)
+          .scanDocument(ref, 'guide/deep/er/page.markdown');
+      expect(opened?.content, 'deep');
     },
   );
 
@@ -67,7 +74,10 @@ void main() {
       final ref = registry.register('lib', LocalDirectory(root.path));
       final scanned = await LocalFolderScanner(registry).scan(ref);
       final latin = scanned.files.firstWhere((f) => f.path == 'latin1.md');
-      expect(latin.content, startsWith('# '));
+      expect(latin.content, isNull);
+      final opened = await LocalFolderScanner(registry)
+          .scanDocument(ref, 'latin1.md');
+      expect(opened?.content, startsWith('# '));
     },
   );
 

@@ -23,10 +23,10 @@ full rescan supersede targeted paths (`lib/application/source_watch_coordinator.
 cancelled (`lib/application/source_watch_coordinator.dart`).
 
 `RefreshSource` then runs inside the same `LibraryMutationQueue` as manual
-source changes. A targeted folder change reads only its invalidated documents;
-a coarse event rebuilds the root; a standalone change replaces that document
-under the same identity (`lib/application/use_cases/refresh_source.dart`,
-`lib/application/use_cases/refresh_source.dart`). A cancelled watch is checked both before and after its asynchronous
+source changes. A targeted folder change reads only its invalidated documents
+to refresh title metadata; a coarse event rebuilds the metadata-only root; a
+standalone change replaces that document under the same identity
+(`lib/application/use_cases/refresh_source.dart`). A cancelled watch is checked both before and after its asynchronous
 read, so it cannot commit after a source has been rebound
 (`lib/application/use_cases/refresh_source.dart`).
 
@@ -40,7 +40,7 @@ read, so it cannot commit after a source has been rebound
 | `SourceWatchFailed` | report degraded synchronization without changing content |
 
 `RefreshedSource` returns the new Library, the surviving active document, and
-the exact document identities whose bytes or membership changed
+the document identities invalidated by the event
 (`lib/application/use_cases/refresh_source.dart`). The coordinator emits
 either `SourceSynchronized` or `SourceSynchronizationFailed` to the API ring
 (`lib/application/source_watch_coordinator.dart`).
@@ -58,6 +58,12 @@ starts its watch; opening a Workspace replaces the complete watch set; removing
 or absorbing a source releases its watch. Disposing the controller closes every
 subscription and timer (`lib/application/source_watch_coordinator.dart`,
 `lib/application/source_watch_coordinator.dart`).
+
+After a committed refresh, `ReaderController` removes those identities from
+the `ReadDocument` LRU before reopening the active document
+(`lib/api/reader_controller.dart`). A full rescan invalidates both the old and
+new root's ids even when paths and source identities match, because lightweight
+metadata cannot prove that the underlying bytes stayed equal.
 
 The coordinator serializes refreshes per source. If another invalidation arrives
 while a read is running, it records a second pass and rereads after the first

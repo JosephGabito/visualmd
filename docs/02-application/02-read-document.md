@@ -2,13 +2,15 @@
 
 ## Purpose and boundary
 
-`ReadDocument` turns a `DocumentId` into a `DocumentReading`: the document, the
-outline to navigate it by, and the blocks to set on the page
+`ReadDocument` turns a `DocumentId` into a `DocumentReading`: a transient
+source-backed document, the outline to navigate it by, and the blocks to set
+on the page
 (`lib/application/use_cases/read_document.dart`). It reads from the
-current library only; it never scans and never renders. It does not parse
-either — it *asks*, through the
-[Document Parser port](04-document-parser-port.md), and the outline comes from
-the domain ([Document Outline](../01-domain/03-document-outline.md)).
+current library and obtains that one document's source through
+`DocumentSourceReader` (`lib/application/document_source_reader.dart`). It
+never renders. It asks the [Document Parser port](04-document-parser-port.md)
+for blocks, and the outline comes from the domain
+([Document Outline](../01-domain/03-document-outline.md)).
 Rendering belongs to the [reading pane](../05-api/04-reading-pane.md).
 
 ## Present wiring
@@ -18,14 +20,16 @@ Rendering belongs to the [reading pane](../05-api/04-reading-pane.md).
 1. `_repository.current()` — the open `Library`, or `null`.
 2. `library.find(id)` — the document, or `null`
    (`lib/domain/library/library.dart`).
-3. Return a `DocumentReading` of three things
-   (`lib/application/use_cases/read_document.dart`): the document; its
-   outline, which is the document's cached, lazily parsed one
-   (`lib/domain/library/document.dart`); and its content, parsed here
-   through the injected port.
+3. Return an existing cached reading and promote it to most recently used, or
+   join an in-flight read for the same id.
+4. Otherwise `DocumentSourceReader` routes the source request to the folder or
+   standalone scanner port (`lib/application/document_source_reader.dart`).
+5. Build one source-backed `Document`, derive its outline, parse its blocks,
+   and retain the complete `DocumentReading` as the newest cache entry
+   (`lib/application/use_cases/read_document.dart`).
 
-The outline and the content are parsed separately, by different code, from the
-same source. They agree because both take their heading anchors from one rule,
+The outline and blocks are parsed separately, by different code, from the same
+transient source. They agree because both take their heading anchors from one rule,
 `HeadingAnchors` (`lib/domain/reading/heading_anchor.dart`) — which is
 what makes a link found in the outline resolve on the page. The use-case test
 asserts exactly that
@@ -41,11 +45,12 @@ already open (`lib/api/reader_controller.dart`).
 | | Type | Notes |
 |---|------|-------|
 | Input | `DocumentId` | Already normalised; see [Library aggregate](../01-domain/01-library-aggregate.md). |
-| Output | `DocumentReading` | `document`, `outline` (`tableOfContents`, `sections`, `frontMatter`) and `content` (`lib/application/use_cases/read_document.dart`). |
+| Output | `DocumentReading` | source-backed `document`, exact `source`, `outline` (`tableOfContents`, `sections`, `frontMatter`) and parsed `content` (`lib/application/use_cases/read_document.dart`). |
 
-The parser arrives as a constructor dependency
-(`lib/application/use_cases/read_document.dart`), so the use case can be
-tested against any implementation and knows nothing about markdown.
+The parser and source reader arrive as constructor dependencies
+(`lib/application/use_cases/read_document.dart`). Scanner routing stays in the
+application service and platform access stays behind ports, so the use case
+knows neither Markdown parsing details nor file and browser APIs.
 
 ## Events
 
@@ -55,11 +60,18 @@ documents. That event is roadmap direction, not part of the current use case.
 
 ## Lifecycle
 
-Stateless and `const`. The outline is cached on the `Document`; content is
-parsed afresh on every read. Keeping parsed content in the returned
-`DocumentReading` avoids shared mutable parsing state. The current parser is
-synchronous, so any future performance change should begin with measurements
-on representative large documents.
+One stateful instance lives for the reader session. Its access-ordered cache
+holds at most ten complete readings. A hit removes and reinserts the entry,
+making the least recently used reading the next eviction candidate. Concurrent
+opens of one id share one in-flight source read and parse
+(`lib/application/use_cases/read_document.dart`).
+
+The controller invalidates changed sources, releases readings removed from the
+library, and clears the cache when a workspace is replaced or the controller
+is disposed (`lib/api/reader_controller.dart`). An invalidated in-flight read
+may still satisfy its original caller, but a generation check prevents it from
+putting stale source back into the cache. These lifecycle invariants are pinned
+by `test/application/read_document_cache_test.dart`.
 
 ## Failure and recovery
 
@@ -67,9 +79,11 @@ on representative large documents.
 |-----------|--------|------------|-----------|
 | No library has been opened | `NoLibraryOpen` | `lib/application/use_cases/read_document.dart`, thrown at `lib/application/use_cases/read_document.dart` | `test/application/use_cases_test.dart` |
 | Id not in the library | `DocumentNotFound(id)` | `lib/application/use_cases/read_document.dart`, thrown at `lib/application/use_cases/read_document.dart` | `test/application/use_cases_test.dart` |
+| The retained platform source cannot supply the document | `DocumentSourceUnavailable(document)` | `lib/application/document_source_reader.dart` | `test/application/read_document_cache_test.dart` |
 
-Parsing adds no third failure: the port's contract is that it does not throw
-([Document Parser Port](04-document-parser-port.md)).
+Parsing adds no further failure: the port's contract is that it does not throw
+([Document Parser Port](04-document-parser-port.md)). Source access may still
+surface its platform error when permission is revoked or a file disappears.
 
 The controller does not catch these today: the shelf only offers ids that
 exist, and the welcome view is shown until a library opens, so neither can be
@@ -80,7 +94,8 @@ indicates stale caller state rather than a document the interface knowingly
 offered.
 
 The happy path — title, headings, and the outline agreeing with the page — is
-`test/application/use_cases_test.dart`.
+`test/application/use_cases_test.dart`; cache order, concurrency and
+invalidation are `test/application/read_document_cache_test.dart`.
 
 ## Transition
 

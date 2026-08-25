@@ -22,6 +22,7 @@ void main() {
     final document = Document(id: id, content: source);
     return DocumentReading(
       document: document,
+      source: source,
       outline: document.outline,
       content: parser.parse(source),
     );

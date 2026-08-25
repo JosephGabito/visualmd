@@ -55,8 +55,9 @@ void main() {
       );
 
       expect(documents.calls, ['README.md']);
-      expect(result.library.find(readme)?.content, '# After');
-      expect(result.library.find(ideas)?.content, '# Ideas');
+      expect(result.library.find(readme)?.title, 'After');
+      expect(result.library.find(ideas)?.title, 'Ideas');
+      expect(result.library.find(readme)?.loadedContent, isNull);
       expect(result.activeDocument, readme);
       expect(result.changedDocuments, {readme});
     },
@@ -126,7 +127,8 @@ void main() {
         selected: standaloneId,
       );
 
-      expect(result.library.find(standaloneId)?.content, '# After');
+      expect(result.library.find(standaloneId)?.title, 'After');
+      expect(result.library.find(standaloneId)?.loadedContent, isNull);
       expect(result.activeDocument, standaloneId);
     },
   );
@@ -171,7 +173,7 @@ void main() {
       final result = await update.timeout(const Duration(seconds: 1));
 
       expect(documents.calls, ['README.md']);
-      expect(result.result.library.find(readme)?.content, '# Final');
+      expect(result.result.library.find(readme)?.title, 'Final');
     },
   );
 
@@ -225,7 +227,7 @@ void main() {
           .where((event) => event is SourceSynchronized)
           .cast<SourceSynchronized>()
           .firstWhere(
-            (event) => event.result.library.find(readme)?.content == '# Final',
+            (event) => event.result.library.find(readme)?.title == 'Final',
           );
 
       monitor.folder.add(
@@ -240,7 +242,7 @@ void main() {
       await finalUpdate.timeout(const Duration(seconds: 1));
 
       expect(documents.calls, 2);
-      expect(repository.library!.find(readme)?.content, '# Final');
+      expect(repository.library!.find(readme)?.title, 'Final');
     },
   );
 }

@@ -3,10 +3,11 @@
 ## Purpose and boundary
 
 Implements both folder scanning ports for folders provided by the browser
-(`lib/infrastructure/web/browser_folder_scanner.dart`). It reads source
-bytes and returns `FileEntry` values; `LibraryBuilder` remains responsible for
-the library itself. Applying the Markdown and hidden-folder filters before a
-read avoids asking the browser for content the domain would discard
+(`lib/infrastructure/web/browser_folder_scanner.dart`). A full scan indexes one
+title at a time into metadata-only `FileEntry` values; `scanDocument` reads one source through its
+retained browser capability. `LibraryBuilder` remains responsible for the
+library itself. Applying the Markdown and hidden-folder filters while walking
+avoids indexing content the domain would discard
 (`lib/domain/library/library_builder.dart`).
 
 ## Present wiring
@@ -19,10 +20,10 @@ if it is unknown (`lib/infrastructure/web/browser_folder_scanner.dart`), then sw
 |--------|------|----------|
 | `HandleDirectory` | async iteration over a File System Access directory handle | `lib/infrastructure/web/browser_folder_scanner.dart` |
 | `DroppedDirectory` | recursive `_walk` over the legacy entry API | `lib/infrastructure/web/browser_folder_scanner.dart` |
-| `PickedFiles` | filter each listed path with `_wanted`, then read the retained files | `lib/infrastructure/web/browser_folder_scanner.dart` |
+| `PickedFiles` | filter each listed path with `_wanted`, index each title, then emit metadata for retained files | `lib/infrastructure/web/browser_folder_scanner.dart` |
 
 The modern handle walk receives child handles directly. It skips hidden
-directories, reads Markdown file handles, and assigns stable session identity
+directories, indexes each Markdown title, and assigns stable session identity
 through `BrowserSourceIdentity` (`lib/infrastructure/web/browser_folder_scanner.dart`). That identity lets a directly
 offered file be recognized when the same physical handle also appears inside a
 folder.
@@ -31,8 +32,9 @@ The legacy `_walk` lists a directory with `_entriesOf`, then for each entry:
 
 - directories: skip if `HiddenFolders.isHidden(name)`, otherwise recurse with
   the path prefix extended (`lib/infrastructure/web/browser_folder_scanner.dart`);
-- files: read only if `MarkdownFile.isMarkdown(name)`, via `_fileOf` then
-  `_text` (`lib/infrastructure/web/browser_folder_scanner.dart`).
+- files: retain an entry only if `MarkdownFile.isMarkdown(name)`; decode it
+  transiently for its title and release the source
+  (`lib/infrastructure/web/browser_folder_scanner.dart`).
 
 `_entriesOf` wraps the callback-style `createReader().readEntries()` in a
 loop: the browser returns entries in batches (Chrome: 100 at a time) and an
@@ -66,9 +68,10 @@ None. `AddFolder` owns the library mutation after a successful scan.
 
 Stateless apart from the registry it reads from; one instance per web
 `PlatformAdapters` (`lib/infrastructure/platform/platform_web.dart`). Each
-full `scan` walks the folder afresh. `scanDocument` rereads one path only for a
-modern directory handle; legacy file objects are immutable snapshots and return
-no targeted result (`lib/infrastructure/web/browser_folder_scanner.dart`).
+full `scan` walks the folder afresh, indexing titles sequentially without
+retaining source. `scanDocument`
+reads one path through a modern directory handle, legacy dropped directory, or
+picked-file snapshot (`lib/infrastructure/web/browser_folder_scanner.dart`).
 See [Browser Source Change Monitor](05-source-change-monitor.md).
 
 ## Failure and recovery
@@ -80,12 +83,13 @@ See [Browser Source Change Monitor](05-source-change-monitor.md).
 - A `DOMException` from a legacy `readEntries` or `file()` callback completes
   the future with the exception message (`lib/api/reader_controller.dart`); the whole scan fails rather than
   returning a partial library.
-- Files are read sequentially; a very large library is slow but bounded.
+- Directory entries are walked sequentially; source reads happen only for the
+  document being opened or streamed through search.
 
 ## Transition
 
-- A bounded pool of concurrent reads could improve large-library performance
-  without changing the port.
+- Source residency is bounded by `ReadDocument`; this adapter owns access, not
+  caching.
 - `BrowserDocumentImageLoader` now reads a requested relative image through
   the retained directory handle, legacy dropped entry, or selected file list.
   This remains a separate capability, so scanning still reads Markdown only
