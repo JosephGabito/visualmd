@@ -34,10 +34,12 @@ import 'infrastructure/memory/in_memory_library_repository.dart';
 import 'infrastructure/memory/in_memory_reader_state.dart';
 import 'infrastructure/memory/in_memory_workspace_session_repository.dart';
 import 'infrastructure/memory/in_memory_workspace_restoration.dart';
+import 'infrastructure/memory/sample_document_image_loader.dart';
 import 'infrastructure/memory/sample_folder_scanner.dart';
 import 'infrastructure/platform/platform.dart';
 import 'infrastructure/platform/platform_command.dart';
 import 'infrastructure/routing_folder_scanner.dart';
+import 'infrastructure/routing_document_image_loader.dart';
 import 'infrastructure/routing_workspace_source_access.dart';
 import 'infrastructure/search/literal_document_search.dart';
 import 'infrastructure/workspace/random_workspace_ids.dart';
@@ -62,6 +64,10 @@ Future<void> main() async {
   final scanner = RoutingFolderScanner([
     SampleFolderScanner(),
     platform.folderScanner,
+  ]);
+  final imageLoader = RoutingDocumentImageLoader([
+    const SampleDocumentImageLoader(),
+    platform.documentImageLoader,
   ]);
 
   // Application
@@ -273,6 +279,7 @@ Future<void> main() async {
     VisualMdApp(
       controller: controller,
       codeHighlighter: codeHighlighter,
+      imageLoader: imageLoader,
       openReaderSources: openReaderSources?.call,
       openExternal: platform.openExternal,
       dropRegion: platform.dropRegion,

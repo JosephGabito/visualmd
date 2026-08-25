@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../application/ports/document_image_loader.dart';
 import '../../application/use_cases/read_document.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/search/search_result.dart';
@@ -15,6 +16,7 @@ class ReadingPane extends StatefulWidget {
   final DocumentReading reading;
   final ReadingScale scale;
   final CodeHighlighter codeHighlighter;
+  final DocumentImageLoader? imageLoader;
   final void Function(String href) onLink;
   final ValueChanged<Heading?> onActiveHeadingChanged;
   final List<TextMatch> matches;
@@ -25,6 +27,7 @@ class ReadingPane extends StatefulWidget {
     required this.reading,
     required this.scale,
     this.codeHighlighter = const PlainCodeHighlighter(),
+    this.imageLoader,
     required this.onLink,
     required this.onActiveHeadingChanged,
     this.matches = const [],
@@ -198,9 +201,11 @@ class ReadingPaneState extends State<ReadingPane> {
                     ),
                   ),
                   DocumentView(
+                    document: reading.document.id,
                     content: reading.content,
                     theme: theme,
                     codeHighlighter: widget.codeHighlighter,
+                    imageLoader: widget.imageLoader,
                     anchorKeys: _keys,
                     matches: widget.matches,
                     activeMatch: widget.activeMatch,

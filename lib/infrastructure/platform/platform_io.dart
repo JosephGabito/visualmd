@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../application/ports/document_image_loader.dart';
 import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
@@ -21,6 +22,7 @@ import '../io/desktop_source_change_monitor.dart';
 import '../io/desktop_workspace_files.dart';
 import '../io/desktop_workspace_source_access.dart';
 import '../io/local_folder.dart';
+import '../io/local_document_image_loader.dart';
 import '../io/local_folder_scanner.dart';
 import '../io/local_markdown.dart';
 import '../io/local_markdown_scanner.dart';
@@ -56,6 +58,13 @@ final class _DesktopAdapters implements PlatformAdapters {
 
   late final _folderScanner = LocalFolderScanner(
     _registry,
+    access: const DesktopSecurityScope(),
+  );
+
+  @override
+  late final DocumentImageLoader documentImageLoader = LocalDocumentImageLoader(
+    _registry,
+    _markdownRegistry,
     access: const DesktopSecurityScope(),
   );
 

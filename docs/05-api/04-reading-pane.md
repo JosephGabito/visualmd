@@ -52,7 +52,7 @@ partly supersedes.
 
 ## Inputs and outputs
 
-In: `reading` (document, outline and content), `scale`, `onLink`,
+In: `reading` (document, outline and content), `imageLoader`, `scale`, `onLink`,
 `onActiveHeadingChanged` (`lib/api/widgets/reading_pane.dart`).
 
 Out:
@@ -101,8 +101,9 @@ a different identity jumps to the top
 (`lib/api/widgets/reading_pane.dart`); tracking skips headings with no
 render box yet (`lib/api/widgets/reading_pane.dart`) and reports nothing
 for a document with no headings at all
-(`lib/api/widgets/reading_pane.dart`). Relative images do not resolve
-today; see the [backlog](../07-roadmap/02-backlog.md).
+(`lib/api/widgets/reading_pane.dart`). An unavailable image is recovered by
+[Document Image](23-document-image.md) inside the page rather than failing the
+reading.
 
 ## Transition
 

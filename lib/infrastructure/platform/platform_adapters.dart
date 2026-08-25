@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../application/ports/document_image_loader.dart';
 import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
@@ -12,6 +13,7 @@ import 'platform_command.dart';
 /// Everything the composition root needs from "wherever we are running".
 /// One implementation per platform family; `platform.dart` picks it.
 abstract interface class PlatformAdapters {
+  DocumentImageLoader get documentImageLoader;
   FolderScanner get folderScanner;
   FolderDocumentScanner get folderDocumentScanner;
   MarkdownScanner get markdownScanner;

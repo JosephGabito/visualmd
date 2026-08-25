@@ -35,7 +35,7 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 | `CodeRun` | A selectable `InlineCodeSpan` in the surrounding role, set verbatim in contrast-safe accent mono and never underlined (`lib/api/render/inline_composer.dart`) |
 | `MarkedRun` | Italic, weight 700, or one inherited-ink line through the text — one signal for each meaning (`lib/api/render/inline_composer.dart`) |
 | `LinkRun` | `linkFor(base)`, which preserves the complete heading, table or marked style and adds only link colour, underline and interaction (`lib/api/render/inline_composer.dart`) |
-| `ImageRun` | Its alt text in `muted`; images are not resolved yet, and the alt is what the author meant the reader to get either way (`lib/api/render/inline_composer.dart`) |
+| `ImageRun` | A `DocumentImage` widget when the source is remote or a document loader is present; otherwise its alternative in `muted` (`lib/api/render/inline_composer.dart`) |
 | `LineBreakRun` | One selectable newline in the surrounding style; no widget, extra gap or source marker (`lib/api/render/inline_composer.dart`) |
 
 A link or code run keeps its full context. A link in an `h2` remains an `h2`,
@@ -59,6 +59,15 @@ link. Its newline advances the same offset cursor used by document search, so a
 match after the break highlights the intended characters while selection and
 assistive technology receive the line itself
 (`test/presentation/inline_composer_test.dart`).
+
+An image remains an inline run, but its pixels need layout and asynchronous
+loading that a `TextSpan` cannot provide. The composer therefore contributes a
+middle-aligned `WidgetSpan` and gives [Document Image](23-document-image.md)
+the current document, source, alternative and title. The alternative still
+advances the source cursor even when pixels are painted, so a later search
+match keeps its authored offset. Without a loader, the same words remain
+visible instead of disappearing (`lib/api/render/inline_composer.dart`,
+`test/presentation/inline_composer_test.dart`).
 
 A Markdown link title remains domain data, but it is not used as the Flutter
 span's semantics label. A semantics label replaces visible text for assistive
@@ -161,6 +170,8 @@ composed exactly as written
 | In | Type | From |
 |----|------|------|
 | `theme` | `ReadingTheme` | The pane |
+| `document` | `DocumentId?` | The reading whose directory owns relative sources |
+| `imageLoader` | `DocumentImageLoader?` | The application capability for document-local bytes |
 | `onTapLink` | `void Function(String href)?` | The pane's link handler |
 | `compose(runs, {style, previous})` | `List<Inline>`, optional base `TextStyle` and preceding character | Each block, as it builds |
 
@@ -189,6 +200,7 @@ marker, a wiki link — would attach in `_run`
 Span construction obeys Flutter's text invariants. The switch over runs is
 exhaustive over a sealed hierarchy, so a new run type cannot be added without
 deciding how it is composed. A link with no handler simply gets no recogniser
+and an image without a usable loader keeps its alternative as text
 (`lib/api/render/inline_composer.dart`). Behaviour is covered by
 `test/presentation/inline_composer_test.dart`.
 

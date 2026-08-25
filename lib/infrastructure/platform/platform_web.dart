@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
+import '../../application/ports/document_image_loader.dart';
 import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
@@ -9,6 +10,7 @@ import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../web/browser_folder.dart';
+import '../web/browser_document_image_loader.dart';
 import '../web/browser_folder_drop.dart';
 import '../web/browser_folder_picker.dart';
 import '../web/browser_folder_scanner.dart';
@@ -38,6 +40,10 @@ final class _WebAdapters implements PlatformAdapters {
     _registry,
     _sourceIdentities,
   );
+
+  @override
+  late final DocumentImageLoader documentImageLoader =
+      BrowserDocumentImageLoader(_registry);
 
   @override
   FolderScanner get folderScanner => _folderScanner;

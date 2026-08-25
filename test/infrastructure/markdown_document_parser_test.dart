@@ -1376,12 +1376,53 @@ void main() {
 
     test('an image keeps its source and its words', () {
       final paragraph = single<ParagraphBlock>(
-        '![a diagram](diagram.png "Figure 1")',
+        '![a *diagram* with [a link](https://example.com)]'
+        '(diagram%20one.png "Figure &amp; 1")',
       );
       final image = paragraph.content.whereType<ImageRun>().single;
-      expect(image.source, 'diagram.png');
-      expect(image.alt, 'a diagram');
-      expect(image.title, 'Figure 1');
+      expect(image.source, 'diagram%20one.png');
+      expect(image.alt, 'a diagram with a link');
+      expect(image.title, 'Figure & 1');
+    });
+
+    test(
+      'full collapsed and shortcut references become the same image run',
+      () {
+        final paragraph = single<ParagraphBlock>('''
+![full image][art], ![collapsed][], and ![shortcut].
+
+[art]: full.png "Full"
+[collapsed]: collapsed.png "Collapsed"
+[shortcut]: shortcut.png "Shortcut"
+''');
+        final images = paragraph.content.whereType<ImageRun>().toList();
+
+        expect(images.map((image) => image.alt), [
+          'full image',
+          'collapsed',
+          'shortcut',
+        ]);
+        expect(images.map((image) => image.source), [
+          'full.png',
+          'collapsed.png',
+          'shortcut.png',
+        ]);
+        expect(images.map((image) => image.title), [
+          'Full',
+          'Collapsed',
+          'Shortcut',
+        ]);
+      },
+    );
+
+    test('an empty image description remains deliberately empty', () {
+      final image = single<ParagraphBlock>('![](decorative.png)')
+          .content
+          .single;
+
+      expect(image, isA<ImageRun>());
+      expect((image as ImageRun).source, 'decorative.png');
+      expect(image.alt, isEmpty);
     });
   });
 

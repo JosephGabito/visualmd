@@ -8,6 +8,10 @@ import 'package:visualmd/api/render/inline_composer.dart';
 import 'package:visualmd/api/render/reading_theme.dart';
 import 'package:visualmd/api/theme/font_metrics.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
+import 'package:visualmd/api/widgets/document_image.dart';
+import 'package:visualmd/application/ports/document_image_loader.dart';
+import 'package:visualmd/domain/library/document_id.dart';
+import 'package:visualmd/domain/library/library_root_id.dart';
 import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/search/search_result.dart';
@@ -15,6 +19,13 @@ import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 import 'package:visualmd/presentation/theme/theme_palette.dart';
+
+final class _MissingImageLoader implements DocumentImageLoader {
+  const _MissingImageLoader();
+
+  @override
+  Future<Uint8List?> load(DocumentId document, String source) async => null;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -999,5 +1010,17 @@ void main() {
       rendered([const ImageRun(source: 'a.png', alt: 'A diagram')]),
       'A diagram',
     );
+  });
+
+  testWidgets('a resolvable image becomes an inline widget', (tester) async {
+    await makeComposer(tester);
+    final spans = InlineComposer(
+      theme: theme,
+      document: DocumentId(const LibraryRootId('notes'), 'guide/page.md'),
+      imageLoader: const _MissingImageLoader(),
+    ).compose(const [ImageRun(source: 'a.png', alt: 'A diagram')]);
+
+    expect(spans.single, isA<WidgetSpan>());
+    expect((spans.single as WidgetSpan).child, isA<DocumentImage>());
   });
 }

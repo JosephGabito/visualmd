@@ -361,7 +361,10 @@ final class _Mapper {
           runs.add(
             ImageRun(
               source: node.attributes['src'] ?? '',
-              title: node.attributes['title'],
+              title: switch (node.attributes['title']) {
+                final title? => CharacterReferences.decode(title),
+                null => null,
+              },
               alt: node.attributes['alt'] ?? '',
             ),
           );

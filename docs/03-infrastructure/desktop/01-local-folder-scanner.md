@@ -86,6 +86,7 @@ and fail the scan as a whole; the controller shows “Couldn't open”
 
 - Concurrent reads with a bounded pool would speed up large libraries
   without changing the port.
-- Reading images on request (for relative `![]()` links) is a second port,
-  not a loosening of the Markdown filter — see
-  [Backlog](../../07-roadmap/02-backlog.md).
+- Relative image bytes are read on demand by `LocalDocumentImageLoader`, a
+  separate port adapter. The scanner therefore remains Markdown-only and an
+  image symlink cannot escape the canonical offered root
+  (`lib/infrastructure/io/local_document_image_loader.dart`).

@@ -43,6 +43,13 @@ combines the sample and platform scanners, then passes the result to `AddFolder`
 (`lib/main.dart`, `lib/main.dart`). Direct files use the platform's
 Markdown scanner (`lib/main.dart`, `lib/main.dart`).
 
+Images keep that same authority without making scanners read every binary in a
+library. `RoutingDocumentImageLoader` tries the bundled sample and then the
+platform adapter on demand. Desktop resolves canonical files inside the
+offered source; web traverses its retained handle or selected file list
+(`lib/infrastructure/routing_document_image_loader.dart`,
+`lib/application/ports/document_image_loader.dart`).
+
 After bytes have been read, the other adapters take over. The
 [Markdown Adapter](markdown/README.md) implements
 [Document Parser Port](../02-application/04-document-parser-port.md) on every

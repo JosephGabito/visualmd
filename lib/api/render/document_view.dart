@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart' hide TableCell;
 import 'package:flutter/rendering.dart';
 
+import '../../application/ports/document_image_loader.dart';
+import '../../domain/library/document_id.dart';
 import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
 import '../../domain/search/search_result.dart';
@@ -42,9 +44,11 @@ abstract final class ParagraphRules {
 ///   it. Nothing adds external space above itself.
 /// * **Paragraphs are marked by one signal, not two.** See [ParagraphRules].
 class DocumentView extends StatelessWidget {
+  final DocumentId? document;
   final DocumentContent content;
   final ReadingTheme theme;
   final CodeHighlighter codeHighlighter;
+  final DocumentImageLoader? imageLoader;
 
   /// Keys by heading anchor, so the outline can bring a heading into view.
   final Map<String, GlobalKey> anchorKeys;
@@ -56,10 +60,12 @@ class DocumentView extends StatelessWidget {
 
   DocumentView({
     super.key,
+    this.document,
     required this.content,
     required this.theme,
     required this.anchorKeys,
     this.codeHighlighter = const PlainCodeHighlighter(),
+    this.imageLoader,
     this.onTapLink,
     this.matches = const [],
     this.activeMatch = -1,
@@ -70,6 +76,8 @@ class DocumentView extends StatelessWidget {
   Widget build(BuildContext context) {
     final composer = InlineComposer(
       theme: theme,
+      document: document,
+      imageLoader: imageLoader,
       onTapLink: onTapLink,
       matches: matches,
       activeMatch: activeMatch,
@@ -784,13 +792,18 @@ class Paragraph extends StatelessWidget {
   Widget build(BuildContext context) {
     final (mark, rest) = splitHangingMark(spans);
     final set = bindWidow(rest);
+    final paragraphStrut = set.any(_containsWidget) ? null : strut;
     final direction = ReadingDirection.of(
       set.map(_plainOf).join(),
       fallback: Directionality.of(context),
     );
 
     final flow = Text.rich(
-      strutStyle: strut,
+      // The forced prose strut prevents a small code run from changing the
+      // baseline. A widget placeholder is real content with its own height;
+      // forcing the strut there would collapse the line box while the image
+      // continued painting over the blocks below it.
+      strutStyle: paragraphStrut,
       // Running prose follows the reading direction: flush at the edge where
       // the eye begins each line, ragged at the edge where it leaves. Unlike
       // justification, this never stretches word spaces into rivers.
@@ -855,6 +868,11 @@ class Paragraph extends StatelessWidget {
 
   static String _plainOf(InlineSpan span) =>
       span is TextSpan ? span.toPlainText() : ' ';
+
+  static bool _containsWidget(InlineSpan span) =>
+      span is WidgetSpan ||
+      (span is TextSpan &&
+          (span.children ?? const <InlineSpan>[]).any(_containsWidget));
 
   /// Binds the last eligible text leaf while preserving its surrounding mark.
   /// Links and code are deliberate endings: changing their text would change

@@ -19,6 +19,7 @@ reader's private files before returning
 | Capability | Web | Desktop |
 |------------|-----|---------|
 | source scanners | browser files and handles (`lib/infrastructure/platform/platform_web.dart`) | local files with security scope (`lib/infrastructure/platform/platform_io.dart`) |
+| document images | retained browser folder handles and file lists (`lib/infrastructure/platform/platform_web.dart`) | canonical files within an offered source and its security scope (`lib/infrastructure/platform/platform_io.dart`) |
 | source changes | five-second metadata checks for rereadable handles (`lib/infrastructure/platform/platform_web.dart`) | native directory events with a five-second failure fallback (`lib/infrastructure/platform/platform_io.dart`) |
 | workspace persistence | browser file handles or upload/download, IndexedDB authority (`lib/infrastructure/platform/platform_web.dart`) | native panels, atomic files, local paths/bookmarks (`lib/infrastructure/platform/platform_io.dart`) |
 | pickers | browser folder and Markdown pickers (`lib/infrastructure/platform/platform_web.dart`) | native pickers (`lib/infrastructure/platform/platform_io.dart`) |
@@ -35,7 +36,7 @@ into the controller, and chrome callbacks into `VisualMdApp`.
 
 | Direction | Contract | Consumer |
 |-----------|----------|----------|
-| out | scanners and `SourceChangeMonitor` | Library mutation and synchronization use cases (`lib/main.dart`, `lib/main.dart`) |
+| out | scanners, `DocumentImageLoader`, and `SourceChangeMonitor` | Library mutation, rendering, and synchronization (`lib/main.dart`) |
 | out | `WorkspaceFiles`, `WorkspaceSourceAccess` | Workspace lifecycle (`lib/main.dart`) |
 | out | pickers and drop streams | controller (`lib/main.dart`) |
 | out | `Stream<PlatformCommand>` | native command dispatch (`lib/main.dart`) |
