@@ -19,6 +19,9 @@ for script in "$TOOLS_DIR"/*.sh; do
   bash -n "$script"
 done
 
+section "Prepare pinned web assets"
+"$TOOLS_DIR/prepare-web-assets.sh"
+
 section "Analyze Dart and Flutter"
 flutter analyze
 
@@ -32,6 +35,9 @@ case "$(uname -s)" in
   Darwin)
     section "Build macOS release"
     flutter build macos --release
+    section "Audit macOS bundle"
+    "$TOOLS_DIR/validate-macos-bundle.sh" \
+      "build/macos/Build/Products/Release/Visual MD.app"
     ;;
   MINGW* | MSYS* | CYGWIN*)
     section "Build Windows release"

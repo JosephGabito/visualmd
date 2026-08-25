@@ -37,8 +37,13 @@ Visual MD currently uses Dart `^3.13.1`. The project is developed with Flutter
 
 ```sh
 flutter pub get
+bin/tools/prepare-web-assets.sh
 flutter run -d chrome
 ```
+
+The web target uses npm only to reproduce its pinned, local Mermaid WASM
+runtime. The generated `web/vendor/` and `web/node_modules/` directories stay
+out of Git; the package manifest and lockfile are the source of truth.
 
 Add `?open=sample` to the browser URL to open the bundled sample library. For a
 native macOS window, install Xcode and run:

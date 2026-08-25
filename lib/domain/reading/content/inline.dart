@@ -42,6 +42,26 @@ final class CodeRun extends Inline {
   int get hashCode => text.hashCode;
 }
 
+/// An equation that belongs to the sentence around it.
+///
+/// Delimiters are Markdown grammar and have already been removed. [source]
+/// is the exact TeX between them; presentation decides how to typeset it and
+/// must be able to fall back to this value when it cannot.
+final class MathRun extends Inline {
+  final String source;
+
+  const MathRun(this.source);
+
+  @override
+  String get text => source;
+
+  @override
+  bool operator ==(Object other) => other is MathRun && other.source == source;
+
+  @override
+  int get hashCode => source.hashCode;
+}
+
 /// A run that carries a mark — emphasis, strength, a strikethrough — over
 /// the runs inside it.
 final class MarkedRun extends Inline {

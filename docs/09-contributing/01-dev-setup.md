@@ -1,8 +1,9 @@
 # Development Setup
 
 Visual MD uses Flutter's stable channel and declares its Dart constraint in
-`pubspec.yaml`. A web checkout needs Flutter and Chrome. Native builds also
-need the toolchain for their host platform.
+`pubspec.yaml`. A web checkout needs Flutter, Chrome, and Node with npm to
+reproduce the pinned Mermaid WASM runtime. Native builds also need the
+toolchain for their host platform.
 
 ## Install and check Flutter
 
@@ -35,9 +36,16 @@ Android and iOS are not current project targets.
 ## Run the reader
 
 ```sh
+bin/tools/prepare-web-assets.sh
 flutter run -d chrome     # web, opens Chrome
 flutter run -d macos      # native macOS window; requires Xcode
 ```
+
+The preparation command runs `npm ci` from `web/package-lock.json` only when
+the generated runtime is absent or stale, then copies that exact package into
+the ignored `web/vendor/` tree consumed by the browser bridge
+(`bin/tools/prepare-web-assets.sh`). The complete validation command performs
+the same preparation automatically.
 
 Use a target reported by `flutter devices`. While a run is active:
 

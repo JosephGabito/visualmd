@@ -5,6 +5,7 @@ import '../../application/use_cases/read_document.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/search/search_result.dart';
 import '../../presentation/code/code_highlighter.dart';
+import '../../application/ports/mermaid_renderer.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../render/document_view.dart';
 import '../render/reading_theme.dart';
@@ -16,6 +17,7 @@ class ReadingPane extends StatefulWidget {
   final DocumentReading reading;
   final ReadingScale scale;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader? imageLoader;
   final void Function(String href) onLink;
   final ValueChanged<Heading?> onActiveHeadingChanged;
@@ -27,6 +29,7 @@ class ReadingPane extends StatefulWidget {
     required this.reading,
     required this.scale,
     this.codeHighlighter = const PlainCodeHighlighter(),
+    this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
     required this.onLink,
     required this.onActiveHeadingChanged,
@@ -205,6 +208,7 @@ class ReadingPaneState extends State<ReadingPane> {
                     content: reading.content,
                     theme: theme,
                     codeHighlighter: widget.codeHighlighter,
+                    mermaidRenderer: widget.mermaidRenderer,
                     imageLoader: widget.imageLoader,
                     anchorKeys: _keys,
                     matches: widget.matches,

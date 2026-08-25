@@ -1,0 +1,8 @@
+{
+  "name": "visual-md-web-assets",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@mermanjs/web-render": "0.8.0-alpha.5"
+  }
+}

@@ -30,6 +30,7 @@ import 'application/use_cases/save_workspace.dart';
 import 'application/use_cases/update_workspace.dart';
 import 'domain/workspace/workspace_theme.dart';
 import 'infrastructure/markdown/markdown_document_parser.dart';
+import 'infrastructure/mermaid/mermaid_renderer.dart';
 import 'infrastructure/memory/in_memory_library_repository.dart';
 import 'infrastructure/memory/in_memory_reader_state.dart';
 import 'infrastructure/memory/in_memory_workspace_session_repository.dart';
@@ -52,6 +53,7 @@ Future<void> main() async {
   // Infrastructure
   final platform = await createPlatformAdapters();
   final codeHighlighter = ShikiCodeHighlighter();
+  final mermaidRenderer = createMermaidRenderer();
   final readerState = InMemoryReaderState();
   final repository = InMemoryLibraryRepository(readerState);
   final sessions = InMemoryWorkspaceSessionRepository(readerState);
@@ -279,6 +281,7 @@ Future<void> main() async {
     VisualMdApp(
       controller: controller,
       codeHighlighter: codeHighlighter,
+      mermaidRenderer: mermaidRenderer,
       imageLoader: imageLoader,
       openReaderSources: openReaderSources?.call,
       openExternal: platform.openExternal,

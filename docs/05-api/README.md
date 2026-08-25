@@ -35,6 +35,8 @@ which lets the same reader UI run on desktop and the web
 | [Brand Mark](22-brand-mark.md) | Bundled product artwork and its Flutter, macOS, Windows, and web surfaces |
 | [Document Image](23-document-image.md) | Local and remote Markdown artwork, sizing, semantics, and recovery |
 | [Container Typography](24-container-typography.md) | Recursive quotations, lists, markers, task states, and compact rhythm |
+| [Mathematical Expression](25-mathematical-expression.md) | Inline and display TeX, optical sizing, overflow, copying, semantics, and recovery |
+| [Mermaid Diagram](26-mermaid-diagram.md) | Headless rendering, fitted reading, drag, zoom, full screen, semantics, and source recovery |
 
 ## How it connects
 
@@ -83,7 +85,11 @@ authored destination to bounded artwork or useful alternative text.
 [Container Typography](24-container-typography.md) explains why recursive
 quotes and lists become denser without changing the leading of their prose.
 [Code Block](11-code-block.md) explains why fenced code is allowed a
-wider measure than prose. [Pressable](09-pressable.md) and
+wider measure than prose. [Mathematical Expression](25-mathematical-expression.md)
+explains why equations remain authored TeX in the model while the page
+typesets them as mathematics. [Mermaid Diagram](26-mermaid-diagram.md)
+follows a diagram from its source fence to inert SVG and an exploratory
+full-screen surface. [Pressable](09-pressable.md) and
 [Collapsible Panel](10-collapsible-panel.md) are the small interaction pieces
 used throughout the shell. [Panel Widths](18-panel-widths.md) and
 [Panel Resize Handle](19-panel-resize-handle.md) show how that shell adapts

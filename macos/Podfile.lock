@@ -1,0 +1,46 @@
+PODS:
+  - desktop_drop (0.0.1):
+    - FlutterMacOS
+  - file_selector_macos (0.0.1):
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+  - merman (0.7.0):
+    - FlutterMacOS
+  - screen_retriever_macos (0.0.1):
+    - FlutterMacOS
+  - window_manager (0.5.0):
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
+  - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - merman (from `Flutter/ephemeral/.symlinks/plugins/merman/macos`)
+  - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
+  - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
+
+EXTERNAL SOURCES:
+  desktop_drop:
+    :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
+  file_selector_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+  merman:
+    :path: Flutter/ephemeral/.symlinks/plugins/merman/macos
+  screen_retriever_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos
+  window_manager:
+    :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
+
+SPEC CHECKSUMS:
+  desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
+  file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
+  FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
+  merman: 8a568d42cc12f3c02170bf77ed77cd5e8e92a2b7
+  screen_retriever_macos: c5508cc3c66ff0d4db650480cf0ab691e220d933
+  window_manager: b729e31d38fb04905235df9ea896128991cad99e
+
+PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
+
+COCOAPODS: 1.17.0

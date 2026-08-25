@@ -40,7 +40,8 @@ one by one (`lib/infrastructure/markdown/markdown_document_parser.dart`):
 |-----|---------|-------|
 | `p` | `ParagraphBlock` | Empty paragraphs are dropped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `h1`–`h6` | `HeadingBlock` | Anchor taken from the *resolved* text, so `## The *shelf*` anchors as `the-shelf` (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
-| `pre` | `CodeBlock` | Language from `class="language-…"`; the fence's closing newline stripped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `pre` | `CodeBlock`, `MathBlock`, or `MermaidBlock` | Language from `class="language-…"`; `math` and `mermaid` fences become typed content; every other fence keeps code and has its closing newline stripped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `math` | `MathBlock` | TeX between paired `$$` display delimiters (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `blockquote` | `QuoteBlock` | Recurses, so a quotation holds real blocks (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `ul`, `ol` | `ListBlock` | See below (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `table` | `TableBlock` | `thead` rows become the head, the rest the body (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
@@ -69,6 +70,12 @@ item already carries its state (`lib/infrastructure/markdown/markdown_document_p
 
 **Tables.** Alignment is read from the cell's `align` attribute, with a
 fallback that parses a `style` in case another syntax ever emits one
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+**Mermaid.** A fenced block whose language is exactly `mermaid` becomes a
+`MermaidBlock`; its body is not interpreted by this adapter. Removing only the
+fence's terminal newline matches code-block source fidelity and leaves diagram
+grammar, diagnostics and layout to the Mermaid renderer
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 **Runs** map tag by tag (`lib/infrastructure/markdown/markdown_document_parser.dart`), with two rules worth stating.
@@ -217,6 +224,16 @@ source rather than becoming other inline syntax. The mapper carries that result
 into `CodeRun` without another transformation
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+GitHub-style **mathematics** is claimed before ordinary Markdown consumes its
+delimiters. `$…$` and `$`backticked`$` become `MathRun`; `$$…$$`, a multiline
+pair of `$$` lines and a fenced `math` block become `MathBlock`. The adapter
+removes only the notation that established the role and preserves the inner
+TeX exactly. Inline notation never crosses a source line, code spans retain
+literal dollar signs, and an escaped or unclosed delimiter remains ordinary
+authored text. An unclosed display opener likewise remains a paragraph instead
+of swallowing the remainder of the document
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 ## Inputs and outputs
 
 | | Type | Notes |
@@ -248,6 +265,11 @@ It does not throw. Markup with no mapping becomes `RawBlock`
 (`lib/infrastructure/markdown/markdown_document_parser.dart`); an
 unmapped inline keeps its words (`lib/infrastructure/markdown/markdown_document_parser.dart`); an empty document yields no
 blocks.
+
+The adapter does not validate TeX. A syntactically complete math delimiter can
+still contain notation unsupported by the page's renderer; preserving it as a
+typed domain value lets presentation recover locally without changing parser
+behavior or losing the author's source.
 
 One shared ambiguity is worth knowing: a document whose **first line is `---`
 as a horizontal rule** is read as opening front matter and swallowed to the

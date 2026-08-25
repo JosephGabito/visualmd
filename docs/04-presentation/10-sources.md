@@ -514,6 +514,62 @@ for code, which is functional rather than a third voice — while Inter is
 furniture, used for the shelf, the outline and the controls, and never inside
 a document.
 
+## Mathematical notation
+
+[GitHub's mathematical-expression syntax](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/writing-mathematical-expressions)
+establishes the compatibility surface: `$…$` and `$`backticked`$` inline,
+`$$…$$` as a display block, and a fenced `math` block. These are documented
+GitHub extensions rather than formal CommonMark or GFM grammar. Visual MD
+therefore claims them in its adapter without changing ordinary code spans,
+code fences or malformed dollar text
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+The [`katex` Flutter package](https://pub.dev/packages/katex) was chosen because
+it parses to a pure-Dart box tree and paints with Flutter on Android, iOS,
+Linux, macOS, web and Windows. It does not introduce a WebView, JavaScript
+runtime, browser-only DOM, network font request or platform-specific rendering
+path. The dependency is young, so Visual MD pins its exact version, contains it
+behind one component and exercises notation from a real research paper rather
+than treating a successful package import as proof of coverage
+(`pubspec.yaml`, `lib/api/widgets/math_expression.dart`,
+`test/presentation/math_expression_test.dart`).
+
+Equations use the package's dedicated KaTeX font system, not Visual MD's prose
+face: Main, Math Italic, AMS, extensible Size faces, Caligraphic, Fraktur,
+Sans Serif, Script and Typewriter. The files ship with the package under the
+SIL Open Font License and are application assets, so notation has no runtime
+font download. KaTeX Main's x-height measures 0.431 em; normalising from that
+value makes its lowercase mathematical letters optically agree with the text
+role around them while preserving the type design drawn for formulas
+(`lib/api/render/reading_theme.dart`).
+
+## Mermaid diagrams
+
+[Mermaid's syntax and configuration documentation](https://mermaid.js.org/intro/)
+defines the authored fence language. Its accessibility syntax supplies
+`accTitle` and `accDescr`, while its security guidance makes clear that
+rendering policy belongs to the host. Visual MD retains those semantics but
+does not mount Mermaid's browser DOM or execute authored actions.
+
+[Merman](https://github.com/Latias94/merman) was selected as the headless
+renderer because it exposes semantic parsing and SVG layout on native targets
+without a WebView, and publishes the corresponding browser WASM binding. Its
+[SVG pipeline contract](https://github.com/Latias94/merman/blob/main/docs/rendering/SVG_OUTPUT_PIPELINE.md)
+distinguishes Mermaid-parity output, readable fallback output and
+resource-closed resvg-safe output. Visual MD selects the latter, then plainly
+owns the additional CSS-to-presentation-attribute normalization required by
+Flutter's SVG painter (`lib/infrastructure/mermaid/svg_style_inliner.dart`).
+
+Native uses the exact `merman` 0.7.0 Flutter package. Web vendors the exact
+`@mermanjs/web-render` 0.8.0-alpha.5 artifact, its WASM binary, provenance and
+licences so reading diagrams never depends on npm or a network request at
+runtime. npm is used only at development or build time to reproduce the
+ignored vendor tree from the committed lockfile
+(`pubspec.yaml`, `web/package-lock.json`,
+`bin/tools/prepare-web-assets.sh`). The prerelease
+binding is pinned and contained rather than mistaken for a stable public
+surface.
+
 ## Accessibility standards
 
 WCAG 2.2 requires at least 4.5:1 contrast for ordinary text and asks reading

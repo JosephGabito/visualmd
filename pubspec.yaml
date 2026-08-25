@@ -17,6 +17,11 @@ dependencies:
   window_manager: ^0.5.2
   path_provider: ^2.1.6
   markdown: ^7.3.1
+  katex: 1.0.0
+  flutter_svg: 2.3.0
+  csslib: 1.0.2
+  html: 0.15.6
+  merman: 0.7.0
   shiki_flutter: ^1.1.0
 
 dev_dependencies:
@@ -25,6 +30,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
+  # Merman 0.7 ships a CocoaPods adapter and an SPM manifest, but Flutter's
+  # generated SPM symlink loses the manifest's sibling XCFramework on macOS.
+  # Use the package's supported CocoaPods path until its Native Assets release
+  # is published; then this target-specific choice can disappear.
+  config:
+    enable-swift-package-manager: false
+
   uses-material-design: true
 
   assets:

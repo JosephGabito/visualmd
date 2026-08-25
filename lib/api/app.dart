@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../application/ports/document_image_loader.dart';
 import 'reader_controller.dart';
 import '../presentation/code/code_highlighter.dart';
+import '../application/ports/mermaid_renderer.dart';
 import 'screens/reader_screen.dart';
 import '../presentation/theme/built_in_themes.dart';
 import '../presentation/theme/reader_theme.dart';
@@ -13,6 +14,7 @@ import '../presentation/theme/theme_choice.dart';
 class VisualMdApp extends StatelessWidget {
   final ReaderController controller;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader imageLoader;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
@@ -33,6 +35,7 @@ class VisualMdApp extends StatelessWidget {
     super.key,
     required this.controller,
     required this.codeHighlighter,
+    required this.mermaidRenderer,
     required this.imageLoader,
     required this.openExternal,
     this.openReaderSources,
@@ -88,6 +91,7 @@ class VisualMdApp extends StatelessWidget {
           ReaderScreen(
             controller: controller,
             codeHighlighter: codeHighlighter,
+            mermaidRenderer: mermaidRenderer,
             imageLoader: imageLoader,
             openExternal: openExternal,
             openReaderSources: openReaderSources,

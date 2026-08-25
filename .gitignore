@@ -47,6 +47,8 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/web/node_modules/
+/web/vendor/
 
 # Symbolication related
 app.*.symbols

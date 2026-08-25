@@ -29,6 +29,7 @@ commands are not found:
 export PATH="/opt/homebrew/bin:$PATH"
 
 flutter run -d macos          # develop natively (needs full Xcode)
+bin/tools/prepare-web-assets.sh
 flutter run -d chrome         # develop on the web
 flutter test                  # everything, including the two validators
 flutter analyze               # should finish with no issues

@@ -11,6 +11,7 @@ import '../../presentation/code/code_highlighter.dart';
 import '../../presentation/theme/typographic_punctuation.dart';
 import 'reading_theme.dart';
 import '../widgets/document_image.dart';
+import '../widgets/math_expression.dart';
 
 /// Turns the domain's runs into spans, and sets the punctuation properly on
 /// the way past.
@@ -181,6 +182,25 @@ final class InlineComposer {
           code: true,
           setPunctuation: false,
         );
+
+      case MathRun(:final source):
+        final start = cursor.offset;
+        cursor.offset += source.length;
+        final matchIndex = matches.indexWhere(
+          (match) => match.overlaps(start, start + source.length),
+        );
+        return [
+          readableMathSpan(
+            source: source,
+            style: base,
+            fontSize: theme.mathSizeFor(base),
+            background: matchIndex < 0
+                ? null
+                : (matchIndex == activeMatch
+                      ? theme.palette.accentSoft
+                      : theme.palette.selection),
+          ),
+        ];
 
       case MarkedRun(:final mark, :final children):
         final marked = switch (mark) {

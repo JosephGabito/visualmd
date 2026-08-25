@@ -234,6 +234,29 @@ final class ReadingTheme {
     );
   }
 
+  /// The KaTeX em that makes an equation's lowercase letters read at the
+  /// same optical size as the role surrounding it.
+  ///
+  /// KaTeX Main's x-height is 0.431 em, measured from the bundled font. The
+  /// prose faces are already normalised to a 0.55 reference x-height, so
+  /// passing their nominal font size straight through would make mathematics
+  /// look smaller even though both widgets claimed the same pixel size.
+  /// Display notation uses the body role; KaTeX's display style enlarges
+  /// operators and limits itself.
+  double mathSizeFor(TextStyle base) {
+    const mathXHeight = 0.431;
+    final family = base.fontFamily ?? body.fontFamily ?? '';
+    final letters = FontMetrics.letterSizeFor(
+      family,
+      base.fontSize ?? body.fontSize ?? scale.base,
+    );
+    return textScaler.scale(
+      letters * FontMetrics.referenceXHeight / mathXHeight,
+    );
+  }
+
+  double get displayMathSize => mathSizeFor(body);
+
   /// A syntax run keeps the code face and rhythm; colour is its only cue.
   ///
   /// Shiki's suggested foreground is treated as input, not authority. It is

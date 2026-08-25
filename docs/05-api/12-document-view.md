@@ -11,9 +11,10 @@ This is the reader's own renderer rather than a general-purpose markdown
 widget, because the central rules cannot be expressed in a style sheet
 (`lib/api/render/document_view.dart`):
 
-- **Prose, code and tables want different overflow rules.** Prose reflows;
-  code keeps its lines; tables keep short fields natural and long cells
-  readable. Code and tables scroll locally when they do not fit.
+- **Prose, code, mathematics, diagrams and tables want different overflow rules.** Prose reflows;
+  code keeps its lines; display mathematics keeps its two-dimensional notation;
+  diagrams begin fitted and become pannable; tables keep short fields natural and long cells readable. Each wide shape
+  scrolls locally when it does not fit.
 - **The vertical rhythm is a rule, not a series of paddings.** Every external
   gap is emitted after the block that owns it; nothing adds space above itself.
   See
@@ -27,7 +28,7 @@ widget, because the central rules cannot be expressed in a style sheet
 A `LayoutBuilder` takes `proseWidth` and `wideWidth` from the theme
 (`lib/api/render/document_view.dart`). Blocks use a **fixed** width so
 code grounds span their column and prose wraps at its measure
-(`lib/api/render/document_view.dart`). Code and tables take the wide
+(`lib/api/render/document_view.dart`). Code, display mathematics, Mermaid diagrams and tables take the wide
 width; everything else takes prose (`lib/api/render/document_view.dart`).
 
 `_BlockSequence` owns order-sensitive gaps and indents at every depth
@@ -77,6 +78,16 @@ Each block type is built by `_BlockView`
   padding above and below and **no border**: its own ground already says what
   it is, and a border is both a second signal and a height that breaks the grid
   (`lib/api/render/document_view.dart`).
+- **Mathematics** — a [Mathematical Expression](25-mathematical-expression.md)
+  on the paper itself. A display equation scrolls locally at the wide measure
+  and its completed height is reconciled to the body grid. A paragraph that
+  contains inline mathematics is likewise reconciled after the equation has
+  established its real line box (`lib/api/render/document_view.dart`).
+- **Mermaid** — a [Mermaid Diagram](26-mermaid-diagram.md) fitted into a
+  bounded reading viewport. Dragging and zooming explore that same vector
+  model locally, while full screen gives dense graphs the window without
+  changing document scroll or domain state (`lib/api/render/document_view.dart`,
+  `lib/api/widgets/mermaid_diagram.dart`).
 - **Quotation** — `_Quote`: a 2 px accent rule at the authored reading edge and
   blocks re-rendered one shade back with `ReadingTheme.quoting`. Its child
   blocks use compact half-beat relationships while their prose keeps body

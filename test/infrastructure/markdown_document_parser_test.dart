@@ -1171,6 +1171,124 @@ void main() {
       expect(code.language, isNull);
       expect(code.code, 'echo "hi" --now');
     });
+
+    test('a Mermaid fence becomes a typed diagram without losing source', () {
+      final diagram = single<MermaidBlock>(
+        '```mermaid\nflowchart LR\n  Read --> Understand\n```',
+      );
+
+      expect(diagram.source, 'flowchart LR\n  Read --> Understand');
+      expect(diagram.text, diagram.source);
+    });
+  });
+
+  group('inline math', () {
+    test('dollar delimiters become a typed equation run', () {
+      final paragraph = single<ParagraphBlock>(
+        r'The state is $h_t = f(h_{t-1}, x_t)$ now.',
+      );
+      final equation = paragraph.content.whereType<MathRun>().single;
+
+      expect(equation.source, r'h_t = f(h_{t-1}, x_t)');
+      expect(paragraph.text, r'The state is h_t = f(h_{t-1}, x_t) now.');
+    });
+
+    test('backticked delimiters keep overlapping Markdown syntax as TeX', () {
+      final equation = single<ParagraphBlock>(r'Use $`a_b * c`$ here.').content
+          .whereType<MathRun>()
+          .single;
+
+      expect(equation.source, r'a_b * c');
+    });
+
+    test('equations may sit inside an ordinary inline role', () {
+      final strong = single<ParagraphBlock>(r'**Energy is $E = mc^2$.**')
+          .content
+          .whereType<MarkedRun>()
+          .single;
+
+      expect(strong.children.whereType<MathRun>().single.source, r'E = mc^2');
+    });
+
+    test(
+      'code, escaped dollars, and unclosed notation remain authored text',
+      () {
+        final paragraph = single<ParagraphBlock>(
+          r'`$x$`, \$5, and $unclosed are literal.',
+        );
+
+        expect(paragraph.content.whereType<MathRun>(), isEmpty);
+        expect(paragraph.content.whereType<CodeRun>().single.text, r'$x$');
+        expect(paragraph.text, r'$x$, $5, and $unclosed are literal.');
+      },
+    );
+
+    test('an equation never consumes a source line ending', () {
+      final paragraph = single<ParagraphBlock>('\$first\nsecond\$');
+
+      expect(paragraph.content.whereType<MathRun>(), isEmpty);
+      expect(paragraph.text, r'$first second$');
+    });
+  });
+
+  group('display math', () {
+    test('double-dollar delimiters produce one display equation', () {
+      final equation = single<MathBlock>(r'$$E = mc^2$$');
+
+      expect(equation.source, r'E = mc^2');
+    });
+
+    test('a multiline equation preserves its TeX layout source', () {
+      final equation = single<MathBlock>(r'''$$
+\begin{aligned}
+a &= b \\
+c &= d
+\end{aligned}
+$$''');
+
+      expect(equation.source, r'''\begin{aligned}
+a &= b \\
+c &= d
+\end{aligned}''');
+    });
+
+    test('a math fence has the same domain shape as dollar notation', () {
+      final equation = single<MathBlock>(
+        '```math title="identity"\ne^{i\\pi} + 1 = 0\n```',
+      );
+
+      expect(equation.source, r'e^{i\pi} + 1 = 0');
+    });
+
+    test('an unclosed double-dollar opener cannot swallow the document', () {
+      final content = parse(r'''Before.
+
+$$
+still visible
+
+## After''');
+
+      expect(content.blocks.whereType<MathBlock>(), isEmpty);
+      expect(content.text, contains(r'$$'));
+      expect(content.headings.single.text, 'After');
+    });
+
+    test('display equations survive quotation and list containers', () {
+      final content = parse(r'''> $$x^2$$
+
+- item
+
+  ```math
+  y^2
+  ```''');
+
+      expect(
+        (content.blocks.first as QuoteBlock).blocks.whereType<MathBlock>(),
+        hasLength(1),
+      );
+      final list = content.blocks.whereType<ListBlock>().single;
+      expect(list.items.single.blocks.whereType<MathBlock>(), hasLength(1));
+    });
   });
 
   group('a quotation', () {

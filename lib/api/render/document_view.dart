@@ -7,13 +7,18 @@ import '../../application/ports/document_image_loader.dart';
 import '../../domain/library/document_id.dart';
 import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
+import '../../domain/reading/content/inline.dart';
 import '../../domain/search/search_result.dart';
 import '../../presentation/code/code_highlighter.dart';
+import '../../application/ports/mermaid_renderer.dart';
 import '../../presentation/theme/hanging_punctuation.dart';
 import '../../presentation/theme/reading_scale.dart';
+import '../../presentation/theme/theme_palette.dart';
 import '../../presentation/theme/widow_binding.dart';
 import '../theme/reading_measure.dart';
 import '../widgets/code_block.dart';
+import '../widgets/math_expression.dart';
+import '../widgets/mermaid_diagram.dart';
 import 'inline_composer.dart';
 import 'reading_direction.dart';
 import 'reading_theme.dart';
@@ -50,6 +55,7 @@ class DocumentView extends StatelessWidget {
   final DocumentContent content;
   final ReadingTheme theme;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader? imageLoader;
 
   /// Keys by heading anchor, so the outline can bring a heading into view.
@@ -67,6 +73,7 @@ class DocumentView extends StatelessWidget {
     required this.theme,
     required this.anchorKeys,
     this.codeHighlighter = const PlainCodeHighlighter(),
+    this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
     this.onTapLink,
     this.matches = const [],
@@ -96,6 +103,7 @@ class DocumentView extends StatelessWidget {
           theme: theme,
           composer: composer,
           codeHighlighter: codeHighlighter,
+          mermaidRenderer: mermaidRenderer,
           keys: anchorKeys,
           matchKeys: matchKeys,
           // A fixed width, not a maximum: a code block's ground should span
@@ -110,7 +118,7 @@ class DocumentView extends StatelessWidget {
 
   static double _widthFor(Block block, double prose, double wide) =>
       switch (block) {
-        CodeBlock() || TableBlock() => wide,
+        CodeBlock() || MathBlock() || MermaidBlock() || TableBlock() => wide,
         _ => prose,
       };
 }
@@ -125,6 +133,7 @@ class _BlockSequence extends StatelessWidget {
   final ReadingTheme theme;
   final InlineComposer composer;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final double Function(Block block)? widthFor;
@@ -138,6 +147,7 @@ class _BlockSequence extends StatelessWidget {
     required this.theme,
     required this.composer,
     required this.codeHighlighter,
+    required this.mermaidRenderer,
     required this.keys,
     required this.matchKeys,
     this.widthFor,
@@ -164,6 +174,7 @@ class _BlockSequence extends StatelessWidget {
         theme: theme,
         composer: composer,
         codeHighlighter: codeHighlighter,
+        mermaidRenderer: mermaidRenderer,
         keys: keys,
         matchKeys: matchKeys,
         offset: offset,
@@ -197,6 +208,7 @@ class _BlockView extends StatelessWidget {
   final ReadingTheme theme;
   final InlineComposer composer;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
@@ -212,6 +224,7 @@ class _BlockView extends StatelessWidget {
     required this.theme,
     required this.composer,
     required this.codeHighlighter,
+    required this.mermaidRenderer,
     required this.keys,
     required this.matchKeys,
     required this.offset,
@@ -226,14 +239,21 @@ class _BlockView extends StatelessWidget {
       case ParagraphBlock(:final content):
         // The style comes from the theme in hand, which inside a quotation is
         // the quoting one.
+        final paragraph = Paragraph(
+          spans: composer.compose(content, style: theme.body, offset: offset),
+          style: theme.body,
+          textScaler: theme.textScaler,
+          strut: theme.strutFor(theme.body),
+          indent: indent,
+        );
         return _matchTarget(
-          Paragraph(
-            spans: composer.compose(content, style: theme.body, offset: offset),
-            style: theme.body,
-            textScaler: theme.textScaler,
-            strut: theme.strutFor(theme.body),
-            indent: indent,
-          ),
+          reconcileContainer && content.any(_containsMath)
+              ? _RhythmicContainer(
+                  beat: theme.baseline,
+                  followingSpace: followingSpace,
+                  child: paragraph,
+                )
+              : paragraph,
         );
 
       case HeadingBlock(:final level, :final content, :final anchor):
@@ -300,12 +320,51 @@ class _BlockView extends StatelessWidget {
           ),
         );
 
+      case MathBlock(:final source):
+        final equation = ReadableMathBlock(source: source, theme: theme);
+        return _matchTarget(
+          reconcileContainer
+              ? _RhythmicContainer(
+                  beat: theme.baseline,
+                  followingSpace: followingSpace,
+                  child: equation,
+                )
+              : equation,
+        );
+
+      case MermaidBlock(:final source):
+        final diagram = ReadableMermaidDiagram(
+          source: source,
+          renderer: mermaidRenderer,
+          palette: MermaidPalette(
+            canvas: ThemePalette.hex(theme.palette.paper),
+            surface: ThemePalette.hex(theme.palette.panel),
+            text: ThemePalette.hex(theme.palette.ink),
+            subtleText: ThemePalette.hex(theme.palette.muted),
+            border: ThemePalette.hex(theme.palette.border),
+            line: ThemePalette.hex(theme.palette.muted),
+            accent: ThemePalette.hex(theme.palette.accent),
+            dark: theme.isDark,
+          ),
+          beat: theme.baseline,
+        );
+        return _matchTarget(
+          reconcileContainer
+              ? _RhythmicContainer(
+                  beat: theme.baseline,
+                  followingSpace: followingSpace,
+                  child: diagram,
+                )
+              : diagram,
+        );
+
       case QuoteBlock(:final blocks):
         return _Quote(
           blocks: blocks,
           theme: theme,
           composer: composer,
           codeHighlighter: codeHighlighter,
+          mermaidRenderer: mermaidRenderer,
           keys: keys,
           matchKeys: matchKeys,
           offset: offset,
@@ -319,6 +378,7 @@ class _BlockView extends StatelessWidget {
           theme: theme,
           composer: composer,
           codeHighlighter: codeHighlighter,
+          mermaidRenderer: mermaidRenderer,
           keys: keys,
           matchKeys: matchKeys,
           offset: offset,
@@ -384,6 +444,13 @@ class _BlockView extends StatelessWidget {
     return KeyedSubtree(key: key, child: child);
   }
 }
+
+bool _containsMath(Inline inline) => switch (inline) {
+  MathRun() => true,
+  MarkedRun(:final children) ||
+  LinkRun(:final children) => children.any(_containsMath),
+  _ => false,
+};
 
 /// Lets display lines use their natural leading, then reconciles the completed
 /// heading with the running-text grid.
@@ -475,6 +542,7 @@ class _Quote extends StatelessWidget {
   final ReadingTheme theme;
   final InlineComposer composer;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
@@ -486,6 +554,7 @@ class _Quote extends StatelessWidget {
     required this.theme,
     required this.composer,
     required this.codeHighlighter,
+    required this.mermaidRenderer,
     required this.keys,
     required this.matchKeys,
     required this.offset,
@@ -515,6 +584,7 @@ class _Quote extends StatelessWidget {
         theme: quoted,
         composer: composer,
         codeHighlighter: codeHighlighter,
+        mermaidRenderer: mermaidRenderer,
         keys: keys,
         matchKeys: matchKeys,
         startOffset: offset,
@@ -544,6 +614,7 @@ class _List extends StatelessWidget {
   final ReadingTheme theme;
   final InlineComposer composer;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
@@ -555,6 +626,7 @@ class _List extends StatelessWidget {
     required this.theme,
     required this.composer,
     required this.codeHighlighter,
+    required this.mermaidRenderer,
     required this.keys,
     required this.matchKeys,
     required this.offset,
@@ -593,6 +665,7 @@ class _List extends StatelessWidget {
                   theme: theme,
                   composer: composer,
                   codeHighlighter: codeHighlighter,
+                  mermaidRenderer: mermaidRenderer,
                   keys: keys,
                   matchKeys: matchKeys,
                   startOffset: itemOffset,

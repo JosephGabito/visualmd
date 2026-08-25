@@ -8,6 +8,7 @@ import '../../domain/reading/heading.dart';
 import '../../domain/reading/table_of_contents.dart';
 import '../../domain/search/search_result.dart';
 import '../../presentation/code/code_highlighter.dart';
+import '../../application/ports/mermaid_renderer.dart';
 import '../layout/panel_widths.dart';
 import '../render/reading_theme.dart';
 import '../reader_controller.dart';
@@ -31,6 +32,7 @@ enum _SearchMode { closed, document, library }
 class ReaderScreen extends StatefulWidget {
   final ReaderController controller;
   final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader? imageLoader;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
@@ -45,6 +47,7 @@ class ReaderScreen extends StatefulWidget {
     required this.controller,
     required this.openExternal,
     this.codeHighlighter = const PlainCodeHighlighter(),
+    this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
     this.openReaderSources,
     this.topBar = (height: 44, leadingInset: 8),
@@ -419,6 +422,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 reading: reading,
                 scale: c.readingScale,
                 codeHighlighter: widget.codeHighlighter,
+                mermaidRenderer: widget.mermaidRenderer,
                 imageLoader: widget.imageLoader,
                 matches: _searchMode == _SearchMode.document
                     ? result?.matches ?? const []
