@@ -614,9 +614,27 @@ source rather than executed or silently flattened
 The boundary is structural, not a sanitizer bolted onto a WebView. The
 `package:html` fragment parser builds an inert Dart tree inside infrastructure;
 no DOM node, attribute, CSS declaration, event handler or URL reaches the
-domain or Flutter API. GitHub-supported meanings such as `sub`, `sup`, `ins`,
-custom anchors and `picture` remain separate follow-on contracts rather than a
-reason to admit arbitrary HTML.
+domain or Flutter API. Custom anchors and `picture` remain separate follow-on
+contracts rather than a reason to admit arbitrary HTML.
+
+[GitHub's current writing guide](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)
+documents `sub`, `sup`, and `ins` as supported inline writing forms. Visual MD
+maps only properly paired forms onto typed recursive marks; arbitrary tags and
+attributes do not inherit that authority
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+Flutter exposes subscript and superscript as the OpenType
+[`subs` and `sups` font features](https://api.flutter.dev/flutter/dart-ui/FontFeature-class.html).
+The bundled reading faces provide both substitutions. Applying the feature to
+the inherited `TextStyle` uses glyphs designed by the font while preserving
+the paragraph's size and line box; manually shrinking and baseline-shifting a
+widget would break that rhythm. The same composition boundary gives `ins` one
+inherited-ink underline while links retain accent plus underline as their
+interaction signal (`lib/api/render/inline_composer.dart`).
+The release gate reads each bundled font's GSUB table and requires both feature
+tags (`test/presentation/bundled_scientific_feature_test.dart`). Custom theme
+faces are outside that bundled guarantee and must provide the same two features
+if their subscript and superscript meaning is to remain visible.
 
 ## Accessibility standards
 

@@ -454,6 +454,101 @@ void main() {
   );
 
   testWidgets(
+    'scientific and inserted text use designed glyphs without changing rhythm',
+    (tester) async {
+      await makeComposer(tester);
+      const base = TextStyle(
+        color: Color(0xFF123456),
+        fontFamily: 'Literata',
+        fontSize: 20,
+        height: 1.6,
+        fontFeatures: [FontFeature.oldstyleFigures()],
+      );
+      final spans = InlineComposer(theme: theme).compose(const [
+        MarkedRun(InlineMark.subscript, [TextRun('H2O')]),
+        MarkedRun(InlineMark.superscript, [TextRun('x2')]),
+        MarkedRun(InlineMark.subscript, [
+          MarkedRun(InlineMark.superscript, [TextRun('nested')]),
+        ]),
+        MarkedRun(InlineMark.insertion, [
+          MarkedRun(InlineMark.strikethrough, [TextRun('revision')]),
+        ]),
+      ], style: base);
+
+      final leaves = <TextSpan>[];
+      void collect(InlineSpan span) {
+        if (span is! TextSpan) return;
+        if (span.text != null) leaves.add(span);
+        span.children?.forEach(collect);
+      }
+
+      spans.forEach(collect);
+      expect(TextSpan(children: spans).toPlainText(), 'H2Ox2nestedrevision');
+      for (final leaf in leaves) {
+        expect(leaf.style!.fontSize, base.fontSize);
+        expect(leaf.style!.height, base.height);
+        expect(leaf.style!.color, base.color);
+      }
+      expect(leaves[0].style!.fontFeatures, const [
+        FontFeature.oldstyleFigures(),
+        FontFeature.subscripts(),
+      ]);
+      expect(leaves[1].style!.fontFeatures, const [
+        FontFeature.oldstyleFigures(),
+        FontFeature.superscripts(),
+      ]);
+      expect(leaves[2].style!.fontFeatures, const [
+        FontFeature.oldstyleFigures(),
+        FontFeature.superscripts(),
+      ]);
+      expect(
+        leaves[3].style!.decoration!.contains(TextDecoration.underline),
+        isTrue,
+      );
+      expect(
+        leaves[3].style!.decoration!.contains(TextDecoration.lineThrough),
+        isTrue,
+      );
+      expect(leaves.every((leaf) => leaf.semanticsLabel == null), isTrue);
+    },
+  );
+
+  testWidgets(
+    'scientific and insertion marks survive inline code without styling links',
+    (tester) async {
+      await makeComposer(tester);
+      final spans = composer.compose(const [
+        MarkedRun(InlineMark.subscript, [CodeRun('2')]),
+        MarkedRun(InlineMark.superscript, [CodeRun('n')]),
+        MarkedRun(InlineMark.insertion, [CodeRun('new')]),
+        LinkRun(href: '/plain-code', children: [CodeRun('link')]),
+      ]);
+
+      final leaves = <TextSpan>[];
+      void collect(InlineSpan span) {
+        if (span is! TextSpan) return;
+        if (span.text != null) leaves.add(span);
+        span.children?.forEach(collect);
+      }
+
+      spans.forEach(collect);
+      expect(
+        leaves[0].style!.fontFeatures,
+        contains(const FontFeature.subscripts()),
+      );
+      expect(
+        leaves[1].style!.fontFeatures,
+        contains(const FontFeature.superscripts()),
+      );
+      expect(
+        leaves[2].style!.decoration!.contains(TextDecoration.underline),
+        isTrue,
+      );
+      expect(leaves[3].style!.decoration, TextDecoration.none);
+    },
+  );
+
+  testWidgets(
     'an authored line remains one selectable newline in the text flow',
     (tester) async {
       await makeComposer(tester);
@@ -773,6 +868,31 @@ void main() {
     expect(leaf.style!.height, base.height);
     expect(leaf.style!.fontWeight, base.fontWeight);
     expect(leaf.style!.fontStyle, base.fontStyle);
+  });
+
+  testWidgets('a link retains the editorial marks wrapped around it', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final span =
+        composer.compose(const [
+              MarkedRun(InlineMark.strikethrough, [
+                MarkedRun(InlineMark.insertion, [
+                  LinkRun(href: '/revision', children: [TextRun('revision')]),
+                ]),
+              ]),
+            ]).single
+            as TextSpan;
+    final insertion = span.children!.single as TextSpan;
+    final link = insertion.children!.single as TextSpan;
+    final leaf = link.children!.single as TextSpan;
+
+    expect(leaf.style!.decoration!.contains(TextDecoration.underline), isTrue);
+    expect(
+      leaf.style!.decoration!.contains(TextDecoration.lineThrough),
+      isTrue,
+    );
+    expect(leaf.style!.color, theme.palette.accent);
   });
 
   testWidgets('the visible words are an actionable link for accessibility', (

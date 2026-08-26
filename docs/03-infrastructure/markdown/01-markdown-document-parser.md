@@ -350,7 +350,9 @@ node while the empty label creates no invisible action.
 ## Transition
 
 The clearest extension points are footnotes, which currently arrive as an
-unwrapped `section`, and HTML meanings such as subscript, anchors and responsive
-images. The safety boundary deliberately does not infer those meanings from a
-generic tag: each becomes a domain shape first and a mapping here second — the
-order matters, because the model is what the renderer is written against.
+unwrapped `section`, plus custom anchors and responsive images. The safe
+`sub`, `sup`, and `ins` meanings now demonstrate the boundary: paired tokens
+become recursive domain marks, attributes disappear, and malformed nesting
+keeps its words without extending a style past the authored pair. The adapter
+still does not infer navigation or media meaning from a generic tag; each
+capability becomes a domain shape first and a mapping here second.

@@ -416,6 +416,39 @@ void main() {
     },
   );
 
+  testWidgets('long scientific HTML stays selectable on the prose grid', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    const source =
+        'Water molecules use <sub>two hydrogen atoms</sub>, exponents use '
+        '<sup>designed superior glyphs</sup>, and <ins>inserted prose remains '
+        'ordinary reading text</ins> through enough words to wrap.';
+    final block = const MarkdownDocumentParser().parse(source).blocks.single;
+    final theme = await pump(tester, [block], width: 340);
+    final richText = find.descendant(
+      of: find.byType(Paragraph),
+      matching: find.byType(RichText),
+    );
+    final visible = tester.widget<RichText>(richText).text.toPlainText();
+    final height = tester.getSize(richText).height;
+
+    expect(
+      visible.replaceAll('\u00a0', ' '),
+      'Water molecules use two hydrogen atoms, exponents use designed '
+      'superior glyphs, and inserted prose remains ordinary reading text '
+      'through enough words to wrap.',
+    );
+    expect(height, greaterThan(theme!.baseline * 2));
+    expect(
+      height / theme.baseline,
+      closeTo((height / theme.baseline).roundToDouble(), 0.01),
+    );
+    expect(tester.getSemantics(richText).label, visible);
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets(
     'editor wrapping is invisible at both narrow and wide reading measures',
     (tester) async {

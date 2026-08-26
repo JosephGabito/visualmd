@@ -138,6 +138,24 @@ void main() {
     },
   );
 
+  test('indexes GitHub inline HTML by its visible words alone', () async {
+    final document = Document(
+      id: DocumentId(rootId, 'scientific-prose.md'),
+      content:
+          'Water is H<sub>2</sub>O, area is x<sup>2</sup>, and '
+          '<ins>this wording is current</ins>.',
+    );
+
+    final results = await search.find(SearchQuery('this wording'), [document]);
+    final notation = await search.find(SearchQuery('<ins>'), [document]);
+
+    expect(
+      results.single.matches.single.excerpt,
+      'Water is H2O, area is x2, and this wording is current.',
+    );
+    expect(notation, isEmpty);
+  });
+
   test(
     'indexes a link label but not its destination or advisory title',
     () async {

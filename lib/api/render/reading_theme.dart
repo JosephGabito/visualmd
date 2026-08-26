@@ -203,7 +203,10 @@ final class ReadingTheme {
   /// still a heading; colour and underline say only that it can be followed.
   TextStyle linkFor(TextStyle base) => base.copyWith(
     color: palette.accent,
-    decoration: TextDecoration.underline,
+    decoration: TextDecoration.combine([
+      if (base.decoration != null) base.decoration!,
+      TextDecoration.underline,
+    ]),
     decorationColor: palette.accent.withValues(alpha: 0.4),
     decorationThickness: 1,
   );
