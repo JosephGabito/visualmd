@@ -122,6 +122,17 @@ final class ReadingScale {
     return reduced < minimumCodeSize ? minimumCodeSize : reduced;
   }
 
+  /// Footnotes sit two logical pixels below the running text.
+  ///
+  /// This is an absolute step rather than a ratio: the note remains visibly
+  /// subordinate as the reader changes size without shrinking toward an
+  /// illegible caption. The same floor as source text protects the smallest
+  /// reading setting.
+  double get footnote {
+    final reduced = base - 2;
+    return reduced < minimumCodeSize ? minimumCodeSize : reduced;
+  }
+
   /// Table text, slightly smaller so a table stays a table.
   double get tableText => base * 0.9;
 

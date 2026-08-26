@@ -37,6 +37,7 @@ which lets the same reader UI run on desktop and the web
 | [Container Typography](24-container-typography.md) | Recursive quotations, lists, markers, task states, and compact rhythm |
 | [Mathematical Expression](25-mathematical-expression.md) | Inline and display TeX, optical sizing, overflow, copying, semantics, and recovery |
 | [Mermaid Diagram](26-mermaid-diagram.md) | Headless rendering, fitted reading, drag, zoom, full screen, semantics, and source recovery |
+| [Footnotes](27-footnotes.md) | Bidirectional note navigation, annotation typography, structure, accessibility, and rhythm |
 
 ## How it connects
 
@@ -89,7 +90,9 @@ wider measure than prose. [Mathematical Expression](25-mathematical-expression.m
 explains why equations remain authored TeX in the model while the page
 typesets them as mathematics. [Mermaid Diagram](26-mermaid-diagram.md)
 follows a diagram from its source fence to inert SVG and an exploratory
-full-screen surface. [Pressable](09-pressable.md) and
+full-screen surface. [Footnotes](27-footnotes.md) follows a citation to its
+definition and back without flattening either into ordinary prose.
+[Pressable](09-pressable.md) and
 [Collapsible Panel](10-collapsible-panel.md) are the small interaction pieces
 used throughout the shell. [Panel Widths](18-panel-widths.md) and
 [Panel Resize Handle](19-panel-resize-handle.md) show how that shell adapts

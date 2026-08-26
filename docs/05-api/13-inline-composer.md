@@ -36,6 +36,8 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 | `MathRun` | A baseline-aligned `MathInlineSpan`, optically sized to the surrounding role and flattening back to authored TeX for copying (`lib/api/render/inline_composer.dart`) |
 | `MarkedRun` | Italic, weight 700, deletion or insertion lines, or the face's designed subscript and superscript glyphs — one signal for each meaning (`lib/api/render/inline_composer.dart`) |
 | `LinkRun` | `linkFor(base)`, which preserves the complete heading, table or marked style and adds only link colour, underline and interaction (`lib/api/render/inline_composer.dart`) |
+| `FootnoteReferenceRun` | A designed superscript numeral with link colour, underline, definition navigation and an explicit accessibility label (`lib/api/render/inline_composer.dart`) |
+| `FootnoteBackReferenceRun` | The authored return arrow, repeated-occurrence superscript, citation navigation and an accessibility label which names the return action (`lib/api/render/inline_composer.dart`) |
 | `ImageRun` | A `DocumentImage` widget when the source is remote or a document loader is present; otherwise its alternative in `muted` (`lib/api/render/inline_composer.dart`) |
 | `LineBreakRun` | One selectable newline in the surrounding style; no widget, extra gap or source marker (`lib/api/render/inline_composer.dart`) |
 
@@ -226,8 +228,8 @@ exactly as the author wrote it; resolving it against the current document is
 
 ## Events
 
-None today. A contributor that wanted to render a custom inline — a footnote
-marker, a wiki link — would attach in `_run`
+None today. A contributor that wanted to render another custom inline — for
+example a wiki link — would attach in `_run`
 (`lib/api/render/inline_composer.dart`); see the
 [plugin architecture](../07-roadmap/01-plugin-architecture.md).
 

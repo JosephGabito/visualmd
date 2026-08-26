@@ -20,6 +20,183 @@ T single<T extends Block>(String markdown) {
 }
 
 void main() {
+  group('footnotes', () {
+    test('references and definitions retain both directions of navigation', () {
+      final content = parse('''
+Read the claim.[^source]
+
+[^source]: The supporting note.
+''');
+
+      expect(content.blocks, hasLength(2));
+      final paragraph = content.blocks.first as ParagraphBlock;
+      final reference = paragraph.content
+          .whereType<FootnoteReferenceRun>()
+          .single;
+      final section = content.blocks.last as FootnoteSectionBlock;
+      final definition = section.definitions.single;
+
+      expect(reference.number, 1);
+      expect(reference.definitionAnchor, 'fn-source');
+      expect(reference.referenceAnchor, 'fnref-source');
+      expect(definition.number, 1);
+      expect(definition.anchor, 'fn-source');
+      expect(definition.text, 'The supporting note. ↩');
+      final backReference = (definition.blocks.single as ParagraphBlock).content
+          .whereType<FootnoteBackReferenceRun>()
+          .single;
+      expect(backReference.number, 1);
+      expect(backReference.occurrence, 1);
+      expect(backReference.referenceAnchor, 'fnref-source');
+      expect(backReference.text, '↩');
+    });
+
+    test('definitions move to the end in first-reference order', () {
+      final content = parse('''
+[^alpha]: Defined first.
+[^beta]: Defined second.
+
+Beta is cited first.[^beta] Alpha follows.[^alpha]
+''');
+
+      final section = content.blocks.last as FootnoteSectionBlock;
+      expect(section.definitions.map((definition) => definition.anchor), [
+        'fn-beta',
+        'fn-alpha',
+      ]);
+      expect(section.definitions.map((definition) => definition.number), [
+        1,
+        2,
+      ]);
+    });
+
+    test('a repeated reference keeps a return anchor for every citation', () {
+      final content = parse('''
+First citation.[^same] Second citation.[^same]
+
+[^same]: One shared note.
+''');
+      final paragraph = content.blocks.first as ParagraphBlock;
+      final references = paragraph.content.whereType<FootnoteReferenceRun>();
+      final definition =
+          (content.blocks.last as FootnoteSectionBlock).definitions.single;
+      final backLinks = (definition.blocks.single as ParagraphBlock).content
+          .whereType<FootnoteBackReferenceRun>();
+
+      expect(references.map((reference) => reference.number), [1, 1]);
+      expect(references.map((reference) => reference.referenceAnchor), [
+        'fnref-same',
+        'fnref-same-2',
+      ]);
+      expect(backLinks.map((link) => link.referenceAnchor), [
+        'fnref-same',
+        'fnref-same-2',
+      ]);
+      expect(backLinks.map((link) => link.occurrence), [1, 2]);
+    });
+
+    test('encoded labels keep decoded identity and first-reference order', () {
+      final content = parse('''
+[^β^]: Beta is defined first.
+[^α]: Alpha is defined second.
+
+Alpha is cited first.[^α] Beta follows.[^β^] Alpha repeats.[^α]
+''');
+
+      final paragraph = content.blocks.first as ParagraphBlock;
+      final references = paragraph.content.whereType<FootnoteReferenceRun>();
+      final definitions =
+          (content.blocks.last as FootnoteSectionBlock).definitions;
+
+      expect(references.map((reference) => reference.number), [1, 2, 1]);
+      expect(references.map((reference) => reference.definitionAnchor), [
+        'fn-α',
+        'fn-β^',
+        'fn-α',
+      ]);
+      expect(references.map((reference) => reference.referenceAnchor), [
+        'fnref-α',
+        'fnref-β^',
+        'fnref-α-2',
+      ]);
+      expect(definitions.map((definition) => definition.number), [1, 2]);
+      expect(definitions.map((definition) => definition.anchor), [
+        'fn-α',
+        'fn-β^',
+      ]);
+      expect(
+        definitions.first.blocks
+            .expand(
+              (block) => block is ParagraphBlock
+                  ? block.content.whereType<FootnoteBackReferenceRun>()
+                  : const <FootnoteBackReferenceRun>[],
+            )
+            .map((backReference) => backReference.referenceAnchor),
+        ['fnref-α', 'fnref-α-2'],
+      );
+    });
+
+    test('generated targets share first-wins local anchor identity', () {
+      final content = parse('''
+<a name="fn-source"></a>
+<a name="fnref-source"></a>
+
+First owner.
+
+A supported claim.[^source]
+
+[^source]: The supporting note.
+''');
+      final reference = content.blocks
+          .whereType<ParagraphBlock>()
+          .expand((block) => block.content)
+          .whereType<FootnoteReferenceRun>()
+          .single;
+      final definition =
+          (content.blocks.last as FootnoteSectionBlock).definitions.single;
+
+      expect(
+        content.blocks.whereType<AnchorBlock>().map((block) => block.name),
+        ['fn-source', 'fnref-source'],
+      );
+      expect(reference.ownsReferenceAnchor, isFalse);
+      expect(definition.ownsAnchor, isFalse);
+    });
+
+    test('a footnote definition keeps its authored paragraphs', () {
+      final content = parse('''
+The statement has context.[^detail]
+
+[^detail]: The first paragraph explains the claim.
+
+    The second paragraph records the limitation with **emphasis**.
+''');
+      final definition =
+          (content.blocks.last as FootnoteSectionBlock).definitions.single;
+
+      expect(definition.blocks, hasLength(2));
+      expect(
+        definition.blocks.first.text,
+        'The first paragraph explains the claim.',
+      );
+      expect(
+        definition.blocks.last.text,
+        'The second paragraph records the limitation with emphasis. ↩',
+      );
+      expect(
+        (definition.blocks.last as ParagraphBlock).content
+            .whereType<MarkedRun>()
+            .single
+            .mark,
+        InlineMark.strong,
+      );
+    });
+
+    test('an unreferenced definition does not invent reading content', () {
+      expect(parse('[^unused]: Never cited.').blocks, isEmpty);
+    });
+  });
+
   group('raw HTML safety', () {
     test('inline containers keep words without carrying tag attributes', () {
       final paragraph = single<ParagraphBlock>(

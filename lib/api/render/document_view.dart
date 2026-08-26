@@ -61,8 +61,8 @@ class DocumentView extends StatelessWidget {
   /// Keys by heading anchor, so the outline can bring a heading into view.
   final Map<String, GlobalKey> anchorKeys;
 
-  /// Keys by explicit HTML anchor name. These are navigation targets but not
-  /// headings, so they deliberately stay out of the document outline.
+  /// Keys by local anchor identity. Explicit HTML anchors and generated
+  /// footnote targets share this namespace but stay out of the outline.
   final Map<String, GlobalKey> customAnchorKeys;
 
   final void Function(String href)? onTapLink;
@@ -211,7 +211,12 @@ class _BlockSequence extends StatelessWidget {
               alignment: Alignment.topCenter,
               child: SizedBox(width: width, child: view),
             );
-      children.add(_withAnchorTargets(positioned, entry.anchors, customKeys));
+      children.add(
+        _withAnchorTargets(positioned, [
+          ...entry.anchors,
+          ..._footnoteReferenceAnchors(block),
+        ], customKeys),
+      );
       if (followingSpace > 0) {
         children.add(SizedBox(height: followingSpace));
       }
@@ -441,6 +446,21 @@ class _BlockView extends StatelessWidget {
           reconcile: reconcileContainer,
         );
 
+      case FootnoteSectionBlock():
+        return _Footnotes(
+          section: block as FootnoteSectionBlock,
+          theme: theme,
+          composer: composer,
+          codeHighlighter: codeHighlighter,
+          mermaidRenderer: mermaidRenderer,
+          keys: keys,
+          customKeys: customKeys,
+          matchKeys: matchKeys,
+          offset: offset,
+          followingSpace: followingSpace,
+          reconcile: reconcileContainer,
+        );
+
       case TableBlock():
         final table = _Table(
           table: block as TableBlock,
@@ -511,6 +531,122 @@ bool _containsMath(Inline inline) => switch (inline) {
   LinkRun(:final children) => children.any(_containsMath),
   _ => false,
 };
+
+Iterable<String> _footnoteReferenceAnchors(Block block) sync* {
+  Iterable<String> inlines(Iterable<Inline> content) sync* {
+    for (final inline in content) {
+      switch (inline) {
+        case FootnoteReferenceRun(
+          :final referenceAnchor,
+          :final ownsReferenceAnchor,
+        ):
+          if (ownsReferenceAnchor) yield referenceAnchor;
+        case MarkedRun(:final children) || LinkRun(:final children):
+          yield* inlines(children);
+        default:
+          continue;
+      }
+    }
+  }
+
+  switch (block) {
+    case ParagraphBlock(:final content) || HeadingBlock(:final content):
+      yield* inlines(content);
+    case TableBlock(:final head, :final rows):
+      for (final cell in [...head, ...rows.expand((row) => row)]) {
+        yield* inlines(cell.content);
+      }
+    default:
+      // Recursive containers build their own `_BlockSequence`; that inner
+      // sequence owns each reference key at the block that paints it. Claiming
+      // the same key here would both relocate the return target and put one
+      // GlobalKey in two places in the tree.
+      return;
+  }
+}
+
+/// The document's notes: one quiet rule, then an ordered annotation column.
+///
+/// Definitions use the same block renderer as the document rather than a
+/// second Markdown surface. Their smaller theme changes only the typographic
+/// role; the outer rhythmic container returns the completed section to the
+/// running page's baseline.
+class _Footnotes extends StatelessWidget {
+  final FootnoteSectionBlock section;
+  final ReadingTheme theme;
+  final InlineComposer composer;
+  final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
+  final Map<String, GlobalKey> keys;
+  final Map<String, GlobalKey> customKeys;
+  final Map<int, GlobalKey> matchKeys;
+  final int offset;
+  final double followingSpace;
+  final bool reconcile;
+
+  const _Footnotes({
+    required this.section,
+    required this.theme,
+    required this.composer,
+    required this.codeHighlighter,
+    required this.mermaidRenderer,
+    required this.keys,
+    required this.customKeys,
+    required this.matchKeys,
+    required this.offset,
+    required this.followingSpace,
+    required this.reconcile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final notesTheme = ReadingTheme.footnotes(theme);
+    final notesComposer = InlineComposer(
+      theme: notesTheme,
+      document: composer.document,
+      imageLoader: composer.imageLoader,
+      onTapLink: composer.onTapLink,
+      matches: composer.matches,
+      activeMatch: composer.activeMatch,
+    );
+    final notes = ListBlock(
+      ordered: true,
+      loose: true,
+      items: [
+        for (final definition in section.definitions)
+          ListItem([
+            if (definition.ownsAnchor) AnchorBlock(definition.anchor),
+            ...definition.blocks,
+          ]),
+      ],
+    );
+    final content = Container(
+      padding: EdgeInsets.only(top: theme.containerGap),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: theme.palette.border)),
+      ),
+      child: _List(
+        list: notes,
+        theme: notesTheme,
+        composer: notesComposer,
+        codeHighlighter: codeHighlighter,
+        mermaidRenderer: mermaidRenderer,
+        keys: keys,
+        customKeys: customKeys,
+        matchKeys: matchKeys,
+        offset: offset,
+        followingSpace: 0,
+        reconcile: false,
+      ),
+    );
+    if (!reconcile) return content;
+    return _RhythmicContainer(
+      beat: theme.baseline,
+      followingSpace: followingSpace,
+      child: content,
+    );
+  }
+}
 
 /// Lets display lines use their natural leading, then reconciles the completed
 /// heading with the running-text grid.

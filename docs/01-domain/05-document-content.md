@@ -39,6 +39,7 @@ Two sealed hierarchies and a container.
 | `MermaidBlock` | exact Mermaid source for one diagram | `lib/domain/reading/content/block.dart` |
 | `QuoteBlock` | blocks of its own | `lib/domain/reading/content/block.dart` |
 | `ListBlock` | `ordered`, `start`, `loose`, and `ListItem`s | `lib/domain/reading/content/block.dart` |
+| `FootnoteSectionBlock` | definitions in first-reference order, each with a number, anchor, and blocks | `lib/domain/reading/content/block.dart` |
 | `TableBlock` | a head row and body rows of `TableCell` | `lib/domain/reading/content/block.dart` |
 | `RuleBlock` | one structural separation and no searchable text | `lib/domain/reading/content/block.dart` |
 | `RawBlock` | text the reader has no shape for | `lib/domain/reading/content/block.dart` |
@@ -52,7 +53,9 @@ ASCII punctuation, `CodeRun`
 `InlineMark.emphasis | strong | strikethrough | subscript | superscript |
 insertion` over its children (`lib/domain/reading/content/inline.dart`),
 `MathRun` carrying exact inline TeX, `LinkRun`
-(`lib/domain/reading/content/inline.dart`), `ImageRun`
+(`lib/domain/reading/content/inline.dart`), `FootnoteReferenceRun` carrying its
+number and both navigation anchors, `FootnoteBackReferenceRun` carrying the
+definition number and citation occurrence it returns to, `ImageRun`
 (`lib/domain/reading/content/inline.dart`) and `LineBreakRun`, which is only
 ever a line the author asked for with two trailing spaces or a backslash
 (`lib/domain/reading/content/inline.dart`). Its text is one newline; the source
@@ -135,6 +138,21 @@ heading numbering
 (`lib/domain/reading/content/block.dart`,
 `lib/infrastructure/markdown/safe_html_text.dart`,
 `lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+Footnotes keep navigation as domain identity instead of flattening it into
+ordinary links. A `FootnoteReferenceRun` knows the definition it reaches and
+the unique named return for that occurrence; a `FootnoteBackReferenceRun`
+keeps enough meaning for assistive technology to name that return. Its target
+is the containing reading block because replacing one selectable glyph with a
+widget would damage selection and copying. Reference and definition values
+also record whether they are the first claimant of their local anchor, making
+ownership stable document state rather than mutable widget build order. The final
+`FootnoteSectionBlock` owns definitions in first-reference order; each
+definition retains real blocks, so a multi-paragraph note is not collapsed
+into one run of text. Unreferenced definitions never enter the reading model,
+matching the grammar's resolved document rather than exposing authoring
+metadata (`lib/domain/reading/content/block.dart`,
+`lib/domain/reading/content/inline.dart`).
 
 Marks remain recursive rather than being flattened. `***important***` is an
 emphasis run containing a strong run, while `**important with _voice_ inside**`

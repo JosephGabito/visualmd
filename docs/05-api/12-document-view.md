@@ -78,6 +78,16 @@ Each block type is built by `_BlockView`
   block. It creates neither a line box nor an outgoing gap; a trailing target
   remains a zero-size keyed box. Inline anchors are not given false geometry
   (`lib/api/render/document_view.dart`).
+- **Footnotes** — a quiet rule introduces one ordered annotation column. Notes
+  keep the reading face at an exact two-pixel smaller role, retain arbitrary
+  definition blocks, and reconcile the completed section to the body grid.
+  Definition anchors target the first visible note block; every citation adds
+  a return target to its containing reading block without inserting a
+  selectable placeholder. Generated targets and standalone HTML anchors share
+  one first-wins namespace resolved by the document model, so a repeated
+  identity never mounts one key twice or changes owner during a resize
+  (`lib/api/render/document_view.dart`,
+  `lib/api/render/reading_theme.dart`).
 - **Code** — a [`ReadableCodeBlock`](11-code-block.md) with half a beat of
   padding above and below and **no border**: its own ground already says what
   it is, and a border is both a second signal and a height that breaks the grid
@@ -149,7 +159,7 @@ while a long prose cell grows only to the researched 55-character measure.
 | `theme` | `ReadingTheme` | Built by the [reading pane](04-reading-pane.md) |
 | `codeHighlighter` | `CodeHighlighter` | Framework-free source-range contributor, plain by default |
 | `anchorKeys` | `Map<String, GlobalKey>` | Owned by the pane; filled in as headings build |
-| `customAnchorKeys` | `Map<String, GlobalKey>` | Owned separately by the pane; filled by eligible standalone HTML anchors without entering the outline |
+| `customAnchorKeys` | `Map<String, GlobalKey>` | Owned separately by the pane; filled first-wins by standalone HTML and footnote navigation anchors without entering the outline |
 | `onTapLink` | `void Function(String href)?` | The pane's link handler |
 
 Out: nothing directly. Links report through the composer; the pane reads the

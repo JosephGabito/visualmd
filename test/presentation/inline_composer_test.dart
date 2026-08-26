@@ -848,6 +848,110 @@ void main() {
     expect(tapped, ['guide/intro.md']);
   });
 
+  testWidgets('a footnote reference is a superscript link to its definition', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final semantics = tester.ensureSemantics();
+    final spans = composer.compose(const [
+      FootnoteReferenceRun(
+        number: 3,
+        definitionAnchor: 'fn-source',
+        referenceAnchor: 'fnref-source',
+      ),
+    ]);
+    final link = spans.single as TextSpan;
+    final number = link.children!.single as TextSpan;
+
+    expect(link.toPlainText(), '3');
+    expect(link.semanticsLabel, isNull);
+    final semanticInformation = <InlineSpanSemanticsInformation>[];
+    link.computeSemanticsInformation(semanticInformation);
+    expect(semanticInformation.single.text, '3');
+    expect(semanticInformation.single.semanticsLabel, 'Footnote 3');
+    expect(
+      number.style!.fontFeatures,
+      contains(const FontFeature.superscripts()),
+    );
+    expect(number.style!.decoration, TextDecoration.underline);
+
+    await tester.pumpWidget(
+      MaterialApp(home: Text.rich(TextSpan(children: spans))),
+    );
+    final paragraph = tester.getSemantics(find.byType(RichText));
+    final reference = paragraph
+        .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+        .single;
+    expect(
+      reference,
+      matchesSemantics(
+        label: 'Footnote 3',
+        textDirection: TextDirection.ltr,
+        isLink: true,
+        hasTapAction: true,
+      ),
+    );
+    await tester.tapAt(
+      tester.getTopLeft(find.byType(RichText)) + const Offset(3, 8),
+    );
+    await tester.pump();
+    expect(tapped.last, '#fn-source');
+    semantics.dispose();
+  });
+
+  testWidgets('a footnote return names and reaches its citation occurrence', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    final semantics = tester.ensureSemantics();
+    final spans = composer.compose(const [
+      FootnoteBackReferenceRun(
+        number: 3,
+        occurrence: 2,
+        referenceAnchor: 'fnref-source-2',
+        text: '↩2',
+      ),
+    ]);
+    final link = spans.single as TextSpan;
+    final occurrence = link.children!.last as TextSpan;
+    final semanticInformation = <InlineSpanSemanticsInformation>[];
+    link.computeSemanticsInformation(semanticInformation);
+
+    expect(link.toPlainText(), '↩2');
+    expect(
+      occurrence.style!.fontFeatures,
+      contains(const FontFeature.superscripts()),
+    );
+    expect(semanticInformation.single.text, '↩2');
+    expect(
+      semanticInformation.single.semanticsLabel,
+      'Return to footnote reference 3, occurrence 2',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: Text.rich(TextSpan(children: spans))),
+    );
+    final paragraph = tester.getSemantics(find.byType(RichText));
+    final backReference = paragraph
+        .debugListChildrenInOrder(DebugSemanticsDumpOrder.traversalOrder)
+        .single;
+    expect(
+      backReference,
+      matchesSemantics(
+        label: 'Return to footnote reference 3, occurrence 2',
+        textDirection: TextDirection.ltr,
+        isLink: true,
+        hasTapAction: true,
+      ),
+    );
+    await tester.tapAt(
+      tester.getTopLeft(find.byType(RichText)) + const Offset(3, 8),
+    );
+    await tester.pump();
+    expect(tapped.last, '#fnref-source-2');
+    semantics.dispose();
+  });
+
   testWidgets('a link adds only its two interaction signals', (tester) async {
     await makeComposer(tester);
     const base = TextStyle(

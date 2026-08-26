@@ -393,7 +393,9 @@ final class _LiteralLongTildeRunSyntax extends md.InlineSyntax {
 /// exactly as long as a single parse, and two documents never share numbering.
 final class _Mapper {
   final _anchors = HeadingAnchors();
-  final _customAnchors = <String>{};
+  final _localAnchors = <String>{};
+  final _footnoteNumbers = <String, int>{};
+  int? _activeFootnoteNumber;
 
   static const _blockTags = {
     'p',
@@ -441,8 +443,8 @@ final class _Mapper {
     return blocks;
   }
 
-  /// One element to zero or more blocks. A list, because a `section` — which
-  /// is how footnote definitions arrive — is only a wrapper.
+  /// One element to zero or more blocks. A list, because an ordinary
+  /// `section` is only a wrapper and contributes no reading shape of its own.
   List<Block> _block(md.Element element) {
     switch (element.tag) {
       case 'p':
@@ -454,7 +456,7 @@ final class _Mapper {
         if (_isAnchorMetadataParagraph(element.children)) {
           return [
             for (final name in _anchorNames(element.children))
-              if (_customAnchors.add(name)) AnchorBlock(name),
+              if (_localAnchors.add(name)) AnchorBlock(name),
           ];
         }
         final content = inlines(element.children);
@@ -493,6 +495,10 @@ final class _Mapper {
         return const [RuleBlock()];
 
       case 'section':
+        if (_hasClass(element, 'footnotes')) {
+          final footnotes = _footnotes(element);
+          return footnotes.definitions.isEmpty ? const [] : [footnotes];
+        }
         return blocks(element.children);
 
       case 'raw-html-block':
@@ -513,7 +519,7 @@ final class _Mapper {
         if (text != null) return [RawBlock(text)];
         return [
           for (final name in SafeHtmlText.anchors(source))
-            if (_customAnchors.add(name)) AnchorBlock(name),
+            if (_localAnchors.add(name)) AnchorBlock(name),
         ];
 
       default:
@@ -730,6 +736,68 @@ final class _Mapper {
             ),
           );
 
+        case md.Element(tag: 'sup') when _hasClass(node, 'footnote-ref'):
+          final link = node.children
+              ?.whereType<md.Element>()
+              .where((child) => child.tag == 'a')
+              .firstOrNull;
+          final number = int.tryParse(link?.textContent ?? '');
+          final definitionAnchor = _fragmentName(
+            link?.attributes['href'] ?? '',
+          );
+          final referenceAnchor = _decodedAnchor(link?.attributes['id'] ?? '');
+          if (number != null &&
+              number > 0 &&
+              definitionAnchor.isNotEmpty &&
+              referenceAnchor.isNotEmpty) {
+            add(
+              FootnoteReferenceRun(
+                number: number,
+                definitionAnchor: definitionAnchor,
+                referenceAnchor: referenceAnchor,
+                ownsReferenceAnchor: _localAnchors.add(referenceAnchor),
+              ),
+            );
+            _footnoteNumbers.putIfAbsent(definitionAnchor, () => number);
+          } else {
+            frames.last.runs.addAll(_inlines(node.children, lineBreaks));
+          }
+
+        case md.Element(tag: 'a') when _hasClass(node, 'footnote-backref'):
+          final footnoteNumber = _activeFootnoteNumber;
+          final referenceAnchor = _fragmentName(node.attributes['href'] ?? '');
+          final occurrence =
+              int.tryParse(
+                node.children
+                        ?.whereType<md.Element>()
+                        .where(
+                          (child) =>
+                              child.tag == 'sup' &&
+                              _hasClass(child, 'footnote-ref'),
+                        )
+                        .firstOrNull
+                        ?.textContent ??
+                    '',
+              ) ??
+              1;
+          if (footnoteNumber != null && referenceAnchor.isNotEmpty) {
+            add(
+              FootnoteBackReferenceRun(
+                number: footnoteNumber,
+                occurrence: occurrence,
+                referenceAnchor: referenceAnchor,
+                text: node.textContent,
+              ),
+            );
+          } else {
+            add(
+              LinkRun(
+                href: node.attributes['href'] ?? '',
+                children: _inlines(node.children, lineBreaks),
+              ),
+            );
+          }
+
         case md.Element(tag: 'a'):
           add(
             LinkRun(
@@ -807,9 +875,9 @@ final class _Mapper {
           continue;
 
         case md.Element():
-          // Something we have no shape for — `sup`, inline html, a footnote
-          // reference. Its words still belong to the reader, so they are kept
-          // even though the markup around them is dropped.
+          // Something we have no shape for. Its words still belong to the
+          // reader, so they are kept even though the markup around them is
+          // dropped.
           final children = node.children;
           if (children != null && children.isNotEmpty) {
             frames.last.runs.addAll(_inlines(children, lineBreaks));
@@ -831,6 +899,68 @@ final class _Mapper {
       frames.last.runs.addAll(unmatched.runs);
     }
     return _coalesceText(frames.single.runs);
+  }
+
+  FootnoteSectionBlock _footnotes(md.Element section) {
+    final list = section.children
+        ?.whereType<md.Element>()
+        .where((child) => child.tag == 'ol')
+        .firstOrNull;
+    if (list == null) return const FootnoteSectionBlock([]);
+
+    final items = <({md.Element element, String anchor, int number})>[];
+    for (final item
+        in list.children?.whereType<md.Element>() ?? const <md.Element>[]) {
+      if (item.tag != 'li') continue;
+      final anchor = _decodedAnchor(item.attributes['id'] ?? '');
+      if (anchor.isEmpty) continue;
+      items.add((
+        element: item,
+        anchor: anchor,
+        number: _footnoteNumbers[anchor] ?? items.length + 1,
+      ));
+    }
+    items.sort((left, right) => left.number.compareTo(right.number));
+
+    final definitions = <FootnoteDefinition>[];
+    for (final item in items) {
+      final ownsAnchor = _localAnchors.add(item.anchor);
+      final previousNumber = _activeFootnoteNumber;
+      _activeFootnoteNumber = item.number;
+      late final List<Block> definitionBlocks;
+      try {
+        definitionBlocks = blocks(item.element.children);
+      } finally {
+        _activeFootnoteNumber = previousNumber;
+      }
+      definitions.add(
+        FootnoteDefinition(
+          number: item.number,
+          anchor: item.anchor,
+          ownsAnchor: ownsAnchor,
+          blocks: definitionBlocks,
+        ),
+      );
+    }
+    return FootnoteSectionBlock(definitions);
+  }
+
+  static bool _hasClass(md.Element element, String name) =>
+      (element.attributes['class'] ?? '').split(RegExp(r'\s+')).contains(name);
+
+  static String _fragmentName(String href) {
+    if (!href.startsWith('#') || href.length == 1) return '';
+    return _decodedAnchor(href.substring(1));
+  }
+
+  /// Package-generated footnote ids are URI transport, while document
+  /// navigation compares decoded identities.
+  static String _decodedAnchor(String anchor) {
+    try {
+      return Uri.decodeComponent(anchor);
+    } on ArgumentError {
+      return anchor;
+    }
   }
 
   /// Parser nodes are grammar boundaries, not reading roles. An escape can

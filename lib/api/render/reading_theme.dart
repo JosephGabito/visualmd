@@ -199,6 +199,62 @@ final class ReadingTheme {
     headings: theme.headings,
   );
 
+  /// The same page at the document's annotation size.
+  ///
+  /// A footnote is supporting prose, not interface chrome and not code. It
+  /// therefore keeps the reading face and its measured leading, stepping down
+  /// by the scale's exact two-pixel annotation interval. The completed
+  /// footnote section is reconciled to the parent page's baseline by the
+  /// renderer, so smaller internal lines never make the document drift.
+  static ReadingTheme footnotes(ReadingTheme theme) {
+    final scale = theme.scale.copyWith(base: theme.scale.footnote);
+    final bodyFamily = theme.body.fontFamily ?? '';
+    final monoFamily = theme.code.fontFamily ?? '';
+    final bodySize = FontMetrics.sizeFor(bodyFamily, scale.base);
+    final leading = FontMetrics.leadingFor(bodyFamily, scale.leading);
+    final body = theme.body.copyWith(fontSize: bodySize, height: leading);
+    final renderedBase = theme.textScaler.scale(bodySize);
+    final unit = renderedBase * leading;
+    final codeSize = FontMetrics.sizeFor(monoFamily, scale.code);
+    final ratio = scale.base / theme.scale.base;
+
+    TextStyle heading(TextStyle source) => source.copyWith(
+      fontSize: (source.fontSize ?? theme.scale.base) * ratio,
+    );
+
+    return ReadingTheme._(
+      scale: scale,
+      palette: theme.palette,
+      textScaler: theme.textScaler,
+      isDark: theme.isDark,
+      leading: leading,
+      renderedBase: renderedBase,
+      body: body,
+      code: _onBeat(
+        theme.code.copyWith(fontSize: codeSize),
+        theme.textScaler.scale(scale.codeLineHeight),
+        theme.textScaler,
+      ),
+      quote: body.copyWith(color: theme.palette.muted),
+      marker: body.copyWith(color: theme.palette.muted),
+      tableHead: _onBeat(
+        theme.tableHead.copyWith(
+          fontSize: FontMetrics.sizeFor(bodyFamily, scale.tableText),
+        ),
+        unit,
+        theme.textScaler,
+      ),
+      tableBody: _onBeat(
+        theme.tableBody.copyWith(
+          fontSize: FontMetrics.sizeFor(bodyFamily, scale.tableText),
+        ),
+        unit,
+        theme.textScaler,
+      ),
+      headings: theme.headings.map(heading).toList(growable: false),
+    );
+  }
+
   /// A link keeps the typographic role it appears in. A link in a heading is
   /// still a heading; colour and underline say only that it can be followed.
   TextStyle linkFor(TextStyle base) => base.copyWith(
