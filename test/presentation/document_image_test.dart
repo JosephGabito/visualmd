@@ -194,4 +194,61 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets('empty alternatives stay decorative while loading', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpImage(
+      tester,
+      source: 'flourish.png',
+      alt: '',
+      loader: _Loader(null),
+      settle: false,
+    );
+
+    expect(find.text('Loading image'), findsOneWidget);
+    expect(find.bySemanticsLabel('Loading image'), findsNothing);
+    semantics.dispose();
+  });
+
+  testWidgets('empty alternatives stay decorative after failure', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpImage(
+      tester,
+      source: 'broken.png',
+      alt: '',
+      loader: _Loader(Uint8List.fromList([1, 2, 3])),
+    );
+
+    expect(find.text('Image unavailable'), findsOneWidget);
+    expect(find.bySemanticsLabel('Image unavailable'), findsNothing);
+    semantics.dispose();
+  });
+
+  testWidgets('a selected-source change begins one new local image load', (
+    tester,
+  ) async {
+    final pixel = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final loader = _Loader(pixel);
+
+    await pumpImage(
+      tester,
+      source: 'light.png',
+      alt: 'A themed diagram',
+      loader: loader,
+    );
+    await pumpImage(
+      tester,
+      source: 'dark.png',
+      alt: 'A themed diagram',
+      loader: loader,
+    );
+
+    expect(loader.calls, [(_document, 'light.png'), (_document, 'dark.png')]);
+  });
 }

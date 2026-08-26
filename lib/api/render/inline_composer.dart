@@ -269,7 +269,10 @@ final class InlineComposer {
           ),
         ];
 
-      case ImageRun(:final source, :final title, :final alt):
+      case ImageRun(:final title, :final alt):
+        final source = run.sourceFor(
+          theme.isDark ? ImageColorScheme.dark : ImageColorScheme.light,
+        );
         final uri = Uri.tryParse(source);
         final remote =
             uri != null && (uri.scheme == 'http' || uri.scheme == 'https');

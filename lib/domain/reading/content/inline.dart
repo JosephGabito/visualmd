@@ -97,12 +97,40 @@ final class ImageRun extends Inline {
   final String source;
   final String? title;
   final String alt;
+  final List<ThemedImageSource> themedSources;
 
-  const ImageRun({required this.source, this.title, required this.alt});
+  const ImageRun({
+    required this.source,
+    this.title,
+    required this.alt,
+    this.themedSources = const [],
+  });
+
+  /// The first authored source for [scheme], or the required fallback image.
+  ///
+  /// HTML `picture` selection is ordered. Keeping that order here means the
+  /// page can respond to a theme change without reparsing the document, while
+  /// unsupported media queries never acquire meaning in the domain.
+  String sourceFor(ImageColorScheme scheme) =>
+      themedSources
+          .where((candidate) => candidate.scheme == scheme)
+          .map((candidate) => candidate.source)
+          .firstOrNull ??
+      source;
 
   @override
   String get text => alt;
 }
+
+/// One safe `picture` candidate whose only condition is reading appearance.
+final class ThemedImageSource {
+  final ImageColorScheme scheme;
+  final String source;
+
+  const ThemedImageSource({required this.scheme, required this.source});
+}
+
+enum ImageColorScheme { light, dark }
 
 /// A line the author asked for, with two or more spaces or a backslash.
 ///

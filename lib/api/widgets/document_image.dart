@@ -145,10 +145,13 @@ final class _DocumentImageState extends State<DocumentImage> {
         : failed
         ? 'Image unavailable'
         : 'Loading image';
-    return Text(
+    final alternative = Text(
       label,
       style: widget.theme.body.copyWith(color: widget.theme.palette.muted),
     );
+    return widget.alt.isEmpty
+        ? ExcludeSemantics(child: alternative)
+        : alternative;
   }
 }
 

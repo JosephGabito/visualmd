@@ -15,9 +15,10 @@ alternative text, and image semantics.
 
 ## Present wiring
 
-`InlineComposer` places the component in a `WidgetSpan` and supplies the
-current `DocumentId`, authored source, plain alternative, optional title,
-`DocumentImageLoader`, and `ReadingTheme`
+`InlineComposer` first asks an `ImageRun` for the first authored source matching
+the current light or dark reading theme, then places the component in a
+`WidgetSpan`. It supplies the current `DocumentId`, selected source, shared
+plain alternative, optional title, `DocumentImageLoader`, and `ReadingTheme`
 (`lib/api/render/inline_composer.dart`).
 
 HTTP and HTTPS destinations use `Image.network`. Document-relative sources ask
@@ -59,9 +60,11 @@ document or library event.
 
 ## Lifecycle
 
-The state caches the local load future for the current document, source, and
-loader. A change to any of those three begins a new lookup; unrelated rebuilds
-do not reread the file (`lib/api/widgets/document_image.dart`). Flutter owns
+The state caches the local load future for the current document, selected
+source, and loader. A change to any of those three begins a new lookup; this is
+also how switching between light and dark artwork replaces the bytes without
+reparsing the document. Unrelated rebuilds do not reread the file
+(`lib/api/widgets/document_image.dart`). Flutter owns
 decoded image caching after bytes reach `Image.memory` or `Image.network`.
 
 ## Failure and recovery
@@ -69,12 +72,14 @@ decoded image caching after bytes reach `Image.memory` or `Image.network`.
 A missing file, denied browser handle, unsafe local path, failed network
 request, or corrupt payload all become the alternative text in muted reading
 ink. One bad image therefore cannot fail `ReadDocument` or replace the page
-with an error surface. Empty decorative artwork uses “Image unavailable” only
-when it fails, because there is no authored text to preserve.
+with an error surface. Empty decorative artwork may use “Loading image” or
+“Image unavailable” as visual status, but both remain outside the semantic tree
+because there is no authored alternative to announce.
 
 Sizing and recovery are exercised with one-pixel, oversized square, corrupt,
-remote, titled, and decorative specimens
-(`test/presentation/document_image_test.dart`). Path authority is tested at
+remote, titled, and decorative specimens. Theme selection is exercised at the
+composer boundary (`test/presentation/document_image_test.dart`,
+`test/presentation/inline_composer_test.dart`). Path authority is tested at
 the application and desktop infrastructure edges
 (`test/application/document_image_path_test.dart`,
 `test/infrastructure/local_document_image_loader_test.dart`).
