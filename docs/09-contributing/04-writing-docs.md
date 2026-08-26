@@ -56,7 +56,9 @@ and the READMEs — must contain at least one source reference.
   that shelf.
 - Number documents for reading order (`01-`, `02-`); decisions use four
   digits (`0001-`). Folder names sort naturally, so `10-` follows `9-`.
-- Keep documents between roughly 40 and 140 lines. Split rather than scroll.
+- Aim for roughly 40 to 140 lines. A longer document is justified when it keeps
+  one contract or research trail intact; split it when the parts can stand on
+  their own rather than merely to satisfy a count.
 - No placeholder text. Write what is true today or leave the section out.
 
 ## Understanding docs-test feedback

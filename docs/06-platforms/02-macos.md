@@ -13,9 +13,12 @@ One-time, on the build machine:
 3. `sudo xcodebuild -runFirstLaunch` (accepts the licence, installs
    components; harmless if Xcode was already opened once).
 
-CocoaPods is **not** required: every plugin in use (`desktop_drop`,
-`file_selector`, `window_manager`, `pubspec.yaml`) ships Swift
-Package Manager support, and the project has no `Podfile`.
+CocoaPods is currently required for the pinned native Mermaid renderer. Merman
+0.7 ships both CocoaPods and Swift Package Manager support, but Flutter's
+generated SPM symlink does not preserve the renderer's sibling XCFramework.
+The project therefore selects the package's CocoaPods path in `pubspec.yaml`
+and keeps `macos/Podfile` plus its lockfile in source control. Flutter runs the
+pod installation as part of the macOS build.
 
 ## Build and run
 
