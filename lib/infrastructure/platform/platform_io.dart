@@ -8,6 +8,7 @@ import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
 import '../../application/ports/reader_source_picker.dart';
+import '../../application/ports/shelf_source_actions.dart';
 import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
@@ -18,6 +19,7 @@ import '../io/desktop_links.dart';
 import '../io/desktop_markdown_picker.dart';
 import '../io/desktop_reader_source_picker.dart';
 import '../io/desktop_security_scope.dart';
+import '../io/desktop_shelf_source_actions.dart';
 import '../io/desktop_source_change_monitor.dart';
 import '../io/desktop_workspace_files.dart';
 import '../io/desktop_workspace_source_access.dart';
@@ -54,6 +56,11 @@ final class _DesktopAdapters implements PlatformAdapters {
   late final _drop = DesktopFolderDrop(_registry, _markdownRegistry);
   late final _picker = DesktopFolderPicker(_registry);
   late final _markdownPicker = DesktopMarkdownPicker(_markdownRegistry);
+  late final _shelfSourceActions = DesktopShelfSourceActions(
+    _registry,
+    _markdownRegistry,
+    access: const DesktopSecurityScope(),
+  );
   late final _commands = DesktopCommands();
 
   late final _folderScanner = LocalFolderScanner(
@@ -95,6 +102,9 @@ final class _DesktopAdapters implements PlatformAdapters {
   late final ReaderSourcePicker? readerSourcePicker = Platform.isMacOS
       ? DesktopReaderSourcePicker(_registry, _markdownRegistry)
       : null;
+
+  @override
+  ShelfSourceActions get shelfSourceActions => _shelfSourceActions;
 
   @override
   Future<FolderRef?> pickFolder() => _picker.pick();

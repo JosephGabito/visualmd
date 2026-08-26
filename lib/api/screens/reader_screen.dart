@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../application/ports/document_image_loader.dart';
+import '../../application/ports/shelf_source_actions.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/reading/table_of_contents.dart';
 import '../../domain/search/search_result.dart';
@@ -36,6 +37,7 @@ class ReaderScreen extends StatefulWidget {
   final DocumentImageLoader? imageLoader;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
+  final ShelfSourceActions? shelfSourceActions;
   final ({double height, double leadingInset}) topBar;
   final Widget Function(Widget child) windowDragRegion;
 
@@ -50,6 +52,7 @@ class ReaderScreen extends StatefulWidget {
     this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
     this.openReaderSources,
+    this.shelfSourceActions,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
     this.openThemesFolder,
@@ -500,6 +503,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
                               onReconnectSource: c.reconnectSource,
                               onRemoveUnavailableSource:
                                   c.removeUnavailableSource,
+                              labelMode: c.shelfLabelMode,
+                              onLabelModeChanged: c.chooseShelfLabelMode,
+                              sourceActions: widget.shelfSourceActions,
                             ),
                     ),
                     if (compact)

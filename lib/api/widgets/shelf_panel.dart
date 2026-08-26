@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../application/ports/shelf_source_actions.dart';
 import '../../domain/library/document.dart';
 import '../../domain/library/document_id.dart';
 import '../../domain/library/folder.dart';
@@ -9,6 +13,7 @@ import '../../domain/library/library_root_id.dart';
 import '../../domain/workspace/workspace.dart';
 import '../../domain/workspace/workspace_id.dart';
 import '../../domain/workspace/workspace_source.dart';
+import '../../presentation/shelf/shelf_label_mode.dart';
 import '../theme/library_theme.dart';
 import 'panel_heading.dart';
 
@@ -28,6 +33,9 @@ class ShelfPanel extends StatefulWidget {
   final Set<WorkspaceSourceId> unavailableSources;
   final ValueChanged<WorkspaceSourceId>? onReconnectSource;
   final ValueChanged<WorkspaceSourceId>? onRemoveUnavailableSource;
+  final ShelfLabelMode labelMode;
+  final ValueChanged<ShelfLabelMode>? onLabelModeChanged;
+  final ShelfSourceActions? sourceActions;
 
   const ShelfPanel({
     super.key,
@@ -43,6 +51,9 @@ class ShelfPanel extends StatefulWidget {
     this.unavailableSources = const {},
     this.onReconnectSource,
     this.onRemoveUnavailableSource,
+    this.labelMode = ShelfLabelMode.title,
+    this.onLabelModeChanged,
+    this.sourceActions,
   });
 
   @override
@@ -230,6 +241,9 @@ class _ShelfPanelState extends State<ShelfPanel> {
               unavailableSources: widget.unavailableSources,
               onReconnectSource: widget.onReconnectSource,
               onRemoveUnavailableSource: widget.onRemoveUnavailableSource,
+              labelMode: widget.labelMode,
+              onLabelModeChanged: widget.onLabelModeChanged,
+              sourceActions: widget.sourceActions,
             );
           }
           final index = listIndex - 1;
@@ -290,6 +304,8 @@ class _ShelfPanelState extends State<ShelfPanel> {
               onSelect: widget.onSelect,
               onMove: (toIndex) => widget.onMoveFolder(root.id, toIndex),
               onRemove: () => widget.onRemoveFolder(root.id),
+              labelMode: widget.labelMode,
+              sourceActions: widget.sourceActions,
             ),
           );
         },
@@ -308,6 +324,9 @@ class _ShelfHeader extends StatelessWidget {
   final Set<WorkspaceSourceId> unavailableSources;
   final ValueChanged<WorkspaceSourceId>? onReconnectSource;
   final ValueChanged<WorkspaceSourceId>? onRemoveUnavailableSource;
+  final ShelfLabelMode labelMode;
+  final ValueChanged<ShelfLabelMode>? onLabelModeChanged;
+  final ShelfSourceActions? sourceActions;
 
   const _ShelfHeader({
     required this.library,
@@ -319,6 +338,9 @@ class _ShelfHeader extends StatelessWidget {
     required this.unavailableSources,
     required this.onReconnectSource,
     required this.onRemoveUnavailableSource,
+    required this.labelMode,
+    required this.onLabelModeChanged,
+    required this.sourceActions,
   });
 
   @override
@@ -341,6 +363,8 @@ class _ShelfHeader extends StatelessWidget {
                       selected: document.id == selected,
                       onTap: () => onSelect(document.id),
                       onRemove: () => onRemoveMarkdown(document.id),
+                      labelMode: labelMode,
+                      sourceActions: sourceActions,
                     )
                 else
                   for (final source in workspace!.markdowns)
@@ -351,13 +375,39 @@ class _ShelfHeader extends StatelessWidget {
         ],
         PanelHeading(
           'Library',
-          trailing: Tooltip(
-            message: 'Add folder',
-            child: IconButton(
-              onPressed: onOpenFolder,
-              icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-              visualDensity: VisualDensity.compact,
-            ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onLabelModeChanged != null)
+                Tooltip(
+                  message: labelMode == ShelfLabelMode.title
+                      ? 'Show file names'
+                      : 'Show Markdown titles',
+                  child: IconButton(
+                    key: const ValueKey('shelf-label-mode-toggle'),
+                    onPressed: () => onLabelModeChanged!(
+                      labelMode == ShelfLabelMode.title
+                          ? ShelfLabelMode.fileName
+                          : ShelfLabelMode.title,
+                    ),
+                    icon: Icon(
+                      labelMode == ShelfLabelMode.title
+                          ? Icons.title_outlined
+                          : Icons.description_outlined,
+                      size: 18,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              Tooltip(
+                message: 'Add folder',
+                child: IconButton(
+                  onPressed: onOpenFolder,
+                  icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
@@ -387,6 +437,8 @@ class _ShelfHeader extends StatelessWidget {
         selected: document.id == selected,
         onTap: () => onSelect(document!.id),
         onRemove: () => onRemoveMarkdown(document!.id),
+        labelMode: labelMode,
+        sourceActions: sourceActions,
       );
     }
     assert(unavailableSources.contains(source.id));
@@ -490,6 +542,8 @@ class _RootSection extends StatelessWidget {
   final ValueChanged<DocumentId> onSelect;
   final ValueChanged<int> onMove;
   final VoidCallback onRemove;
+  final ShelfLabelMode labelMode;
+  final ShelfSourceActions? sourceActions;
 
   const _RootSection({
     super.key,
@@ -511,6 +565,8 @@ class _RootSection extends StatelessWidget {
     required this.onSelect,
     required this.onMove,
     required this.onRemove,
+    required this.labelMode,
+    required this.sourceActions,
   });
 
   @override
@@ -536,6 +592,7 @@ class _RootSection extends StatelessWidget {
               onTap: onToggleRoot,
               onMove: onMove,
               onRemove: onRemove,
+              sourceActions: sourceActions,
             ),
             ...rows,
           ],
@@ -554,6 +611,8 @@ class _RootSection extends StatelessWidget {
           depth: depth,
           selected: document.id == selected,
           onTap: () => onSelect(document.id),
+          labelMode: labelMode,
+          sourceActions: sourceActions,
         ),
       );
     }
@@ -565,6 +624,8 @@ class _RootSection extends StatelessWidget {
           depth: depth,
           open: open,
           onTap: () => onToggleFolder(child.path),
+          rootId: root.id,
+          sourceActions: sourceActions,
         ),
       );
       if (open) _addFolder(rows, child, depth + 1);
@@ -609,6 +670,7 @@ class _RootRow extends StatefulWidget {
   final VoidCallback onTap;
   final ValueChanged<int> onMove;
   final VoidCallback onRemove;
+  final ShelfSourceActions? sourceActions;
 
   const _RootRow({
     super.key,
@@ -623,6 +685,7 @@ class _RootRow extends StatefulWidget {
     required this.onTap,
     required this.onMove,
     required this.onRemove,
+    required this.sourceActions,
   });
 
   @override
@@ -667,41 +730,62 @@ class _RootRowState extends State<_RootRow> {
                     widget.onDragStarted(Scrollable.of(context)),
                 onDragUpdate: widget.onDragUpdate,
                 onDragEnd: widget.onDragEnd,
-                child: InkWell(
-                  key: ValueKey('root-toggle-${widget.root.id.value}'),
-                  onTap: widget.interactionsEnabled ? widget.onTap : null,
-                  borderRadius: BorderRadius.circular(6),
-                  hoverColor: p.accentSoft.withValues(alpha: 0.5),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 2, 2, 2),
-                    child: Row(
-                      children: [
-                        Icon(
-                          widget.open ? Icons.expand_more : Icons.chevron_right,
-                          size: 16,
-                          color: p.muted,
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          widget.open
-                              ? Icons.folder_open_outlined
-                              : Icons.folder_outlined,
-                          size: 17,
-                          color: p.muted,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.root.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.type.sans(
-                              color: p.ink,
-                              size: 13,
-                              weight: FontWeight.w600,
+                child: _ShelfContextShortcuts(
+                  source: ShelfFolderLocation(
+                    rootId: widget.root.id,
+                    relativePath: '.',
+                  ),
+                  sourceActions: widget.sourceActions,
+                  enabled: widget.interactionsEnabled,
+                  child: InkWell(
+                    key: ValueKey('root-toggle-${widget.root.id.value}'),
+                    onTap: widget.interactionsEnabled ? widget.onTap : null,
+                    onSecondaryTapDown: widget.interactionsEnabled
+                        ? (details) => _showShelfContextMenu(
+                            context,
+                            details.globalPosition,
+                            ShelfFolderLocation(
+                              rootId: widget.root.id,
+                              relativePath: '.',
+                            ),
+                            widget.sourceActions,
+                          )
+                        : null,
+                    borderRadius: BorderRadius.circular(6),
+                    hoverColor: p.accentSoft.withValues(alpha: 0.5),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 2, 2, 2),
+                      child: Row(
+                        children: [
+                          Icon(
+                            widget.open
+                                ? Icons.expand_more
+                                : Icons.chevron_right,
+                            size: 16,
+                            color: p.muted,
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            widget.open
+                                ? Icons.folder_open_outlined
+                                : Icons.folder_outlined,
+                            size: 17,
+                            color: p.muted,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.root.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.type.sans(
+                                color: p.ink,
+                                size: 13,
+                                weight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -744,49 +828,67 @@ class _FolderRow extends StatelessWidget {
   final int depth;
   final bool open;
   final VoidCallback onTap;
+  final LibraryRootId rootId;
+  final ShelfSourceActions? sourceActions;
 
   const _FolderRow({
     required this.folder,
     required this.depth,
     required this.open,
     required this.onTap,
+    required this.rootId,
+    required this.sourceActions,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      hoverColor: p.accentSoft.withValues(alpha: 0.5),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(22.0 + depth * _indent, 5, 8, 5),
-        child: Row(
-          children: [
-            Icon(
-              open ? Icons.expand_more : Icons.chevron_right,
-              size: 16,
-              color: p.muted,
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              open ? Icons.folder_open_outlined : Icons.folder_outlined,
-              size: 16,
-              color: p.muted,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                folder.name,
-                overflow: TextOverflow.ellipsis,
-                style: context.type.sans(
-                  color: p.ink,
-                  size: 13,
-                  weight: FontWeight.w500,
+    final source = ShelfFolderLocation(
+      rootId: rootId,
+      relativePath: folder.path,
+    );
+    return _ShelfContextShortcuts(
+      source: source,
+      sourceActions: sourceActions,
+      child: InkWell(
+        onTap: onTap,
+        onSecondaryTapDown: (details) => _showShelfContextMenu(
+          context,
+          details.globalPosition,
+          source,
+          sourceActions,
+        ),
+        borderRadius: BorderRadius.circular(6),
+        hoverColor: p.accentSoft.withValues(alpha: 0.5),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(22.0 + depth * _indent, 5, 8, 5),
+          child: Row(
+            children: [
+              Icon(
+                open ? Icons.expand_more : Icons.chevron_right,
+                size: 16,
+                color: p.muted,
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                open ? Icons.folder_open_outlined : Icons.folder_outlined,
+                size: 16,
+                color: p.muted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  folder.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.type.sans(
+                    color: p.ink,
+                    size: 13,
+                    weight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -799,6 +901,8 @@ class _DocumentRow extends StatelessWidget {
   final double leading;
   final bool selected;
   final VoidCallback onTap;
+  final ShelfLabelMode labelMode;
+  final ShelfSourceActions? sourceActions;
 
   const _DocumentRow({
     required this.document,
@@ -806,45 +910,63 @@ class _DocumentRow extends StatelessWidget {
     this.leading = 42,
     required this.selected,
     required this.onTap,
+    required this.labelMode,
+    required this.sourceActions,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final label = labelMode == ShelfLabelMode.title
+        ? document.title
+        : document.fileName;
+    final source = ShelfDocumentLocation(document.id);
     return Tooltip(
-      message: document.fileName,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        hoverColor: p.accentSoft.withValues(alpha: 0.5),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(leading + depth * _indent, 5, 8, 5),
-          decoration: BoxDecoration(
-            color: selected ? p.accentSoft : null,
-            borderRadius: BorderRadius.circular(6),
+      message: labelMode == ShelfLabelMode.title
+          ? document.fileName
+          : document.title,
+      child: _ShelfContextShortcuts(
+        source: source,
+        sourceActions: sourceActions,
+        child: InkWell(
+          onTap: onTap,
+          onSecondaryTapDown: (details) => _showShelfContextMenu(
+            context,
+            details.globalPosition,
+            source,
+            sourceActions,
           ),
-          child: Row(
-            children: [
-              Icon(
-                document.isReadme
-                    ? Icons.auto_stories_outlined
-                    : Icons.description_outlined,
-                size: 15,
-                color: selected ? p.ink : p.muted,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  document.title,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.type.sans(
-                    color: p.ink,
-                    size: 13,
-                    weight: selected ? FontWeight.w600 : FontWeight.w400,
+          borderRadius: BorderRadius.circular(6),
+          hoverColor: p.accentSoft.withValues(alpha: 0.5),
+          child: Container(
+            padding: EdgeInsets.fromLTRB(leading + depth * _indent, 5, 8, 5),
+            decoration: BoxDecoration(
+              color: selected ? p.accentSoft : null,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  document.isReadme
+                      ? Icons.auto_stories_outlined
+                      : Icons.description_outlined,
+                  size: 15,
+                  color: selected ? p.ink : p.muted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.type.sans(
+                      color: p.ink,
+                      size: 13,
+                      weight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -857,12 +979,16 @@ class _StandaloneDocumentRow extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onRemove;
+  final ShelfLabelMode labelMode;
+  final ShelfSourceActions? sourceActions;
 
   const _StandaloneDocumentRow({
     required this.document,
     required this.selected,
     required this.onTap,
     required this.onRemove,
+    required this.labelMode,
+    required this.sourceActions,
   });
 
   @override
@@ -880,7 +1006,9 @@ class _StandaloneDocumentRowState extends State<_StandaloneDocumentRow> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Semantics(
-        label: widget.document.title,
+        label: widget.labelMode == ShelfLabelMode.title
+            ? widget.document.title
+            : widget.document.fileName,
         onDismiss: widget.onRemove,
         child: Row(
           children: [
@@ -891,6 +1019,8 @@ class _StandaloneDocumentRowState extends State<_StandaloneDocumentRow> {
                 leading: 18,
                 selected: widget.selected,
                 onTap: widget.onTap,
+                labelMode: widget.labelMode,
+                sourceActions: widget.sourceActions,
               ),
             ),
             SizedBox(
@@ -917,6 +1047,232 @@ class _StandaloneDocumentRowState extends State<_StandaloneDocumentRow> {
                   : null,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _ShelfContextCommand { reveal, copyRelativePath, copyFullPath }
+
+final class _ShelfContextShortcuts extends StatelessWidget {
+  final ShelfSourceLocation source;
+  final ShelfSourceActions? sourceActions;
+  final bool enabled;
+  final Widget child;
+
+  const _ShelfContextShortcuts({
+    required this.source,
+    required this.sourceActions,
+    this.enabled = true,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) => CallbackShortcuts(
+    bindings: enabled
+        ? {
+            const SingleActivator(LogicalKeyboardKey.contextMenu): () =>
+                _showFromKeyboard(context),
+            const SingleActivator(LogicalKeyboardKey.f10, shift: true): () =>
+                _showFromKeyboard(context),
+          }
+        : const {},
+    child: child,
+  );
+
+  void _showFromKeyboard(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final localX = box.size.width.clamp(0.0, 180.0).toDouble();
+    final position = box.localToGlobal(Offset(localX, box.size.height));
+    _showShelfContextMenu(context, position, source, sourceActions);
+  }
+}
+
+Future<void> _showShelfContextMenu(
+  BuildContext context,
+  Offset position,
+  ShelfSourceLocation source,
+  ShelfSourceActions? sourceActions,
+) async {
+  final absolutePath = sourceActions?.absolutePath(source);
+  final entries = <(_ShelfContextCommand, IconData, String)>[
+    if (absolutePath != null)
+      (
+        _ShelfContextCommand.reveal,
+        Icons.folder_open_outlined,
+        sourceActions!.revealLabel,
+      ),
+    (
+      _ShelfContextCommand.copyRelativePath,
+      Icons.short_text_outlined,
+      'Copy relative path',
+    ),
+    if (absolutePath != null)
+      (
+        _ShelfContextCommand.copyFullPath,
+        Icons.content_copy_outlined,
+        'Copy full path',
+      ),
+  ];
+  final command = await showGeneralDialog<_ShelfContextCommand>(
+    context: context,
+    barrierColor: Colors.transparent,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    transitionDuration: Duration.zero,
+    pageBuilder: (context, _, _) =>
+        _ShelfContextMenu(anchor: position, entries: entries),
+  );
+
+  try {
+    switch (command) {
+      case _ShelfContextCommand.reveal:
+        await sourceActions!.reveal(source);
+      case _ShelfContextCommand.copyRelativePath:
+        await Clipboard.setData(ClipboardData(text: source.relativePath));
+      case _ShelfContextCommand.copyFullPath:
+        await Clipboard.setData(ClipboardData(text: absolutePath!));
+      case null:
+        return;
+    }
+  } catch (_) {
+    if (!context.mounted) return;
+    final action = switch (command) {
+      _ShelfContextCommand.reveal => 'reveal this source',
+      _ShelfContextCommand.copyRelativePath ||
+      _ShelfContextCommand.copyFullPath => 'copy this path',
+      null => 'complete this command',
+    };
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(SnackBar(content: Text("Couldn't $action.")));
+  }
+}
+
+final class _ShelfContextMenu extends StatelessWidget {
+  static const width = 196.0;
+  static const itemHeight = 34.0;
+  static const _inset = 8.0;
+
+  final Offset anchor;
+  final List<(_ShelfContextCommand, IconData, String)> entries;
+
+  const _ShelfContextMenu({required this.anchor, required this.entries});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final size = MediaQuery.sizeOf(context);
+    final menuHeight = entries.length * itemHeight + 12;
+    final left = anchor.dx
+        .clamp(_inset, size.width - width - _inset)
+        .toDouble();
+    final top = anchor.dy
+        .clamp(_inset, size.height - menuHeight - _inset)
+        .toDouble();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
+    return Stack(
+      children: [
+        Positioned(
+          left: left,
+          top: top,
+          width: width,
+          child: DecoratedBox(
+            key: const ValueKey('shelf-context-menu'),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: dark ? 0.26 : 0.13),
+                  blurRadius: 22,
+                  offset: const Offset(0, 7),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: p.panel.withValues(alpha: dark ? 0.76 : 0.70),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: p.border.withValues(alpha: dark ? 0.70 : 0.82),
+                      width: 0.75,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final entry in entries)
+                          _ShelfContextMenuItem(
+                            command: entry.$1,
+                            icon: entry.$2,
+                            label: entry.$3,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+final class _ShelfContextMenuItem extends StatelessWidget {
+  final _ShelfContextCommand command;
+  final IconData icon;
+  final String label;
+
+  const _ShelfContextMenuItem({
+    required this.command,
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return SizedBox(
+      key: ValueKey('shelf-context-item-${command.name}'),
+      height: _ShelfContextMenu.itemHeight,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.of(context).pop(command),
+          borderRadius: BorderRadius.circular(7),
+          hoverColor: p.accentSoft.withValues(alpha: 0.72),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            child: Row(
+              children: [
+                Icon(icon, size: 15, color: p.muted),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.type.sans(
+                      color: p.ink,
+                      size: 13,
+                      height: 1,
+                      weight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

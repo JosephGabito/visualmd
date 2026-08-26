@@ -164,6 +164,21 @@ The ports keep both concerns out of the domain model:
 
 Their orchestration is documented in [Workspace Lifecycle](09-workspace-lifecycle.md).
 
+## ShelfSourceActions
+
+Shelf context commands need a physical path on desktop without teaching the
+domain or API what a local path looks like. `ShelfSourceActions` accepts a
+root-relative folder or document location, resolves an absolute path when the
+platform owns one, and reveals that source through the native file manager
+(`lib/application/ports/shelf_source_actions.dart`). The sample library and
+browser sources simply have no physical capability; copying the portable
+relative path still belongs to the shelf itself.
+
+Desktop resolves the opaque root through the same folder and Markdown
+registries used by scanners. A security-scoped bookmark surrounds the reveal
+operation when a Finder drop supplied one
+(`lib/infrastructure/io/desktop_shelf_source_actions.dart`).
+
 ## Possible future ports
 
 | Need | Likely port | Driven by |

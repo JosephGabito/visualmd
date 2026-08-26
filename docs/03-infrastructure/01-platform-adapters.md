@@ -3,8 +3,8 @@
 ## Purpose and boundary
 
 `PlatformAdapters` gathers everything the composition root needs from the host
-platform. Application code receives ports, API code receives plain callbacks
-and geometry, and neither learns which browser or operating system supplied
+platform. Application code receives ports, API code receives platform-neutral
+capabilities and geometry, and neither learns which browser or operating system supplied
 them (`lib/infrastructure/platform/platform_adapters.dart`).
 
 ## Present wiring
@@ -27,6 +27,7 @@ reader's private files before returning
 | File commands | empty; Flutter shortcuts remain (`lib/infrastructure/platform/platform_web.dart`) | native menu command stream (`lib/infrastructure/platform/platform_io.dart`) |
 | chrome | browser-owned (`lib/infrastructure/platform/platform_web.dart`) | draggable custom macOS top bar; native elsewhere (`lib/infrastructure/platform/platform_io.dart`) |
 | preferences and themes | localStorage, built-ins only; no folder action (`lib/infrastructure/platform/platform_web.dart`) | `ReaderFiles`, plus a callback that reveals its theme directory (`lib/infrastructure/platform/platform_io.dart`) |
+| shelf source actions | relative-path copying only; browser paths remain private (`lib/infrastructure/platform/platform_web.dart`) | Finder or Explorer reveal plus absolute local paths (`lib/infrastructure/platform/platform_io.dart`) |
 
 The composition root is the sole consumer of the complete interface. It
 routes scanners into use cases, Workspace ports into the lifecycle, commands
@@ -41,7 +42,7 @@ into the controller, and chrome callbacks into `VisualMdApp`.
 | out | pickers and drop streams | controller (`lib/main.dart`) |
 | out | `Stream<PlatformCommand>` | native command dispatch (`lib/main.dart`) |
 | out | preference strings and theme documents | startup and controller (`lib/main.dart`) |
-| out | links, chrome, and the theme-folder action | `VisualMdApp` (`lib/main.dart`) |
+| out | links, chrome, theme-folder action, and shelf source actions | `VisualMdApp` (`lib/main.dart`) |
 
 Opaque refs flow back into scanners and source-access ports. Concrete paths,
 DOM files, bookmarks, and IndexedDB handles do not cross inward.

@@ -7,6 +7,7 @@ import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
 import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/source_change_monitor.dart';
+import '../../application/ports/shelf_source_actions.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../web/browser_folder.dart';
@@ -74,6 +75,9 @@ final class _WebAdapters implements PlatformAdapters {
 
   @override
   ReaderSourcePicker? get readerSourcePicker => null;
+
+  @override
+  ShelfSourceActions? get shelfSourceActions => null;
 
   @override
   Future<FolderRef?> pickFolder() => _picker.pick();

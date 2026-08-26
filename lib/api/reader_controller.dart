@@ -29,6 +29,7 @@ import '../domain/workspace/workspace_theme.dart';
 import '../domain/workspace/workspace_id.dart';
 import '../presentation/theme/reader_theme.dart';
 import '../presentation/theme/reading_scale.dart';
+import '../presentation/shelf/shelf_label_mode.dart';
 import '../presentation/theme/theme_choice.dart';
 import '../presentation/theme/theme_registry.dart';
 import 'layout/panel_widths.dart';
@@ -98,6 +99,7 @@ final class ReaderController extends ChangeNotifier {
     ThemeChoice? themeChoice,
     ReadingScale? readingScale,
     PanelWidths? panelWidths,
+    ShelfLabelMode? shelfLabelMode,
     SourceWatchCoordinator? sourceChanges,
     Future<void> Function(String key, String value)? savePreference,
   }) : _addFolder = addFolder,
@@ -122,6 +124,7 @@ final class ReaderController extends ChangeNotifier {
        themeChoice = themeChoice ?? themes.systemPair,
        readingScale = readingScale ?? ReadingScale.comfortable,
        panelWidths = panelWidths ?? const PanelWidths(),
+       shelfLabelMode = shelfLabelMode ?? ShelfLabelMode.title,
        workspaceSession = workspaceSession {
     _sourceChangeSubscription = sourceChanges?.events.listen(
       _handleSourceSyncEvent,
@@ -163,6 +166,9 @@ final class ReaderController extends ChangeNotifier {
   /// The reader's preferred shelf and outline widths. The shell may fit these
   /// to a smaller window without changing the remembered values.
   PanelWidths panelWidths;
+
+  /// Whether shelf rows identify documents by authored title or file name.
+  ShelfLabelMode shelfLabelMode;
 
   /// A reading face named at launch, overriding whatever the theme asks for.
   /// Not persisted: it is for judging a face, not for living with one.
@@ -577,6 +583,13 @@ final class ReaderController extends ChangeNotifier {
     await rememberOutlineWidth();
   }
 
+  Future<void> chooseShelfLabelMode(ShelfLabelMode mode) async {
+    if (mode == shelfLabelMode) return;
+    shelfLabelMode = mode;
+    notifyListeners();
+    await _savePreference(shelfLabelModePreference, mode.stored);
+  }
+
   Future<void> _setScale(ReadingScale scale) async {
     if (scale == readingScale) return;
     readingScale = scale;
@@ -655,3 +668,4 @@ const textSizePreference = 'textSize';
 const paragraphsPreference = 'paragraphs';
 const shelfWidthPreference = 'shelfWidth';
 const outlineWidthPreference = 'outlineWidth';
+const shelfLabelModePreference = 'shelfLabelMode';
