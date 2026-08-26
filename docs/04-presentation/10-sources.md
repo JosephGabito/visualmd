@@ -598,6 +598,26 @@ the page-level
 keeps cell text in the same selectable surface as the surrounding document
 (`lib/api/render/document_view.dart`, `lib/api/widgets/reading_pane.dart`).
 
+[CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/#html-blocks) treats an
+HTML block as raw source and separately defines
+[raw inline HTML](https://spec.commonmark.org/0.31.2/#raw-html). That grammar
+recognises syntax; it does not make arbitrary HTML appropriate for a native
+reading surface. Formal GFM adds the
+[tagfilter extension](https://github.github.com/gfm/#disallowed-raw-html-extension-),
+which singles out tags such as `script`, `style`, `iframe`, and `textarea`
+because they change parsing or embed another surface. Visual MD uses that list
+as its minimum danger boundary: safe containers contribute only readable text,
+comments remain authoring notes, and dangerous tags are displayed as inert
+source rather than executed or silently flattened
+(`lib/infrastructure/markdown/safe_html_text.dart`).
+
+The boundary is structural, not a sanitizer bolted onto a WebView. The
+`package:html` fragment parser builds an inert Dart tree inside infrastructure;
+no DOM node, attribute, CSS declaration, event handler or URL reaches the
+domain or Flutter API. GitHub-supported meanings such as `sub`, `sup`, `ins`,
+custom anchors and `picture` remain separate follow-on contracts rather than a
+reason to admit arbitrary HTML.
+
 ## Accessibility standards
 
 WCAG 2.2 requires at least 4.5:1 contrast for ordinary text and asks reading
