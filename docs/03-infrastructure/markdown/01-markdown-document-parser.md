@@ -68,9 +68,20 @@ paragraph, so the item's whole subtree is searched
 (`lib/infrastructure/markdown/markdown_document_parser.dart`); the `input` itself is then dropped from the runs, because the
 item already carries its state (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
-**Tables.** Alignment is read from the cell's `align` attribute, with a
-fallback that parses a `style` in case another syntax ever emits one
-(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+**Tables.** Formal GFM permits omitted or inconsistent outer pipes and trims
+formatting space beside each separator. The dependency establishes that
+structure before the adapter maps the header, zero or more body rows, and every
+cell's inline content. An escaped pipe therefore remains authored text even
+inside code or emphasis, while emphasis, links and code cross the boundary as
+their normal domain runs rather than exposed notation. Short rows are padded
+to the header width and excess cells are discarded by the grammar. Alignment
+is read from the cell's `align` attribute, with a fallback that parses a
+`style` in case another syntax ever emits one
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). Left and right
+remain physical GFM instructions rather than logical start and end: an Arabic
+cell does not reverse the alignment the delimiter row authored
+(`lib/domain/reading/content/block.dart`,
+`lib/api/render/document_view.dart`).
 
 **Mermaid.** A fenced block whose language is exactly `mermaid` becomes a
 `MermaidBlock`; its body is not interpreted by this adapter. Removing only the

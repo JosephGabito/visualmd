@@ -135,12 +135,16 @@ final class TableCell {
   final List<Inline> content;
   final ColumnAlignment alignment;
 
-  const TableCell(this.content, {this.alignment = ColumnAlignment.start});
+  const TableCell(this.content, {this.alignment = ColumnAlignment.left});
 
   String get text => content.map((c) => c.text).join();
 }
 
-enum ColumnAlignment { start, center, end }
+/// Physical alignment authored by the GFM delimiter row.
+///
+/// Unlike prose alignment, these values do not follow reading direction:
+/// `:---` means left even when a particular cell contains right-to-left text.
+enum ColumnAlignment { left, center, right }
 
 final class RuleBlock extends Block {
   const RuleBlock();
