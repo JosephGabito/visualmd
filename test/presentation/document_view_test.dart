@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide TableCell;
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/render/document_view.dart';
@@ -11,6 +12,18 @@ import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
+
+Iterable<SemanticsNode> semanticsDescendants(SemanticsNode node) sync* {
+  final children = <SemanticsNode>[];
+  node.visitChildren((child) {
+    children.add(child);
+    return true;
+  });
+  for (final child in children) {
+    yield child;
+    yield* semanticsDescendants(child);
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -836,6 +849,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a header-only one-column table remains visible', (tester) async {
+    await pumpDocument(tester, [
+      const TableBlock(
+        head: [
+          TableCell([TextRun('Only column')]),
+        ],
+        rows: [],
+      ),
+    ]);
+
+    expect(find.byType(Table), findsOneWidget);
+    expect(find.text('Only column'), findsOneWidget);
+    expect(tester.getSize(find.byType(Table)).height, greaterThan(0));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('table cells keep the alignment the author assigned', (
     tester,
   ) async {
@@ -971,5 +1000,83 @@ void main() {
       isTrue,
       reason: 'the reader needs a visible sign that more columns follow',
     );
+  });
+
+  testWidgets('many extremely uneven columns overflow only inside the table', (
+    tester,
+  ) async {
+    const longValue =
+        'This deliberately long research note must retain a readable local '
+        'measure while nine short identifier columns remain compact.';
+    await pumpDocument(tester, [
+      TableBlock(
+        head: [
+          for (var column = 1; column <= 10; column++)
+            TableCell([TextRun('C$column')]),
+        ],
+        rows: [
+          [
+            for (var column = 1; column < 10; column++)
+              TableCell([TextRun('$column')]),
+            const TableCell([TextRun(longValue)]),
+          ],
+        ],
+      ),
+    ], width: 360);
+
+    final horizontal = tester
+        .widgetList<SingleChildScrollView>(find.byType(SingleChildScrollView))
+        .singleWhere((view) => view.scrollDirection == Axis.horizontal);
+    expect(horizontal.controller!.position.maxScrollExtent, greaterThan(0));
+    expect(tester.getSize(find.byType(DocumentView)).width, 360);
+    expect(
+      tester.getSize(find.byType(Table)).width,
+      greaterThan(tester.getSize(find.byType(DocumentView)).width),
+      reason: 'the two-dimensional shape belongs to the local scroller',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('table numbers use tabular lining figures and expose structure', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpDocument(tester, [
+      const TableBlock(
+        head: [
+          TableCell([TextRun('Metric')]),
+          TableCell([TextRun('Value')]),
+        ],
+        rows: [
+          [
+            TableCell([TextRun('Revenue')]),
+            TableCell([TextRun('1,234.50')]),
+          ],
+        ],
+      ),
+    ]);
+
+    final numeric = tester.widget<Text>(find.text('1,234.50'));
+    final numericSpan =
+        (numeric.textSpan! as TextSpan).children!.single as TextSpan;
+    expect(
+      numericSpan.style!.fontFeatures,
+      containsAll(const [
+        FontFeature.liningFigures(),
+        FontFeature.tabularFigures(),
+      ]),
+      reason: 'columns compare quantities by position, not prose figures',
+    );
+    final table = tester.getSemantics(find.byType(Table));
+    final tableRoles = semanticsDescendants(table).map((node) => node.role);
+    expect(table.role, SemanticsRole.table);
+    expect(tableRoles, contains(SemanticsRole.row));
+    expect(
+      tester.getSemantics(find.text('Metric')).role,
+      SemanticsRole.columnHeader,
+    );
+    expect(tableRoles, contains(SemanticsRole.cell));
+
+    semantics.dispose();
   });
 }

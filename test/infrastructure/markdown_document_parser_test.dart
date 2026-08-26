@@ -1463,6 +1463,16 @@ still visible
   });
 
   group('a table', () {
+    test('one column and no body rows remain a complete table', () {
+      final table = single<TableBlock>('''
+| Only column |
+| --- |
+''');
+
+      expect(table.head.map((cell) => cell.text), ['Only column']);
+      expect(table.rows, isEmpty);
+    });
+
     test('outer pipes and source spacing never change the cell structure', () {
       final table = single<TableBlock>('''
 | abc | defghi |

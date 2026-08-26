@@ -106,6 +106,15 @@ Each block type is built by `_BlockView`
   direction independently, because adjacent languages need not share an edge
   (`lib/api/render/document_view.dart`,
   `lib/api/render/reading_theme.dart`).
+  Header-only and one-column tables remain tables; wide and extremely uneven
+  shapes keep their own horizontal scroller rather than widening the page.
+  Numeric cells use lining tabular figures. Flutter contributes table, row and
+  cell semantics, and Visual MD marks the authored head as column headers. The
+  surrounding reading pane keeps every cell selectable. `TableBlock.text`
+  separately preserves rows as newlines and cell boundaries as tabs for search
+  and source offsets; structured cross-cell clipboard output remains open
+  (`lib/domain/reading/content/block.dart`,
+  `lib/api/widgets/reading_pane.dart`).
 - **Rule** — a centred one-pixel divider in the quiet border tone, constrained
   to the prose measure inside a box exactly one beat tall, so prose after it
   returns to the grid. A non-interactive semantics node names the structure
@@ -159,8 +168,9 @@ A short table row is padded rather than throwing
 (`lib/api/render/document_view.dart`), and a `RawBlock` shows its
 words (`lib/api/render/document_view.dart`).
 
-`test/presentation/document_view_test.dart` covers column widths and table
-overflow, multiline geometry at all six heading levels, scaled mixed-script
+`test/presentation/document_view_test.dart` covers degenerate and extreme table
+shapes, local overflow, numeric figures and table semantics; multiline geometry
+at all six heading levels, scaled mixed-script
 and unbreakable headings, heading-level semantics and authored direction for
 paragraphs, lists and table cells,
 thematic-break geometry and semantics, rhythm through rules and lists, tonal
