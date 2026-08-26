@@ -170,8 +170,9 @@ cannot map becomes a `RawBlock` rather than being discarded, and an empty
 document is
 `DocumentContent.empty` (`lib/domain/reading/content/document_content.dart`)
 — an empty page rather than an exception. Empty content is tested at
-`test/infrastructure/markdown_document_parser_test.dart`; direct
-coverage of the raw fallback remains listed in [Invariants](04-invariants.md).
+`test/infrastructure/markdown_document_parser_test.dart`; the same suite and
+`test/infrastructure/safe_html_text_test.dart` directly exercise safe raw
+fallback, comments and dangerous HTML source.
 
 ## Transition
 

@@ -20,6 +20,138 @@ T single<T extends Block>(String markdown) {
 }
 
 void main() {
+  group('raw HTML safety', () {
+    test('inline containers keep words without carrying tag attributes', () {
+      final paragraph = single<ParagraphBlock>(
+        'Before <span onclick="run()">safe <b>words</b></span> after.',
+      );
+
+      expect(paragraph.text, 'Before safe words after.');
+      expect(paragraph.text, isNot(contains('onclick')));
+      expect(paragraph.text, isNot(contains('<span')));
+    });
+
+    test('inline and block comments stay outside reading content', () {
+      expect(
+        single<ParagraphBlock>('Before<!-- hidden --> after.').text,
+        'Before after.',
+      );
+      expect(parse('<!-- hidden block -->').blocks, isEmpty);
+    });
+
+    test('an HTML block becomes inert readable text', () {
+      final raw = single<RawBlock>('''
+<div onclick="run()">
+  A raw block keeps its meaningful
+  words without its behavior.
+</div>
+''');
+
+      expect(
+        raw.text,
+        'A raw block keeps its meaningful words without its behavior.',
+      );
+      expect(raw.text, isNot(contains('onclick')));
+    });
+
+    test('an HTML block remains inside its authored container', () {
+      final list = single<ListBlock>('''
+- Before.
+
+  <div>
+    Nested raw words.
+  </div>
+''');
+
+      expect(list.items.single.blocks, hasLength(2));
+      expect(list.items.single.blocks.last, isA<RawBlock>());
+      expect(list.items.single.text, 'Before.\nNested raw words.');
+    });
+
+    test('a dangerous HTML block keeps exact source inside a container', () {
+      const source = '<script>*never parse this*</script>';
+      final list = single<ListBlock>('''
+- Before.
+
+  $source
+''');
+
+      final raw = list.items.single.blocks.last as RawBlock;
+      expect(raw.text, source);
+    });
+
+    test('GFM-disallowed tags remain visible but inert', () {
+      const source = '<script>alert("never run");</script>';
+      final raw = single<RawBlock>(source);
+
+      expect(raw.text, source);
+      expect(raw.text, contains('alert'));
+
+      final inline = single<ParagraphBlock>('Before $source after.');
+      expect(inline.text, 'Before $source after.');
+
+      const marked = '<script>*alert*</script>';
+      expect(
+        single<ParagraphBlock>('Before $marked after.').text,
+        'Before $marked after.',
+      );
+    });
+
+    test('block directives remain visible rather than becoming comments', () {
+      for (final source in [
+        '<?php echo "safe"; ?>',
+        '<!DOCTYPE html>',
+        '<![CDATA[<raw>content</raw>]]>',
+      ]) {
+        expect(single<RawBlock>(source).text, source);
+      }
+    });
+
+    test('adjacent HTML blocks keep independent safety policies', () {
+      final commentThenDirective = single<RawBlock>('''
+<!-- hidden -->
+<?php echo "visible"; ?>
+''');
+      expect(commentThenDirective.text, '<?php echo "visible"; ?>');
+
+      final safeThenDangerous = single<RawBlock>('''
+<div data-secret="gone">Safe words.</div>
+<script>*exact source*</script>
+''');
+      expect(
+        safeThenDangerous.text,
+        'Safe words.\n<script>*exact source*</script>',
+      );
+    });
+
+    test('protected blocks survive select and table parsing contexts', () {
+      final select = single<RawBlock>('''
+<select>
+  <option>Before</option>
+  <script>inside select</script>
+  <option>After</option>
+</select>
+''');
+      expect(select.text, 'Before\n<script>inside select</script>\nAfter');
+
+      final table = single<RawBlock>('''
+<table>
+  <script>inside table</script>
+  <tbody><tr><td>After</td></tr></tbody>
+</table>
+''');
+      expect(table.text, '<script>inside table</script>\nAfter');
+    });
+
+    test('inline structural tags separate the words around them', () {
+      final paragraph = single<ParagraphBlock>(
+        'one<br>two<div>three</div>four',
+      );
+
+      expect(paragraph.text, 'one\ntwo\nthree\nfour');
+    });
+  });
+
   group('a paragraph', () {
     test('carries its marks as runs, in order', () {
       final paragraph = single<ParagraphBlock>(

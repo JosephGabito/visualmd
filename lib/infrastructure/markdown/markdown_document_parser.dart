@@ -6,6 +6,7 @@ import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
 import '../../domain/reading/content/inline.dart';
 import '../../domain/reading/heading_anchor.dart';
+import 'safe_html_text.dart';
 
 /// Adapter: turns markdown source into the domain's blocks.
 ///
@@ -27,9 +28,11 @@ final class MarkdownDocumentParser implements DocumentParser {
       inlineSyntaxes: [
         _InlineMathSyntax(),
         _LiteralAngleAutolinkNearMissSyntax(),
+        _DisallowedRawHtmlInlineSyntax(),
+        _RawHtmlInlineSyntax(),
         _LiteralLongTildeRunSyntax(),
       ],
-      blockSyntaxes: const [_DisplayMathBlockSyntax()],
+      blockSyntaxes: const [_DisplayMathBlockSyntax(), _RawHtmlBlockSyntax()],
       extensionSet: md.ExtensionSet.gitHubFlavored,
       // The reader draws text, not HTML: escaping it here would put `&amp;`
       // on the page.
@@ -53,6 +56,30 @@ final class MarkdownDocumentParser implements DocumentParser {
       }
     }
     return source;
+  }
+}
+
+/// Claims CommonMark HTML blocks before the package reduces them to text.
+///
+/// The source remains a typed adapter node until [_Mapper] can apply Visual
+/// MD's safe-reading rule. No HTML-shaped object crosses into the domain.
+final class _RawHtmlBlockSyntax extends md.HtmlBlockSyntax {
+  const _RawHtmlBlockSyntax();
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    var source = parseChildLines(parser)
+        .map((line) => line.content)
+        .join('\n')
+        .trimRight();
+    // Preserve HtmlBlockSyntax's container sentinels. The dependency uses
+    // these newlines to keep a raw block distinct from adjacent list-item
+    // content while its recursive parser is still assembling the container.
+    if (parser.previousSyntax != null || parser.parentSyntax != null) {
+      source = '\n$source';
+      if (parser.parentSyntax is md.ListSyntax) source = '$source\n';
+    }
+    return md.Element.text('raw-html-block', source);
   }
 }
 
@@ -235,6 +262,71 @@ final class _LiteralAngleAutolinkNearMissSyntax extends md.InlineSyntax {
   bool onMatch(md.InlineParser parser, Match match) => false;
 }
 
+/// Keeps each raw HTML token distinguishable from authored prose.
+///
+/// `package:markdown` normally emits these tokens as ordinary text. Once
+/// merged with neighbouring words the adapter cannot hide comments, discard
+/// attributes, or distinguish an inert container from a dangerous tag.
+final class _RawHtmlInlineSyntax extends md.InlineSyntax {
+  _RawHtmlInlineSyntax()
+    : super(md.InlineHtmlSyntax().pattern.pattern, startCharacter: 0x3c);
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('raw-html-inline', match[0]!));
+    return true;
+  }
+}
+
+/// Claims a complete GFM-tagfiltered inline element as authored source.
+///
+/// Protecting only its opening and closing tags would leave Markdown between
+/// them active: `<script>*value*</script>` would silently lose its asterisks.
+/// Raw-text elements cannot meaningfully nest themselves, so the first matching
+/// close tag is the complete inert unit. An unclosed tag remains a token and
+/// the ordinary parser retains the following prose.
+final class _DisallowedRawHtmlInlineSyntax extends md.InlineSyntax {
+  static final _openingTag = RegExp(
+    r'^<\s*([A-Za-z][A-Za-z0-9-]*)\b',
+    caseSensitive: false,
+  );
+
+  _DisallowedRawHtmlInlineSyntax() : super(r'<', startCharacter: 0x3c);
+
+  @override
+  bool tryMatch(md.InlineParser parser, [int? startMatchPos]) {
+    final start = startMatchPos ?? parser.pos;
+    final token = md.InlineHtmlSyntax().pattern.matchAsPrefix(
+      parser.source,
+      start,
+    );
+    if (token == null || token[0]!.startsWith('</')) return false;
+
+    final name = _openingTag.firstMatch(token[0]!)?[1]?.toLowerCase();
+    if (name == null || !SafeHtmlText.disallowedTags.contains(name)) {
+      return false;
+    }
+
+    final close = RegExp(
+      '</\\s*${RegExp.escape(name)}\\s*>',
+      caseSensitive: false,
+    ).firstMatch(parser.source.substring(token.end));
+    if (close == null) return false;
+
+    final end = token.end + close.end;
+    parser
+      ..writeText()
+      ..addNode(
+        md.Element.text('raw-html-inline', parser.source.substring(start, end)),
+      )
+      ..consume(end - start);
+    return true;
+  }
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) => false;
+}
+
 /// Keeps GFM's ineligible long tilde runs out of the delimiter stack.
 final class _LiteralLongTildeRunSyntax extends md.InlineSyntax {
   _LiteralLongTildeRunSyntax() : super(r'~{3,}', startCharacter: 0x7e);
@@ -267,6 +359,7 @@ final class _Mapper {
     'hr',
     'section',
     'math',
+    'raw-html-block',
   };
 
   List<Block> blocks(List<md.Node>? nodes) {
@@ -338,10 +431,30 @@ final class _Mapper {
       case 'section':
         return blocks(element.children);
 
+      case 'raw-html-block':
+        return switch (SafeHtmlText.block(
+          _rawHtmlSource(element.textContent),
+        )) {
+          final text? => [RawBlock(text)],
+          null => const [],
+        };
+
       default:
         final text = element.textContent;
         return text.trim().isEmpty ? const [] : [RawBlock(text)];
     }
+  }
+
+  /// Removes only the container sentinels added by [_RawHtmlBlockSyntax].
+  ///
+  /// A source block begins on its tag line, so a leading newline cannot be
+  /// authored here. The optional final newline is likewise the list parser's
+  /// separator; `HtmlBlockSyntax` had already removed authored trailing space.
+  static String _rawHtmlSource(String text) {
+    var source = text;
+    if (source.startsWith('\n')) source = source.substring(1);
+    if (source.endsWith('\n')) source = source.substring(0, source.length - 1);
+    return source;
   }
 
   Block _verbatimBlock(md.Element pre) {
@@ -533,6 +646,16 @@ final class _Mapper {
 
         case md.Element(tag: 'br'):
           runs.add(const LineBreakRun());
+
+        case md.Element(tag: 'raw-html-inline'):
+          switch (SafeHtmlText.inline(node.textContent)) {
+            case HiddenInlineHtml():
+              continue;
+            case VisibleInlineHtml(:final source):
+              runs.add(TextRun(source));
+            case BreakInlineHtml():
+              runs.add(const LineBreakRun());
+          }
 
         case md.Element(tag: 'input'):
           // The list item already carries its own tick.

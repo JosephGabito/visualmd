@@ -20,6 +20,13 @@ later in [Presentation](../../04-presentation/README.md)
 `encodeHtml: false` — the reader draws text, not HTML, and escaping here would
 put `&amp;` on the page
 (`lib/infrastructure/markdown/markdown_document_parser.dart`). A Visual MD-owned
+block syntax preserves raw HTML as a typed adapter node before the dependency
+can merge it into prose; matching inline syntaxes preserve harmless tag and
+comment tokens as well as complete tagfiltered elements. `SafeHtmlText` then
+reduces those nodes to inert reading text without allowing a DOM object,
+attribute, style, event handler or executable URL across the infrastructure boundary
+(`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`lib/infrastructure/markdown/safe_html_text.dart`). A Visual MD-owned
 inline syntax claims runs of three or more tildes before the dependency's
 delimiter resolver can consume a shorter pair from them; formal GFM makes that
 complete run literal (`lib/infrastructure/markdown/markdown_document_parser.dart`). The nodes
@@ -47,6 +54,7 @@ one by one (`lib/infrastructure/markdown/markdown_document_parser.dart`):
 | `table` | `TableBlock` | `thead` rows become the head, the rest the body (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `hr` | `RuleBlock` | (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `section` | *unwrapped* | How footnote definitions arrive; only a wrapper (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `raw-html-block` | `RawBlock` or nothing | Safe containers contribute readable words, comments disappear, and dangerous tags remain visible as inert authored source (`lib/infrastructure/markdown/safe_html_text.dart`) |
 | anything else | `RawBlock` | Its words survive even though its markup does not (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 
 **Thematic breaks.** CommonMark's asterisk, hyphen and underscore forms all
@@ -226,6 +234,20 @@ An element with no shape of its own — `sup`, inline HTML, a footnote reference
 — has its children kept even though its markup is dropped
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+**Raw HTML is syntax, never a browser surface.** CommonMark raw blocks and
+inline tokens are claimed before `package:markdown` can make them
+indistinguishable from prose. Harmless container tags and every attribute are
+discarded while their readable descendants remain in source order. Comments
+carry authoring information rather than reading content and therefore produce
+nothing. The GFM tagfilter set — including `script`, `style`, `iframe` and
+`textarea` — remains visible as exact inert source instead of being flattened
+into a misleading payload. Safe malformed markup follows the HTML5 fragment
+parser's recovery rules and contributes the readable words it can recover; an
+unexpected parser failure falls back to visible source rather than escaping the
+adapter. No HTML parser object crosses into the domain or Flutter API
+(`lib/infrastructure/markdown/safe_html_text.dart`,
+`test/infrastructure/safe_html_text_test.dart`).
+
 A `code` run receives the content already normalised by the
 [CommonMark code-span rules](https://spec.commonmark.org/0.31.2/#code-spans):
 its closing delimiter must match the opening backtick run, line endings become
@@ -254,9 +276,11 @@ remains a paragraph instead of swallowing the remainder of the document
 | In | `String markdown` | Any source; line endings normalised while front matter is stripped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | Out | `DocumentContent` | Blocks in source order |
 
-May import: `package:markdown`, the port, and the domain
-(`lib/infrastructure/markdown/markdown_document_parser.dart`). No Flutter,
-no `dart:io` — this adapter reads no bytes, only meaning.
+May import: `package:markdown`, the inert `package:html` fragment parser, the
+port, and the domain (`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`lib/infrastructure/markdown/safe_html_text.dart`). No Flutter, no `dart:io` —
+this adapter reads no bytes and mounts no browser surface; it only carries
+meaning inward.
 
 ## Events
 
@@ -277,7 +301,8 @@ All per-document state lives on the `_Mapper` created inside `parse`
 It does not throw. Markup with no mapping becomes `RawBlock`
 (`lib/infrastructure/markdown/markdown_document_parser.dart`); an
 unmapped inline keeps its words (`lib/infrastructure/markdown/markdown_document_parser.dart`); an empty document yields no
-blocks.
+blocks. Raw HTML fragment failure follows the same contract and returns inert
+source (`lib/infrastructure/markdown/safe_html_text.dart`).
 
 The adapter does not validate TeX. A syntactically complete math delimiter can
 still contain notation unsupported by the page's renderer; preserving it as a
@@ -324,7 +349,8 @@ node while the empty label creates no invisible action.
 
 ## Transition
 
-The clearest extension points are footnotes, which currently arrive as an unwrapped
-`section`, and inline HTML, which keeps its words but loses its markup. Both
-would be new domain shapes first and mapping here second — the order matters,
-because the model is what the renderer is written against.
+The clearest extension points are footnotes, which currently arrive as an
+unwrapped `section`, and HTML meanings such as subscript, anchors and responsive
+images. The safety boundary deliberately does not infer those meanings from a
+generic tag: each becomes a domain shape first and a mapping here second — the
+order matters, because the model is what the renderer is written against.
