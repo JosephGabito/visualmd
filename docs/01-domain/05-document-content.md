@@ -48,7 +48,8 @@ internal spacing remain authored while source-formatting soft breaks have
 already become reading text and backslash escapes have become their literal
 ASCII punctuation, `CodeRun`
 (verbatim, never re-set — `lib/domain/reading/content/inline.dart`), `MarkedRun` carrying one of
-`InlineMark.emphasis | strong | strikethrough` over its children (`lib/domain/reading/content/inline.dart`),
+`InlineMark.emphasis | strong | strikethrough | subscript | superscript |
+insertion` over its children (`lib/domain/reading/content/inline.dart`),
 `MathRun` carrying exact inline TeX, `LinkRun`
 (`lib/domain/reading/content/inline.dart`), `ImageRun`
 (`lib/domain/reading/content/inline.dart`) and `LineBreakRun`, which is only
@@ -106,6 +107,14 @@ GFM's `~correction~` and `~~correction~~` likewise become one
 notation and therefore remain authored reading text. The model records the
 editorial meaning without deciding whether the page dims, colours or crosses
 the words (`lib/domain/reading/content/inline.dart`).
+
+GitHub's safe inline HTML writing forms also become marks rather than raw
+tags. Paired `sub`, `sup`, and `ins` containers keep recursive Markdown
+children as `subscript`, `superscript`, and `insertion`; attributes and tag
+spelling are adapter detail. An unmatched or improperly nested tag has no
+authority to restyle later prose, so its readable children remain unmarked
+(`lib/domain/reading/content/inline.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 Marks remain recursive rather than being flattened. `***important***` is an
 emphasis run containing a strong run, while `**important with _voice_ inside**`

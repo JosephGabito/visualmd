@@ -32,9 +32,9 @@ Each run becomes a span (`lib/api/render/inline_composer.dart`):
 | Run | Becomes |
 |-----|---------|
 | `TextRun` | A `TextSpan` whose text has been set (`lib/api/render/inline_composer.dart`) |
-| `CodeRun` | A selectable `InlineCodeSpan` in the surrounding role, set verbatim in contrast-safe accent mono and never underlined (`lib/api/render/inline_composer.dart`) |
+| `CodeRun` | Selectable verbatim text in contrast-safe accent mono; it rejects a link's decoration but retains authored insertion, subscript and superscript marks (`lib/api/render/inline_composer.dart`) |
 | `MathRun` | A baseline-aligned `MathInlineSpan`, optically sized to the surrounding role and flattening back to authored TeX for copying (`lib/api/render/inline_composer.dart`) |
-| `MarkedRun` | Italic, weight 700, or one inherited-ink line through the text — one signal for each meaning (`lib/api/render/inline_composer.dart`) |
+| `MarkedRun` | Italic, weight 700, deletion or insertion lines, or the face's designed subscript and superscript glyphs — one signal for each meaning (`lib/api/render/inline_composer.dart`) |
 | `LinkRun` | `linkFor(base)`, which preserves the complete heading, table or marked style and adds only link colour, underline and interaction (`lib/api/render/inline_composer.dart`) |
 | `ImageRun` | A `DocumentImage` widget when the source is remote or a document loader is present; otherwise its alternative in `muted` (`lib/api/render/inline_composer.dart`) |
 | `LineBreakRun` | One selectable newline in the surrounding style; no widget, extra gap or source marker (`lib/api/render/inline_composer.dart`) |
@@ -46,7 +46,9 @@ size
 (`lib/api/render/reading_theme.dart`). Code is never promoted to an embedded
 widget: the text remains in the paragraph's selectable, copyable and reflowable
 span tree. Mono and code colour identify it; reserving the underline for actual
-links keeps that interaction promise unambiguous.
+links keeps that interaction promise unambiguous. An `ins` container is the
+explicit exception: its underline is authored meaning, so it remains present
+when its recursive child is inline code.
 Even an unbroken identifier stays in that flow and wraps inside a narrow
 reading column (`test/presentation/inline_composer_test.dart`).
 The explicit span type also stops widow binding from rewriting source text at
@@ -159,6 +161,30 @@ The words remain ordinary selectable and accessible text. Search background
 can paint either spelling without replacing the line-through or supplying a
 semantics label, and a long deleted passage may reflow while every line returns
 to the prose baseline grid (`test/presentation/inline_composer_test.dart`,
+`test/presentation/paragraph_setting_test.dart`).
+
+### Scientific and inserted text
+
+`InlineMark.subscript` and `InlineMark.superscript` add the OpenType `subs` or
+`sups` feature to the complete surrounding style. The bundled reading faces
+provide those substitutions, so the result uses glyphs drawn for the role
+instead of a scaled and manually shifted widget. Font size, leading, colour,
+selection, semantics, nested Markdown roles, and the prose baseline grid stay
+unchanged (`lib/api/render/inline_composer.dart`).
+
+The bundled-font contract is checked from each font's own GSUB table
+(`test/presentation/bundled_scientific_feature_test.dart`). A custom theme may
+name any Google Fonts family, so its author must choose a serif and mono face
+that also provides `subs` and `sups`; a face without those substitutions keeps
+the affected glyph on the ordinary baseline.
+
+`InlineMark.insertion` adds one inherited-ink underline. GitHub documents
+`ins` as underline, while a link retains the stronger interaction pair of an
+accent colour and underline. Decorations combine when marks nest, so insertion
+inside deletion does not erase either authored meaning. All three marks remain
+ordinary selectable and searchable text
+(`lib/api/render/inline_composer.dart`,
+`test/presentation/inline_composer_test.dart`,
 `test/presentation/paragraph_setting_test.dart`).
 
 ### Setting the punctuation

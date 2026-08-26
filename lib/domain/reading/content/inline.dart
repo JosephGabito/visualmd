@@ -62,8 +62,7 @@ final class MathRun extends Inline {
   int get hashCode => source.hashCode;
 }
 
-/// A run that carries a mark — emphasis, strength, a strikethrough — over
-/// the runs inside it.
+/// A run that carries a reading mark over the runs inside it.
 final class MarkedRun extends Inline {
   final InlineMark mark;
   final List<Inline> children;
@@ -74,7 +73,14 @@ final class MarkedRun extends Inline {
   String get text => children.map((c) => c.text).join();
 }
 
-enum InlineMark { emphasis, strong, strikethrough }
+enum InlineMark {
+  emphasis,
+  strong,
+  strikethrough,
+  subscript,
+  superscript,
+  insertion,
+}
 
 final class LinkRun extends Inline {
   final String href;

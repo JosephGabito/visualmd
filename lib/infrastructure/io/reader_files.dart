@@ -196,6 +196,11 @@ that built-in — that is how you tweak one of the shipped themes.
 | `palette.selection` | Optional. Text selection. Derived from the accent when absent. |
 | `typefaces` | Optional. Any Google Fonts family name; an unknown name falls back to the library's own. |
 
+Scientific `sub` and `sup` text uses each face's OpenType `subs` and `sups`
+features. The bundled faces provide both. When choosing a custom serif or mono
+family, choose one that provides those features too; a face without them leaves
+the affected glyphs on the ordinary baseline.
+
 Colours accept `#rgb`, `#rrggbb` or `#rrggbbaa`, with or without the `#`.
 
 A file that is not valid JSON, or that is missing a required field, is skipped.

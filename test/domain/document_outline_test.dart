@@ -211,6 +211,23 @@ Text.
       ]);
     });
 
+    test('safe inline HTML contributes words but not tags to headings', () {
+      final headings = DocumentOutline.parse('''
+# H<sub>2</sub>O and x<sup>2</sup>
+
+## <ins>Current **wording**</ins>
+''').tableOfContents.headings;
+
+      expect(headings.map((heading) => heading.text), [
+        'H2O and x2',
+        'Current wording',
+      ]);
+      expect(headings.map((heading) => heading.anchor), [
+        'h2o-and-x2',
+        'current-wording',
+      ]);
+    });
+
     test('malformed references and literal regions remain untouched', () {
       final heading = DocumentOutline.parse(
         '# &MadeUpEntity; &copy and '

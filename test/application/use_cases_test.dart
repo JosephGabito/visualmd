@@ -589,6 +589,31 @@ void main() {
     }
   });
 
+  test('the outline and page agree on safe inline HTML words', () {
+    const sources = [
+      'H<sub>2</sub>O',
+      'x<sup>2 and **strong**</sup>',
+      '<ins>current _wording_</ins>',
+    ];
+    const parser = MarkdownDocumentParser();
+
+    for (var index = 0; index < sources.length; index++) {
+      final markdown = '# ${sources[index]}';
+      final document = Document(
+        id: DocumentId(
+          const LibraryRootId('semantic-html-corpus'),
+          'case-$index.md',
+        ),
+        content: markdown,
+      );
+      final outline = document.outline.tableOfContents.headings.single;
+      final page = parser.parse(markdown).headings.single;
+
+      expect(outline.text, page.text, reason: sources[index]);
+      expect(outline.anchor, page.anchor, reason: sources[index]);
+    }
+  });
+
   test('ReadDocument fails clearly without a library or document', () async {
     final repo = FakeRepository();
     final useCase = ReadDocument(

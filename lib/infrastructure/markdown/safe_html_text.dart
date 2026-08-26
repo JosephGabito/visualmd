@@ -94,6 +94,12 @@ abstract final class SafeHtmlText {
     caseSensitive: false,
   );
 
+  static const _semanticInlineTags = {
+    'sub': SafeInlineHtmlMark.subscript,
+    'sup': SafeInlineHtmlMark.superscript,
+    'ins': SafeInlineHtmlMark.insertion,
+  };
+
   /// Classifies one raw inline token by what it contributes to reading.
   ///
   /// Ordinary open and close tags are formatting syntax. Their text lives in
@@ -105,6 +111,13 @@ abstract final class SafeHtmlText {
     final name = _tagName.firstMatch(source)?[1]?.toLowerCase();
     if (name != null && disallowedTags.contains(name)) {
       return VisibleInlineHtml(source);
+    }
+    final mark = _semanticInlineTags[name];
+    if (mark != null && !RegExp(r'/\s*>$').hasMatch(source)) {
+      return SemanticInlineHtml(
+        mark: mark,
+        closing: RegExp(r'^<\s*/').hasMatch(source),
+      );
     }
 
     // Processing instructions, declarations and CDATA are not reading marks.
@@ -327,6 +340,16 @@ final class VisibleInlineHtml extends InlineHtmlReading {
 final class BreakInlineHtml extends InlineHtmlReading {
   const BreakInlineHtml();
 }
+
+/// One safe GitHub writing mark whose attributes have already been discarded.
+final class SemanticInlineHtml extends InlineHtmlReading {
+  const SemanticInlineHtml({required this.mark, required this.closing});
+
+  final SafeInlineHtmlMark mark;
+  final bool closing;
+}
+
+enum SafeInlineHtmlMark { subscript, superscript, insertion }
 
 /// Collapses source formatting whitespace without changing punctuation edges.
 ///

@@ -587,30 +587,33 @@ final class _Mapper {
   }
 
   List<Inline> _inlines(List<md.Node>? nodes, _InlineLineBreaks lineBreaks) {
-    final runs = <Inline>[];
+    final frames = <_InlineFrame>[_InlineFrame()];
+
+    void add(Inline run) => frames.last.runs.add(run);
+
     for (final node in nodes ?? const <md.Node>[]) {
       switch (node) {
         case md.Text():
-          runs.add(TextRun(lineBreaks.textFor(node)));
+          add(TextRun(lineBreaks.textFor(node)));
 
         case md.Element(tag: 'code'):
-          runs.add(CodeRun(node.textContent));
+          add(CodeRun(node.textContent));
 
         case md.Element(tag: 'math'):
-          runs.add(MathRun(node.textContent));
+          add(MathRun(node.textContent));
 
         case md.Element(tag: 'em'):
-          runs.add(
+          add(
             MarkedRun(InlineMark.emphasis, _inlines(node.children, lineBreaks)),
           );
 
         case md.Element(tag: 'strong'):
-          runs.add(
+          add(
             MarkedRun(InlineMark.strong, _inlines(node.children, lineBreaks)),
           );
 
         case md.Element(tag: 'del'):
-          runs.add(
+          add(
             MarkedRun(
               InlineMark.strikethrough,
               _inlines(node.children, lineBreaks),
@@ -618,7 +621,7 @@ final class _Mapper {
           );
 
         case md.Element(tag: 'a'):
-          runs.add(
+          add(
             LinkRun(
               href: node.attributes['href'] ?? '',
               // package:markdown protects quotes when it stores the parsed
@@ -633,7 +636,7 @@ final class _Mapper {
           );
 
         case md.Element(tag: 'img'):
-          runs.add(
+          add(
             ImageRun(
               source: node.attributes['src'] ?? '',
               title: switch (node.attributes['title']) {
@@ -645,16 +648,43 @@ final class _Mapper {
           );
 
         case md.Element(tag: 'br'):
-          runs.add(const LineBreakRun());
+          add(const LineBreakRun());
 
         case md.Element(tag: 'raw-html-inline'):
           switch (SafeHtmlText.inline(node.textContent)) {
             case HiddenInlineHtml():
               continue;
             case VisibleInlineHtml(:final source):
-              runs.add(TextRun(source));
+              add(TextRun(source));
             case BreakInlineHtml():
-              runs.add(const LineBreakRun());
+              add(const LineBreakRun());
+            case SemanticInlineHtml(:final mark, :final closing):
+              final inlineMark = switch (mark) {
+                SafeInlineHtmlMark.subscript => InlineMark.subscript,
+                SafeInlineHtmlMark.superscript => InlineMark.superscript,
+                SafeInlineHtmlMark.insertion => InlineMark.insertion,
+              };
+              if (!closing) {
+                frames.add(_InlineFrame(inlineMark));
+              } else if (frames.length > 1 && frames.last.mark == inlineMark) {
+                final complete = frames.removeLast();
+                final children = _coalesceText(complete.runs);
+                if (children.isNotEmpty) {
+                  add(MarkedRun(inlineMark, children));
+                }
+              } else {
+                final crossed = frames.lastIndexWhere(
+                  (frame) => frame.mark == inlineMark,
+                );
+                if (crossed > 0) {
+                  final readable = frames
+                      .sublist(crossed)
+                      .expand((frame) => frame.runs)
+                      .toList();
+                  frames.removeRange(crossed, frames.length);
+                  frames.last.runs.addAll(readable);
+                }
+              }
           }
 
         case md.Element(tag: 'input'):
@@ -667,16 +697,25 @@ final class _Mapper {
           // even though the markup around them is dropped.
           final children = node.children;
           if (children != null && children.isNotEmpty) {
-            runs.addAll(_inlines(children, lineBreaks));
+            frames.last.runs.addAll(_inlines(children, lineBreaks));
           } else if (node.textContent.isNotEmpty) {
-            runs.add(TextRun(node.textContent));
+            add(TextRun(node.textContent));
           }
 
         default:
           continue;
       }
     }
-    return _coalesceText(runs);
+
+    // An unmatched safe tag has no visual authority of its own. Its words
+    // remain in source order, while only a properly nested pair becomes a
+    // semantic mark. This is the same fail-readable rule used for harmless
+    // raw HTML everywhere else in the adapter.
+    while (frames.length > 1) {
+      final unmatched = frames.removeLast();
+      frames.last.runs.addAll(unmatched.runs);
+    }
+    return _coalesceText(frames.single.runs);
   }
 
   /// Parser nodes are grammar boundaries, not reading roles. An escape can
@@ -699,6 +738,13 @@ final class _Mapper {
     }
     return result;
   }
+}
+
+final class _InlineFrame {
+  _InlineFrame([this.mark]);
+
+  final InlineMark? mark;
+  final List<Inline> runs = [];
 }
 
 /// Resolves inline line endings before they enter the domain.

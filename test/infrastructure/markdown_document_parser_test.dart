@@ -31,6 +31,55 @@ void main() {
       expect(paragraph.text, isNot(contains('<span')));
     });
 
+    test('GitHub inline HTML becomes recursive reading marks', () {
+      final paragraph = single<ParagraphBlock>(
+        'H<sub data-secret="gone">2</sub>O, x<sup>2 and **bold**</sup>, '
+        'and <ins>new _words_</ins>.',
+      );
+      final marks = paragraph.content.whereType<MarkedRun>().toList();
+
+      expect(paragraph.text, 'H2O, x2 and bold, and new words.');
+      expect(marks.map((run) => run.mark), [
+        InlineMark.subscript,
+        InlineMark.superscript,
+        InlineMark.insertion,
+      ]);
+      expect(
+        marks[1].children.whereType<MarkedRun>().single.mark,
+        InlineMark.strong,
+      );
+      expect(
+        marks[2].children.whereType<MarkedRun>().single.mark,
+        InlineMark.emphasis,
+      );
+      expect(paragraph.text, isNot(contains('data-secret')));
+    });
+
+    test('only properly nested HTML pairs acquire a reading mark', () {
+      final unclosed = single<ParagraphBlock>('Before <sub>plain after.');
+      final mismatched = single<ParagraphBlock>(
+        'Before <sub><sup>nested</sub></sup> after.',
+      );
+
+      expect(unclosed.text, 'Before plain after.');
+      expect(unclosed.content.whereType<MarkedRun>(), isEmpty);
+      expect(mismatched.text, 'Before nested after.');
+      expect(mismatched.content.whereType<MarkedRun>(), isEmpty);
+    });
+
+    test('properly nested semantic HTML retains both reading marks', () {
+      final paragraph = single<ParagraphBlock>(
+        'Before <sub>outer <sup>inner</sup></sub> after.',
+      );
+
+      final outer = paragraph.content.whereType<MarkedRun>().single;
+      expect(outer.mark, InlineMark.subscript);
+      expect(
+        outer.children.whereType<MarkedRun>().single.mark,
+        InlineMark.superscript,
+      );
+    });
+
     test('inline and block comments stay outside reading content', () {
       expect(
         single<ParagraphBlock>('Before<!-- hidden --> after.').text,

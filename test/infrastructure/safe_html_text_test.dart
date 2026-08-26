@@ -57,6 +57,30 @@ void main() {
     expect(SafeHtmlText.block('<!-- private\nnote -->'), isNull);
   });
 
+  test('only paired GitHub writing tags carry semantic markers', () {
+    expect(
+      SafeHtmlText.inline('<sub data-private="gone">'),
+      isA<SemanticInlineHtml>()
+          .having((value) => value.mark, 'mark', SafeInlineHtmlMark.subscript)
+          .having((value) => value.closing, 'closing', isFalse),
+    );
+    expect(
+      SafeHtmlText.inline('</SUP>'),
+      isA<SemanticInlineHtml>()
+          .having((value) => value.mark, 'mark', SafeInlineHtmlMark.superscript)
+          .having((value) => value.closing, 'closing', isTrue),
+    );
+    expect(
+      SafeHtmlText.inline('<ins>'),
+      isA<SemanticInlineHtml>().having(
+        (value) => value.mark,
+        'mark',
+        SafeInlineHtmlMark.insertion,
+      ),
+    );
+    expect(SafeHtmlText.inline('<sub/>'), isA<HiddenInlineHtml>());
+  });
+
   test('dangerous elements remain visible inert source', () {
     const source = '<script>alert("never run");</script>';
 

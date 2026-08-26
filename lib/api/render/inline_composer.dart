@@ -127,6 +127,7 @@ final class InlineComposer {
     TextStyle? style,
     String? previous,
     required _TextCursor cursor,
+    List<InlineMark> marks = const [],
   }) {
     final base = style ?? theme.body;
     final spans = <InlineSpan>[];
@@ -137,6 +138,7 @@ final class InlineComposer {
           base,
           previous: _tailOf(spans) ?? previous,
           cursor: cursor,
+          marks: marks,
         ),
       );
     }
@@ -168,6 +170,7 @@ final class InlineComposer {
     TextStyle base, {
     String? previous,
     required _TextCursor cursor,
+    required List<InlineMark> marks,
   }) {
     switch (run) {
       case TextRun(:final text):
@@ -176,7 +179,7 @@ final class InlineComposer {
       case CodeRun(:final text):
         return _text(
           text,
-          theme.inlineCodeFor(base),
+          _markedCodeStyle(base, marks),
           cursor,
           previous: previous,
           code: true,
@@ -209,8 +212,26 @@ final class InlineComposer {
           InlineMark.strong => base.copyWith(fontWeight: FontWeight.w700),
           // A line through the type already says that the words were deleted.
           // Keeping their inherited ink avoids adding a second, dimming cue.
-          InlineMark.strikethrough => base.copyWith(
-            decoration: TextDecoration.lineThrough,
+          InlineMark.strikethrough => _withDecoration(
+            base,
+            TextDecoration.lineThrough,
+          ),
+          // These OpenType substitutions use glyphs drawn by the face rather
+          // than scaled widgets. Size and leading therefore stay on the
+          // surrounding role's baseline grid.
+          InlineMark.subscript => _withFontFeature(
+            base,
+            const FontFeature.subscripts(),
+          ),
+          InlineMark.superscript => _withFontFeature(
+            base,
+            const FontFeature.superscripts(),
+          ),
+          // GitHub documents `ins` as underline. Inherited ink keeps it
+          // editorial; links remain the accented, interactive underline.
+          InlineMark.insertion => _withDecoration(
+            base,
+            TextDecoration.underline,
           ),
         };
         return [
@@ -220,6 +241,7 @@ final class InlineComposer {
               style: marked,
               previous: previous,
               cursor: cursor,
+              marks: [...marks, mark],
             ),
           ),
         ];
@@ -234,6 +256,7 @@ final class InlineComposer {
           style: theme.linkFor(base),
           previous: previous,
           cursor: cursor,
+          marks: marks,
         );
         return [
           _LinkTextSpan(
@@ -287,6 +310,47 @@ final class InlineComposer {
           setPunctuation: false,
         );
     }
+  }
+
+  static TextStyle _withFontFeature(TextStyle base, FontFeature feature) =>
+      base.copyWith(
+        fontFeatures: [
+          ...?base.fontFeatures?.where(
+            (inherited) =>
+                inherited.feature != 'subs' && inherited.feature != 'sups',
+          ),
+          feature,
+        ],
+      );
+
+  static TextStyle _withDecoration(TextStyle base, TextDecoration decoration) =>
+      base.copyWith(
+        decoration: TextDecoration.combine([
+          if (base.decoration != null) base.decoration!,
+          decoration,
+        ]),
+      );
+
+  TextStyle _markedCodeStyle(TextStyle base, List<InlineMark> marks) {
+    var style = theme.inlineCodeFor(base);
+    for (final mark in marks) {
+      style = switch (mark) {
+        InlineMark.subscript => _withFontFeature(
+          style,
+          const FontFeature.subscripts(),
+        ),
+        InlineMark.superscript => _withFontFeature(
+          style,
+          const FontFeature.superscripts(),
+        ),
+        InlineMark.insertion => _withDecoration(
+          style,
+          TextDecoration.underline,
+        ),
+        _ => style,
+      };
+    }
+    return style;
   }
 
   List<InlineSpan> _text(
