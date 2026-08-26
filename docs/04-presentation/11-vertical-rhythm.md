@@ -42,7 +42,7 @@ Seven things establish the flow and return displayed departures to whole beats:
 | The complete heading block | Its shaped height and outgoing half-beat are reconciled together; only the grid correction remains inside the heading | `lib/api/render/document_view.dart` |
 | A code block | Compact source lines at 72 percent of a beat; the completed coloured surface rounds to the prose grid | `lib/api/render/reading_theme.dart`, `lib/api/widgets/code_block.dart` |
 | A thematic break | A one-pixel hairline centred in a complete one-beat box | `lib/api/render/document_view.dart` |
-| A recursive container | Body leading remains one beat; quotes and loose lists spend half-beat child relationships, tight lists spend none, and the completed container reconciles before returning prose | `lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart` |
+| A recursive container or table | Body leading remains one beat; quotes and loose lists spend half-beat child relationships, tight lists spend none, and the completed container or shaped table reconciles before returning prose | `lib/api/render/reading_theme.dart`, `lib/api/render/document_view.dart` |
 
 A heading is reconciled only after Flutter has shaped the complete block. Its
 lines therefore stay close enough to read as one display phrase. The sequence
@@ -94,6 +94,12 @@ stays below the content so the top-down spacing rule remains intact
 (`lib/api/render/reading_theme.dart`,
 `lib/api/render/document_view.dart`).
 
+A shaped departure inside that recursive surface remains responsible for its
+own local handoff. A nested table therefore reconciles before prose later in
+the same list item or quotation, while the outer list or quotation separately
+reconciles the complete recursive surface. Those are different scopes, not two
+corrections to the same box (`lib/api/render/document_view.dart`).
+
 ## Inputs and outputs
 
 In: the rendered body size and the leading for the face in hand.
@@ -133,16 +139,17 @@ paragraphs and asserts every later paragraph's offset is a whole number of
 beats (`test/presentation/document_view_test.dart`). The code-block suite also
 measures the compact source line and proves both scrolled and wrapped surfaces
 finish on a whole prose beat (`test/presentation/code_block_test.dart`).
-The container suite separately proves unchanged prose leading, zero and
+The container and table suites separately prove unchanged prose leading, zero and
 half-beat list relationships, wide-marker geometry and the return to phase after
-nested quotes and lists (`test/presentation/document_view_test.dart`).
+nested quotes, lists and shaped tables at enlarged type
+(`test/presentation/document_view_test.dart`).
 
 ## Transition
 
-**Tables are knowingly off the beat.** Their height is content-driven, and
-nothing rounds it. Bringhurst's rule permits a departure so long as the text
-returns in phase afterwards, which it does not here — this is a real remaining
-gap rather than a licensed exception.
+Table rows retain the height their content needs; snapping each one would turn
+reading rhythm into a spreadsheet grid. The completed table surface and its
+forward-owned outgoing space reconcile as one departure instead, so the prose
+after it returns in phase (`lib/api/render/document_view.dart`).
 
 Heading leading is settled per level, but a script can legitimately need taller
 glyphs than the Latin face. Headings deliberately have no forced strut: Flutter

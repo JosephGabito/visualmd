@@ -387,12 +387,17 @@ class _BlockView extends StatelessWidget {
         );
 
       case TableBlock():
+        final table = _Table(
+          table: block as TableBlock,
+          theme: theme,
+          composer: composer,
+          offset: offset,
+        );
         return _matchTarget(
-          _Table(
-            table: block as TableBlock,
-            theme: theme,
-            composer: composer,
-            offset: offset,
+          _RhythmicContainer(
+            beat: theme.baseline,
+            followingSpace: followingSpace,
+            child: table,
           ),
         );
 

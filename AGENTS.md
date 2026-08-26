@@ -296,8 +296,6 @@ before the plugins that need it exist. See
 
 Known gaps:
 
-- **Tables are not on the beat** — their height is content-driven. The rule
-  permits the departure; it is still the one place the grid breaks.
 - **No justification or hyphenation.** The remaining book signal. Flutter has
   `TextAlign.justify` but no hyphenation, and justification without it gives
   rivers; real hyphenation means Knuth–Liang patterns and verifying Flutter

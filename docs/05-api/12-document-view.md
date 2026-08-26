@@ -115,6 +115,9 @@ Each block type is built by `_BlockView`
   and source offsets; structured cross-cell clipboard output remains open
   (`lib/domain/reading/content/block.dart`,
   `lib/api/widgets/reading_pane.dart`).
+  Rows keep their content-driven height, then the completed surface and its
+  forward-owned gap reconcile together so following prose returns to the body
+  grid without padding every row (`lib/api/render/document_view.dart`).
 - **Rule** — a centred one-pixel divider in the quiet border tone, constrained
   to the prose measure inside a box exactly one beat tall, so prose after it
   returns to the grid. A non-interactive semantics node names the structure
@@ -182,4 +185,4 @@ bidirectional quotation treatment. The full recursive contract is documented in
 
 Everything builds at once inside one scroll view, which keeps `ensureVisible`
 exact but is the first thing to revisit for very long documents. Wider code
-and off-beat tables remain in the [backlog](../07-roadmap/02-backlog.md).
+remains in the [backlog](../07-roadmap/02-backlog.md).

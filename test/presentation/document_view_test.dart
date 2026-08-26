@@ -365,6 +365,19 @@ void main() {
                         ],
                       ),
                       paragraph('Fifth.'),
+                      const TableBlock(
+                        head: [
+                          TableCell([TextRun('Metric')]),
+                          TableCell([TextRun('Value')]),
+                        ],
+                        rows: [
+                          [
+                            TableCell([TextRun('Revenue')]),
+                            TableCell([TextRun('1,234.50')]),
+                          ],
+                        ],
+                      ),
+                      paragraph('After table.'),
                       const HeadingBlock(
                         level: 3,
                         content: [TextRun('Deeper')],
@@ -401,6 +414,7 @@ void main() {
       'Third.',
       'Fourth.',
       'Fifth.',
+      'After table.',
       'Sixth.',
       'Seventh.',
     ]) {
@@ -1078,5 +1092,92 @@ void main() {
     expect(tableRoles, contains(SemanticsRole.cell));
 
     semantics.dispose();
+  });
+
+  testWidgets('a shaped table returns enlarged prose to the body grid', (
+    tester,
+  ) async {
+    const longValue =
+        'A sufficiently long cell wraps onto several compact table lines so '
+        'the surface height must be measured after layout, not predicted.';
+    await pumpDocument(
+      tester,
+      [
+        paragraph('Before table.'),
+        const TableBlock(
+          head: [
+            TableCell([TextRun('Metric')]),
+            TableCell([TextRun('Explanation')]),
+          ],
+          rows: [
+            [
+              TableCell([TextRun('MAE')]),
+              TableCell([TextRun(longValue)]),
+            ],
+          ],
+        ),
+        paragraph('After shaped table.'),
+      ],
+      width: 440,
+      textScaler: const TextScaler.linear(1.45),
+    );
+
+    final before = tester.getTopLeft(find.text('Before table.')).dy;
+    final after = tester.getTopLeft(find.text('After shaped table.')).dy;
+    final beats = (after - before) / renderedTheme.baseline;
+    expect(
+      (beats - beats.roundToDouble()).abs(),
+      lessThan(0.02),
+      reason: 'the complete shaped surface and its outgoing gap reconcile',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a nested table returns both local and outer prose to phase', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      paragraph('Before container.'),
+      ListBlock(
+        ordered: false,
+        loose: true,
+        items: [
+          ListItem([
+            const TableBlock(
+              head: [
+                TableCell([TextRun('Metric')]),
+                TableCell([TextRun('Value')]),
+              ],
+              rows: [
+                [
+                  TableCell([TextRun('Revenue')]),
+                  TableCell([TextRun('1,234.50')]),
+                ],
+              ],
+            ),
+            paragraph('After nested table.'),
+          ]),
+        ],
+      ),
+      paragraph('After container.'),
+    ]);
+
+    final nestedAfter = tester.getTopLeft(find.text('After nested table.')).dy;
+    final outerBefore = tester.getTopLeft(find.text('Before container.')).dy;
+    final outerAfter = tester.getTopLeft(find.text('After container.')).dy;
+
+    for (final distance in [
+      nestedAfter - outerBefore,
+      outerAfter - outerBefore,
+    ]) {
+      final beats = distance / renderedTheme.baseline;
+      expect(
+        (beats - beats.roundToDouble()).abs(),
+        lessThan(0.02),
+        reason:
+            'each reading scope must hand its following prose back in phase',
+      );
+    }
+    expect(tester.takeException(), isNull);
   });
 }
