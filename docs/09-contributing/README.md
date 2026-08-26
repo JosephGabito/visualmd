@@ -1,9 +1,9 @@
 # Contributing
 
-Welcome. Visual MD is still being prepared for a public release, but the code
-and its engineering guide are being shaped for people beyond its original
-author. This shelf is the practical starting point for understanding the
-toolchain, making a focused change, and checking the result with confidence.
+Welcome. This shelf is the practical starting point for understanding Visual
+MD's toolchain, making a focused change, and checking the result with
+confidence. The application is intentionally small at its centre: open
+Markdown, arrange it on a shelf, and make the page worth reading.
 
 You do not need to read the whole handbook before touching the project. Start
 with [Development Setup](01-dev-setup.md), make the smallest change that solves

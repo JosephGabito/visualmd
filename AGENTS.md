@@ -261,9 +261,10 @@ Conventions when writing here: one component per document, the seven sections
 from
 [docs/00-foundation/05-component-document-template.md](docs/00-foundation/05-component-document-template.md)
 in order, code claims supported by stable file references such as
-`` `lib/path/file.dart` ``, a README in
-every folder whose link text matches each target's H1 exactly, 40–140 lines,
-and no placeholders.
+`` `lib/path/file.dart` ``, a README in every folder whose link text matches
+each target's H1 exactly, usually 40–140 lines, and no placeholders. A longer
+document is justified when it keeps one contract or research trail intact;
+split it when the parts can stand alone, not merely to satisfy a count.
 
 Do not cite exact source lines in Markdown. Line movement is not a behavioral
 change, and prose should not become stale when unrelated code is inserted above

@@ -30,8 +30,10 @@ not (`lib/infrastructure/io/scoped_access.dart`,
 
 The implementation uses `desktop_drop` for drop targets and security-scoped
 access, `file_selector` for native file panels, and `window_manager` for window
-geometry and dragging. On macOS these packages resolve through Swift Package
-Manager, so CocoaPods is not part of the build.
+geometry and dragging. Those plugins support Swift Package Manager, but the
+pinned Merman renderer temporarily selects CocoaPods for the whole macOS
+target because Flutter's generated SPM symlink loses Merman's sibling
+XCFramework (`pubspec.yaml`, `macos/Podfile`).
 
 Shelf context commands resolve those same registered handles only at the
 desktop edge. `DesktopShelfSourceActions` produces a native absolute path,
