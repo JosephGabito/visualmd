@@ -457,8 +457,8 @@ final class _Mapper {
         cell.attributes['align'] ?? _alignFromStyle(cell.attributes['style']);
     return switch (align) {
       'center' => ColumnAlignment.center,
-      'right' => ColumnAlignment.end,
-      _ => ColumnAlignment.start,
+      'right' => ColumnAlignment.right,
+      _ => ColumnAlignment.left,
     };
   }
 

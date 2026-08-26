@@ -836,6 +836,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('table cells keep the alignment the author assigned', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      const TableBlock(
+        head: [
+          TableCell([TextRun('Left')]),
+          TableCell([TextRun('Center')], alignment: ColumnAlignment.center),
+          TableCell([TextRun('Right')], alignment: ColumnAlignment.right),
+        ],
+        rows: [
+          [
+            TableCell([TextRun('العربية')]),
+            TableCell([
+              TextRun('center value'),
+            ], alignment: ColumnAlignment.center),
+            TableCell([
+              TextRun('right value'),
+            ], alignment: ColumnAlignment.right),
+          ],
+        ],
+      ),
+    ]);
+
+    expect(tester.widget<Text>(find.text('العربية')).textAlign, TextAlign.left);
+    expect(
+      tester.widget<Text>(find.text('center value')).textAlign,
+      TextAlign.center,
+    );
+    expect(
+      tester.widget<Text>(find.text('right value')).textAlign,
+      TextAlign.right,
+    );
+  });
+
   testWidgets('each table cell keeps its own reading direction', (
     tester,
   ) async {

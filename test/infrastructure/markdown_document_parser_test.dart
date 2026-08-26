@@ -1463,6 +1463,17 @@ still visible
   });
 
   group('a table', () {
+    test('outer pipes and source spacing never change the cell structure', () {
+      final table = single<TableBlock>('''
+| abc | defghi |
+:-: | -----------:
+bar | baz
+''');
+
+      expect(table.head.map((cell) => cell.text), ['abc', 'defghi']);
+      expect(table.rows.single.map((cell) => cell.text), ['bar', 'baz']);
+    });
+
     test(
       'separates the head from the body and keeps each column\'s alignment',
       () {
@@ -1471,28 +1482,64 @@ still visible
         );
         expect(table.head.map((c) => c.text), ['a', 'b', 'c']);
         expect(table.head.map((c) => c.alignment), [
-          ColumnAlignment.start,
+          ColumnAlignment.left,
           ColumnAlignment.center,
-          ColumnAlignment.end,
+          ColumnAlignment.right,
         ]);
         expect(table.rows.single.map((c) => c.text), ['1', '2', '3']);
         expect(table.rows.single.map((c) => c.alignment), [
-          ColumnAlignment.start,
+          ColumnAlignment.left,
           ColumnAlignment.center,
-          ColumnAlignment.end,
+          ColumnAlignment.right,
         ]);
       },
     );
 
-    test('a short row still has a cell for every column', () {
-      final table = single<TableBlock>('| a | b |\n|---|---|\n| 1 |\n');
-      expect(table.rows.single, hasLength(2));
-      expect(table.rows.single.last.text, isEmpty);
+    test('short, long, and explicitly empty rows match the header width', () {
+      final table = single<TableBlock>('''
+| a | b |
+|---|---|
+| 1 |
+| 2 | 3 | ignored |
+|   |   |
+''');
+
+      expect(table.rows, hasLength(3));
+      expect(table.rows[0].map((cell) => cell.text), ['1', '']);
+      expect(table.rows[1].map((cell) => cell.text), ['2', '3']);
+      expect(table.rows[2].map((cell) => cell.text), ['', '']);
     });
 
-    test('cells carry marks like any other text', () {
-      final table = single<TableBlock>('| a |\n|---|\n| `code` |\n');
-      expect(table.rows.single.single.content.single, isA<CodeRun>());
+    test('cells carry inline roles rather than exposed source notation', () {
+      final table = single<TableBlock>('''
+| emphasis | link | code |
+|---|---|---|
+| **important** | [guide](guide.md) | `value` |
+''');
+      final row = table.rows.single;
+
+      expect(row[0].content.single, isA<MarkedRun>());
+      expect((row[0].content.single as MarkedRun).mark, InlineMark.strong);
+      expect(row[1].content.single, isA<LinkRun>());
+      expect((row[1].content.single as LinkRun).href, 'guide.md');
+      expect(row[2].content.single, isA<CodeRun>());
+      expect(row.map((cell) => cell.text), ['important', 'guide', 'value']);
+    });
+
+    test('an escaped pipe remains authored text inside every inline role', () {
+      final table = single<TableBlock>(r'''
+| plain | code | strong |
+|---|---|---|
+| f\|oo | b `\|` az | b **\|** im |
+''');
+      final row = table.rows.single;
+
+      expect(row.map((cell) => cell.text), ['f|oo', 'b | az', 'b | im']);
+      expect(row[1].content.whereType<CodeRun>().single.text, '|');
+      expect(
+        row[2].content.whereType<MarkedRun>().single.mark,
+        InlineMark.strong,
+      );
     });
   });
 

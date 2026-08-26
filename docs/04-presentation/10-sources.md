@@ -579,6 +579,16 @@ ignored vendor tree from the committed lockfile
 binding is pinned and contained rather than mistaken for a stable public
 surface.
 
+## Markdown compatibility
+
+The formal [GFM table extension](https://github.github.com/gfm/#tables-extension-)
+defines one header, a delimiter row and zero or more body rows. Outer pipes may
+be inconsistent, cell space is trimmed, escaped pipes remain cell content,
+inline roles are parsed normally, and a body row is padded or truncated to the
+header width. Visual MD accepts those source variations as one `TableBlock`
+contract before presentation decides width, overflow or typography
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 ## Accessibility standards
 
 WCAG 2.2 requires at least 4.5:1 contrast for ordinary text and asks reading

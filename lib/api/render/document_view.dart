@@ -907,9 +907,9 @@ class _TableState extends State<_Table> {
           ),
           textDirection: direction,
           textAlign: switch (cell.alignment) {
-            ColumnAlignment.start => TextAlign.start,
+            ColumnAlignment.left => TextAlign.left,
             ColumnAlignment.center => TextAlign.center,
-            ColumnAlignment.end => TextAlign.end,
+            ColumnAlignment.right => TextAlign.right,
           },
         ),
       );
