@@ -112,6 +112,8 @@ abstract final class SafeHtmlText {
     if (name != null && disallowedTags.contains(name)) {
       return VisibleInlineHtml(source);
     }
+    final anchor = _customAnchor(source, name);
+    if (anchor != null) return AnchorInlineHtml(anchor);
     final mark = _semanticInlineTags[name];
     if (mark != null && !RegExp(r'/\s*>$').hasMatch(source)) {
       return SemanticInlineHtml(
@@ -130,6 +132,49 @@ abstract final class SafeHtmlText {
       return const BreakInlineHtml();
     }
     return const HiddenInlineHtml();
+  }
+
+  /// Navigation names carried by an inert raw block, in source order.
+  static List<String> anchors(String source) {
+    try {
+      final fragment = html.parseFragment(source);
+      if (_containsDisallowedElement(fragment.nodes)) return const [];
+      final names = <String>[];
+
+      void visit(Iterable<dom.Node> nodes) {
+        for (final node in nodes) {
+          if (node is dom.Element) {
+            final name = _anchorName(node);
+            if (name != null) names.add(name);
+          }
+          visit(node.nodes);
+        }
+      }
+
+      visit(fragment.nodes);
+      return names;
+    } on Object {
+      return const [];
+    }
+  }
+
+  static String? _customAnchor(String source, String? tagName) {
+    if (tagName != 'a' || RegExp(r'^<\s*/').hasMatch(source)) return null;
+    if (RegExp(r'/\s*>$').hasMatch(source)) return null;
+    try {
+      final fragment = html.parseFragment(source);
+      final elements = fragment.nodes.whereType<dom.Element>().toList();
+      if (elements.length != 1) return null;
+      return _anchorName(elements.single);
+    } on Object {
+      return null;
+    }
+  }
+
+  static String? _anchorName(dom.Element element) {
+    if ((element.localName ?? '').toLowerCase() != 'a') return null;
+    final name = element.attributes['name'];
+    return name == null || name.trim().isEmpty ? null : name;
   }
 
   /// Returns readable text for one raw HTML block, or null for comments only.
@@ -339,6 +384,13 @@ final class VisibleInlineHtml extends InlineHtmlReading {
 /// A structural boundary that separates the words on either side of it.
 final class BreakInlineHtml extends InlineHtmlReading {
   const BreakInlineHtml();
+}
+
+/// The sole safe attribute that crosses the HTML boundary: local identity.
+final class AnchorInlineHtml extends InlineHtmlReading {
+  const AnchorInlineHtml(this.name);
+
+  final String name;
 }
 
 /// One safe GitHub writing mark whose attributes have already been discarded.

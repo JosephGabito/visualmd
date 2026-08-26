@@ -14,5 +14,5 @@ final class DocumentContent {
   Iterable<HeadingBlock> get headings => blocks.whereType<HeadingBlock>();
 
   /// Every word in the document, without decoration.
-  String get text => blocks.map((b) => b.text).join('\n\n');
+  String get text => readingTextOfBlocks(blocks, '\n\n');
 }

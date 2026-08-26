@@ -75,4 +75,101 @@ void main() {
       expect(find.text('Added by another process'), findsOneWidget);
     },
   );
+
+  testWidgets('a fragment can reach an explicit custom HTML anchor', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey<ReadingPaneState>();
+    final source =
+        '''
+# Opening
+
+$body
+
+<a name="appendix"></a>
+
+## Appendix
+
+Target.
+
+$body
+''';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(BuiltInThemes.paper),
+        home: Scaffold(
+          body: ReadingPane(
+            key: key,
+            reading: reading(source),
+            scale: ReadingScale.comfortable,
+            onLink: (_) {},
+            onActiveHeadingChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scrollable = find.descendant(
+      of: find.byType(SingleChildScrollView),
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    expect(position.pixels, 0);
+
+    key.currentState!.scrollToAnchor('appendix');
+    await tester.pumpAndSettle();
+
+    expect(position.pixels, greaterThan(0));
+    expect(tester.getTopLeft(find.text('Appendix')).dy, lessThan(80));
+  });
+
+  testWidgets('refresh replaces custom anchors for the same document', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey<ReadingPaneState>();
+
+    Future<void> show(String source) => tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(BuiltInThemes.paper),
+        home: Scaffold(
+          body: ReadingPane(
+            key: key,
+            reading: reading(source),
+            scale: ReadingScale.comfortable,
+            onLink: (_) {},
+            onActiveHeadingChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    await show('# Opening\n\n<a name="old"></a>\n\n$body');
+    await tester.pumpAndSettle();
+    await show(
+      '# Opening\n\n$body\n\n<a name="new"></a>\n\n## New target\n\n$body',
+    );
+    await tester.pumpAndSettle();
+
+    final scrollable = find.descendant(
+      of: find.byType(SingleChildScrollView),
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    final before = position.pixels;
+
+    key.currentState!.scrollToAnchor('old');
+    await tester.pumpAndSettle();
+    expect(position.pixels, closeTo(before, 0.01));
+
+    key.currentState!.scrollToAnchor('new');
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(before));
+    expect(tester.getTopLeft(find.text('New target')).dy, lessThan(100));
+  });
 }

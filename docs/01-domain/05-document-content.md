@@ -33,6 +33,7 @@ Two sealed hierarchies and a container.
 |-------|---------|------------|
 | `ParagraphBlock` | runs | `lib/domain/reading/content/block.dart` |
 | `HeadingBlock` | `level` 1–6, runs, and the `anchor` a link reaches it by | `lib/domain/reading/content/block.dart` |
+| `AnchorBlock` | one explicit local navigation name and no reading text | `lib/domain/reading/content/block.dart` |
 | `CodeBlock` | verbatim `code` and the `language` the author named | `lib/domain/reading/content/block.dart` |
 | `MathBlock` | exact TeX for one display equation | `lib/domain/reading/content/block.dart` |
 | `MermaidBlock` | exact Mermaid source for one diagram | `lib/domain/reading/content/block.dart` |
@@ -116,6 +117,18 @@ authority to restyle later prose, so its readable children remain unmarked
 (`lib/domain/reading/content/inline.dart`,
 `lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+GitHub's standalone `<a name="…"></a>` form becomes an `AnchorBlock`. It
+deliberately contributes empty `text`: identity is available to navigation
+without appearing in search, selection, copying, accessibility, or the
+outline. An inline token is removed during block mapping because Flutter cannot
+key a position inside selectable text without inserting a placeholder code
+unit; a mixed raw HTML block is likewise never given a falsely relocated
+target. Duplicate standalone names are first-wins and never alter generated
+heading numbering
+(`lib/domain/reading/content/block.dart`,
+`lib/infrastructure/markdown/safe_html_text.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 Marks remain recursive rather than being flattened. `***important***` is an
 emphasis run containing a strong run, while `**important with _voice_ inside**`
 keeps emphasis inside strength. That stack is semantic: presentation can add
@@ -142,7 +155,7 @@ SVG, graph layout, zoom, or full screen; those are adapter and page concerns.
 If rendering fails, the same value is sufficient to show and copy everything
 the author supplied (`lib/domain/reading/content/block.dart`).
 
-Anchors come from one rule, `HeadingAnchors`
+Generated heading anchors come from one rule, `HeadingAnchors`
 (`lib/domain/reading/heading_anchor.dart`), which both this model and the
 [Document Outline](03-document-outline.md) use — so a link found in the
 outline always resolves on the page.

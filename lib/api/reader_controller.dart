@@ -458,7 +458,9 @@ final class ReaderController extends ChangeNotifier {
   /// Decides what a clicked link means in the context of the open document.
   LinkTarget? resolveLink(String href) {
     if (href.isEmpty) return null;
-    if (href.startsWith('#')) return AnchorLink(href.substring(1));
+    if (href.startsWith('#')) {
+      return AnchorLink(_decodedFragment(href.substring(1)));
+    }
     final uri = Uri.tryParse(href);
     if (uri != null && uri.hasScheme) {
       // Markdown admits arbitrary URI schemes, but these three execute or
@@ -476,7 +478,7 @@ final class ReaderController extends ChangeNotifier {
 
     final hash = href.indexOf('#');
     final path = hash < 0 ? href : href.substring(0, hash);
-    final anchor = hash < 0 ? null : href.substring(hash + 1);
+    final anchor = hash < 0 ? null : _decodedFragment(href.substring(hash + 1));
     if (path.isEmpty) return anchor == null ? null : AnchorLink(anchor);
 
     final candidates = [
@@ -487,6 +489,18 @@ final class ReaderController extends ChangeNotifier {
       if (open.find(id) != null) return DocumentLink(id, anchor);
     }
     return null;
+  }
+
+  /// URI fragments arrive percent-encoded even when Markdown used the
+  /// angle-bracket form to spell spaces. Custom HTML anchor names are already
+  /// decoded by the HTML parser, so navigation must compare decoded identities.
+  /// A malformed escape remains literal instead of making a link click throw.
+  static String _decodedFragment(String fragment) {
+    try {
+      return Uri.decodeComponent(fragment);
+    } on ArgumentError {
+      return fragment;
+    }
   }
 
   void setDragging(bool value) {

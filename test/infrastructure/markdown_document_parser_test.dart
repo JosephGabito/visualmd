@@ -199,6 +199,116 @@ void main() {
 
       expect(paragraph.text, 'one\ntwo\nthree\nfour');
     });
+
+    test('standalone custom anchors become zero-text navigation blocks', () {
+      final content = parse('''
+Before.
+
+<a name="middle"></a>
+
+After.
+''');
+
+      expect(content.blocks, [
+        isA<ParagraphBlock>(),
+        isA<AnchorBlock>().having((block) => block.name, 'name', 'middle'),
+        isA<ParagraphBlock>(),
+      ]);
+      expect(content.text, 'Before.\n\nAfter.');
+    });
+
+    test('inline custom anchor syntax never changes selectable prose', () {
+      final paragraph = single<ParagraphBlock>(
+        'Before <a name="middle"></a>after.',
+      );
+
+      expect(paragraph.content, everyElement(isA<TextRun>()));
+      expect(paragraph.content, hasLength(1));
+      expect(paragraph.text, 'Before after.');
+    });
+
+    test('consecutive standalone aliases occupy no reading rhythm', () {
+      final content = parse('''
+Before.
+
+<a name="first"></a>
+<a name="second"></a>
+
+After.
+''');
+
+      expect(content.blocks, [
+        isA<ParagraphBlock>(),
+        isA<AnchorBlock>().having((block) => block.name, 'name', 'first'),
+        isA<AnchorBlock>().having((block) => block.name, 'name', 'second'),
+        isA<ParagraphBlock>(),
+      ]);
+      expect(content.text, 'Before.\n\nAfter.');
+    });
+
+    test(
+      'custom anchor identity is first-wins and independent of headings',
+      () {
+        final content = parse('''
+<a name="repeat"></a>
+
+First.
+
+<a name="repeat"></a>
+
+# Repeat
+''');
+
+        expect(content.blocks.whereType<AnchorBlock>(), hasLength(1));
+        expect(
+          content.blocks.whereType<HeadingBlock>().single.anchor,
+          'repeat',
+        );
+        expect(content.headings.single.anchor, 'repeat');
+      },
+    );
+
+    test('nested custom anchors do not invent searchable separators', () {
+      final quote = single<QuoteBlock>('''
+> Before.
+>
+> <a name="inside"></a>
+>
+> After.
+''');
+
+      expect(quote.blocks.whereType<AnchorBlock>(), hasLength(1));
+      expect(quote.text, 'Before.\nAfter.');
+    });
+
+    test('mixed raw HTML never relocates a nested custom anchor', () {
+      final content = parse('''
+<div>
+  <p>Before.</p>
+  <a name="middle"></a>
+  <p>After.</p>
+</div>
+''');
+
+      expect(content.blocks.whereType<AnchorBlock>(), isEmpty);
+      expect(content.blocks.whereType<RawBlock>(), hasLength(1));
+      expect(content.text, 'Before.\nAfter.');
+    });
+
+    test('anchor-only safe HTML containers remain zero-height targets', () {
+      final content = parse('''
+<div>
+  <a name="first"></a>
+  <a name="second"></a>
+</div>
+''');
+
+      expect(content.blocks, [
+        isA<AnchorBlock>().having((block) => block.name, 'name', 'first'),
+        isA<AnchorBlock>().having((block) => block.name, 'name', 'second'),
+      ]);
+      expect(content.text, isEmpty);
+    });
   });
 
   group('a paragraph', () {

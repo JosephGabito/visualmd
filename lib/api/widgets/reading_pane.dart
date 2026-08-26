@@ -49,6 +49,7 @@ class ReadingPaneState extends State<ReadingPane> {
   final _scroll = ScrollController();
   final _pageKey = GlobalKey();
   var _keys = <String, GlobalKey>{};
+  var _customKeys = <String, GlobalKey>{};
   var _matchKeys = <int, GlobalKey>{};
   String? _activeAnchor;
 
@@ -64,6 +65,7 @@ class ReadingPaneState extends State<ReadingPane> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.reading.document.id != widget.reading.document.id) {
       _keys = {};
+      _customKeys = {};
       _matchKeys = {};
       _activeAnchor = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -74,6 +76,7 @@ class ReadingPaneState extends State<ReadingPane> {
       // The page changed beneath the same document identity. Rebuild heading
       // anchors, but keep the scroll controller exactly where the reader was.
       _keys = {};
+      _customKeys = {};
       _matchKeys = {};
       _activeAnchor = null;
       WidgetsBinding.instance.addPostFrameCallback(
@@ -96,7 +99,9 @@ class ReadingPaneState extends State<ReadingPane> {
   }
 
   void scrollToAnchor(String anchor) {
-    final context = _keys[anchor]?.currentContext;
+    // An explicit author-supplied anchor is the least surprising target when
+    // it happens to share a name with an automatically generated heading.
+    final context = (_customKeys[anchor] ?? _keys[anchor])?.currentContext;
     if (context == null) return;
     Scrollable.ensureVisible(
       context,
@@ -210,6 +215,7 @@ class ReadingPaneState extends State<ReadingPane> {
                     mermaidRenderer: widget.mermaidRenderer,
                     imageLoader: widget.imageLoader,
                     anchorKeys: _keys,
+                    customAnchorKeys: _customKeys,
                     matches: widget.matches,
                     activeMatch: widget.activeMatch,
                     matchKeys: _matchKeys,

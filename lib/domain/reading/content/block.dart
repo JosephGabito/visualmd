@@ -8,6 +8,14 @@ sealed class Block {
   String get text;
 }
 
+/// Joins visible block text without letting navigation-only blocks invent a
+/// separator. Containers and the top-level document use the same rule so
+/// search offsets remain identical to the page at every nesting depth.
+String readingTextOfBlocks(Iterable<Block> blocks, String separator) => blocks
+    .where((block) => block is! AnchorBlock)
+    .map((block) => block.text)
+    .join(separator);
+
 final class ParagraphBlock extends Block {
   final List<Inline> content;
 
@@ -33,6 +41,16 @@ final class HeadingBlock extends Block {
 
   @override
   String get text => content.map((c) => c.text).join();
+}
+
+/// A zero-height navigation target between two document blocks.
+final class AnchorBlock extends Block {
+  final String name;
+
+  const AnchorBlock(this.name);
+
+  @override
+  String get text => '';
 }
 
 /// Verbatim source, with the language the author named, if any.
@@ -81,7 +99,7 @@ final class QuoteBlock extends Block {
   const QuoteBlock(this.blocks);
 
   @override
-  String get text => blocks.map((b) => b.text).join('\n');
+  String get text => readingTextOfBlocks(blocks, '\n');
 }
 
 final class ListBlock extends Block {
@@ -115,7 +133,7 @@ final class ListItem {
 
   const ListItem(this.blocks, {this.checked});
 
-  String get text => blocks.map((b) => b.text).join('\n');
+  String get text => readingTextOfBlocks(blocks, '\n');
 }
 
 final class TableBlock extends Block {

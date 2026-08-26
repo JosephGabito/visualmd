@@ -63,7 +63,8 @@ Out:
 - `onActiveHeadingChanged(heading)` whenever the heading nearest the top
   changes (`lib/api/widgets/reading_pane.dart`).
 - `scrollToAnchor(anchor)`, called by the shell: `Scrollable.ensureVisible` on
-  that heading's context, 320 ms, `easeOutCubic`, aligned to the top
+  an explicit custom anchor when present, otherwise the generated heading,
+  320 ms, `easeOutCubic`, aligned to the top
   (`lib/api/widgets/reading_pane.dart`).
 
 Active-heading tracking walks the outline's headings in order, measuring each
@@ -81,7 +82,8 @@ language ([Plugin architecture](../07-roadmap/01-plugin-architecture.md)).
 
 `initState` listens to the scroll controller and runs one tracking pass after
 the first frame (`lib/api/widgets/reading_pane.dart`). When a different
-document arrives the anchor keys are cleared, the active anchor is reset, and
+document arrives both navigation-key maps are cleared, the active heading is
+reset, and
 after the frame the scroll jumps to the top and tracking runs again
 (`lib/api/widgets/reading_pane.dart`). The controller is disposed with
 the state (`lib/api/widgets/reading_pane.dart`).
@@ -90,8 +92,9 @@ Changing the text size rebuilds with a new scale; the column follows, because
 it is derived rather than stored
 (`test/presentation/text_size_test.dart`).
 
-When fresh bytes arrive under the same `DocumentId`, the pane rebuilds heading
-and match anchors but deliberately retains its `ScrollController` offset. Only
+When fresh bytes arrive under the same `DocumentId`, the pane rebuilds heading,
+custom, and match anchors but deliberately retains its `ScrollController`
+offset. Only
 a different identity jumps to the top
 (`lib/api/widgets/reading_pane.dart`).
 

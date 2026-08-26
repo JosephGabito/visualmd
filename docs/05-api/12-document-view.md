@@ -74,6 +74,10 @@ Each block type is built by `_BlockView`
   so Arabic and Hebrew headings align and wrap from the side they are read
   using generated Unicode 17 bidi classes rather than a BMP script heuristic
   (`lib/api/render/reading_direction.dart`).
+- **Custom anchor** — attached as a zero-size key to the following visible
+  block. It creates neither a line box nor an outgoing gap; a trailing target
+  remains a zero-size keyed box. Inline anchors are not given false geometry
+  (`lib/api/render/document_view.dart`).
 - **Code** — a [`ReadableCodeBlock`](11-code-block.md) with half a beat of
   padding above and below and **no border**: its own ground already says what
   it is, and a border is both a second signal and a height that breaks the grid
@@ -145,10 +149,12 @@ while a long prose cell grows only to the researched 55-character measure.
 | `theme` | `ReadingTheme` | Built by the [reading pane](04-reading-pane.md) |
 | `codeHighlighter` | `CodeHighlighter` | Framework-free source-range contributor, plain by default |
 | `anchorKeys` | `Map<String, GlobalKey>` | Owned by the pane; filled in as headings build |
+| `customAnchorKeys` | `Map<String, GlobalKey>` | Owned separately by the pane; filled by eligible standalone HTML anchors without entering the outline |
 | `onTapLink` | `void Function(String href)?` | The pane's link handler |
 
-Out: nothing directly. Links report through the composer; the pane reads
-`anchorKeys` to scroll and to track the active heading.
+Out: nothing directly. Links report through the composer; the pane reads the
+two anchor maps to scroll, while active-heading tracking consults only heading
+keys.
 
 ## Events
 
@@ -161,8 +167,9 @@ ranges do not replace the code widget. See the
 
 ## Lifecycle
 
-Stateless, rebuilt with the document, theme or width. The pane owns
-`anchorKeys` and clears it when a different document arrives.
+Stateless, rebuilt with the document, theme or width. The pane owns both key
+maps and clears them when a different document arrives or the current source
+changes beneath the same identity.
 
 ## Failure and recovery
 

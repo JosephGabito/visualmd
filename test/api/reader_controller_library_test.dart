@@ -416,8 +416,12 @@ void main() {
 
       final anchor = controller.resolveLink('#setup')! as AnchorLink;
       final duplicate = controller.resolveLink('#setup-1')! as AnchorLink;
+      final spaced = controller.resolveLink('#chapter%20one')! as AnchorLink;
       final document =
           controller.resolveLink('guide.md#details')! as DocumentLink;
+      final spacedDocument =
+          controller.resolveLink('guide.md#chapter%20one')! as DocumentLink;
+      final malformed = controller.resolveLink('#chapter%ZZone')! as AnchorLink;
       final external =
           controller.resolveLink('https://example.com/guide')! as ExternalLink;
       final email =
@@ -427,8 +431,11 @@ void main() {
 
       expect(anchor.anchor, 'setup');
       expect(duplicate.anchor, 'setup-1');
+      expect(spaced.anchor, 'chapter one');
       expect(document.id, DocumentId(alphaId, 'guide.md'));
       expect(document.anchor, 'details');
+      expect(spacedDocument.anchor, 'chapter one');
+      expect(malformed.anchor, 'chapter%ZZone');
       expect(external.url, 'https://example.com/guide');
       expect(email.url, 'mailto:reader@example.com');
       expect(chat.url, 'xmpp:reader@example.com');

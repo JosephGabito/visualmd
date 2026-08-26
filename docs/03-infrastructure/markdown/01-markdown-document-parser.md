@@ -248,6 +248,19 @@ adapter. No HTML parser object crosses into the domain or Flutter API
 (`lib/infrastructure/markdown/safe_html_text.dart`,
 `test/infrastructure/safe_html_text_test.dart`).
 
+One inert attribute has a typed meaning: GitHub documents an opening `a` with
+a non-empty `name` as a custom local target. The adapter decodes that name,
+drops every other attribute, and promotes a standalone pair from CommonMark's
+inline-only paragraph into an `AnchorBlock`. Whitespace between consecutive
+aliases is metadata too, so it cannot create a blank line. Inline anchors and
+anchors inside mixed raw HTML remain visually absent but do not become targets:
+the adapter cannot preserve their exact geometry without corrupting selectable
+text or relocating the target. An anchor-only safe HTML container remains
+eligible because it has no reading geometry to lose. The first repeated custom
+name wins, independently of the counter used for duplicate headings
+(`lib/infrastructure/markdown/safe_html_text.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 A `code` run receives the content already normalised by the
 [CommonMark code-span rules](https://spec.commonmark.org/0.31.2/#code-spans):
 its closing delimiter must match the opening backtick run, line endings become
@@ -350,7 +363,7 @@ node while the empty label creates no invisible action.
 ## Transition
 
 The clearest extension points are footnotes, which currently arrive as an
-unwrapped `section`, plus custom anchors and responsive images. The safe
+unwrapped `section`, plus responsive images. The safe
 `sub`, `sup`, and `ins` meanings now demonstrate the boundary: paired tokens
 become recursive domain marks, attributes disappear, and malformed nesting
 keeps its words without extending a style past the authored pair. The adapter
