@@ -6,6 +6,7 @@ import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
 import '../../domain/reading/content/inline.dart';
 import '../../domain/reading/heading_anchor.dart';
+import 'safe_html_picture.dart';
 import 'safe_html_text.dart';
 
 /// Adapter: turns markdown source into the domain's blocks.
@@ -32,7 +33,11 @@ final class MarkdownDocumentParser implements DocumentParser {
         _RawHtmlInlineSyntax(),
         _LiteralLongTildeRunSyntax(),
       ],
-      blockSyntaxes: const [_DisplayMathBlockSyntax(), _RawHtmlBlockSyntax()],
+      blockSyntaxes: const [
+        _DisplayMathBlockSyntax(),
+        _PictureHtmlBlockSyntax(),
+        _RawHtmlBlockSyntax(),
+      ],
       extensionSet: md.ExtensionSet.gitHubFlavored,
       // The reader draws text, not HTML: escaping it here would put `&amp;`
       // on the page.
@@ -56,6 +61,52 @@ final class MarkdownDocumentParser implements DocumentParser {
       }
     }
     return source;
+  }
+}
+
+/// Keeps every standalone picture-shaped block available to the safe reducer.
+///
+/// CommonMark recognises a complete custom element as HTML, but its ordinary
+/// inline path can discard a self-closing, closing-only, or incomplete shape
+/// before [_Mapper] sees it. Pictures have a stronger recovery contract than
+/// arbitrary HTML: unsupported source must remain visible. This syntax uses
+/// the same blank-line boundary as CommonMark's custom HTML blocks while also
+/// stopping at an authored closing tag.
+final class _PictureHtmlBlockSyntax extends md.BlockSyntax {
+  static final _start = RegExp(
+    r'^ {0,3}<\s*/?\s*picture(?:\s|/?>)',
+    caseSensitive: false,
+  );
+  static final _close = RegExp(r'<\s*/\s*picture\s*>', caseSensitive: false);
+  static final _single = RegExp(
+    r'^ {0,3}(?:<\s*/\s*picture\s*>|<\s*picture(?:\s[^>]*)?/\s*>)\s*$',
+    caseSensitive: false,
+  );
+
+  const _PictureHtmlBlockSyntax();
+
+  @override
+  RegExp get pattern => _start;
+
+  @override
+  bool canEndBlock(md.BlockParser parser) => false;
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    final source = <String>[];
+    while (!parser.isDone && parser.current.content.trim().isNotEmpty) {
+      final line = parser.current.content;
+      source.add(line);
+      parser.advance();
+      if (_single.hasMatch(line) || _close.hasMatch(line)) break;
+    }
+
+    var text = source.join('\n').trimRight();
+    if (parser.previousSyntax != null || parser.parentSyntax != null) {
+      text = '\n$text';
+      if (parser.parentSyntax is md.ListSyntax) text = '$text\n';
+    }
+    return md.Element.text('raw-html-block', text);
   }
 }
 
@@ -446,6 +497,18 @@ final class _Mapper {
 
       case 'raw-html-block':
         final source = _rawHtmlSource(element.textContent);
+        final picture = SafeHtmlPicture.parse(source);
+        if (picture != null) {
+          return [
+            ParagraphBlock([picture]),
+          ];
+        }
+        // A malformed or inaccessible picture has no ordinary text for the
+        // HTML reducer to recover. Keep its inert source visible rather than
+        // silently turning an authored component into empty space.
+        if (SafeHtmlPicture.claims(source)) {
+          return [RawBlock(source)];
+        }
         final text = SafeHtmlText.block(source);
         if (text != null) return [RawBlock(text)];
         return [

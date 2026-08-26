@@ -26,7 +26,11 @@ comment tokens as well as complete tagfiltered elements. `SafeHtmlText` then
 reduces those nodes to inert reading text without allowing a DOM object,
 attribute, style, event handler or executable URL across the infrastructure boundary
 (`lib/infrastructure/markdown/markdown_document_parser.dart`,
-`lib/infrastructure/markdown/safe_html_text.dart`). A Visual MD-owned
+`lib/infrastructure/markdown/safe_html_text.dart`). The one safe media form is
+parsed separately: `SafeHtmlPicture` reduces GitHub's ordered light/dark
+`source` elements and required fallback `img` to an `ImageRun`, without
+admitting a browser DOM or general media-query engine
+(`lib/infrastructure/markdown/safe_html_picture.dart`). A Visual MD-owned
 inline syntax claims runs of three or more tildes before the dependency's
 delimiter resolver can consume a shorter pair from them; formal GFM makes that
 complete run literal (`lib/infrastructure/markdown/markdown_document_parser.dart`). The nodes
@@ -54,7 +58,7 @@ one by one (`lib/infrastructure/markdown/markdown_document_parser.dart`):
 | `table` | `TableBlock` | `thead` rows become the head, the rest the body (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `hr` | `RuleBlock` | (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `section` | *unwrapped* | How footnote definitions arrive; only a wrapper (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
-| `raw-html-block` | `RawBlock` or nothing | Safe containers contribute readable words, comments disappear, and dangerous tags remain visible as inert authored source (`lib/infrastructure/markdown/safe_html_text.dart`) |
+| `raw-html-block` | `ParagraphBlock`, `RawBlock`, or nothing | A supported theme-aware `picture` becomes one image; safe containers contribute readable words; comments disappear; incomplete or unsupported pictures and dangerous tags remain visible as inert authored source (`lib/infrastructure/markdown/safe_html_picture.dart`, `lib/infrastructure/markdown/safe_html_text.dart`) |
 | anything else | `RawBlock` | Its words survive even though its markup does not (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 
 **Thematic breaks.** CommonMark's asterisk, hyphen and underscore forms all
@@ -261,6 +265,18 @@ name wins, independently of the counter used for duplicate headings
 (`lib/infrastructure/markdown/safe_html_text.dart`,
 `lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+One inert media container also has a typed meaning. A standalone `picture`
+must end with exactly one `img` carrying a non-empty fallback source and an
+authored `alt` attribute. Earlier `source` children contribute candidates only
+when their media query is exactly `prefers-color-scheme: light` or `dark` and
+their `srcset` contains one undecorated URL. Candidate order is retained;
+unsupported media queries, MIME conditions, and browser density descriptors
+fall through to the fallback rather than being guessed. An incomplete authored
+container, missing fallback semantics, mixed content, or unsafe descendants
+keep the complete picture-shaped source visible and inert
+(`lib/infrastructure/markdown/safe_html_picture.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 A `code` run receives the content already normalised by the
 [CommonMark code-span rules](https://spec.commonmark.org/0.31.2/#code-spans):
 its closing delimiter must match the opening backtick run, line endings become
@@ -362,8 +378,8 @@ node while the empty label creates no invisible action.
 
 ## Transition
 
-The clearest extension points are footnotes, which currently arrive as an
-unwrapped `section`, plus responsive images. The safe
+The clearest extension point is footnotes, which currently arrive as an
+unwrapped `section`. The safe
 `sub`, `sup`, and `ins` meanings now demonstrate the boundary: paired tokens
 become recursive domain marks, attributes disappear, and malformed nesting
 keeps its words without extending a style past the authored pair. The adapter

@@ -94,6 +94,13 @@ is retained: it means decorative artwork and must not be replaced with the
 filename (`lib/domain/reading/content/inline.dart`,
 `lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+The same value can carry ordered `ThemedImageSource` alternatives for light or
+dark reading. The required fallback `source`, alternative, and title still
+belong to the image as a whole; a candidate changes only which artwork supplies
+the pixels. Selection is first-match and falls back deterministically, so a
+theme change never changes search text, semantics, or source authority
+(`lib/domain/reading/content/inline.dart`).
+
 The model is deliberately ignorant of which valid delimiter spelling produced
 a mark. Both `*emphasis*` and `_emphasis_` become the same
 `MarkedRun(InlineMark.emphasis, ...)`; the stars or underscores have already
@@ -198,8 +205,8 @@ fallback, comments and dangerous HTML source.
 
 ## Transition
 
-The domain still does not load an image or decide whether its source is local.
-Those are application and platform questions handled by
+The domain still does not load an image or decide whether any selected source
+is local. Those are application and platform questions handled by
 [Document Image](../05-api/23-document-image.md). Syntax highlighting reads
 `CodeBlock.language` through the presentation contract and colours source in
 the renderer. No token moved into this model: a highlighted range is still not

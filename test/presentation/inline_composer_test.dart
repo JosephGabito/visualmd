@@ -17,6 +17,7 @@ import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/search/search_result.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/theme/reader_theme.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 import 'package:visualmd/presentation/theme/theme_palette.dart';
 
@@ -47,10 +48,15 @@ void main() {
   late ReadingTheme theme;
   final tapped = <String>[];
 
-  Future<void> makeComposer(WidgetTester tester) async {
+  Future<void> makeComposer(
+    WidgetTester tester, {
+    ReaderTheme readerTheme = BuiltInThemes.paper,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: libraryTheme(BuiltInThemes.paper),
+        theme: libraryTheme(readerTheme),
+        darkTheme: libraryTheme(readerTheme),
+        themeMode: readerTheme.isDark ? ThemeMode.dark : ThemeMode.light,
         home: Builder(
           builder: (context) {
             theme = ReadingTheme.of(context, ReadingScale.comfortable);
@@ -1171,5 +1177,46 @@ void main() {
 
     expect(spans.single, isA<WidgetSpan>());
     expect((spans.single as WidgetSpan).child, isA<DocumentImage>());
+  });
+
+  testWidgets('a picture selects its first source for the reading theme', (
+    tester,
+  ) async {
+    const image = ImageRun(
+      source: 'fallback.png',
+      alt: 'A themed diagram',
+      themedSources: [
+        ThemedImageSource(
+          scheme: ImageColorScheme.dark,
+          source: 'dark-first.png',
+        ),
+        ThemedImageSource(
+          scheme: ImageColorScheme.dark,
+          source: 'dark-second.png',
+        ),
+        ThemedImageSource(scheme: ImageColorScheme.light, source: 'light.png'),
+      ],
+    );
+
+    String selectedSource() {
+      final span =
+          InlineComposer(
+                theme: theme,
+                document: DocumentId(
+                  const LibraryRootId('notes'),
+                  'guide/page.md',
+                ),
+                imageLoader: const _MissingImageLoader(),
+              ).compose(const [image]).single
+              as WidgetSpan;
+      return (span.child as DocumentImage).source;
+    }
+
+    await makeComposer(tester);
+    expect(selectedSource(), 'light.png');
+
+    await makeComposer(tester, readerTheme: BuiltInThemes.lamplight);
+    await tester.pumpAndSettle();
+    expect(selectedSource(), 'dark-first.png');
   });
 }

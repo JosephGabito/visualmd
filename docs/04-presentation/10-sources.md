@@ -613,9 +613,22 @@ source rather than executed or silently flattened
 
 The boundary is structural, not a sanitizer bolted onto a WebView. The
 `package:html` fragment parser builds an inert Dart tree inside infrastructure;
-no DOM node, attribute, CSS declaration, event handler or URL reaches the
-domain or Flutter API. Responsive `picture` remains a separate follow-on
-contract rather than a reason to admit arbitrary HTML.
+no DOM node, attribute, CSS declaration, event handler or executable behavior
+reaches the domain or Flutter API. Each admitted URL belongs to a typed image
+value with the same loader boundary as ordinary Markdown artwork.
+
+[GitHub's current picture-element guidance](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#the-picture-element)
+confirms that the element is supported. Its
+[theme-context announcement](https://github.blog/changelog/2022-05-19-specify-theme-context-for-images-in-markdown-beta/)
+establishes the portable authoring shape: a `picture`, ordered `source`
+elements conditioned by `prefers-color-scheme`, and one `img` fallback that
+owns the alternative. The [HTML Standard's picture model](https://html.spec.whatwg.org/dev/images.html)
+likewise makes the container a selection context, chooses the first matching
+source, and keeps `img` as the backwards-compatible fallback. Visual MD
+implements the light/dark subset that its reading themes can answer. It does
+not pretend to evaluate viewport queries, MIME support, CSS sizes, or the full
+`srcset` density algorithm (`lib/infrastructure/markdown/safe_html_picture.dart`,
+`lib/domain/reading/content/inline.dart`).
 
 [GitHub's custom-anchor guidance](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#custom-anchors)
 documents `<a name="unique-anchor-name"></a>` as a local target and states that

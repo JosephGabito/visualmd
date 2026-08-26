@@ -309,6 +309,71 @@ First.
       ]);
       expect(content.text, isEmpty);
     });
+
+    test('a GitHub picture becomes one fallback-backed image run', () {
+      final paragraph = single<ParagraphBlock>('''
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="light.png">
+  <img src="fallback.png" alt="Visual MD artwork" title="Theme preview">
+</picture>
+''');
+      final image = paragraph.content.single as ImageRun;
+
+      expect(image.source, 'fallback.png');
+      expect(image.alt, 'Visual MD artwork');
+      expect(image.title, 'Theme preview');
+      expect(image.sourceFor(ImageColorScheme.dark), 'dark.png');
+      expect(image.sourceFor(ImageColorScheme.light), 'light.png');
+      expect(paragraph.text, 'Visual MD artwork');
+    });
+
+    test('a malformed picture remains visible inert source', () {
+      const source = '''
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="dark.png">
+</picture>
+''';
+      final raw = single<RawBlock>(source);
+
+      expect(raw.text, source.trimRight());
+    });
+
+    test('incomplete picture-shaped HTML remains visible inert source', () {
+      for (final source in [
+        '<picture/>',
+        '</picture>',
+        '<picture><img src="fallback.png" alt="Fallback">',
+      ]) {
+        final raw = single<RawBlock>(source);
+
+        expect(raw.text, source);
+      }
+    });
+
+    test('a picture-prefixed custom element keeps its readable text', () {
+      final paragraph = single<ParagraphBlock>(
+        '<picture-frame>Readable text</picture-frame>',
+      );
+
+      expect(paragraph.text, 'Readable text');
+    });
+
+    test('a picture remains inside its authored list item', () {
+      final list = single<ListBlock>('''
+- Before.
+
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="dark.png">
+    <img src="fallback.png" alt="Nested artwork">
+  </picture>
+''');
+      final picture = list.items.single.blocks.last as ParagraphBlock;
+
+      expect(picture.content.single, isA<ImageRun>());
+      expect(picture.text, 'Nested artwork');
+      expect(list.items.single.text, 'Before.\nNested artwork');
+    });
   });
 
   group('a paragraph', () {
