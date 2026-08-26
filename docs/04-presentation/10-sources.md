@@ -589,6 +589,15 @@ header width. Visual MD accepts those source variations as one `TableBlock`
 contract before presentation decides width, overflow or typography
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+Flutter's native `RenderTable` gives the surface its
+[table role](https://api.flutter.dev/flutter/rendering/RenderTable/describeSemanticsConfiguration.html)
+and [assembles row and cell roles](https://api.flutter.dev/flutter/rendering/RenderTable/assembleSemanticsNode.html).
+Visual MD adds the missing column-header role to the authored head row, while
+the page-level
+[`SelectionArea`](https://api.flutter.dev/flutter/material/SelectionArea-class.html)
+keeps cell text in the same selectable surface as the surrounding document
+(`lib/api/render/document_view.dart`, `lib/api/widgets/reading_pane.dart`).
+
 ## Accessibility standards
 
 WCAG 2.2 requires at least 4.5:1 contrast for ordinary text and asks reading

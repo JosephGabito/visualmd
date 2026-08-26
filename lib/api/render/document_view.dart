@@ -890,12 +890,17 @@ class _TableState extends State<_Table> {
       vertical: widget.theme.em * 0.45,
     );
 
-    Widget cell(TableCell cell, TextStyle style, int offset) {
+    Widget cell(
+      TableCell cell,
+      TextStyle style,
+      int offset, {
+      bool header = false,
+    }) {
       final direction = ReadingDirection.of(
         cell.text,
         fallback: Directionality.of(context),
       );
-      return Padding(
+      final contents = Padding(
         padding: cellPadding,
         child: Text.rich(
           TextSpan(
@@ -913,23 +918,37 @@ class _TableState extends State<_Table> {
           },
         ),
       );
+      // RenderTable supplies table, row, and ordinary-cell roles itself. The
+      // first row is authorial structure, though, so name it explicitly rather
+      // than leaving assistive technology to infer headers from paint alone.
+      return header
+          ? Semantics(role: SemanticsRole.columnHeader, child: contents)
+          : contents;
     }
 
     final columns = widget.table.head.length;
     var rowOffset = widget.offset;
-    List<Widget> padded(List<TableCell> cells, TextStyle style) {
+    List<Widget> padded(
+      List<TableCell> cells,
+      TextStyle style, {
+      bool header = false,
+    }) {
       var cellOffset = rowOffset;
       final views = <Widget>[];
       for (var i = 0; i < columns; i++) {
         final value = i < cells.length ? cells[i] : const TableCell([]);
-        views.add(cell(value, style, cellOffset));
+        views.add(cell(value, style, cellOffset, header: header));
         if (i < cells.length) cellOffset += value.text.length + 1;
       }
       rowOffset += cells.map((cell) => cell.text).join('\t').length + 1;
       return views;
     }
 
-    final head = padded(widget.table.head, widget.theme.tableHead);
+    final head = padded(
+      widget.table.head,
+      widget.theme.tableHead,
+      header: true,
+    );
     final rows = [
       for (final row in widget.table.rows) padded(row, widget.theme.tableBody),
     ];
