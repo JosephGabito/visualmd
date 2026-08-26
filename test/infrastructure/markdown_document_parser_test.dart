@@ -1229,6 +1229,39 @@ void main() {
       expect(paragraph.content.whereType<MathRun>(), isEmpty);
       expect(paragraph.text, r'$first second$');
     });
+
+    test('currency amounts cannot become accidental equations', () {
+      for (final fixture in [
+        (
+          source:
+              r'Our cost: **$1 per 10,000 credits** = **$0.0001 / credit**.',
+          text: r'Our cost: $1 per 10,000 credits = $0.0001 / credit.',
+          strong: [r'$1 per 10,000 credits', r'$0.0001 / credit'],
+        ),
+        (
+          source: r'Gross profit is **~$270/yr** ($300 revenue - ~$24 COGS - ~$9 fees).',
+          text: r'Gross profit is ~$270/yr ($300 revenue - ~$24 COGS - ~$9 fees).',
+          strong: [r'~$270/yr'],
+        ),
+      ]) {
+        final paragraph = single<ParagraphBlock>(fixture.source);
+
+        expect(
+          paragraph.content.whereType<MathRun>(),
+          isEmpty,
+          reason: fixture.source,
+        );
+        expect(paragraph.text, fixture.text, reason: fixture.source);
+        expect(
+          paragraph.content
+              .whereType<MarkedRun>()
+              .where((run) => run.mark == InlineMark.strong)
+              .map((run) => run.text),
+          fixture.strong,
+          reason: fixture.source,
+        );
+      }
+    });
   });
 
   group('display math', () {

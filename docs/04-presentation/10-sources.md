@@ -524,6 +524,15 @@ therefore claims them in its adapter without changing ordinary code spans,
 code fences or malformed dollar text
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+The same GitHub guide treats literal dollars and inline equations on one line
+as an ambiguous surface and recommends marking the literal sign explicitly.
+Ordinary financial prose with several currency amounts is not an equation,
+however. Visual MD follows [Pandoc's documented dollar-math delimiter](https://pandoc.org/MANUAL.html#extension-tex_math_dollars):
+a closing dollar cannot be followed immediately by a digit. This preserves
+`$1 each = $0.50` without weakening ordinary
+notation such as `$E = mc^2$`
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 The [`katex` Flutter package](https://pub.dev/packages/katex) was chosen because
 it parses to a pure-Dart box tree and paints with Flutter on Android, iOS,
 Linux, macOS, web and Windows. It does not introduce a WebView, JavaScript
