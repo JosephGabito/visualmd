@@ -182,4 +182,46 @@ void main() {
     expect(SafeHtmlText.inline('<div>'), isA<BreakInlineHtml>());
     expect(SafeHtmlText.inline('<span>'), isA<HiddenInlineHtml>());
   });
+
+  test('a custom anchor contributes only its decoded local name', () {
+    expect(
+      SafeHtmlText.inline(
+        '<a name="chapter&amp;two" href="https://example.com" '
+        'onclick="never()">',
+      ),
+      isA<AnchorInlineHtml>().having(
+        (value) => value.name,
+        'name',
+        'chapter&two',
+      ),
+    );
+
+    for (final source in [
+      '</a>',
+      '<a href="#chapter">',
+      '<a name="">',
+      '<a name="chapter" />',
+    ]) {
+      expect(SafeHtmlText.inline(source), isNot(isA<AnchorInlineHtml>()));
+    }
+  });
+
+  test('safe blocks expose custom anchors in source order', () {
+    expect(
+      SafeHtmlText.anchors('''
+<section>
+  <a name="first"></a>
+  <p>Reading text.</p>
+  <a name="second&amp;final"></a>
+</section>
+'''),
+      ['first', 'second&final'],
+    );
+    expect(
+      SafeHtmlText.anchors(
+        '<div><a name="hidden"></a><script>unsafe</script></div>',
+      ),
+      isEmpty,
+    );
+  });
 }

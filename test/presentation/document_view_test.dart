@@ -42,6 +42,7 @@ void main() {
   });
 
   late Map<String, GlobalKey> keys;
+  late Map<String, GlobalKey> customKeys;
   late ReadingTheme renderedTheme;
 
   Future<void> pumpDocument(
@@ -56,6 +57,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     keys = {};
+    customKeys = {};
     await tester.pumpWidget(
       MaterialApp(
         theme: libraryTheme(BuiltInThemes.paper),
@@ -77,6 +79,7 @@ void main() {
                     content: DocumentContent(blocks),
                     theme: renderedTheme,
                     anchorKeys: keys,
+                    customAnchorKeys: customKeys,
                   );
                 },
               ),
@@ -89,6 +92,34 @@ void main() {
   }
 
   ParagraphBlock paragraph(String text) => ParagraphBlock([TextRun(text)]);
+
+  testWidgets('block anchors occupy no rhythm and target the following block', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      paragraph('Before anchor.'),
+      const AnchorBlock('middle'),
+      paragraph('After anchor.'),
+    ]);
+
+    final withAnchor = tester.getTopLeft(find.text('After anchor.')).dy;
+    final target = customKeys['middle']?.currentContext;
+    expect(target, isNotNull);
+    expect(
+      (target!.findRenderObject()! as RenderBox).localToGlobal(Offset.zero).dy,
+      closeTo(withAnchor, 0.01),
+    );
+
+    await pumpDocument(tester, [
+      paragraph('Before anchor.'),
+      paragraph('After anchor.'),
+    ]);
+    expect(
+      tester.getTopLeft(find.text('After anchor.')).dy,
+      closeTo(withAnchor, 0.01),
+      reason: 'navigation metadata must not create a blank line',
+    );
+  });
 
   testWidgets('prose is held to the measure while code is given more room', (
     tester,

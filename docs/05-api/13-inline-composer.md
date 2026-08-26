@@ -65,6 +65,15 @@ that source and paints a matching background behind the complete equation
 (`lib/api/widgets/math_expression.dart`,
 `test/presentation/math_expression_test.dart`).
 
+An inline custom anchor is syntax rather than prose, but Flutter's keyed inline
+geometry is a `WidgetSpan` and therefore one selectable placeholder code unit.
+The parser removes that syntax before presentation. Exact navigation is
+reserved for standalone `AnchorBlock` targets, while inline selection, copying,
+search and semantics remain continuous
+(`lib/infrastructure/markdown/safe_html_text.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`test/presentation/inline_composer_test.dart`).
+
 An authored line stays inside the same span tree as its surrounding emphasis or
 link. Its newline advances the same offset cursor used by document search, so a
 match after the break highlights the intended characters while selection and

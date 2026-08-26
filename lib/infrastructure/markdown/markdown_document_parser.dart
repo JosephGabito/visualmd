@@ -342,6 +342,7 @@ final class _LiteralLongTildeRunSyntax extends md.InlineSyntax {
 /// exactly as long as a single parse, and two documents never share numbering.
 final class _Mapper {
   final _anchors = HeadingAnchors();
+  final _customAnchors = <String>{};
 
   static const _blockTags = {
     'p',
@@ -394,8 +395,20 @@ final class _Mapper {
   List<Block> _block(md.Element element) {
     switch (element.tag) {
       case 'p':
+        // CommonMark classifies GitHub's standalone `<a name="…"></a>` form
+        // as an inline-only paragraph. In reading terms it is navigation
+        // metadata, not an empty line of prose, so promote an anchor-only
+        // paragraph to zero-height block targets. Whitespace between adjacent
+        // aliases is source formatting, not a line on the reading page.
+        if (_isAnchorMetadataParagraph(element.children)) {
+          return [
+            for (final name in _anchorNames(element.children))
+              if (_customAnchors.add(name)) AnchorBlock(name),
+          ];
+        }
         final content = inlines(element.children);
-        return content.isEmpty ? const [] : [ParagraphBlock(content)];
+        if (content.isEmpty) return const [];
+        return [ParagraphBlock(content)];
 
       case 'h1' || 'h2' || 'h3' || 'h4' || 'h5' || 'h6':
         final content = inlines(element.children);
@@ -432,12 +445,13 @@ final class _Mapper {
         return blocks(element.children);
 
       case 'raw-html-block':
-        return switch (SafeHtmlText.block(
-          _rawHtmlSource(element.textContent),
-        )) {
-          final text? => [RawBlock(text)],
-          null => const [],
-        };
+        final source = _rawHtmlSource(element.textContent);
+        final text = SafeHtmlText.block(source);
+        if (text != null) return [RawBlock(text)];
+        return [
+          for (final name in SafeHtmlText.anchors(source))
+            if (_customAnchors.add(name)) AnchorBlock(name),
+        ];
 
       default:
         final text = element.textContent;
@@ -586,6 +600,39 @@ final class _Mapper {
     return _inlines(source, _InlineLineBreaks(source));
   }
 
+  static bool _isAnchorMetadataParagraph(List<md.Node>? nodes) {
+    var sawAnchor = false;
+    for (final node in nodes ?? const <md.Node>[]) {
+      if (node case md.Text(:final text) when text.trim().isEmpty) continue;
+      if (node case md.Element(tag: 'raw-html-inline', :final textContent)) {
+        if (SafeHtmlText.inline(textContent) is AnchorInlineHtml) {
+          sawAnchor = true;
+          continue;
+        }
+        if (RegExp(
+          r'^<\s*/\s*a\s*>$',
+          caseSensitive: false,
+        ).hasMatch(textContent.trim())) {
+          continue;
+        }
+      }
+      return false;
+    }
+    return sawAnchor;
+  }
+
+  static Iterable<String> _anchorNames(List<md.Node>? nodes) sync* {
+    for (final node in nodes ?? const <md.Node>[]) {
+      if (node case md.Element(tag: 'raw-html-inline', :final textContent)) {
+        if (SafeHtmlText.inline(textContent) case AnchorInlineHtml(
+          :final name,
+        )) {
+          yield name;
+        }
+      }
+    }
+  }
+
   List<Inline> _inlines(List<md.Node>? nodes, _InlineLineBreaks lineBreaks) {
     final frames = <_InlineFrame>[_InlineFrame()];
 
@@ -658,6 +705,11 @@ final class _Mapper {
               add(TextRun(source));
             case BreakInlineHtml():
               add(const LineBreakRun());
+            case AnchorInlineHtml():
+              // Only an anchor-only paragraph has exact block geometry. A
+              // mixed inline anchor cannot be keyed without inserting a
+              // placeholder into Flutter's selectable text model.
+              continue;
             case SemanticInlineHtml(:final mark, :final closing):
               final inlineMark = switch (mark) {
                 SafeInlineHtmlMark.subscript => InlineMark.subscript,

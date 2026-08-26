@@ -614,8 +614,21 @@ source rather than executed or silently flattened
 The boundary is structural, not a sanitizer bolted onto a WebView. The
 `package:html` fragment parser builds an inert Dart tree inside infrastructure;
 no DOM node, attribute, CSS declaration, event handler or URL reaches the
-domain or Flutter API. Custom anchors and `picture` remain separate follow-on
-contracts rather than a reason to admit arbitrary HTML.
+domain or Flutter API. Responsive `picture` remains a separate follow-on
+contract rather than a reason to admit arbitrary HTML.
+
+[GitHub's custom-anchor guidance](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#custom-anchors)
+documents `<a name="unique-anchor-name"></a>` as a local target and states that
+custom anchors do not appear in the outline or table of contents. Visual MD
+therefore admits only the non-empty `name` as inert navigation identity; it
+drops all other attributes, assigns no visible or semantic text, keeps
+standalone custom identity independent from generated heading suffixes, and
+leaves the target out of the outline. The standalone form is the supported
+contract because its position can be keyed without inserting a selectable
+placeholder or moving an anchor out of mixed raw content
+(`lib/infrastructure/markdown/safe_html_text.dart`,
+`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`lib/api/render/document_view.dart`).
 
 [GitHub's current writing guide](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax)
 documents `sub`, `sup`, and `ins` as supported inline writing forms. Visual MD

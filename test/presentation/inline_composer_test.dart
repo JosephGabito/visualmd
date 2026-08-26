@@ -1086,6 +1086,27 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('inline custom anchor syntax inserts no selectable placeholder', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    const parser = MarkdownDocumentParser();
+    final block =
+        parser.parse('before <a name="middle"></a>"after"').blocks.single
+            as ParagraphBlock;
+    final spans = InlineComposer(theme: theme).compose(block.content);
+    final paragraph = TextSpan(children: spans);
+    await tester.pumpWidget(MaterialApp(home: Text.rich(paragraph)));
+
+    expect(paragraph.toPlainText(), 'before “after”');
+    expect(
+      paragraph.getSemanticsInformation().map((entry) => entry.text).join(),
+      'before “after”',
+    );
+    expect(spans.whereType<WidgetSpan>(), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('links keep the typographic role around them', (tester) async {
     await makeComposer(tester);
     final heading = theme.heading(2);

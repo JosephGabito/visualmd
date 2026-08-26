@@ -61,6 +61,10 @@ class DocumentView extends StatelessWidget {
   /// Keys by heading anchor, so the outline can bring a heading into view.
   final Map<String, GlobalKey> anchorKeys;
 
+  /// Keys by explicit HTML anchor name. These are navigation targets but not
+  /// headings, so they deliberately stay out of the document outline.
+  final Map<String, GlobalKey> customAnchorKeys;
+
   final void Function(String href)? onTapLink;
   final List<TextMatch> matches;
   final int activeMatch;
@@ -72,6 +76,7 @@ class DocumentView extends StatelessWidget {
     required this.content,
     required this.theme,
     required this.anchorKeys,
+    Map<String, GlobalKey>? customAnchorKeys,
     this.codeHighlighter = const PlainCodeHighlighter(),
     this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
@@ -79,7 +84,8 @@ class DocumentView extends StatelessWidget {
     this.matches = const [],
     this.activeMatch = -1,
     Map<int, GlobalKey>? matchKeys,
-  }) : matchKeys = matchKeys ?? <int, GlobalKey>{};
+  }) : customAnchorKeys = customAnchorKeys ?? <String, GlobalKey>{},
+       matchKeys = matchKeys ?? <int, GlobalKey>{};
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +111,7 @@ class DocumentView extends StatelessWidget {
           codeHighlighter: codeHighlighter,
           mermaidRenderer: mermaidRenderer,
           keys: anchorKeys,
+          customKeys: customAnchorKeys,
           matchKeys: matchKeys,
           // A fixed width, not a maximum: a code block's ground should span
           // its column rather than shrinking to the length of its shortest
@@ -135,6 +142,7 @@ class _BlockSequence extends StatelessWidget {
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
+  final Map<String, GlobalKey> customKeys;
   final Map<int, GlobalKey> matchKeys;
   final double Function(Block block)? widthFor;
   final int startOffset;
@@ -149,6 +157,7 @@ class _BlockSequence extends StatelessWidget {
     required this.codeHighlighter,
     required this.mermaidRenderer,
     required this.keys,
+    required this.customKeys,
     required this.matchKeys,
     this.widthFor,
     this.startOffset = 0,
@@ -161,11 +170,23 @@ class _BlockSequence extends StatelessWidget {
   Widget build(BuildContext context) {
     final marking = theme.scale.marking;
     final children = <Widget>[];
+    final visible = <_VisibleBlock>[];
+    final pendingAnchors = <String>[];
+    for (final block in blocks) {
+      if (block case AnchorBlock(:final name)) {
+        pendingAnchors.add(name);
+      } else {
+        visible.add(_VisibleBlock(block, List.of(pendingAnchors)));
+        pendingAnchors.clear();
+      }
+    }
+
     var offset = startOffset;
-    for (var i = 0; i < blocks.length; i++) {
-      final block = blocks[i];
-      final previous = i == 0 ? null : blocks[i - 1];
-      final next = i + 1 < blocks.length ? blocks[i + 1] : null;
+    for (var i = 0; i < visible.length; i++) {
+      final entry = visible[i];
+      final block = entry.block;
+      final previous = i == 0 ? null : visible[i - 1].block;
+      final next = i + 1 < visible.length ? visible[i + 1].block : null;
       final followingSpace =
           spaceAfter?.call(block, next) ?? theme.spaceAfter(block, next);
 
@@ -176,6 +197,7 @@ class _BlockSequence extends StatelessWidget {
         codeHighlighter: codeHighlighter,
         mermaidRenderer: mermaidRenderer,
         keys: keys,
+        customKeys: customKeys,
         matchKeys: matchKeys,
         offset: offset,
         indent: ParagraphRules.indents(previous, marking) ? theme.indent : 0,
@@ -183,24 +205,50 @@ class _BlockSequence extends StatelessWidget {
         reconcileContainer: reconcileContainers,
       );
       final width = widthFor?.call(block);
-      children.add(
-        width == null
-            ? view
-            : Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(width: width, child: view),
-              ),
-      );
+      final positioned = width == null
+          ? view
+          : Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(width: width, child: view),
+            );
+      children.add(_withAnchorTargets(positioned, entry.anchors, customKeys));
       if (followingSpace > 0) {
         children.add(SizedBox(height: followingSpace));
       }
       offset += block.text.length + separatorLength;
+    }
+    if (pendingAnchors.isNotEmpty) {
+      children.add(
+        _withAnchorTargets(const SizedBox.shrink(), pendingAnchors, customKeys),
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: children,
     );
   }
+}
+
+final class _VisibleBlock {
+  const _VisibleBlock(this.block, this.anchors);
+
+  final Block block;
+  final List<String> anchors;
+}
+
+Widget _withAnchorTargets(
+  Widget child,
+  Iterable<String> anchors,
+  Map<String, GlobalKey> keys,
+) {
+  var target = child;
+  for (final anchor in anchors) {
+    target = KeyedSubtree(
+      key: keys.putIfAbsent(anchor, GlobalKey.new),
+      child: target,
+    );
+  }
+  return target;
 }
 
 class _BlockView extends StatelessWidget {
@@ -210,6 +258,7 @@ class _BlockView extends StatelessWidget {
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
+  final Map<String, GlobalKey> customKeys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
   final double followingSpace;
@@ -226,6 +275,7 @@ class _BlockView extends StatelessWidget {
     required this.codeHighlighter,
     required this.mermaidRenderer,
     required this.keys,
+    required this.customKeys,
     required this.matchKeys,
     required this.offset,
     required this.followingSpace,
@@ -283,6 +333,9 @@ class _BlockView extends StatelessWidget {
             ),
           ),
         );
+
+      case AnchorBlock():
+        return const SizedBox.shrink();
 
       case CodeBlock(:final code, :final language):
         return _matchTarget(
@@ -366,6 +419,7 @@ class _BlockView extends StatelessWidget {
           codeHighlighter: codeHighlighter,
           mermaidRenderer: mermaidRenderer,
           keys: keys,
+          customKeys: customKeys,
           matchKeys: matchKeys,
           offset: offset,
           followingSpace: followingSpace,
@@ -380,6 +434,7 @@ class _BlockView extends StatelessWidget {
           codeHighlighter: codeHighlighter,
           mermaidRenderer: mermaidRenderer,
           keys: keys,
+          customKeys: customKeys,
           matchKeys: matchKeys,
           offset: offset,
           followingSpace: followingSpace,
@@ -549,6 +604,7 @@ class _Quote extends StatelessWidget {
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
+  final Map<String, GlobalKey> customKeys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
   final double followingSpace;
@@ -561,6 +617,7 @@ class _Quote extends StatelessWidget {
     required this.codeHighlighter,
     required this.mermaidRenderer,
     required this.keys,
+    required this.customKeys,
     required this.matchKeys,
     required this.offset,
     required this.followingSpace,
@@ -591,6 +648,7 @@ class _Quote extends StatelessWidget {
         codeHighlighter: codeHighlighter,
         mermaidRenderer: mermaidRenderer,
         keys: keys,
+        customKeys: customKeys,
         matchKeys: matchKeys,
         startOffset: offset,
         separatorLength: 1,
@@ -621,6 +679,7 @@ class _List extends StatelessWidget {
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final Map<String, GlobalKey> keys;
+  final Map<String, GlobalKey> customKeys;
   final Map<int, GlobalKey> matchKeys;
   final int offset;
   final double followingSpace;
@@ -633,6 +692,7 @@ class _List extends StatelessWidget {
     required this.codeHighlighter,
     required this.mermaidRenderer,
     required this.keys,
+    required this.customKeys,
     required this.matchKeys,
     required this.offset,
     required this.followingSpace,
@@ -672,6 +732,7 @@ class _List extends StatelessWidget {
                   codeHighlighter: codeHighlighter,
                   mermaidRenderer: mermaidRenderer,
                   keys: keys,
+                  customKeys: customKeys,
                   matchKeys: matchKeys,
                   startOffset: itemOffset,
                   separatorLength: 1,
