@@ -95,6 +95,13 @@ x-height. Inline notation therefore retains a heading, table or prose role;
 display notation uses body size and lets mathematical display style establish
 its hierarchy (`lib/api/render/reading_theme.dart`).
 
+**Annotations.** `ReadingTheme.footnotes(theme)` derives a complete reading
+theme exactly two logical pixels below the running prose while preserving the
+same face, x-height normalisation and measured leading. Definition content can
+therefore reuse every ordinary block renderer at a subordinate role; Document
+View reconciles the completed annotation section back to the parent beat
+(`lib/api/render/reading_theme.dart`).
+
 **The two widths** (`lib/api/render/reading_theme.dart`):
 
 - `proseWidth(available)` — the measure, or the room available if that is
@@ -118,7 +125,8 @@ line box to one so inline code cannot push it off the grid
 
 Out: `body`, `code`, `quote`, `marker`, `tableHead`, `tableBody`, `headings`
 (`lib/api/render/reading_theme.dart`), the role-aware `linkFor` and
-inline-code and math-size rules (`lib/api/render/reading_theme.dart`), `leading`,
+inline-code and math-size rules, the derived `footnotes` annotation role
+(`lib/api/render/reading_theme.dart`), `leading`,
 `renderedBase`, rendered `em` and `indent`, the two widths, `strutFor`, and the
 rhythm members `baseline`, `snap`, `blockGap` and the single external-spacing
 contract `spaceAfter(current, next)` (`lib/api/render/reading_theme.dart`).

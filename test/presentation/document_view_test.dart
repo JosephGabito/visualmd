@@ -10,6 +10,7 @@ import 'package:visualmd/api/widgets/code_block.dart';
 import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
+import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 
@@ -48,7 +49,7 @@ void main() {
   Future<void> pumpDocument(
     WidgetTester tester,
     List<Block> blocks, {
-    double width = 1100,
+    double? width = 1100,
     TextScaler textScaler = TextScaler.noScaling,
   }) async {
     // Room for the measure: a narrow window clamps the column, which is its
@@ -119,6 +120,179 @@ void main() {
       closeTo(withAnchor, 0.01),
       reason: 'navigation metadata must not create a blank line',
     );
+  });
+
+  testWidgets('footnotes expose both navigation targets without blank blocks', (
+    tester,
+  ) async {
+    await pumpDocument(tester, const [
+      ParagraphBlock([
+        TextRun('A supported claim'),
+        FootnoteReferenceRun(
+          number: 1,
+          definitionAnchor: 'fn-source',
+          referenceAnchor: 'fnref-source',
+        ),
+      ]),
+      FootnoteSectionBlock([
+        FootnoteDefinition(
+          number: 1,
+          anchor: 'fn-source',
+          blocks: [
+            ParagraphBlock([TextRun('Supporting note.')]),
+          ],
+        ),
+      ]),
+    ]);
+
+    final reference = customKeys['fnref-source']?.currentContext;
+    final definition = customKeys['fn-source']?.currentContext;
+    expect(reference, isNotNull);
+    expect(definition, isNotNull);
+    expect(
+      (reference!.findRenderObject()! as RenderBox)
+          .localToGlobal(Offset.zero)
+          .dy,
+      closeTo(tester.getTopLeft(find.text('A supported claim1')).dy, 0.01),
+    );
+    expect(
+      (definition!.findRenderObject()! as RenderBox)
+          .localToGlobal(Offset.zero)
+          .dy,
+      closeTo(tester.getTopLeft(find.text('Supporting note.')).dy, 0.01),
+    );
+  });
+
+  testWidgets('encoded footnote labels become reachable local identities', (
+    tester,
+  ) async {
+    final content = const MarkdownDocumentParser().parse('''
+The claim has a note.[^β^]
+
+[^β^]: Unicode labels remain reachable.
+''');
+    await pumpDocument(tester, content.blocks, width: null);
+
+    expect(customKeys['fnref-β^']?.currentContext, isNotNull);
+    expect(customKeys['fn-β^']?.currentContext, isNotNull);
+    expect(customKeys, isNot(contains('fn-%CE%B2%5E')));
+
+    tester.view.physicalSize = const Size(1300, 1400);
+    await tester.pumpAndSettle();
+    expect(customKeys['fnref-β^']?.currentContext, isNotNull);
+    expect(customKeys['fn-β^']?.currentContext, isNotNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('footnotes are subordinate prose and return the page to phase', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      paragraph('Before notes.'),
+      const FootnoteSectionBlock([
+        FootnoteDefinition(
+          number: 1,
+          anchor: 'fn-one',
+          blocks: [
+            ParagraphBlock([TextRun('First note paragraph.')]),
+            ParagraphBlock([TextRun('Second note paragraph.')]),
+          ],
+        ),
+        FootnoteDefinition(
+          number: 2,
+          anchor: 'fn-two',
+          blocks: [
+            ParagraphBlock([TextRun('Another note.')]),
+          ],
+        ),
+      ]),
+      paragraph('After notes.'),
+    ]);
+
+    final note = tester.widget<Text>(find.text('First note paragraph.'));
+    final noteStyle = (note.textSpan! as TextSpan).children!.first.style!;
+    expect(noteStyle.fontSize, lessThan(renderedTheme.body.fontSize!));
+
+    final before = tester.getTopLeft(find.text('Before notes.')).dy;
+    final after = tester.getTopLeft(find.text('After notes.')).dy;
+    final beats = (after - before) / renderedTheme.baseline;
+    expect(
+      (beats - beats.roundToDouble()).abs(),
+      lessThan(0.02),
+      reason: 'the complete annotation section returns to the body grid',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'a reference inside a container belongs only to its local block',
+    (tester) async {
+      await pumpDocument(tester, const [
+        ListBlock(
+          ordered: false,
+          items: [
+            ListItem([
+              ParagraphBlock([
+                TextRun('Nested citation'),
+                FootnoteReferenceRun(
+                  number: 1,
+                  definitionAnchor: 'fn-nested',
+                  referenceAnchor: 'fnref-nested',
+                ),
+              ]),
+            ]),
+          ],
+        ),
+        FootnoteSectionBlock([
+          FootnoteDefinition(
+            number: 1,
+            anchor: 'fn-nested',
+            blocks: [
+              ParagraphBlock([TextRun('Nested note.')]),
+            ],
+          ),
+        ]),
+      ]);
+
+      final target = customKeys['fnref-nested']?.currentContext;
+      expect(target, isNotNull);
+      expect(
+        (target!.findRenderObject()! as RenderBox)
+            .localToGlobal(Offset.zero)
+            .dy,
+        closeTo(tester.getTopLeft(find.text('Nested citation1')).dy, 0.01),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('local anchor identity is first-wins across footnotes', (
+    tester,
+  ) async {
+    final content = const MarkdownDocumentParser().parse('''
+<a name="fn-source"></a>
+<a name="fnref-source"></a>
+
+First owner.
+
+A supported claim.[^source]
+
+[^source]: Supporting note.
+''');
+    await pumpDocument(tester, content.blocks);
+
+    final ownerTop = tester.getTopLeft(find.text('First owner.')).dy;
+    for (final anchor in ['fn-source', 'fnref-source']) {
+      final target = customKeys[anchor]?.currentContext;
+      expect(target, isNotNull);
+      expect(
+        (target!.findRenderObject()! as RenderBox)
+            .localToGlobal(Offset.zero)
+            .dy,
+        closeTo(ownerTop, 0.01),
+      );
+    }
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('prose is held to the measure while code is given more room', (

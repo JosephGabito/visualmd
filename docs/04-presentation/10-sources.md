@@ -649,6 +649,14 @@ maps only properly paired forms onto typed recursive marks; arbitrary tags and
 attributes do not inherit that authority
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+The same guide's [footnote contract](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#footnotes)
+places definitions at the end of the rendered document regardless of source
+position and permits multi-line notes. Visual MD keeps the parser dependency's
+first-reference ordering and return links, then uses its own domain anchors and
+annotation typography rather than exposing the dependency's HTML-shaped tree
+(`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`lib/api/render/document_view.dart`).
+
 Flutter exposes subscript and superscript as the OpenType
 [`subs` and `sups` font features](https://api.flutter.dev/flutter/dart-ui/FontFeature-class.html).
 The bundled reading faces provide both substitutions. Applying the feature to

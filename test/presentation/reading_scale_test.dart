@@ -68,6 +68,15 @@ void main() {
     });
 
     test(
+      'annotation prose takes one exact step without crossing its floor',
+      () {
+        expect(scale.footnote, 16);
+        expect(scale.copyWith(base: 22).footnote, 20);
+        expect(scale.copyWith(base: 15).footnote, ReadingScale.minimumCodeSize);
+      },
+    );
+
+    test(
       'the code step follows the reader without crossing its size floor',
       () {
         final large = scale.copyWith(base: 22);

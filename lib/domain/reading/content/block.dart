@@ -136,6 +136,36 @@ final class ListItem {
   String get text => readingTextOfBlocks(blocks, '\n');
 }
 
+/// The definitions collected at the end of a document by the Markdown
+/// grammar, in first-reference order.
+final class FootnoteSectionBlock extends Block {
+  final List<FootnoteDefinition> definitions;
+
+  const FootnoteSectionBlock(this.definitions);
+
+  @override
+  String get text =>
+      definitions.map((definition) => definition.text).join('\n');
+}
+
+final class FootnoteDefinition {
+  final int number;
+  final String anchor;
+
+  /// Whether this definition is the first claimant of [anchor].
+  final bool ownsAnchor;
+  final List<Block> blocks;
+
+  const FootnoteDefinition({
+    required this.number,
+    required this.anchor,
+    this.ownsAnchor = true,
+    required this.blocks,
+  });
+
+  String get text => readingTextOfBlocks(blocks, '\n');
+}
+
 final class TableBlock extends Block {
   final List<TableCell> head;
   final List<List<TableCell>> rows;

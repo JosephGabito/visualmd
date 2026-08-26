@@ -57,7 +57,7 @@ one by one (`lib/infrastructure/markdown/markdown_document_parser.dart`):
 | `ul`, `ol` | `ListBlock` | See below (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `table` | `TableBlock` | `thead` rows become the head, the rest the body (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `hr` | `RuleBlock` | (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
-| `section` | *unwrapped* | How footnote definitions arrive; only a wrapper (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| `section.footnotes` | `FootnoteSectionBlock` | Definitions retain their blocks and first-reference order; an ordinary section remains a transparent wrapper (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | `raw-html-block` | `ParagraphBlock`, `RawBlock`, or nothing | A supported theme-aware `picture` becomes one image; safe containers contribute readable words; comments disappear; incomplete or unsupported pictures and dangerous tags remain visible as inert authored source (`lib/infrastructure/markdown/safe_html_picture.dart`, `lib/infrastructure/markdown/safe_html_text.dart`) |
 | anything else | `RawBlock` | Its words survive even though its markup does not (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 
@@ -234,8 +234,16 @@ references. An empty label therefore becomes an empty `children` list rather
 than malformed text, while a malformed destination remains visible source
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
-An element with no shape of its own — `sup`, inline HTML, a footnote reference
-— has its children kept even though its markup is dropped
+A `sup.footnote-ref` becomes a typed `FootnoteReferenceRun` only when its
+number, definition fragment and unique return id are complete. Other elements
+with no shape of their own keep their children even though the surrounding
+markup is dropped (`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
+The package carries non-ASCII footnote labels as percent-encoded HTML ids. The
+adapter decodes references, returns, and definitions into the same local
+identity, then restores definition order from the ordinals assigned at first
+reference. Generated `a.footnote-backref` elements become typed return runs so
+their arrow can be announced by meaning rather than punctuation alone
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 **Raw HTML is syntax, never a browser surface.** CommonMark raw blocks and
@@ -378,9 +386,10 @@ node while the empty label creates no invisible action.
 
 ## Transition
 
-The clearest extension point is footnotes, which currently arrive as an
-unwrapped `section`. The safe
-`sub`, `sup`, and `ins` meanings now demonstrate the boundary: paired tokens
+Footnotes demonstrate that a package-generated HTML-shaped tree is transport,
+not the domain: the adapter recognises the complete reference and definition
+contract before constructing typed navigation values. The safe `sub`, `sup`,
+and `ins` meanings follow the same boundary: paired tokens
 become recursive domain marks, attributes disappear, and malformed nesting
 keeps its words without extending a style past the authored pair. The adapter
 still does not infer navigation or media meaning from a generic tag; each

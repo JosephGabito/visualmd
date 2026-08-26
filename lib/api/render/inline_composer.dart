@@ -269,6 +269,78 @@ final class InlineComposer {
           ),
         ];
 
+      case FootnoteReferenceRun(:final number, :final definitionAnchor):
+        final text = number.toString();
+        final start = cursor.offset;
+        cursor.offset += text.length;
+        final matchIndex = matches.indexWhere(
+          (match) => match.overlaps(start, start + text.length),
+        );
+        final linked = _withFontFeature(
+          theme.linkFor(base),
+          const FontFeature.superscripts(),
+        );
+        final tap = onTapLink;
+        return [
+          _LinkTextSpan(
+            label: text,
+            accessibleLabel: 'Footnote $number',
+            children: [
+              TextSpan(text: text, style: _highlighted(linked, matchIndex)),
+            ],
+            recognizer: tap == null
+                ? null
+                : (TapGestureRecognizer()
+                    ..onTap = () => tap('#$definitionAnchor')),
+            mouseCursor: SystemMouseCursors.click,
+          ),
+        ];
+
+      case FootnoteBackReferenceRun(
+        :final number,
+        :final occurrence,
+        :final referenceAnchor,
+        :final text,
+      ):
+        final start = cursor.offset;
+        cursor.offset += text.length;
+        final matchIndex = matches.indexWhere(
+          (match) => match.overlaps(start, start + text.length),
+        );
+        final linked = theme.linkFor(base);
+        final occurrenceText = occurrence > 1 ? occurrence.toString() : '';
+        final arrowText = occurrenceText.isEmpty
+            ? text
+            : text.substring(0, text.length - occurrenceText.length);
+        final tap = onTapLink;
+        return [
+          _LinkTextSpan(
+            label: text,
+            accessibleLabel: occurrence == 1
+                ? 'Return to footnote reference $number'
+                : 'Return to footnote reference $number, occurrence $occurrence',
+            children: [
+              TextSpan(
+                text: arrowText,
+                style: _highlighted(linked, matchIndex),
+              ),
+              if (occurrenceText.isNotEmpty)
+                TextSpan(
+                  text: occurrenceText,
+                  style: _highlighted(
+                    _withFontFeature(linked, const FontFeature.superscripts()),
+                    matchIndex,
+                  ),
+                ),
+            ],
+            recognizer: tap == null
+                ? null
+                : (TapGestureRecognizer()
+                    ..onTap = () => tap('#$referenceAnchor')),
+            mouseCursor: SystemMouseCursors.click,
+          ),
+        ];
+
       case ImageRun(:final title, :final alt):
         final source = run.sourceFor(
           theme.isDark ? ImageColorScheme.dark : ImageColorScheme.light,
@@ -442,9 +514,11 @@ final class InlineComposer {
 /// one logical run while leaving their styles available to the text engine.
 final class _LinkTextSpan extends TextSpan {
   final String label;
+  final String? accessibleLabel;
 
   const _LinkTextSpan({
     required this.label,
+    this.accessibleLabel,
     required super.children,
     required super.recognizer,
     required super.mouseCursor,
@@ -495,6 +569,7 @@ final class _LinkTextSpan extends TextSpan {
       InlineSpanSemanticsInformation(
         label,
         recognizer: recognizer,
+        semanticsLabel: accessibleLabel,
         stringAttributes: [
           if (inheritedSpellOut && label.isNotEmpty)
             ui.SpellOutStringAttribute(

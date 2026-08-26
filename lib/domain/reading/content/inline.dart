@@ -93,6 +93,58 @@ final class LinkRun extends Inline {
   String get text => children.map((c) => c.text).join();
 }
 
+/// A numbered reference from the reading text to one definition at the end.
+///
+/// Both anchors are document identity, not presentation. [definitionAnchor]
+/// reaches the note; [referenceAnchor] gives the note's return link a stable
+/// place at the reading block which contains the sentence. Flutter cannot key
+/// one selectable inline glyph without replacing it with a widget, so the
+/// block is the smallest return target that preserves selection and copying.
+final class FootnoteReferenceRun extends Inline {
+  final int number;
+  final String definitionAnchor;
+  final String referenceAnchor;
+
+  /// Whether this occurrence is the first claimant of [referenceAnchor].
+  ///
+  /// A standalone HTML anchor can deliberately use the same local identity.
+  /// Ownership is resolved once while mapping the document, never by mutable
+  /// widget build order.
+  final bool ownsReferenceAnchor;
+
+  const FootnoteReferenceRun({
+    required this.number,
+    required this.definitionAnchor,
+    required this.referenceAnchor,
+    this.ownsReferenceAnchor = true,
+  });
+
+  @override
+  String get text => number.toString();
+}
+
+/// A return from one note to the reading block which cited it.
+///
+/// GitHub's generated arrow is useful visually but carries no meaning on its
+/// own to assistive technology. Keeping the footnote number and occurrence in
+/// the domain lets presentation announce the action without treating parser
+/// transport such as `aria-label` as document content.
+final class FootnoteBackReferenceRun extends Inline {
+  final int number;
+  final int occurrence;
+  final String referenceAnchor;
+
+  @override
+  final String text;
+
+  const FootnoteBackReferenceRun({
+    required this.number,
+    required this.occurrence,
+    required this.referenceAnchor,
+    required this.text,
+  });
+}
+
 final class ImageRun extends Inline {
   final String source;
   final String? title;
