@@ -66,6 +66,26 @@ adds a fixed indent; the selected document receives one ground and one weight
 change, and README files keep their book icon
 (`lib/api/widgets/shelf_panel.dart`).
 
+The Library heading switches every document row between its authored Markdown
+title and exact file name. `ReaderController` persists that one shelf-wide
+choice; the domain continues to carry both identities and neither scanning nor
+sorting changes (`lib/api/reader_controller.dart`,
+`lib/presentation/shelf/shelf_label_mode.dart`,
+`lib/api/widgets/shelf_panel.dart`).
+
+A secondary click on a live root, nested folder or document opens the available
+source-oriented commands: reveal the entry in the native file manager, copy its
+root-relative path, or copy its full local path. Relative paths are
+always available; physical commands appear only when the platform adapter can
+resolve the opaque source. The API therefore never interprets a root id as a
+filesystem path. A context-menu key or Shift-F10 opens the same surface for a
+focused row, and a failed platform command remains visible in the reader. The
+command surface appears without transition delay and uses compact rows on a
+translucent, blurred theme surface: a contextual tool for a reader already in
+motion, not another panel to enter
+(`lib/application/ports/shelf_source_actions.dart`,
+`lib/api/widgets/shelf_panel.dart`).
+
 ## Inputs and outputs
 
 | Input | Output |
@@ -74,6 +94,8 @@ change, and README files keep their book icon
 | selected `DocumentId?` | marked row; later navigation reveals hidden ancestors |
 | add button | `onOpenFolder()` |
 | document row | `onSelect(document.id)` |
+| title/file-name control | persist one `ShelfLabelMode` for all document rows |
+| secondary-click source command | `ShelfSourceActions`; unavailable physical commands stay absent |
 | standalone hover delete or semantic dismiss | `onRemoveMarkdown(document.id)` |
 | root-row drag or semantic arrange action | `onMoveFolder(root.id, index)` |
 | hover delete or semantic dismiss action | `onRemoveFolder(root.id)` |

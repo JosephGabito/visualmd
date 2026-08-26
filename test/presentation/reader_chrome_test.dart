@@ -41,6 +41,7 @@ import 'package:visualmd/infrastructure/memory/in_memory_workspace_session_repos
 import 'package:visualmd/infrastructure/search/literal_document_search.dart';
 import 'package:visualmd/infrastructure/workspace/workspace_json_codec.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/shelf/shelf_label_mode.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
 
 const _library = ScannedFolder(
@@ -570,6 +571,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(panelWidth(tester, OutlinePanel), closeTo(280, 1));
     expect(saved, contains((outlineWidthPreference, '280.0')));
+  });
+
+  testWidgets('the shelf remembers whether rows use titles or file names', (
+    tester,
+  ) async {
+    await pumpReader(tester, size: const Size(1800, 900));
+
+    await tester.tap(find.byKey(const ValueKey('shelf-label-mode-toggle')));
+    await tester.pump();
+
+    expect(controller.shelfLabelMode, ShelfLabelMode.fileName);
+    expect(
+      saved,
+      contains((shelfLabelModePreference, ShelfLabelMode.fileName.stored)),
+    );
   });
 
   testWidgets('the resize seam resets on double-click and moves by keyboard', (

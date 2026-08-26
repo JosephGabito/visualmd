@@ -1,8 +1,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/shelf_panel.dart';
+import 'package:visualmd/application/ports/shelf_source_actions.dart';
 import 'package:visualmd/domain/library/document.dart';
 import 'package:visualmd/domain/library/document_id.dart';
 import 'package:visualmd/domain/library/library.dart';
@@ -13,6 +15,7 @@ import 'package:visualmd/domain/workspace/workspace_id.dart';
 import 'package:visualmd/domain/workspace/workspace_source.dart';
 import 'package:visualmd/domain/workspace/workspace_theme.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/shelf/shelf_label_mode.dart';
 
 const _notesId = LibraryRootId('notes');
 final _notesRoot = LibraryBuilder.buildRoot(
@@ -28,6 +31,24 @@ final _notesRoot = LibraryBuilder.buildRoot(
 );
 final _library = Library(roots: [_notesRoot]);
 
+final class _SourceActions implements ShelfSourceActions {
+  ShelfSourceLocation? revealed;
+  bool failReveal = false;
+
+  @override
+  String get revealLabel => 'Reveal in Finder';
+
+  @override
+  String? absolutePath(ShelfSourceLocation source) =>
+      '/library/${source.relativePath}';
+
+  @override
+  Future<void> reveal(ShelfSourceLocation source) async {
+    if (failReveal) throw StateError('Finder unavailable');
+    revealed = source;
+  }
+}
+
 void main() {
   Widget shelf({
     Library? library,
@@ -41,6 +62,9 @@ void main() {
     Set<WorkspaceSourceId> unavailableSources = const {},
     ValueChanged<WorkspaceSourceId>? onReconnectSource,
     ValueChanged<WorkspaceSourceId>? onRemoveUnavailableSource,
+    ShelfLabelMode labelMode = ShelfLabelMode.title,
+    ValueChanged<ShelfLabelMode>? onLabelModeChanged,
+    ShelfSourceActions? sourceActions,
   }) => MaterialApp(
     theme: libraryTheme(BuiltInThemes.paper),
     home: Scaffold(
@@ -59,6 +83,9 @@ void main() {
           unavailableSources: unavailableSources,
           onReconnectSource: onReconnectSource,
           onRemoveUnavailableSource: onRemoveUnavailableSource,
+          labelMode: labelMode,
+          onLabelModeChanged: onLabelModeChanged,
+          sourceActions: sourceActions,
         ),
       ),
     ),
@@ -137,6 +164,114 @@ void main() {
     expect(removed, markdown.id);
     expect(selected, isNull);
     await mouse.removePointer();
+  });
+
+  testWidgets('the shelf can identify documents by title or file name', (
+    tester,
+  ) async {
+    ShelfLabelMode? chosen;
+    await tester.pumpWidget(shelf(onLabelModeChanged: (mode) => chosen = mode));
+
+    await tester.tap(find.byKey(const ValueKey('shelf-label-mode-toggle')));
+    expect(chosen, ShelfLabelMode.fileName);
+
+    await tester.pumpWidget(
+      shelf(labelMode: ShelfLabelMode.fileName, onLabelModeChanged: (_) {}),
+    );
+    await tester.tap(find.text('notes'));
+    await tester.pump();
+
+    expect(find.text('README.md'), findsOneWidget);
+    expect(find.text('Notes'), findsNothing);
+  });
+
+  testWidgets('folder and document rows offer native source commands', (
+    tester,
+  ) async {
+    final actions = _SourceActions();
+    final copied = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied.add((call.arguments as Map)['text'] as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.pumpWidget(shelf(sourceActions: actions));
+
+    await tester.tap(find.text('notes'), buttons: kSecondaryMouseButton);
+    await tester.pump();
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(
+      ModalRoute.of(
+        tester.element(find.byKey(const ValueKey('shelf-context-menu'))),
+      )!.transitionDuration,
+      Duration.zero,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('shelf-context-menu'))),
+      const Size(196, 114),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('shelf-context-item-reveal')))
+          .height,
+      34,
+    );
+    expect(find.text('Reveal in Finder'), findsOneWidget);
+    expect(find.text('Copy relative path'), findsOneWidget);
+    expect(find.text('Copy full path'), findsOneWidget);
+    await tester.tap(find.text('Reveal in Finder'));
+    await tester.pumpAndSettle();
+    expect(actions.revealed, isA<ShelfFolderLocation>());
+
+    await tester.tap(find.text('notes'));
+    await tester.pump();
+    await tester.tap(find.text('Notes'), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy relative path'));
+    await tester.pumpAndSettle();
+    expect(copied, ['README.md']);
+  });
+
+  testWidgets('source commands remain reachable from the keyboard', (
+    tester,
+  ) async {
+    await tester.pumpWidget(shelf());
+
+    for (
+      var step = 0;
+      step < 10 && find.text('Copy relative path').evaluate().isEmpty;
+      step++
+    ) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pump();
+    }
+
+    expect(find.text('Copy relative path'), findsOneWidget);
+    expect(find.text('Reveal in Finder'), findsNothing);
+    expect(find.text('Copy full path'), findsNothing);
+  });
+
+  testWidgets('a failed native source command remains visible', (tester) async {
+    final actions = _SourceActions()..failReveal = true;
+    await tester.pumpWidget(shelf(sourceActions: actions));
+
+    await tester.tap(find.text('notes'), buttons: kSecondaryMouseButton);
+    await tester.pump();
+    await tester.tap(find.text('Reveal in Finder'));
+    await tester.pump();
+
+    expect(find.text("Couldn't reveal this source."), findsOneWidget);
   });
 
   testWidgets(

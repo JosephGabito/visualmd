@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../application/ports/document_image_loader.dart';
+import '../application/ports/shelf_source_actions.dart';
 import 'reader_controller.dart';
 import '../presentation/code/code_highlighter.dart';
 import '../application/ports/mermaid_renderer.dart';
@@ -18,6 +19,7 @@ class VisualMdApp extends StatelessWidget {
   final DocumentImageLoader imageLoader;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
+  final ShelfSourceActions? shelfSourceActions;
 
   /// Lets the platform capture drops around the UI; identity when it doesn't need to.
   final Widget Function(Widget child) dropRegion;
@@ -39,6 +41,7 @@ class VisualMdApp extends StatelessWidget {
     required this.imageLoader,
     required this.openExternal,
     this.openReaderSources,
+    this.shelfSourceActions,
     this.dropRegion = _identity,
     this.topBar = (height: 44, leadingInset: 8),
     this.windowDragRegion = _identity,
@@ -95,6 +98,7 @@ class VisualMdApp extends StatelessWidget {
             imageLoader: imageLoader,
             openExternal: openExternal,
             openReaderSources: openReaderSources,
+            shelfSourceActions: shelfSourceActions,
             topBar: topBar,
             windowDragRegion: windowDragRegion,
             openThemesFolder: openThemesFolder,

@@ -6,6 +6,7 @@ import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
 import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/source_change_monitor.dart';
+import '../../application/ports/shelf_source_actions.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import 'platform_command.dart';
@@ -21,6 +22,7 @@ abstract interface class PlatformAdapters {
   WorkspaceFiles get workspaceFiles;
   WorkspaceSourceAccess get workspaceSourceAccess;
   ReaderSourcePicker? get readerSourcePicker;
+  ShelfSourceActions? get shelfSourceActions;
 
   Future<FolderRef?> pickFolder();
   Future<MarkdownRef?> pickMarkdown();

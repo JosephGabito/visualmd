@@ -33,6 +33,13 @@ access, `file_selector` for native file panels, and `window_manager` for window
 geometry and dragging. On macOS these packages resolve through Swift Package
 Manager, so CocoaPods is not part of the build.
 
+Shelf context commands resolve those same registered handles only at the
+desktop edge. `DesktopShelfSourceActions` produces a native absolute path,
+opens Finder or the platform file manager around the source, and uses the
+source bookmark while doing so. The shelf receives the capability rather than
+the path (`lib/infrastructure/io/desktop_shelf_source_actions.dart`,
+`lib/infrastructure/io/desktop_links.dart`).
+
 ## From Finder to the shelf
 
 1. A reader drops a folder onto Visual MD or chooses one in the native panel.

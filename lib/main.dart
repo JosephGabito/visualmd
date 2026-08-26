@@ -12,6 +12,7 @@ import 'api/reader_controller.dart';
 import 'api/reader_source_opener.dart';
 import 'presentation/theme/theme_choice.dart';
 import 'presentation/theme/theme_registry.dart';
+import 'presentation/shelf/shelf_label_mode.dart';
 import 'application/library_mutation_queue.dart';
 import 'application/document_source_reader.dart';
 import 'application/source_watch_coordinator.dart';
@@ -160,6 +161,9 @@ Future<void> main() async {
     await platform.readPreference(shelfWidthPreference),
     await platform.readPreference(outlineWidthPreference),
   );
+  final shelfLabelMode = ShelfLabelMode.fromStored(
+    await platform.readPreference(shelfLabelModePreference),
+  );
   final createWorkspace = CreateWorkspace(
     ids: workspaceIds,
     restoration: restoration,
@@ -230,6 +234,7 @@ Future<void> main() async {
     themeChoice: themeChoice,
     readingScale: readingScale,
     panelWidths: panelWidths,
+    shelfLabelMode: shelfLabelMode,
     sourceChanges: sourceChanges,
     savePreference: platform.writePreference,
   );
@@ -294,6 +299,7 @@ Future<void> main() async {
       mermaidRenderer: mermaidRenderer,
       imageLoader: imageLoader,
       openReaderSources: openReaderSources?.call,
+      shelfSourceActions: platform.shelfSourceActions,
       openExternal: platform.openExternal,
       dropRegion: platform.dropRegion,
       topBar: platform.topBar,
