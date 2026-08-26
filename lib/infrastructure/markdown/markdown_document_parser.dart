@@ -160,6 +160,12 @@ final class _InlineMathSyntax extends md.InlineSyntax {
       if (code == 0x0a || code == 0x0d) return null;
       if (code != 0x24 || _isEscaped(source, i)) continue;
       if (i == start || _isWhitespace(source.codeUnitAt(i - 1))) continue;
+      // A dollar immediately followed by a digit starts another currency
+      // amount; it cannot close an earlier equation. Without this delimiter
+      // boundary, "$1 each = $0.50" becomes one invented formula.
+      if (i + 1 < source.length && _isDigit(source.codeUnitAt(i + 1))) {
+        continue;
+      }
       return i;
     }
     return null;
@@ -175,6 +181,8 @@ final class _InlineMathSyntax extends md.InlineSyntax {
 
   static bool _isWhitespace(int code) =>
       code == 0x20 || code == 0x09 || code == 0x0a || code == 0x0d;
+
+  static bool _isDigit(int code) => code >= 0x30 && code <= 0x39;
 
   static md.Element _mathElement(String source) {
     final element = md.Element.text('math', source);

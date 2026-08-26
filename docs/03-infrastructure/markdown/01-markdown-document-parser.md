@@ -230,8 +230,10 @@ pair of `$$` lines and a fenced `math` block become `MathBlock`. The adapter
 removes only the notation that established the role and preserves the inner
 TeX exactly. Inline notation never crosses a source line, code spans retain
 literal dollar signs, and an escaped or unclosed delimiter remains ordinary
-authored text. An unclosed display opener likewise remains a paragraph instead
-of swallowing the remainder of the document
+authored text. A dollar followed immediately by a digit starts a currency
+amount rather than closing an earlier equation, so prose such as `$1 each =
+$0.50` cannot become invented mathematics. An unclosed display opener likewise
+remains a paragraph instead of swallowing the remainder of the document
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Inputs and outputs
