@@ -112,42 +112,31 @@ final class RefreshSource {
       return RefreshedSource(library: current, activeDocument: selected);
     }
 
-    final entries = <String, FileEntry>{
-      for (final document in root.documents)
-        document.id.path: FileEntry(
-          document.id.path,
-          document.loadedContent,
-          sourceId: document.sourceId,
-          title: document.indexedTitle,
-        ),
-    };
+    final replacements = <DocumentId, Document?>{};
     final changed = <DocumentId>{};
     for (final rawPath in change.relativePaths) {
       final path = DocumentId(root.id, rawPath).path;
       final scanned = await _folderDocuments.scanDocument(change.folder, path);
+      final id = DocumentId(root.id, path);
       if (scanned == null) {
-        if (entries.remove(path) != null) {
-          changed.add(DocumentId(root.id, path));
+        if (root.find(id) != null) {
+          replacements[id] = null;
+          changed.add(id);
         }
         continue;
       }
-      final next = FileEntry(
-        scanned.relativePath,
-        null,
+      final next = Document(
+        id: id,
         sourceId: scanned.sourceId,
-        title: DocumentOutline.parse(scanned.content).title,
+        title: DocumentOutline.titleOf(scanned.content),
       );
-      entries[path] = next;
-      changed.add(DocumentId(root.id, path));
+      replacements[id] = next;
+      changed.add(id);
     }
     if (changed.isEmpty) {
       return RefreshedSource(library: current, activeDocument: selected);
     }
-    final nextRoot = LibraryBuilder.buildRoot(
-      id: root.id,
-      name: root.name,
-      files: entries.values,
-    );
+    final nextRoot = root.applyDocumentChanges(replacements);
     final library = current.addOrReplace(nextRoot);
     return RefreshedSource(
       library: library,

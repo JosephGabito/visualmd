@@ -23,7 +23,19 @@ final class LibraryRoot {
       documentId.rootId == id ? folder.find(documentId) : null;
 
   LibraryRoot replaceDocument(Document document) =>
-      LibraryRoot(id: id, name: name, folder: folder.replaceDocument(document));
+      applyDocumentChanges({document.id: document});
+
+  /// Inserts, replaces, or removes documents through only their changed paths.
+  LibraryRoot applyDocumentChanges(Map<DocumentId, Document?> changes) {
+    if (changes.keys.any((documentId) => documentId.rootId != id)) {
+      throw ArgumentError.value(changes.keys, 'changes', 'must belong to $id');
+    }
+    return LibraryRoot(
+      id: id,
+      name: name,
+      folder: folder.applyDocumentChanges(changes),
+    );
+  }
 
   /// Prefer the folder's README, then the first document in shelf order.
   Document? get openingDocument {

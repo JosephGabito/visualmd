@@ -24,11 +24,18 @@ cancelled (`lib/application/source_watch_coordinator.dart`).
 
 `RefreshSource` then runs inside the same `LibraryMutationQueue` as manual
 source changes. A targeted folder change reads only its invalidated documents
-to refresh title metadata; a coarse event rebuilds the metadata-only root; a
-standalone change replaces that document under the same identity
+to refresh title metadata, then mutates only their folder paths; a coarse event
+rebuilds the metadata-only root; a standalone change replaces that document
+under the same identity
 (`lib/application/use_cases/refresh_source.dart`). A cancelled watch is checked both before and after its asynchronous
 read, so it cannot commit after a source has been rebound
 (`lib/application/use_cases/refresh_source.dart`).
+
+The targeted path uses `DocumentOutline.titleOf` rather than constructing a
+complete outline. Unchanged sibling branches keep object identity, and only a
+directory whose direct documents or subfolders changed is naturally resorted
+(`lib/domain/library/folder.dart`,
+`lib/application/use_cases/refresh_source.dart`).
 
 ## Inputs and outputs
 
@@ -84,6 +91,9 @@ running refresh, and cancellation before commit
 active identity, outline/search replacement, and preserved reading position
 (`test/api/reader_controller_source_sync_test.dart`,
 `test/presentation/reading_pane_refresh_test.dart`).
+Domain tests additionally prove targeted creation, deletion, natural ordering,
+empty-branch pruning, and structural sharing of an untouched sibling
+(`test/domain/library_builder_test.dart`).
 
 ## Transition
 
