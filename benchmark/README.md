@@ -78,3 +78,17 @@ The first atomic-line scaling measurement is retained in
 `benchmark/results/2026-08-28-atomic-code-line.md`.
 The first column-windowed comparison is retained in
 `benchmark/results/2026-08-28-windowed-code-line.md`.
+
+The highlighting benchmark measures the production Shiki adapter independently
+of Flutter layout:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/code_highlighting_performance_test.dart \
+  -d macos
+```
+
+The first full-source classification measurement is retained in
+`benchmark/results/2026-08-28-full-source-highlighting.md`.
