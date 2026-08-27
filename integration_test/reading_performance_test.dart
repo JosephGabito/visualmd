@@ -137,14 +137,19 @@ void main() {
       expect(tester.takeException(), isNull);
     }
 
-    final streaming = await _benchmarkGeneratedStream(tester, timings);
+    final streaming = <Map<String, Object?>>[];
+    for (final blockCount in const [100, 1000, 5000]) {
+      streaming.add(
+        await _benchmarkGeneratedStream(tester, timings, blockCount),
+      );
+    }
 
     binding.reportData = {
       'benchmark': 'reading_surface_scaling',
       'mode': 'profile',
       'viewport_logical_pixels': {'width': 1280, 'height': 820},
       'runs': runs,
-      'generated_stream': streaming,
+      'generated_stream_runs': streaming,
     };
   });
 }
@@ -152,12 +157,15 @@ void main() {
 Future<Map<String, Object?>> _benchmarkGeneratedStream(
   WidgetTester tester,
   List<FrameTiming> timings,
+  int committedPrefixBlocks,
 ) async {
   final documentId = DocumentId(
     const LibraryRootId('benchmark'),
-    'generated.md',
+    'generated-$committedPrefixBlocks.md',
   );
-  const streamId = DocumentStreamId('benchmark-generation');
+  final streamId = DocumentStreamId(
+    'benchmark-generation-$committedPrefixBlocks',
+  );
   final session = GeneratedDocumentStreamSession(
     documentId: documentId,
     streamId: streamId,
@@ -175,7 +183,7 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
   });
 
   final initialSource = List.generate(
-    5000,
+    committedPrefixBlocks,
     (index) =>
         'Paragraph $index keeps the committed prefix large while the parser '
         'and reader work only on the generated tail.\n\n',
@@ -229,7 +237,7 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
   for (var paragraph = 0; paragraph < 20; paragraph++) {
     final pieces = [
       'Streamed paragraph $paragraph begins with a bounded provisional tail',
-      ' and finishes without touching the five-thousand-block prefix.',
+      ' and finishes without touching the committed source prefix.',
       '\n\n',
     ];
     for (final piece in pieces) {
@@ -271,10 +279,10 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
   final frames = timings.skip(beforeFrames).toList(growable: false);
   final mounted = find.byType(Paragraph).evaluate().length;
 
-  expect(initial.content.entries, hasLength(5000));
-  expect(initial.outlinedBlocksVisited, 5000);
-  expect(initialNavigationVisits, [5000]);
-  expect(initialRenderVisits, [5000]);
+  expect(initial.content.entries, hasLength(committedPrefixBlocks));
+  expect(initial.outlinedBlocksVisited, committedPrefixBlocks);
+  expect(initialNavigationVisits, [committedPrefixBlocks]);
+  expect(initialRenderVisits, [committedPrefixBlocks]);
   expect(navigationIndexPasses, everyElement(1));
   expect(renderIndexPasses, everyElement(1));
   expect(outlinedBlocks, everyElement(1));
@@ -282,8 +290,8 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
   expect(position.pixels, greaterThan(offsetBefore));
   expect(mounted, lessThan(40));
 
-  return {
-    'committed_prefix_blocks': 5000,
+  final result = <String, Object?>{
+    'committed_prefix_blocks': committedPrefixBlocks,
     'streamed_paragraphs': 20,
     'published_revisions': updateWallMicroseconds.length,
     'initial_parse_wall_us': initialClock.elapsedMicroseconds,
@@ -297,6 +305,7 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
     'parsed_characters_worst': parsedCharacters.reduce(math.max),
     'accept_parse_publish_p50_us': _percentile(acceptWallMicroseconds, 0.50),
     'accept_parse_publish_p90_us': _percentile(acceptWallMicroseconds, 0.90),
+    'accept_parse_publish_p99_us': _percentile(acceptWallMicroseconds, 0.99),
     'accept_parse_publish_worst_us': acceptWallMicroseconds.reduce(math.max),
     'harness_revision_wall_p50_us': _percentile(updateWallMicroseconds, 0.50),
     'harness_revision_wall_p90_us': _percentile(updateWallMicroseconds, 0.90),
@@ -306,6 +315,9 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
     'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
     'frames': _frameSummary(frames),
   };
+  await session.cancel();
+  await subscription.cancel();
+  return result;
 }
 
 DocumentReading _streamReading(GeneratedDocumentRevision revision) {
@@ -422,11 +434,14 @@ Map<String, Object> _frameSummary(List<FrameTiming> frames) {
     'count': frames.length,
     'build_p50_us': _percentile(builds, 0.50),
     'build_p90_us': _percentile(builds, 0.90),
+    'build_p99_us': _percentile(builds, 0.99),
     'build_worst_us': builds.isEmpty ? 0 : builds.reduce(math.max),
     'raster_p50_us': _percentile(rasters, 0.50),
     'raster_p90_us': _percentile(rasters, 0.90),
+    'raster_p99_us': _percentile(rasters, 0.99),
     'raster_worst_us': rasters.isEmpty ? 0 : rasters.reduce(math.max),
     'total_p90_us': _percentile(totals, 0.90),
+    'total_p99_us': _percentile(totals, 0.99),
     'total_worst_us': totals.isEmpty ? 0 : totals.reduce(math.max),
   };
 }

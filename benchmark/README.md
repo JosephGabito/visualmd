@@ -12,15 +12,18 @@ that journey records its own frame distribution and must continue moving the
 reader while still visiting only the new record.
 
 The same run then exercises the generated-document pipeline rather than a
-hand-built mutation. It commits 5,000 Markdown paragraphs through
-`GeneratedDocumentStreamSession`, starts a ballistic scroll, and publishes 60
-small deltas forming 20 more paragraphs. This covers transport ordering,
-coalescing policy, chunked source retention, incremental Markdown parsing,
-persistent document revisions, outline projection, navigation and render
-indexing, viewport geometry, layout, and paint. Every published revision must
-parse fewer than 256 source characters, visit exactly one outline, navigation,
-and render record, keep fewer than 40 paragraphs mounted, and allow the
-ballistic scroll to continue.
+hand-built mutation. It repeats the live journey over 100, 1,000, and 5,000
+committed Markdown paragraphs through `GeneratedDocumentStreamSession`, starts
+a ballistic scroll, and publishes 60 small deltas forming 20 more paragraphs
+at each size. This covers transport ordering, coalescing policy, chunked source
+retention, incremental Markdown parsing, persistent document revisions,
+outline projection, navigation and render indexing, viewport geometry, layout,
+and paint. Every published revision must parse fewer than 256 source
+characters, visit exactly one outline, navigation, and render record, keep
+fewer than 40 paragraphs mounted, and allow the ballistic scroll to continue.
+The three-row latency distribution is the empirical check that cache, GC, and
+scheduler behavior do not add a practical prefix-length slope to that bounded
+algorithm.
 
 Run it on macOS in profile mode:
 
