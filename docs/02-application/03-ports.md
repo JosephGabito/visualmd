@@ -146,6 +146,30 @@ file list. A directly uploaded browser Markdown has no parent-directory
 capability, so its neighbouring images remain unavailable rather than being
 guessed from a local path.
 
+## DocumentViewportGeometry
+
+Keeps rendering-physics policy out of the Flutter API and the document domain
+(`lib/application/ports/document_viewport_geometry.dart`). The port speaks in
+stable `DocumentBlockId` values, revisions, estimated and measured extents,
+anchor corrections, and frozen scrollbar geometry.
+
+| Member | Contract |
+|--------|----------|
+| `appendAll(seeds)` | Add newly committed or provisional block identities without rebuilding their prefix. |
+| `reset(seeds, layoutRevision, anchor)` | Reconcile a structural snapshot, retaining measured extents for unchanged identities and returning the prefix delta before the retained anchor. |
+| `leadingOffsetOf(id)` | Return the prefix extent before one stable block identity. |
+| `blockAtOffset(offset)` | Find the stable identity occupying a content coordinate without scanning its prefix. |
+| `revise(seed, anchor)` | Replace one item's estimate under a newer item revision and return its anchor correction. |
+| `relayout(revision, estimates, anchor)` | Replace all estimates atomically for a new width, type, or theme epoch. |
+| `measure(...)` | Accept current-revision geometry, reject stale results, and return the exact content and anchor correction. |
+| `freeze(viewportExtent)` | Capture this ledger's logical scroll metrics for one interaction. |
+| `freezeMetrics(contentExtent, viewportExtent)` | Capture already-known physical scroll dimensions without exposing the geometry engine to the API. |
+
+`QuietDocumentViewportGeometryFactory` is the production adapter and is wired
+at the composition root (`lib/infrastructure/viewport/quiet_document_viewport_geometry.dart`,
+`lib/main.dart`). Its algorithm and the visible-interaction contract are
+documented in [Quiet Viewport Geometry](../03-infrastructure/04-quiet-viewport-geometry.md).
+
 ## Workspace ports
 
 Workspace use cases need two kinds of outside help: access to the user's JSON

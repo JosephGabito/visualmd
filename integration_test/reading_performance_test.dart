@@ -16,6 +16,7 @@ import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/reading/document_outline.dart';
+import 'package:visualmd/infrastructure/viewport/quiet_document_viewport_geometry.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 
@@ -41,11 +42,15 @@ void main() {
     final runs = <Map<String, Object?>>[];
     for (final blockCount in const [100, 1000, 5000]) {
       final reading = _reading(blockCount);
+      final navigationIndexPasses = <int>[];
+      final renderIndexPasses = <int>[];
       final beforeFrames = timings.length;
       final beforeRss = ProcessInfo.currentRss;
       final buildClock = Stopwatch()..start();
 
-      await tester.pumpWidget(_app(reading));
+      await tester.pumpWidget(
+        _app(reading, navigationIndexPasses, renderIndexPasses),
+      );
       await tester.pumpAndSettle();
       buildClock.stop();
 
@@ -67,18 +72,45 @@ void main() {
       await tester.pump();
       final scrollFrames = timings.skip(scrollBefore).toList(growable: false);
 
-      final appended = _reading(
-        blockCount + 1,
-        documentId: reading.document.id,
-      );
+      final appended = _appendOne(reading, blockCount);
       final appendBefore = timings.length;
       final appendClock = Stopwatch()..start();
-      await tester.pumpWidget(_app(appended));
+      await tester.pumpWidget(
+        _app(appended, navigationIndexPasses, renderIndexPasses),
+      );
       await tester.pumpAndSettle();
       appendClock.stop();
       await Future<void>.delayed(const Duration(milliseconds: 180));
       await tester.pump();
       final appendFrames = timings.skip(appendBefore).toList(growable: false);
+
+      final concurrentBefore = timings.length;
+      final concurrentClock = Stopwatch()..start();
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      final offsetBeforeConcurrent = position.pixels;
+      await tester.fling(
+        find.byType(CustomScrollView),
+        const Offset(0, -1200),
+        3000,
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pumpWidget(
+        _app(
+          _appendOne(appended, blockCount + 1),
+          navigationIndexPasses,
+          renderIndexPasses,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pumpAndSettle();
+      concurrentClock.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await tester.pump();
+      final concurrentFrames = timings
+          .skip(concurrentBefore)
+          .toList(growable: false);
 
       runs.add({
         'blocks': blockCount,
@@ -86,13 +118,20 @@ void main() {
         'build_wall_us': buildClock.elapsedMicroseconds,
         'scroll_wall_us': scrollClock.elapsedMicroseconds,
         'append_one_wall_us': appendClock.elapsedMicroseconds,
+        'stream_while_scroll_wall_us': concurrentClock.elapsedMicroseconds,
+        'stream_while_scroll_offset_delta':
+            position.pixels - offsetBeforeConcurrent,
+        'navigation_index_passes': navigationIndexPasses,
+        'render_index_passes': renderIndexPasses,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
         'build_frames': _frameSummary(buildFrames),
         'scroll_frames': _frameSummary(scrollFrames),
         'append_frames': _frameSummary(appendFrames),
+        'stream_while_scroll_frames': _frameSummary(concurrentFrames),
       });
 
       expect(mountedAfterBuild, greaterThan(0));
+      expect(position.pixels, greaterThan(offsetBeforeConcurrent));
       expect(tester.takeException(), isNull);
     }
 
@@ -105,14 +144,21 @@ void main() {
   });
 }
 
-Widget _app(DocumentReading reading) => MaterialApp(
+Widget _app(
+  DocumentReading reading,
+  List<int> navigationIndexPasses,
+  List<int> renderIndexPasses,
+) => MaterialApp(
   theme: libraryTheme(BuiltInThemes.paper),
   home: Scaffold(
     body: ReadingPane(
       reading: reading,
       scale: ReadingScale.comfortable,
+      viewportGeometry: const QuietDocumentViewportGeometryFactory(),
       onLink: (_) {},
       onActiveHeadingChanged: (_) {},
+      debugOnNavigationBlocksIndexed: navigationIndexPasses.add,
+      debugOnRenderBlocksIndexed: renderIndexPasses.add,
     ),
   ),
 );
@@ -120,26 +166,67 @@ Widget _app(DocumentReading reading) => MaterialApp(
 DocumentReading _reading(int count, {DocumentId? documentId}) {
   final id =
       documentId ?? DocumentId(const LibraryRootId('benchmark'), 'load.md');
-  final blocks = List<Block>.unmodifiable([
-    const HeadingBlock(
-      level: 1,
-      content: [TextRun('Rendering benchmark')],
-      anchor: 'rendering-benchmark',
+  final entries = List<DocumentBlock>.unmodifiable([
+    DocumentBlock(
+      id: DocumentBlockId('heading'),
+      revision: 0,
+      block: HeadingBlock(
+        level: 1,
+        content: [TextRun('Rendering benchmark')],
+        anchor: 'rendering-benchmark',
+      ),
     ),
     for (var index = 0; index < count; index++)
-      ParagraphBlock([
-        TextRun(
-          'Paragraph $index keeps the same shape so changes in timing come '
-          'from document length rather than unusually expensive content.',
-        ),
-      ]),
+      DocumentBlock(
+        id: DocumentBlockId('paragraph-$index'),
+        revision: 0,
+        block: ParagraphBlock([
+          TextRun(
+            'Paragraph $index keeps the same shape so changes in timing come '
+            'from document length rather than unusually expensive content.',
+          ),
+        ]),
+      ),
   ]);
-  final source = 'benchmark revision $count';
+  final source = 'benchmark revision 0 with $count paragraphs';
   return DocumentReading(
     document: Document(id: id, content: source, title: 'Rendering benchmark'),
     source: source,
     outline: DocumentOutline.parse('# Rendering benchmark'),
-    content: DocumentContent(blocks),
+    content: DocumentContent.revisioned(entries),
+  );
+}
+
+DocumentReading _appendOne(DocumentReading reading, int paragraphCount) {
+  final tail = DocumentBlock(
+    id: DocumentBlockId('paragraph-$paragraphCount'),
+    revision: 1,
+    commitment: BlockCommitment.provisional,
+    block: ParagraphBlock([
+      TextRun(
+        'Paragraph $paragraphCount keeps the same shape so changes in timing '
+        'come from document length rather than unusually expensive content.',
+      ),
+    ]),
+  );
+  final content = reading.content.apply(
+    DocumentMutation.append(
+      baseRevision: reading.content.revision,
+      revision: reading.content.revision + 1,
+      index: reading.content.entries.length,
+      blocks: [tail],
+    ),
+  );
+  final source = 'benchmark revision ${content.revision}';
+  return DocumentReading(
+    document: Document(
+      id: reading.document.id,
+      content: source,
+      title: reading.document.title,
+    ),
+    source: source,
+    outline: reading.outline,
+    content: content,
   );
 }
 

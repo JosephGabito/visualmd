@@ -45,6 +45,7 @@ import 'infrastructure/routing_folder_scanner.dart';
 import 'infrastructure/routing_document_image_loader.dart';
 import 'infrastructure/routing_workspace_source_access.dart';
 import 'infrastructure/search/literal_document_search.dart';
+import 'infrastructure/viewport/quiet_document_viewport_geometry.dart';
 import 'infrastructure/workspace/random_workspace_ids.dart';
 import 'infrastructure/workspace/workspace_json_codec.dart';
 
@@ -73,6 +74,7 @@ Future<void> main() async {
     const SampleDocumentImageLoader(),
     platform.documentImageLoader,
   ]);
+  const viewportGeometry = QuietDocumentViewportGeometryFactory();
 
   // Application
   const parser = MarkdownDocumentParser();
@@ -298,6 +300,7 @@ Future<void> main() async {
       codeHighlighter: codeHighlighter,
       mermaidRenderer: mermaidRenderer,
       imageLoader: imageLoader,
+      viewportGeometry: viewportGeometry,
       openReaderSources: openReaderSources?.call,
       shelfSourceActions: platform.shelfSourceActions,
       openExternal: platform.openExternal,
