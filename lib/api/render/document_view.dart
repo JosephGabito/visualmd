@@ -131,6 +131,185 @@ class DocumentView extends StatelessWidget {
       };
 }
 
+/// The viewport-bounded form of [DocumentView].
+///
+/// A document may contain thousands of top-level blocks, but a reader can see
+/// only a small run of them. Building that run through a sliver keeps widget,
+/// layout, paint, and semantics work proportional to the viewport instead of
+/// the document. Containers inside one visible block remain atomic: their
+/// internal rhythm and selection contracts are still owned by [_BlockView].
+class SliverDocumentView extends StatefulWidget {
+  final DocumentId? document;
+  final DocumentContent content;
+  final ReadingTheme theme;
+  final CodeHighlighter codeHighlighter;
+  final MermaidRenderer mermaidRenderer;
+  final DocumentImageLoader? imageLoader;
+  final Map<String, GlobalKey> anchorKeys;
+  final Map<String, GlobalKey> customAnchorKeys;
+  final void Function(String href)? onTapLink;
+  final List<TextMatch> matches;
+  final int activeMatch;
+  final Map<int, GlobalKey> matchKeys;
+  final void Function(String anchor, bool mounted)? onHeadingMount;
+
+  SliverDocumentView({
+    super.key,
+    this.document,
+    required this.content,
+    required this.theme,
+    required this.anchorKeys,
+    Map<String, GlobalKey>? customAnchorKeys,
+    this.codeHighlighter = const PlainCodeHighlighter(),
+    this.mermaidRenderer = const UnavailableMermaidRenderer(),
+    this.imageLoader,
+    this.onTapLink,
+    this.matches = const [],
+    this.activeMatch = -1,
+    Map<int, GlobalKey>? matchKeys,
+    this.onHeadingMount,
+  }) : customAnchorKeys = customAnchorKeys ?? <String, GlobalKey>{},
+       matchKeys = matchKeys ?? <int, GlobalKey>{};
+
+  @override
+  State<SliverDocumentView> createState() => _SliverDocumentViewState();
+}
+
+class _SliverDocumentViewState extends State<SliverDocumentView> {
+  late _IndexedBlocks _index = _indexBlocks(widget.content.blocks);
+
+  @override
+  void didUpdateWidget(SliverDocumentView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.content.blocks, widget.content.blocks)) {
+      _index = _indexBlocks(widget.content.blocks);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final composer = InlineComposer(
+      theme: widget.theme,
+      document: widget.document,
+      imageLoader: widget.imageLoader,
+      onTapLink: widget.onTapLink,
+      matches: widget.matches,
+      activeMatch: widget.activeMatch,
+    );
+
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.crossAxisExtent;
+        final prose = widget.theme.proseWidth(available);
+        final wide = widget.theme.wideWidth(available);
+        return SliverList.builder(
+          itemCount:
+              _index.visible.length + (_index.trailingAnchors.isEmpty ? 0 : 1),
+          itemBuilder: (context, index) {
+            if (index == _index.visible.length) {
+              return _withAnchorTargets(
+                const SizedBox.shrink(),
+                _index.trailingAnchors,
+                widget.customAnchorKeys,
+              );
+            }
+            final entry = _index.visible[index];
+            final block = entry.block;
+            final previous = index == 0
+                ? null
+                : _index.visible[index - 1].block;
+            final next = index + 1 < _index.visible.length
+                ? _index.visible[index + 1].block
+                : null;
+            final followingSpace = widget.theme.spaceAfter(block, next);
+            final view = _BlockView(
+              block: block,
+              theme: widget.theme,
+              composer: composer,
+              codeHighlighter: widget.codeHighlighter,
+              mermaidRenderer: widget.mermaidRenderer,
+              keys: widget.anchorKeys,
+              customKeys: widget.customAnchorKeys,
+              matchKeys: widget.matchKeys,
+              offset: entry.offset,
+              indent:
+                  ParagraphRules.indents(previous, widget.theme.scale.marking)
+                  ? widget.theme.indent
+                  : 0,
+              followingSpace: followingSpace,
+              reconcileContainer: true,
+            );
+            final width = DocumentView._widthFor(block, prose, wide);
+            final positioned = Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(width: width, child: view),
+            );
+            final observed = block is HeadingBlock
+                ? _MountObserver(
+                    identity: block.anchor,
+                    onChanged: widget.onHeadingMount,
+                    child: positioned,
+                  )
+                : positioned;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _withAnchorTargets(observed, [
+                  ...entry.anchors,
+                  ..._footnoteReferenceAnchors(block),
+                ], widget.customAnchorKeys),
+                if (followingSpace > 0) SizedBox(height: followingSpace),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _MountObserver extends StatefulWidget {
+  const _MountObserver({
+    required this.identity,
+    required this.onChanged,
+    required this.child,
+  });
+
+  final String identity;
+  final void Function(String identity, bool mounted)? onChanged;
+  final Widget child;
+
+  @override
+  State<_MountObserver> createState() => _MountObserverState();
+}
+
+class _MountObserverState extends State<_MountObserver> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onChanged?.call(widget.identity, true);
+  }
+
+  @override
+  void didUpdateWidget(_MountObserver oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.identity != widget.identity ||
+        oldWidget.onChanged != widget.onChanged) {
+      oldWidget.onChanged?.call(oldWidget.identity, false);
+      widget.onChanged?.call(widget.identity, true);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.onChanged?.call(widget.identity, false);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 /// Sets a run of blocks from top to bottom.
 ///
 /// Every external gap is emitted after the block that owns it. The same rule
@@ -171,18 +350,13 @@ class _BlockSequence extends StatelessWidget {
   Widget build(BuildContext context) {
     final marking = theme.scale.marking;
     final children = <Widget>[];
-    final visible = <_VisibleBlock>[];
-    final pendingAnchors = <String>[];
-    for (final block in blocks) {
-      if (block case AnchorBlock(:final name)) {
-        pendingAnchors.add(name);
-      } else {
-        visible.add(_VisibleBlock(block, List.of(pendingAnchors)));
-        pendingAnchors.clear();
-      }
-    }
+    final index = _indexBlocks(
+      blocks,
+      startOffset: startOffset,
+      separatorLength: separatorLength,
+    );
+    final visible = index.visible;
 
-    var offset = startOffset;
     for (var i = 0; i < visible.length; i++) {
       final entry = visible[i];
       final block = entry.block;
@@ -200,7 +374,7 @@ class _BlockSequence extends StatelessWidget {
         keys: keys,
         customKeys: customKeys,
         matchKeys: matchKeys,
-        offset: offset,
+        offset: entry.offset,
         indent: ParagraphRules.indents(previous, marking) ? theme.indent : 0,
         followingSpace: followingSpace,
         reconcileContainer: reconcileContainers,
@@ -221,11 +395,14 @@ class _BlockSequence extends StatelessWidget {
       if (followingSpace > 0) {
         children.add(SizedBox(height: followingSpace));
       }
-      offset += block.text.length + separatorLength;
     }
-    if (pendingAnchors.isNotEmpty) {
+    if (index.trailingAnchors.isNotEmpty) {
       children.add(
-        _withAnchorTargets(const SizedBox.shrink(), pendingAnchors, customKeys),
+        _withAnchorTargets(
+          const SizedBox.shrink(),
+          index.trailingAnchors,
+          customKeys,
+        ),
       );
     }
     return Column(
@@ -236,10 +413,42 @@ class _BlockSequence extends StatelessWidget {
 }
 
 final class _VisibleBlock {
-  const _VisibleBlock(this.block, this.anchors);
+  const _VisibleBlock(this.block, this.anchors, this.offset);
 
   final Block block;
   final List<String> anchors;
+  final int offset;
+}
+
+final class _IndexedBlocks {
+  const _IndexedBlocks(this.visible, this.trailingAnchors);
+
+  final List<_VisibleBlock> visible;
+  final List<String> trailingAnchors;
+}
+
+_IndexedBlocks _indexBlocks(
+  List<Block> blocks, {
+  int startOffset = 0,
+  int separatorLength = 2,
+}) {
+  final visible = <_VisibleBlock>[];
+  final pendingAnchors = <String>[];
+  final claimedAnchors = <String>{};
+  var offset = startOffset;
+  for (final block in blocks) {
+    if (block case AnchorBlock(:final name)) {
+      if (claimedAnchors.add(name)) pendingAnchors.add(name);
+    } else {
+      visible.add(_VisibleBlock(block, List.of(pendingAnchors), offset));
+      pendingAnchors.clear();
+      offset += block.text.length + separatorLength;
+    }
+  }
+  return _IndexedBlocks(
+    List.unmodifiable(visible),
+    List.unmodifiable(pendingAnchors),
+  );
 }
 
 Widget _withAnchorTargets(

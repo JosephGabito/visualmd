@@ -542,7 +542,7 @@ void main() {
 
     final readingScroll = find.descendant(
       of: find.byType(ReadingPane),
-      matching: find.byType(SingleChildScrollView),
+      matching: find.byType(CustomScrollView),
     );
     final position = tester.state<ScrollableState>(
       find.descendant(of: readingScroll, matching: find.byType(Scrollable)),
@@ -557,11 +557,10 @@ void main() {
 
     expect(position.position.pixels, greaterThan(0));
     final repeated = find.text('Repeated heading');
-    expect(repeated, findsNWidgets(2));
+    expect(repeated, findsOneWidget);
     final paneTop = tester.getTopLeft(find.byType(ReadingPane)).dy;
-    expect(tester.getTopLeft(repeated.first).dy, lessThan(paneTop));
     expect(
-      tester.getTopLeft(repeated.last).dy,
+      tester.getTopLeft(repeated).dy,
       inInclusiveRange(paneTop, paneTop + 30),
     );
   });

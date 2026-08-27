@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/api/render/document_view.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/reading_pane.dart';
 import 'package:visualmd/application/use_cases/read_document.dart';
@@ -28,12 +29,13 @@ void main() {
     );
   }
 
-  Future<void> pump(WidgetTester tester, DocumentReading current) =>
+  Future<void> pump(WidgetTester tester, DocumentReading current, {Key? key}) =>
       tester.pumpWidget(
         MaterialApp(
           theme: libraryTheme(BuiltInThemes.paper),
           home: Scaffold(
             body: ReadingPane(
+              key: key,
               reading: current,
               scale: ReadingScale.comfortable,
               onLink: (_) {},
@@ -49,16 +51,14 @@ void main() {
       tester.view.physicalSize = const Size(1000, 700);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      await pump(tester, reading('# Opening\n\n$body'));
+      final key = GlobalKey<ReadingPaneState>();
+      await pump(tester, reading('# Opening\n\n$body'), key: key);
       await tester.pumpAndSettle();
 
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -900),
-      );
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
       await tester.pumpAndSettle();
       final scrollable = find.descendant(
-        of: find.byType(SingleChildScrollView),
+        of: find.byType(CustomScrollView),
         matching: find.byType(Scrollable),
       );
       final before = tester.state<ScrollableState>(scrollable).position.pixels;
@@ -67,11 +67,14 @@ void main() {
       await pump(
         tester,
         reading('# Opening\n\n$body\n\n## Added by another process\n\nNew.'),
+        key: key,
       );
       await tester.pumpAndSettle();
       final after = tester.state<ScrollableState>(scrollable).position.pixels;
 
       expect(after, closeTo(before, 0.01));
+      key.currentState!.scrollToAnchor('added-by-another-process');
+      await tester.pumpAndSettle();
       expect(find.text('Added by another process'), findsOneWidget);
     },
   );
@@ -113,7 +116,7 @@ $body
     );
     await tester.pumpAndSettle();
     final scrollable = find.descendant(
-      of: find.byType(SingleChildScrollView),
+      of: find.byType(CustomScrollView),
       matching: find.byType(Scrollable),
     );
     final position = tester.state<ScrollableState>(scrollable).position;
@@ -157,7 +160,7 @@ $body
     await tester.pumpAndSettle();
 
     final scrollable = find.descendant(
-      of: find.byType(SingleChildScrollView),
+      of: find.byType(CustomScrollView),
       matching: find.byType(Scrollable),
     );
     final position = tester.state<ScrollableState>(scrollable).position;
@@ -171,5 +174,61 @@ $body
     await tester.pumpAndSettle();
     expect(position.pixels, greaterThan(before));
     expect(tester.getTopLeft(find.text('New target')).dy, lessThan(100));
+  });
+
+  testWidgets('a large document mounts the viewport rather than the corpus', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final source = List.generate(
+      500,
+      (index) =>
+          'Paragraph $index has enough words to occupy the reading page.',
+    ).join('\n\n');
+
+    await pump(tester, reading(source));
+    await tester.pumpAndSettle();
+
+    final mounted = find.byType(Paragraph).evaluate().length;
+    expect(mounted, greaterThan(0));
+    expect(
+      mounted,
+      lessThan(40),
+      reason: 'work must stay proportional to the viewport, not 500 blocks',
+    );
+  });
+
+  testWidgets('a distant heading materializes before its exact alignment', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey<ReadingPaneState>();
+    final middle = List.generate(
+      500,
+      (index) =>
+          'Paragraph $index has enough words to occupy the reading page.',
+    ).join('\n\n');
+
+    final tail = List.generate(
+      20,
+      (index) => 'Following paragraph $index keeps room below the target.',
+    ).join('\n\n');
+    await pump(
+      tester,
+      reading('# Opening\n\n$middle\n\n## Distant target\n\nArrived.\n\n$tail'),
+      key: key,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Distant target'), findsNothing);
+
+    key.currentState!.scrollToAnchor('distant-target');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Distant target'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Distant target')).dy, lessThan(80));
   });
 }

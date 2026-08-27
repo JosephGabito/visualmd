@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../application/ports/document_image_loader.dart';
 import '../../application/use_cases/read_document.dart';
 import '../../domain/reading/heading.dart';
+import '../../domain/reading/content/block.dart';
 import '../../domain/search/search_result.dart';
 import '../../presentation/code/code_highlighter.dart';
 import '../../application/ports/mermaid_renderer.dart';
@@ -51,11 +52,19 @@ class ReadingPaneState extends State<ReadingPane> {
   var _keys = <String, GlobalKey>{};
   var _customKeys = <String, GlobalKey>{};
   var _matchKeys = <int, GlobalKey>{};
+  var _headingIndexes = <String, int>{};
+  var _headingOrder = <String, int>{};
+  var _headingsByAnchor = <String, Heading>{};
+  var _customAnchorIndexes = <String, int>{};
+  var _blockOffsets = <int>[];
+  var _visibleBlockCount = 0;
+  final _mountedHeadings = <String>{};
   String? _activeAnchor;
 
   @override
   void initState() {
     super.initState();
+    _indexNavigation();
     _scroll.addListener(_trackActiveHeading);
     WidgetsBinding.instance.addPostFrameCallback((_) => _trackActiveHeading());
   }
@@ -67,7 +76,9 @@ class ReadingPaneState extends State<ReadingPane> {
       _keys = {};
       _customKeys = {};
       _matchKeys = {};
+      _mountedHeadings.clear();
       _activeAnchor = null;
+      _indexNavigation();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scroll.hasClients) _scroll.jumpTo(0);
         _trackActiveHeading();
@@ -78,7 +89,9 @@ class ReadingPaneState extends State<ReadingPane> {
       _keys = {};
       _customKeys = {};
       _matchKeys = {};
+      _mountedHeadings.clear();
       _activeAnchor = null;
+      _indexNavigation();
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _trackActiveHeading(),
       );
@@ -102,24 +115,147 @@ class ReadingPaneState extends State<ReadingPane> {
     // An explicit author-supplied anchor is the least surprising target when
     // it happens to share a name with an automatically generated heading.
     final context = (_customKeys[anchor] ?? _keys[anchor])?.currentContext;
-    if (context == null) return;
-    Scrollable.ensureVisible(
-      context,
+    if (context != null) {
+      _ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 320),
+        alignment: 0,
+      );
+      return;
+    }
+    final index = _customAnchorIndexes[anchor] ?? _headingIndexes[anchor];
+    if (index == null) return;
+    _revealLazyBlock(
+      index,
+      () => (_customKeys[anchor] ?? _keys[anchor])?.currentContext,
       duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
       alignment: 0,
     );
   }
 
   void _scrollToMatch() {
     final context = _matchKeys[widget.activeMatch]?.currentContext;
-    if (context == null) return;
-    Scrollable.ensureVisible(
-      context,
+    if (context != null) {
+      _ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 220),
+        alignment: 0.18,
+      );
+      return;
+    }
+    if (widget.activeMatch < 0 || widget.activeMatch >= widget.matches.length) {
+      return;
+    }
+    final block = _blockForOffset(widget.matches[widget.activeMatch].start);
+    _revealLazyBlock(
+      block,
+      () => _matchKeys[widget.activeMatch]?.currentContext,
       duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
       alignment: 0.18,
     );
+  }
+
+  void _ensureVisible(
+    BuildContext context, {
+    required Duration duration,
+    required double alignment,
+  }) {
+    Scrollable.ensureVisible(
+      context,
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      alignment: alignment,
+    );
+  }
+
+  /// Materializes a lazy target near its proportional document position,
+  /// then lets Flutter align the real render box. The proportional jump is an
+  /// index seek, not the final placement; variable-height blocks are corrected
+  /// only after their actual layout exists.
+  void _revealLazyBlock(
+    int index,
+    BuildContext? Function() contextFor, {
+    required Duration duration,
+    required double alignment,
+    int attempt = 0,
+  }) {
+    if (!_scroll.hasClients || _visibleBlockCount == 0) return;
+    final fraction = index / _visibleBlockCount;
+    final target = (_scroll.position.maxScrollExtent * fraction).clamp(
+      _scroll.position.minScrollExtent,
+      _scroll.position.maxScrollExtent,
+    );
+    _scroll.jumpTo(target);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final context = contextFor();
+      if (context != null) {
+        _ensureVisible(context, duration: duration, alignment: alignment);
+      } else if (attempt < 2) {
+        _revealLazyBlock(
+          index,
+          contextFor,
+          duration: duration,
+          alignment: alignment,
+          attempt: attempt + 1,
+        );
+      }
+    });
+  }
+
+  void _indexNavigation() {
+    final headings = <String, int>{};
+    final custom = <String, int>{};
+    final offsets = <int>[];
+    final pendingAnchors = <String>[];
+    var visibleIndex = 0;
+    var offset = 0;
+    for (final block in widget.reading.content.blocks) {
+      if (block case AnchorBlock(:final name)) {
+        pendingAnchors.add(name);
+        continue;
+      }
+      for (final anchor in pendingAnchors) {
+        custom.putIfAbsent(anchor, () => visibleIndex);
+      }
+      pendingAnchors.clear();
+      if (block case HeadingBlock(:final anchor)) {
+        headings[anchor] = visibleIndex;
+      }
+      offsets.add(offset);
+      offset += block.text.length + 2;
+      visibleIndex++;
+    }
+    for (final anchor in pendingAnchors) {
+      custom.putIfAbsent(anchor, () => visibleIndex);
+    }
+    _headingIndexes = headings;
+    final outlineHeadings = widget.reading.outline.tableOfContents.headings;
+    _headingOrder = {
+      for (var index = 0; index < outlineHeadings.length; index++)
+        outlineHeadings[index].anchor: index,
+    };
+    _headingsByAnchor = {
+      for (final heading in outlineHeadings) heading.anchor: heading,
+    };
+    _customAnchorIndexes = custom;
+    _blockOffsets = offsets;
+    _visibleBlockCount = visibleIndex;
+  }
+
+  int _blockForOffset(int offset) {
+    if (_blockOffsets.isEmpty) return 0;
+    var low = 0;
+    var high = _blockOffsets.length - 1;
+    while (low <= high) {
+      final middle = (low + high) >> 1;
+      if (_blockOffsets[middle] <= offset) {
+        low = middle + 1;
+      } else {
+        high = middle - 1;
+      }
+    }
+    return high.clamp(0, _blockOffsets.length - 1);
   }
 
   void _trackActiveHeading() {
@@ -127,24 +263,43 @@ class ReadingPaneState extends State<ReadingPane> {
     if (page == null) return;
     final pageTop = page.localToGlobal(Offset.zero).dy;
     Heading? active;
-    for (final heading in widget.reading.outline.tableOfContents.headings) {
+    int? firstMountedOrder;
+    for (final anchor in _mountedHeadings) {
+      final heading = _headingsByAnchor[anchor];
       final box =
-          _keys[heading.anchor]?.currentContext?.findRenderObject()
-              as RenderBox?;
-      if (box == null) continue;
+          _keys[anchor]?.currentContext?.findRenderObject() as RenderBox?;
+      if (heading == null || box == null) continue;
+      final order = _headingOrder[anchor]!;
+      if (firstMountedOrder == null || order < firstMountedOrder) {
+        firstMountedOrder = order;
+      }
       final top = box.localToGlobal(Offset.zero).dy - pageTop;
       if (top <= _activeLine) {
-        active = heading;
-      } else {
-        break;
+        final activeOrder = active == null ? -1 : _headingOrder[active.anchor]!;
+        if (order > activeOrder) active = heading;
       }
     }
-    active ??= widget.reading.outline.tableOfContents.headings.isEmpty
-        ? null
-        : widget.reading.outline.tableOfContents.headings.first;
+    final headings = widget.reading.outline.tableOfContents.headings;
+    if (active == null && firstMountedOrder != null && firstMountedOrder > 0) {
+      active = headings[firstMountedOrder - 1];
+    }
+    active ??=
+        _headingsByAnchor[_activeAnchor] ??
+        (headings.isEmpty ? null : headings.first);
     if (active?.anchor != _activeAnchor) {
       _activeAnchor = active?.anchor;
       widget.onActiveHeadingChanged(active);
+    }
+  }
+
+  void _headingMountChanged(String anchor, bool isMounted) {
+    if (isMounted) {
+      _mountedHeadings.add(anchor);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _trackActiveHeading();
+      });
+    } else {
+      _mountedHeadings.remove(anchor);
     }
   }
 
@@ -163,51 +318,62 @@ class ReadingPaneState extends State<ReadingPane> {
     );
     final folder = reading.document.id.folderPath;
 
-    return Scrollbar(
-      controller: _scroll,
-      child: SingleChildScrollView(
-        key: _pageKey,
-        controller: _scroll,
-        padding: EdgeInsets.fromLTRB(
-          horizontalPadding,
-          theme.line * 1.5,
-          horizontalPadding,
-          theme.line * 6,
-        ),
-        child: SelectionArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // The breadcrumb and any stand-in title belong to the column, not
-              // to the window: everything on the page hangs off one left edge.
-              final column = theme.proseWidth(constraints.maxWidth);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: column,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          folder.isEmpty
-                              ? reading.document.fileName
-                              : '${folder.replaceAll('/', '  ›  ')}  ›  ${reading.document.fileName}',
-                          style: context.type
-                              .sans(
-                                color: p.muted,
-                                size: theme.scale.base * 0.7,
-                              )
-                              .copyWith(letterSpacing: 0.2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final column = theme.proseWidth(
+          constraints.maxWidth - horizontalPadding * 2,
+        );
+        return Scrollbar(
+          controller: _scroll,
+          child: SelectionArea(
+            child: CustomScrollView(
+              key: _pageKey,
+              controller: _scroll,
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    theme.line * 1.5,
+                    horizontalPadding,
+                    0,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    // The breadcrumb and any stand-in title belong to the
+                    // column, not the window: both hang off its left edge.
+                    child: Center(
+                      child: SizedBox(
+                        width: column,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              folder.isEmpty
+                                  ? reading.document.fileName
+                                  : '${folder.replaceAll('/', '  ›  ')}  ›  ${reading.document.fileName}',
+                              style: context.type
+                                  .sans(
+                                    color: p.muted,
+                                    size: theme.scale.base * 0.7,
+                                  )
+                                  .copyWith(letterSpacing: 0.2),
+                            ),
+                            SizedBox(height: theme.line),
+                            if (!hasOwnTitle) ...[
+                              Text(
+                                reading.document.title,
+                                style: theme.heading(1),
+                              ),
+                              SizedBox(height: theme.blockGap),
+                            ],
+                          ],
                         ),
-                        SizedBox(height: theme.line),
-                        if (!hasOwnTitle) ...[
-                          Text(reading.document.title, style: theme.heading(1)),
-                          SizedBox(height: theme.blockGap),
-                        ],
-                      ],
+                      ),
                     ),
                   ),
-                  DocumentView(
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  sliver: SliverDocumentView(
                     document: reading.document.id,
                     content: reading.content,
                     theme: theme,
@@ -219,14 +385,16 @@ class ReadingPaneState extends State<ReadingPane> {
                     matches: widget.matches,
                     activeMatch: widget.activeMatch,
                     matchKeys: _matchKeys,
+                    onHeadingMount: _headingMountChanged,
                     onTapLink: widget.onLink,
                   ),
-                ],
-              );
-            },
+                ),
+                SliverToBoxAdapter(child: SizedBox(height: theme.line * 6)),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -31,6 +31,15 @@ code grounds span their column and prose wraps at its measure
 (`lib/api/render/document_view.dart`). Code, display mathematics, Mermaid diagrams and tables take the wide
 width; everything else takes prose (`lib/api/render/document_view.dart`).
 
+The renderer has two surfaces over the same block implementation. `DocumentView`
+is the eager box form used for nested composition and focused rendering tests.
+`SliverDocumentView` is the top-level reading form: a `SliverList.builder`
+creates only the viewport and cache region, while each materialised child uses
+the same `_BlockView`, width rule, outgoing space and source offset as the eager
+form (`lib/api/render/document_view.dart`). The one linear pass that indexes
+blocks creates lightweight navigation and source-offset records; it does not
+build, lay out, paint or register semantics for every block.
+
 `_BlockSequence` owns order-sensitive gaps and indents at every depth
 (`lib/api/render/document_view.dart`). After rendering the current block it
 spends `theme.spaceAfter(current, next)`, then advances. The final block spends
@@ -160,6 +169,7 @@ while a long prose cell grows only to the researched 55-character measure.
 | `codeHighlighter` | `CodeHighlighter` | Framework-free source-range contributor, plain by default |
 | `anchorKeys` | `Map<String, GlobalKey>` | Owned by the pane; filled in as headings build |
 | `customAnchorKeys` | `Map<String, GlobalKey>` | Owned separately by the pane; filled first-wins by standalone HTML and footnote navigation anchors without entering the outline |
+| `onHeadingMount` | `void Function(String, bool)?` | Sliver-only viewport registration used by bounded active-heading tracking |
 | `onTapLink` | `void Function(String href)?` | The pane's link handler |
 
 Out: nothing directly. Links report through the composer; the pane reads the
@@ -177,9 +187,12 @@ ranges do not replace the code widget. See the
 
 ## Lifecycle
 
-Stateless, rebuilt with the document, theme or width. The pane owns both key
-maps and clears them when a different document arrives or the current source
-changes beneath the same identity.
+The eager box form is stateless. The sliver form retains its lightweight block
+index while the content list identity is unchanged and rebuilds that index when
+new content arrives. Lazy children mount and dispose with the viewport; selected
+children may be retained by Flutter's selection keep-alive. The pane owns both
+key maps and clears them when a different document arrives or the current
+source changes beneath the same identity.
 
 ## Failure and recovery
 
@@ -198,8 +211,16 @@ hierarchy, anchors, marker geometry, nested container rhythm, task semantics and
 bidirectional quotation treatment. The full recursive contract is documented in
 [Container Typography](24-container-typography.md).
 
+`test/presentation/reading_pane_refresh_test.dart` separately proves a
+500-paragraph reading mounts fewer than 40 paragraph widgets, and protects
+distant anchors plus scroll stability across a source refresh. The profile-mode
+native macrobenchmark extends that check to 5,000 blocks and records frame and
+memory scaling (`integration_test/reading_performance_test.dart`,
+`benchmark/README.md`).
+
 ## Transition
 
-Everything builds at once inside one scroll view, which keeps `ensureVisible`
-exact but is the first thing to revisit for very long documents. Wider code
-remains in the [backlog](../07-roadmap/02-backlog.md).
+Top-level widget, layout, paint and semantics work is now viewport-bounded.
+One unusually large container is still one top-level child and may need its own
+specialised virtualization later. Full-document select-all and wider code
+remain in the [backlog](../07-roadmap/02-backlog.md).
