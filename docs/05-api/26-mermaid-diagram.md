@@ -73,6 +73,10 @@ transformation controller and brief copy feedback; full screen owns another.
 Both are disposed with their surfaces (`lib/main.dart`,
 `lib/api/widgets/mermaid_diagram.dart`).
 
+The web bridge initializes its bundled WASM engine only when a document first
+asks for a Mermaid rendering. Opening an ordinary Markdown library therefore
+does not pay the diagram engine's startup cost (`web/mermaid_bridge.js`).
+
 ## Failure and recovery
 
 Invalid Mermaid, renderer failure or SVG without valid positive viewBox
