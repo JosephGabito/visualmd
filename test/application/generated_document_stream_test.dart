@@ -51,6 +51,49 @@ void main() {
     return generation.cancel();
   });
 
+  test('heading projection replaces only its live suffix', () async {
+    final generation = session(batchCharacters: 1);
+    final updates = <GeneratedDocumentRevision>[];
+    generation.revisions.listen(updates.add);
+
+    generation
+      ..accept(_delta(0, 0, '# Live'))
+      ..accept(_delta(1, 6, ' answer'));
+
+    expect(updates, hasLength(2));
+    expect(updates.first.outline.title, 'Live');
+    expect(updates.first.outline.tableOfContents.headings.single.line, isNull);
+    expect(updates.last.outline.title, 'Live answer');
+    expect(updates.last.outlinedBlocksVisited, 1);
+    expect(
+      updates.first.outline.tableOfContents.headings.single.text,
+      'Live',
+      reason: 'a published outline remains an immutable revision',
+    );
+    await generation.cancel();
+  });
+
+  test(
+    'ordinary prose reuses its outline and visits only the changed block',
+    () async {
+      final generation = session(batchCharacters: 1);
+      final updates = <GeneratedDocumentRevision>[];
+      generation.revisions.listen(updates.add);
+
+      generation
+        ..accept(_delta(0, 0, '# Answer\n\n'))
+        ..accept(_delta(1, 10, 'First paragraph'))
+        ..accept(_delta(2, 25, ' continues'));
+
+      expect(updates, hasLength(3));
+      expect(identical(updates[0].outline, updates[1].outline), isTrue);
+      expect(identical(updates[1].outline, updates[2].outline), isTrue);
+      expect(updates[1].outlinedBlocksVisited, 1);
+      expect(updates[2].outlinedBlocksVisited, 1);
+      await generation.cancel();
+    },
+  );
+
   test('the byte budget bounds a batch without dropping source', () {
     final generation = session(
       latency: const Duration(seconds: 1),

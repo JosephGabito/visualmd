@@ -224,6 +224,7 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
   final updateWallMicroseconds = <int>[];
   final acceptWallMicroseconds = <int>[];
   final parsedCharacters = <int>[];
+  final outlinedBlocks = <int>[];
   var sequence = 1;
   for (var paragraph = 0; paragraph < 20; paragraph++) {
     final pieces = [
@@ -250,6 +251,7 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
       acceptWallMicroseconds.add(acceptClock.elapsedMicroseconds);
       final revision = latest!;
       parsedCharacters.add(revision.parsedSourceCharacters);
+      outlinedBlocks.add(revision.outlinedBlocksVisited);
       await tester.pumpWidget(
         _app(
           _streamReading(revision),
@@ -270,10 +272,12 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
   final mounted = find.byType(Paragraph).evaluate().length;
 
   expect(initial.content.entries, hasLength(5000));
+  expect(initial.outlinedBlocksVisited, 5000);
   expect(initialNavigationVisits, [5000]);
   expect(initialRenderVisits, [5000]);
   expect(navigationIndexPasses, everyElement(1));
   expect(renderIndexPasses, everyElement(1));
+  expect(outlinedBlocks, everyElement(1));
   expect(parsedCharacters.reduce(math.max), lessThan(256));
   expect(position.pixels, greaterThan(offsetBefore));
   expect(mounted, lessThan(40));
@@ -283,10 +287,12 @@ Future<Map<String, Object?>> _benchmarkGeneratedStream(
     'streamed_paragraphs': 20,
     'published_revisions': updateWallMicroseconds.length,
     'initial_parse_wall_us': initialClock.elapsedMicroseconds,
+    'initial_outline_block_passes': initial.outlinedBlocksVisited,
     'initial_navigation_index_passes': initialNavigationVisits,
     'initial_render_index_passes': initialRenderVisits,
     'update_navigation_index_passes': navigationIndexPasses,
     'update_render_index_passes': renderIndexPasses,
+    'update_outline_block_passes': outlinedBlocks,
     'parsed_characters_per_revision': parsedCharacters,
     'parsed_characters_worst': parsedCharacters.reduce(math.max),
     'accept_parse_publish_p50_us': _percentile(acceptWallMicroseconds, 0.50),
@@ -311,9 +317,7 @@ DocumentReading _streamReading(GeneratedDocumentRevision revision) {
       title: 'Generated benchmark',
     ),
     source: source,
-    // Outline projection is benchmarked separately once its suffix contract
-    // exists. This journey isolates source, parse, content, geometry, and UI.
-    outline: DocumentOutline.parse(''),
+    outline: revision.outline,
     content: revision.content,
   );
 }

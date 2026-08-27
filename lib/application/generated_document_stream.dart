@@ -2,8 +2,12 @@
 
 import 'dart:async';
 
+import '../domain/collection/persistent_sequence.dart';
 import '../domain/library/document_id.dart';
+import '../domain/reading/content/block.dart';
 import '../domain/reading/content/document_content.dart';
+import '../domain/reading/document_outline.dart';
+import '../domain/reading/heading.dart';
 import 'ports/document_parser.dart';
 
 final class DocumentStreamId {
@@ -74,7 +78,9 @@ final class GeneratedDocumentRevision {
   final int throughSequence;
   final int acceptedSourceLength;
   final int parsedSourceCharacters;
+  final int outlinedBlocksVisited;
   final DocumentContent content;
+  final DocumentOutline outline;
   final GeneratedDocumentStatus status;
   final String? failure;
 
@@ -84,7 +90,9 @@ final class GeneratedDocumentRevision {
     required this.throughSequence,
     required this.acceptedSourceLength,
     required this.parsedSourceCharacters,
+    required this.outlinedBlocksVisited,
     required this.content,
+    required this.outline,
     required this.status,
     this.failure,
   });
@@ -111,6 +119,7 @@ final class GeneratedDocumentStreamSession {
   final Duration maxLatency;
   final int maxBatchCharacters;
   final IncrementalDocumentParserSession _parser;
+  final _GeneratedOutlineProjection _outline = _GeneratedOutlineProjection();
   final StreamController<GeneratedDocumentRevision> _revisions =
       StreamController.broadcast(sync: true);
   final List<String> _pending = [];
@@ -258,6 +267,7 @@ final class GeneratedDocumentStreamSession {
     String? failure,
   }) {
     if (_revisions.isClosed) return;
+    final projected = _outline.project(content);
     _revisions.add(
       GeneratedDocumentRevision(
         documentId: documentId,
@@ -265,7 +275,9 @@ final class GeneratedDocumentStreamSession {
         throughSequence: throughSequence,
         acceptedSourceLength: _acceptedSourceLength,
         parsedSourceCharacters: _parser.lastParsedSourceLength,
+        outlinedBlocksVisited: projected.blocksVisited,
         content: content,
+        outline: projected.outline,
         status: status,
         failure: failure,
       ),
@@ -291,4 +303,69 @@ final class GeneratedDocumentStreamSession {
       source.endsWith('\n\n') ||
       source.endsWith('\r\n\r\n') ||
       source.endsWith('\r\r');
+}
+
+final class _GeneratedOutlineProjection {
+  DocumentContent? _content;
+  PersistentSequence<Heading> _headings = PersistentSequence.from(const []);
+  DocumentOutline _outline = DocumentOutline.navigationOnly(const []);
+  final List<int> _headingLengths = [0];
+
+  ({DocumentOutline outline, int blocksVisited}) project(
+    DocumentContent content,
+  ) {
+    final previous = _content;
+    if (identical(previous, content)) {
+      return (outline: _outline, blocksVisited: 0);
+    }
+    final tail = previous == null ? null : content.tailChangeSince(previous);
+    if (tail == null) return _rebuild(content);
+
+    final headingStart = _headingLengths[tail.index];
+    final removedHeadings = _headings.length - headingStart;
+    final inserted = <Heading>[];
+    for (final entry in tail.blocks) {
+      final block = entry.block;
+      if (block case HeadingBlock(:final level, :final text, :final anchor)) {
+        inserted.add(Heading(level: level, text: text, anchor: anchor));
+      }
+    }
+    if (removedHeadings != 0 || inserted.isNotEmpty) {
+      _headings = _headings.replace(
+        index: headingStart,
+        removeCount: removedHeadings,
+        values: inserted,
+      );
+      _outline = DocumentOutline.navigationOnly(_headings);
+    }
+
+    _headingLengths.removeRange(tail.index + 1, _headingLengths.length);
+    var headingLength = headingStart;
+    for (final entry in tail.blocks) {
+      if (entry.block is HeadingBlock) headingLength++;
+      _headingLengths.add(headingLength);
+    }
+    _content = content;
+    return (outline: _outline, blocksVisited: tail.blocks.length);
+  }
+
+  ({DocumentOutline outline, int blocksVisited}) _rebuild(
+    DocumentContent content,
+  ) {
+    final headings = <Heading>[];
+    _headingLengths
+      ..clear()
+      ..add(0);
+    for (final entry in content.entries) {
+      final block = entry.block;
+      if (block case HeadingBlock(:final level, :final text, :final anchor)) {
+        headings.add(Heading(level: level, text: text, anchor: anchor));
+      }
+      _headingLengths.add(headings.length);
+    }
+    _headings = PersistentSequence.from(headings);
+    _outline = DocumentOutline.navigationOnly(_headings);
+    _content = content;
+    return (outline: _outline, blocksVisited: content.entries.length);
+  }
 }

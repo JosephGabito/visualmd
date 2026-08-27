@@ -16,14 +16,11 @@ hand-built mutation. It commits 5,000 Markdown paragraphs through
 `GeneratedDocumentStreamSession`, starts a ballistic scroll, and publishes 60
 small deltas forming 20 more paragraphs. This covers transport ordering,
 coalescing policy, chunked source retention, incremental Markdown parsing,
-persistent document revisions, navigation and render indexing, viewport
-geometry, layout, and paint. Every published revision must parse fewer than 256
-source characters, visit exactly one navigation and render record, keep fewer
-than 40 paragraphs mounted, and allow the ballistic scroll to continue.
-
-The generated journey intentionally supplies an empty outline. Incremental
-outline projection is a separate remaining slice; rebuilding it per revision
-would contaminate the renderer measurement with a known full-prefix operation.
+persistent document revisions, outline projection, navigation and render
+indexing, viewport geometry, layout, and paint. Every published revision must
+parse fewer than 256 source characters, visit exactly one outline, navigation,
+and render record, keep fewer than 40 paragraphs mounted, and allow the
+ballistic scroll to continue.
 
 Run it on macOS in profile mode:
 
