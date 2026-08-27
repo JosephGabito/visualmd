@@ -45,3 +45,18 @@ The first revisioned-append measurement is retained in
 `benchmark/results/2026-08-28-revisioned-append.md`.
 The first end-to-end generated Markdown stream measurement is retained in
 `benchmark/results/2026-08-28-generated-stream.md`.
+
+The atomic-block benchmark isolates one fenced code block at 1,000, 10,000,
+and 50,000 lines. It establishes the pre-virtualization slope separately from
+the top-level sliver benchmark:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/atomic_block_performance_test.dart \
+  -d macos
+```
+
+The first atomic-code scaling measurement is retained in
+`benchmark/results/2026-08-28-atomic-code-block.md`.
