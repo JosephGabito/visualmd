@@ -2,6 +2,26 @@ import 'package:quiet_viewport/quiet_viewport.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('bulk construction preserves every prefix and boundary', () {
+    final ledger = StableExtentLedger<int>()
+      ..appendAll([
+        for (var index = 0; index < 1000; index++)
+          ExtentSeed(
+            key: index,
+            revision: 0,
+            estimatedExtent: (index % 7 + 1).toDouble(),
+          ),
+      ]);
+
+    var prefix = 0.0;
+    for (var index = 0; index < 1000; index++) {
+      expect(ledger.leadingOffsetOf(index), prefix);
+      expect(ledger.keyAtOffset(prefix), index);
+      prefix += (index % 7 + 1).toDouble();
+    }
+    expect(ledger.totalExtent, prefix);
+  });
+
   test('an empty ledger can begin a new layout epoch', () {
     final ledger = StableExtentLedger<String>();
 
