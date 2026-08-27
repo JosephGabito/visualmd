@@ -72,9 +72,12 @@ A block ledger belongs to one document and layout lifetime. Appends extend its
 Fenwick tree in `O(log n)`, stable-key lookup is `O(1)`, and prefix position,
 measurement, and offset lookup are `O(log n)`. A width, type, or theme change
 starts a new layout revision rather than accepting stale measurements. A
-snapshot reconciliation retains measured extents for every stable ID whose
-item revision is unchanged; revised records receive fresh estimates. Thus a
-refresh does not throw away geometry already learned from the viewport
+provisional suffix replacement truncates only that suffix, retains every
+measured prefix extent, and validates incoming identity without reconstructing
+a prefix set. Its work is proportional to the removed and inserted suffix, not
+the document. A general snapshot reconciliation retains measured extents for
+every stable ID whose item revision is unchanged; revised records receive fresh
+estimates. Thus a refresh does not throw away geometry already learned from the viewport
 (`lib/infrastructure/viewport/quiet_document_viewport_geometry.dart`).
 
 ## Failure and recovery
@@ -85,8 +88,9 @@ returns `null` and cannot change geometry. An empty ledger can change layout
 epochs safely. The Flutter thumb clamps frozen targets to the live scroll
 position, so shrinking content cannot send a drag outside current bounds.
 
-The package proofs live in `packages/quiet_viewport/test`. Visual MD verifies
-the adapter in `test/infrastructure/quiet_document_viewport_geometry_test.dart`.
+The package proofs live in `packages/quiet_viewport/test`, including retained
+measurement and lookup after suffix replacement. Visual MD verifies the adapter
+in `test/infrastructure/quiet_document_viewport_geometry_test.dart`.
 `test/presentation/geometry_sliver_list_test.dart` proves direct far seeking,
 pre-paint measurement correction, and stable layout-epoch changes.
 `test/presentation/quiet_scrollbar_test.dart` proves both tail growth and a
@@ -94,8 +98,7 @@ physical anchor correction leave a visible thumb exactly unchanged.
 
 ## Transition
 
-Geometry correction is live. The next performance boundary sits before it:
-source storage and Markdown parsing still replace the whole document, while a
-mutation snapshot still copies its record list. Large atomic containers and
-full-document select-all also need specialised policies; none require changing
-the geometry package's identity, prefix-sum, or frozen-metric contracts.
+Geometry correction and provisional-tail replacement are live. Large atomic
+containers, incremental outline projection, and full-document select-all still
+need specialised policies; none require changing the geometry package's
+identity, prefix-sum, or frozen-metric contracts.

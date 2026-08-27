@@ -194,6 +194,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
   var _layoutRevision = 0;
   var _needsGeometryReset = true;
   PendingDocumentExtentCorrection? _pendingCorrection;
+  int? _pendingGeometryTailStart;
 
   _IndexedBlocks _initialIndex() {
     final entries = widget.content.entries;
@@ -210,13 +211,17 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
       _layoutRevision = widget.viewportGeometry?.layoutRevision ?? 0;
     }
     if (!identical(oldWidget.content, widget.content)) {
-      final appended = widget.content.appendedSince(oldWidget.content);
-      if (appended == null) {
+      final tail = widget.content.tailChangeSince(oldWidget.content);
+      final visibleStart = tail == null
+          ? null
+          : _replaceDocumentBlockTail(_index, tail, oldWidget.content.entries);
+      if (visibleStart == null) {
         _index = _initialIndex();
         _needsGeometryReset = true;
-      } else if (appended.isNotEmpty) {
-        widget.debugOnBlocksIndexed?.call(appended.length);
-        _index = _appendDocumentBlocks(_index, appended);
+        _pendingGeometryTailStart = null;
+      } else {
+        widget.debugOnBlocksIndexed?.call(tail!.blocks.length);
+        _pendingGeometryTailStart = visibleStart;
       }
     }
   }
@@ -355,13 +360,50 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
       widget.theme.body.fontFamily,
       widget.theme.scale.marking,
     );
-    if (_layoutSignature != null && _layoutSignature != signature) {
+    final layoutChanged =
+        _layoutSignature != null && _layoutSignature != signature;
+    if (layoutChanged) {
       _layoutRevision = math.max(
         _layoutRevision + 1,
         geometry.layoutRevision + 1,
       );
     }
     _layoutSignature = signature;
+
+    if (!_needsGeometryReset && layoutChanged) {
+      final correction = geometry.relayout(
+        revision: _layoutRevision,
+        estimatedExtents: [
+          for (var index = 0; index < _index.visible.length; index++)
+            _seedFor(index, prose, wide).estimatedExtent,
+        ],
+        anchor: anchor,
+      );
+      if (correction.contentExtentDelta != 0 ||
+          correction.scrollOffsetDelta != 0) {
+        _pendingCorrection = PendingDocumentExtentCorrection(correction);
+      }
+      _pendingGeometryTailStart = null;
+      return;
+    }
+
+    final tailStart = _pendingGeometryTailStart;
+    if (!_needsGeometryReset && tailStart != null) {
+      final correction = geometry.replaceTail(
+        start: tailStart,
+        seeds: [
+          for (var index = tailStart; index < _index.visible.length; index++)
+            _seedFor(index, prose, wide),
+        ],
+        anchor: anchor,
+      );
+      if (correction.contentExtentDelta != 0 ||
+          correction.scrollOffsetDelta != 0) {
+        _pendingCorrection = PendingDocumentExtentCorrection(correction);
+      }
+      _pendingGeometryTailStart = null;
+      return;
+    }
 
     if (_needsGeometryReset || geometry.length > _index.visible.length) {
       final correction = geometry.reset(
@@ -596,19 +638,23 @@ final class _VisibleBlock {
 }
 
 final class _IndexedBlocks {
-  const _IndexedBlocks({
+  _IndexedBlocks({
     required this.visible,
     required this.trailingAnchors,
     required this.claimedAnchors,
     required this.nextOffset,
     required this.visibleIndexes,
+    required this.visibleLengths,
+    required this.offsets,
   });
 
   final List<_VisibleBlock> visible;
   final List<String> trailingAnchors;
   final Set<String> claimedAnchors;
-  final int nextOffset;
+  int nextOffset;
   final Map<DocumentBlockId, int> visibleIndexes;
+  final List<int> visibleLengths;
+  final List<int> offsets;
 }
 
 _IndexedBlocks _indexBlocks(
@@ -640,11 +686,13 @@ _IndexedBlocks _appendDocumentBlocks(
 ], separatorLength: separatorLength);
 
 _IndexedBlocks _emptyIndex(int startOffset) => _IndexedBlocks(
-  visible: const [],
-  trailingAnchors: const [],
-  claimedAnchors: const {},
+  visible: [],
+  trailingAnchors: [],
+  claimedAnchors: {},
   nextOffset: startOffset,
-  visibleIndexes: const {},
+  visibleIndexes: {},
+  visibleLengths: [0],
+  offsets: [startOffset],
 );
 
 _IndexedBlocks _extendIndex(
@@ -652,15 +700,17 @@ _IndexedBlocks _extendIndex(
   List<({Block block, DocumentBlockId? id, int revision})> appended, {
   required int separatorLength,
 }) {
-  final visible = current.visible.toList();
-  final pendingAnchors = current.trailingAnchors.toList();
-  final claimedAnchors = current.claimedAnchors.toSet();
-  final visibleIndexes = Map<DocumentBlockId, int>.of(current.visibleIndexes);
+  final visible = current.visible;
+  final pendingAnchors = current.trailingAnchors;
+  final claimedAnchors = current.claimedAnchors;
+  final visibleIndexes = current.visibleIndexes;
   var offset = current.nextOffset;
   for (final entry in appended) {
     final block = entry.block;
     if (block case AnchorBlock(:final name)) {
       if (claimedAnchors.add(name)) pendingAnchors.add(name);
+      current.visibleLengths.add(visible.length);
+      current.offsets.add(offset);
       continue;
     }
     final visibleIndex = visible.length;
@@ -671,14 +721,41 @@ _IndexedBlocks _extendIndex(
     );
     pendingAnchors.clear();
     offset += block.text.length + separatorLength;
+    current.visibleLengths.add(visible.length);
+    current.offsets.add(offset);
   }
-  return _IndexedBlocks(
-    visible: List.unmodifiable(visible),
-    trailingAnchors: List.unmodifiable(pendingAnchors),
-    claimedAnchors: Set.unmodifiable(claimedAnchors),
-    nextOffset: offset,
-    visibleIndexes: Map.unmodifiable(visibleIndexes),
+  current.nextOffset = offset;
+  return current;
+}
+
+int? _replaceDocumentBlockTail(
+  _IndexedBlocks current,
+  DocumentTailChange change,
+  List<DocumentBlock> previous,
+) {
+  final removed = [
+    for (var index = change.index; index < previous.length; index++)
+      previous[index],
+  ];
+  if (current.trailingAnchors.isNotEmpty ||
+      removed.any((entry) => entry.block is AnchorBlock) ||
+      change.blocks.any((entry) => entry.block is AnchorBlock)) {
+    return null;
+  }
+  final visibleStart = current.visibleLengths[change.index];
+  for (var index = visibleStart; index < current.visible.length; index++) {
+    final id = current.visible[index].id;
+    if (id != null) current.visibleIndexes.remove(id);
+  }
+  current.visible.removeRange(visibleStart, current.visible.length);
+  current.nextOffset = current.offsets[change.index];
+  current.visibleLengths.removeRange(
+    change.index + 1,
+    current.visibleLengths.length,
   );
+  current.offsets.removeRange(change.index + 1, current.offsets.length);
+  _appendDocumentBlocks(current, change.blocks);
+  return visibleStart;
 }
 
 Widget _withAnchorTargets(

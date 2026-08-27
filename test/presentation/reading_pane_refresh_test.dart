@@ -291,6 +291,102 @@ $body
     },
   );
 
+  testWidgets(
+    'a provisional tail replacement leaves the reader still and visits only its suffix',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final initialContent = DocumentContent.revisioned([
+        for (var index = 0; index < 500; index++)
+          DocumentBlock(
+            id: DocumentBlockId('paragraph-$index'),
+            revision: 0,
+            block: ParagraphBlock([
+              TextRun(
+                'Paragraph $index has enough words to occupy the reading page.',
+              ),
+            ]),
+          ),
+        DocumentBlock(
+          id: const DocumentBlockId('provisional'),
+          revision: 0,
+          commitment: BlockCommitment.provisional,
+          block: ParagraphBlock([TextRun('Unfinished tail.')]),
+        ),
+      ]);
+      final nextContent = initialContent.apply(
+        DocumentMutation(
+          baseRevision: 0,
+          revision: 1,
+          operations: [
+            ReplaceBlocks(
+              index: 500,
+              removeCount: 1,
+              blocks: [
+                DocumentBlock(
+                  id: const DocumentBlockId('final-500'),
+                  revision: 1,
+                  block: ParagraphBlock([TextRun('Finished tail.')]),
+                ),
+                DocumentBlock(
+                  id: const DocumentBlockId('final-501'),
+                  revision: 1,
+                  commitment: BlockCommitment.provisional,
+                  block: ParagraphBlock([TextRun('Next provisional block.')]),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      final navigationPasses = <int>[];
+      final renderPasses = <int>[];
+
+      DocumentReading revision(DocumentContent content) => DocumentReading(
+        document: Document(id: id, content: 'revision ${content.revision}'),
+        source: 'revision ${content.revision}',
+        outline: DocumentOutline.parse(''),
+        content: content,
+      );
+
+      Future<void> show(DocumentContent content) => tester.pumpWidget(
+        MaterialApp(
+          theme: libraryTheme(BuiltInThemes.paper),
+          home: Scaffold(
+            body: ReadingPane(
+              reading: revision(content),
+              scale: ReadingScale.comfortable,
+              viewportGeometry: const QuietDocumentViewportGeometryFactory(),
+              onLink: (_) {},
+              onActiveHeadingChanged: (_) {},
+              debugOnNavigationBlocksIndexed: navigationPasses.add,
+              debugOnRenderBlocksIndexed: renderPasses.add,
+            ),
+          ),
+        ),
+      );
+
+      await show(initialContent);
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -1000));
+      await tester.pumpAndSettle();
+      final scrollable = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      );
+      final position = tester.state<ScrollableState>(scrollable).position;
+      final before = position.pixels;
+
+      await show(nextContent);
+      await tester.pumpAndSettle();
+
+      expect(position.pixels, closeTo(before, 0.01));
+      expect(navigationPasses, [501, 2]);
+      expect(renderPasses, [501, 2]);
+    },
+  );
+
   testWidgets('a revised block above the viewport cannot move its anchor', (
     tester,
   ) async {

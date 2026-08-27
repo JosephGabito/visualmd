@@ -113,16 +113,16 @@ class ReadingPaneState extends State<ReadingPane> {
     } else if (!identical(oldWidget.reading.content, widget.reading.content)) {
       // The page changed beneath the same document identity. Rebuild heading
       // anchors, but keep the scroll controller exactly where the reader was.
-      final appended = widget.reading.content.appendedSince(
+      final tail = widget.reading.content.tailChangeSince(
         oldWidget.reading.content,
       );
-      if (appended == null) {
+      if (tail == null ||
+          !_replaceNavigationTail(tail, oldWidget.reading.content)) {
         _resetNavigation();
       } else {
         final wasFollowingTail =
             _scroll.hasClients &&
             _scroll.position.maxScrollExtent - _scroll.position.pixels <= 1;
-        _appendNavigation(appended);
         if (wasFollowingTail) _settleAtTail();
       }
       WidgetsBinding.instance.addPostFrameCallback(
@@ -330,6 +330,43 @@ class ReadingPaneState extends State<ReadingPane> {
       _headingsByAnchor[heading.anchor] = heading;
     }
     _indexedOutlineHeadings = outlineHeadings.length;
+  }
+
+  bool _replaceNavigationTail(
+    DocumentTailChange change,
+    DocumentContent previous,
+  ) {
+    final removed = [
+      for (var index = change.index; index < previous.entries.length; index++)
+        previous.entries[index],
+    ];
+    bool changesNavigation(DocumentBlock entry) =>
+        entry.block is AnchorBlock || entry.block is HeadingBlock;
+    if (removed.any(changesNavigation) ||
+        change.blocks.any(changesNavigation)) {
+      return false;
+    }
+
+    final visibleStart = _visibleBlockCount - removed.length;
+    if (visibleStart < 0) return false;
+    _blockOffsets.removeRange(visibleStart, _blockOffsets.length);
+    _visibleBlockIds.removeRange(visibleStart, _visibleBlockIds.length);
+    _visibleBlockCount = visibleStart;
+    if (visibleStart == 0) {
+      _nextBlockOffset = 0;
+    } else {
+      Block? preceding;
+      for (var index = change.index - 1; index >= 0; index--) {
+        final block = previous.entries[index].block;
+        if (block is AnchorBlock) continue;
+        preceding = block;
+        break;
+      }
+      if (preceding == null) return false;
+      _nextBlockOffset = _blockOffsets.last + preceding.text.length + 2;
+    }
+    _appendNavigation(change.blocks);
+    return true;
   }
 
   int _blockForOffset(int offset) {

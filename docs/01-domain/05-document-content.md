@@ -202,8 +202,10 @@ they create (`lib/domain/reading/content/document_content.dart`).
 
 Out: `entries` with stable identity, `blocks` and `headings` in source order,
 `revision`, `isEmpty`, and `text` — every word without decoration, for anything
-that needs words rather than shapes. `appendedSince` returns only a directly
-appended tail; replacements and non-tail edits deliberately return no delta
+that needs words rather than shapes. `tailChangeSince` identifies a direct
+suffix insertion, replacement, or removal and reports only its start, removed
+count, and replacement records. `appendedSince` is its stricter append-only
+view. A non-tail edit deliberately returns no bounded delta
 (`lib/domain/reading/content/document_content.dart`). Every block and run
 offers the same `text`
 (`lib/domain/reading/content/block.dart`,
@@ -219,12 +221,13 @@ after a complete reading has been assembled.
 
 ## Lifecycle
 
-The current Markdown adapter builds one complete snapshot per document read
-and the returned `DocumentReading` holds it
+The ordinary Markdown read builds one complete snapshot and the returned
+`DocumentReading` holds it
 (`lib/application/use_cases/read_document.dart`). That legacy snapshot receives
 deterministic snapshot identities when `entries` is requested. An incremental
 producer instead creates revisioned entries and applies immutable mutations;
-committed prefix identities survive a tail append
+committed prefix identities survive both an append and replacement of the
+provisional suffix
 (`lib/domain/reading/content/document_content.dart`).
 
 Revisioned storage is an immutable balanced rope with a persistent AVL identity

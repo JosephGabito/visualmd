@@ -40,8 +40,10 @@ the same `_BlockView`, width rule, outgoing space and source offset as the eager
 form (`lib/api/render/document_view.dart`). The first snapshot receives one
 linear indexing pass which creates lightweight navigation and source-offset
 records; it does not build, lay out, paint or register semantics for every
-block. A revisioned tail append extends that index from the delta only. Stable
-`DocumentBlockId` keys let Flutter retain already-mounted elements instead of
+block. A revisioned tail append extends that index from the delta only;
+replacing a provisional suffix truncates the state-owned derived arrays at its
+source checkpoint and indexes only the replacement. Stable `DocumentBlockId`
+keys let Flutter retain already-mounted elements instead of
 mistaking an update for a new page (`lib/api/render/document_view.dart`).
 
 Each unmounted block has a deterministic estimate derived from block shape,
@@ -204,8 +206,10 @@ ranges do not replace the code widget. See the
 
 The eager box form is stateless. The sliver form retains its lightweight block
 index while content is unchanged. A direct revisioned tail append extends the
-index and keeps the mounted prefix; a replacement or unknown transition safely
-rebuilds it. Lazy children mount and dispose with the viewport; selected
+index; a direct suffix replacement truncates at a recorded source checkpoint
+and indexes only its replacement. Both keep the mounted prefix. A transition
+involving explicit anchor blocks or an unknown/non-tail mutation safely
+rebuilds the index. Lazy children mount and dispose with the viewport; selected
 children may be retained by Flutter's selection keep-alive. The pane owns both
 key maps and clears them when a different document arrives or a non-append
 replacement changes the current source.
@@ -238,8 +242,8 @@ bidirectional quotation treatment. The full recursive contract is documented in
 500-paragraph reading mounts fewer than 40 paragraph widgets, and protects
 distant anchors plus scroll stability across a source refresh. It also proves
 a revised block above the viewport cannot move a mounted anchor. A revisioned
-500-block append visits one new record in both navigation and render indexes
-and retains the mounted prefix. The profile-mode native macrobenchmark extends
+500-block append and provisional-tail replacement visit only their new records
+in both navigation and render indexes and retain the mounted prefix. The profile-mode native macrobenchmark extends
 that proof to 5,001 blocks and records the pass counts, frame times, and memory
 scaling (`integration_test/reading_performance_test.dart`,
 `benchmark/README.md`).
@@ -248,8 +252,9 @@ scaling (`integration_test/reading_performance_test.dart`,
 
 Top-level widget, layout, paint and semantics work is viewport-bounded; far
 seeks and geometry correction use prefix queries rather than prefix layout.
-Revisioned tail indexing is delta-bounded; immutable snapshot construction and
-the current one-shot Markdown parser are still whole-document work.
+Revisioned tail indexing, persistent snapshots, source retention, and
+provisional-tail parsing are delta-bounded. Incremental outline projection is
+the remaining full-prefix derived index on the generated-document path.
 One unusually large container is still one top-level child and may need its own
 specialised virtualization later. Full-document select-all and wider code
 remain in the [backlog](../07-roadmap/02-backlog.md).

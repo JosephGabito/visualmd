@@ -261,17 +261,24 @@ final class _IncrementalMarkdownParserSession
         ..clear()
         ..addAll(records.take(committedBlocks.length));
     } else {
-      final mutation = DocumentMutation(
-        baseRevision: _content.revision,
-        revision: revision,
-        operations: [
-          ReplaceBlocks(
-            index: _committed.length,
-            removeCount: _provisional.length,
-            blocks: records,
-          ),
-        ],
-      );
+      final mutation = _provisional.isEmpty
+          ? DocumentMutation.append(
+              baseRevision: _content.revision,
+              revision: revision,
+              index: _committed.length,
+              blocks: records,
+            )
+          : DocumentMutation(
+              baseRevision: _content.revision,
+              revision: revision,
+              operations: [
+                ReplaceBlocks(
+                  index: _committed.length,
+                  removeCount: _provisional.length,
+                  blocks: records,
+                ),
+              ],
+            );
       _content = _content.apply(mutation);
       _committed.addAll(records.take(committedBlocks.length));
     }

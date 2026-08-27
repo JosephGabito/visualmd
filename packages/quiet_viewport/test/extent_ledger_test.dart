@@ -178,4 +178,30 @@ void main() {
       expect(ledger.leadingOffsetOf('c'), 130);
     },
   );
+
+  test('a tail replacement retains prefix geometry and direct lookup', () {
+    final ledger = StableExtentLedger<String>()
+      ..appendAll(const [
+        ExtentSeed(key: 'a', revision: 0, estimatedExtent: 10),
+        ExtentSeed(key: 'b', revision: 0, estimatedExtent: 20),
+        ExtentSeed(key: 'tail', revision: 0, estimatedExtent: 30),
+      ]);
+    ledger.measure(key: 'b', itemRevision: 0, layoutRevision: 0, extent: 24);
+
+    final correction = ledger.replaceTail(
+      start: 2,
+      seeds: const [
+        ExtentSeed(key: 'tail', revision: 1, estimatedExtent: 12),
+        ExtentSeed(key: 'next', revision: 1, estimatedExtent: 16),
+      ],
+      anchor: 'b',
+    );
+
+    expect(ledger.extentOf('b'), 24);
+    expect(ledger.indexOf('tail'), 2);
+    expect(ledger.indexOf('next'), 3);
+    expect(ledger.leadingOffsetOf('next'), 46);
+    expect(correction.scrollOffsetDelta, 0);
+    expect(correction.contentExtentDelta, -2);
+  });
 }
