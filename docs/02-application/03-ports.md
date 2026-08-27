@@ -13,12 +13,20 @@ Reads the files beneath a folder the reader offered
 |--------|------|----------|
 | `scan(FolderRef ref)` | `Future<ScannedFolder>` | Return every file the adapter can read beneath the ref, or throw `FolderUnavailable`. Adapters may skip files the domain would discard; they must not sort or prune folders. |
 
+`FolderMetadataScanner` is the optional two-phase form of this capability.
+`scanMetadata` may return `titlesDeferred: true` after discovering paths and
+physical identities without reading document bytes. `enrichTitles` completes
+the same ordered snapshot with authored titles. Callers that receive an
+ordinary `FolderScanner` keep the one-phase contract; routing falls back to it
+without inventing deferred work (`lib/application/ports/folder_scanner.dart`,
+`lib/infrastructure/routing_folder_scanner.dart`).
+
 ### Value types
 
 | Type | Defined at | Meaning |
 |------|------------|---------|
 | `FolderRef(id, name)` | `lib/application/ports/folder_scanner.dart` | Opaque handle. Equality and hash by `id` only (`lib/application/ports/folder_scanner.dart`). The `name` is what the library will be called. |
-| `ScannedFolder(name, files)` | `lib/application/ports/folder_scanner.dart` | Name plus a flat list of metadata-first `FileEntry`; bundled sources may embed content (`lib/domain/library/library_builder.dart`). |
+| `ScannedFolder(name, files, titlesDeferred)` | `lib/application/ports/folder_scanner.dart` | Name plus a flat list of metadata-first `FileEntry`; `titlesDeferred` distinguishes a publishable filename snapshot from a title-complete result. Bundled sources may embed content (`lib/domain/library/library_builder.dart`). |
 | `FolderUnavailable(ref)` | `lib/application/ports/folder_scanner.dart` | The ref is unknown to this scanner, or the folder is gone. |
 
 ### Implementations

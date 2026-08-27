@@ -69,6 +69,28 @@ void main() {
     },
   );
 
+  test('discovers the shelf before reading authored titles', () async {
+    final registry = LocalFolderRegistry('test');
+    final ref = registry.register('lib', LocalDirectory(root.path));
+    final scanner = LocalFolderScanner(registry);
+
+    final metadata = await scanner.scanMetadata(ref);
+
+    expect(metadata.titlesDeferred, isTrue);
+    expect(metadata.files, hasLength(4));
+    expect(metadata.files.every((file) => file.title == null), isTrue);
+    expect(metadata.files.every((file) => file.content == null), isTrue);
+    expect(metadata.files.every((file) => file.sourceId != null), isTrue);
+
+    final enriched = await scanner.enrichTitles(ref, metadata);
+
+    expect(enriched.titlesDeferred, isFalse);
+    expect(
+      enriched.files.firstWhere((file) => file.path == 'README.md').title,
+      'Root',
+    );
+  });
+
   test(
     'survives non-UTF-8 bytes instead of failing the whole library',
     () async {

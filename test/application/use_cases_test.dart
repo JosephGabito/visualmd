@@ -8,6 +8,7 @@ import 'package:visualmd/application/ports/library_repository.dart';
 import 'package:visualmd/application/ports/markdown_scanner.dart';
 import 'package:visualmd/application/use_cases/add_folder.dart';
 import 'package:visualmd/application/use_cases/add_markdown.dart';
+import 'package:visualmd/application/use_cases/enrich_folder_titles.dart';
 import 'package:visualmd/application/use_cases/move_folder.dart';
 import 'package:visualmd/application/use_cases/read_document.dart';
 import 'package:visualmd/application/use_cases/remove_folder.dart';
@@ -40,6 +41,32 @@ final class ControlledScanner implements FolderScanner {
     calls.add(ref.id);
     return scans.putIfAbsent(ref.id, Completer.new).future;
   }
+}
+
+final class ControlledMetadataScanner
+    implements FolderScanner, FolderMetadataScanner {
+  final Completer<ScannedFolder> enriched = Completer();
+
+  @override
+  Future<ScannedFolder> scan(FolderRef ref) => scanMetadata(ref);
+
+  @override
+  Future<ScannedFolder> scanMetadata(FolderRef ref) async => ScannedFolder(
+    name: ref.name,
+    titlesDeferred: true,
+    files: const [
+      FileEntry(
+        'README.md',
+        null,
+        sourceId: DocumentSourceId('/notes/README.md'),
+      ),
+      FileEntry('gone.md', null, sourceId: DocumentSourceId('/notes/gone.md')),
+    ],
+  );
+
+  @override
+  Future<ScannedFolder> enrichTitles(FolderRef ref, ScannedFolder metadata) =>
+      enriched.future;
 }
 
 final class FakeMarkdownScanner implements MarkdownScanner {
@@ -139,6 +166,69 @@ void main() {
       expect(library.find(DocumentId(notesId, 'README.md'))?.title, 'Notes');
       expect(library.find(DocumentId(guidesId, 'README.md'))?.title, 'Guides');
       expect(repo.saved, same(library));
+    },
+  );
+
+  test(
+    'deferred titles update surviving identities without resurrecting files',
+    () async {
+      final repo = FakeRepository();
+      final mutations = LibraryMutationQueue();
+      final metadata = ControlledMetadataScanner();
+      final added = await AddFolder(
+        scanner: metadata,
+        metadataScanner: metadata,
+        repository: repo,
+        mutations: mutations,
+      ).execute(notesRef);
+
+      expect(
+        added.root.find(DocumentId(notesId, 'README.md'))!.title,
+        'README',
+      );
+      expect(added.deferredTitles, isNotNull);
+
+      final enrichment = EnrichFolderTitles(
+        scanner: metadata,
+        repository: repo,
+        mutations: mutations,
+      ).execute(added.deferredTitles!);
+      final current = repo.saved!;
+      await repo.save(
+        current.addOrReplace(
+          current.rootById(notesId)!.applyDocumentChanges({
+            DocumentId(notesId, 'gone.md'): null,
+          }),
+        ),
+      );
+      metadata.enriched.complete(
+        const ScannedFolder(
+          name: 'notes',
+          files: [
+            FileEntry(
+              'README.md',
+              null,
+              sourceId: DocumentSourceId('/notes/README.md'),
+              title: 'Authored notes',
+            ),
+            FileEntry(
+              'gone.md',
+              null,
+              sourceId: DocumentSourceId('/notes/gone.md'),
+              title: 'Must stay gone',
+            ),
+          ],
+        ),
+      );
+
+      final result = await enrichment;
+
+      expect(
+        result!.library.find(DocumentId(notesId, 'README.md'))!.title,
+        'Authored notes',
+      );
+      expect(result.library.find(DocumentId(notesId, 'gone.md')), isNull);
+      expect(result.documents, {DocumentId(notesId, 'README.md')});
     },
   );
 

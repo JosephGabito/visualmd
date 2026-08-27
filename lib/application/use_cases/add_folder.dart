@@ -17,6 +17,7 @@ final class AddedFolder {
   final bool refreshed;
   final Document? adaptedDocument;
   final Document? nextDocument;
+  final DeferredFolderTitles? deferredTitles;
 
   const AddedFolder({
     required this.library,
@@ -24,24 +25,35 @@ final class AddedFolder {
     required this.refreshed,
     required this.adaptedDocument,
     required this.nextDocument,
+    this.deferredTitles,
   });
 
   Document? get openingDocument => root.openingDocument;
 }
 
+final class DeferredFolderTitles {
+  final FolderRef ref;
+  final ScannedFolder metadata;
+
+  const DeferredFolderTitles(this.ref, this.metadata);
+}
+
 /// Adds a scanned folder to the session, or refreshes it in place by identity.
 final class AddFolder {
   final FolderScanner _scanner;
+  final FolderMetadataScanner? _metadataScanner;
   final LibraryRepository _repository;
   final LibraryMutationQueue _mutations;
   final WorkspaceMutationCommitter? _workspace;
 
   const AddFolder({
     required FolderScanner scanner,
+    FolderMetadataScanner? metadataScanner,
     required LibraryRepository repository,
     required LibraryMutationQueue mutations,
     WorkspaceMutationCommitter? workspace,
   }) : _scanner = scanner,
+       _metadataScanner = metadataScanner,
        _repository = repository,
        _mutations = mutations,
        _workspace = workspace;
@@ -51,7 +63,8 @@ final class AddFolder {
     DocumentId? selected,
     int? atIndex,
   }) => _mutations.run(() async {
-    final scanned = await _scanner.scan(ref);
+    final scanned =
+        await (_metadataScanner?.scanMetadata(ref) ?? _scanner.scan(ref));
     final id = LibraryRootId(ref.id);
     final current = await _repository.current() ?? Library.empty();
     final refreshed = current.rootById(id) != null;
@@ -100,6 +113,9 @@ final class AddFolder {
       refreshed: refreshed,
       adaptedDocument: adaptedDocument,
       nextDocument: next,
+      deferredTitles: scanned.titlesDeferred
+          ? DeferredFolderTitles(ref, scanned)
+          : null,
     );
   });
 }

@@ -19,6 +19,7 @@ import 'application/source_watch_coordinator.dart';
 import 'application/workspace_autosave.dart';
 import 'application/use_cases/add_folder.dart';
 import 'application/use_cases/add_markdown.dart';
+import 'application/use_cases/enrich_folder_titles.dart';
 import 'application/use_cases/create_workspace.dart';
 import 'application/use_cases/move_folder.dart';
 import 'application/use_cases/open_workspace.dart';
@@ -95,9 +96,15 @@ Future<void> main() async {
   );
   final addFolder = AddFolder(
     scanner: scanner,
+    metadataScanner: scanner,
     repository: repository,
     mutations: mutations,
     workspace: updateWorkspace,
+  );
+  final enrichFolderTitles = EnrichFolderTitles(
+    scanner: scanner,
+    repository: repository,
+    mutations: mutations,
   );
   final addMarkdown = AddMarkdown(
     scanner: platform.markdownScanner,
@@ -215,6 +222,7 @@ Future<void> main() async {
   );
   controller = ReaderController(
     addFolder: addFolder,
+    enrichFolderTitles: enrichFolderTitles,
     addMarkdown: addMarkdown,
     removeFolder: removeFolder,
     removeMarkdown: removeMarkdown,
