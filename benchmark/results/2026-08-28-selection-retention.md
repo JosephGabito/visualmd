@@ -44,3 +44,28 @@ remove the state carrying native selection and make copy incomplete. Visual MD
 needs a model-owned document range, mounted native-looking highlights, and
 copy assembled from the model. The native gesture remains the interaction
 reference, but the model—not an offstage widget chain—must own what survives.
+
+## Model-owned range comparison
+
+The same profile journey was repeated after each mounted block began recording
+its local source range in `ModelSelectionSnapshot` and the sliver stopped
+automatically retaining selected children.
+
+| Drag frames | Scroll distance | Copied characters | Visible paragraphs | Retained paragraphs | Wall time |
+|---:|---:|---:|---:|---:|---:|
+| 60 | 815 px | 1,828 | 9 | 15 | 2.70 s |
+| 180 | 2,000 px | 3,480 | 9 | 15 | 5.69 s |
+| 360 | 3,800 px | 5,958 | 9 | 15 | 10.19 s |
+
+Copy still grows with the selected document range, but widget retention is
+flat across a 4.7x increase in scroll distance. The small copied-character
+difference from the native baseline comes from assembling the canonical model
+text with its authored block separators rather than asking disposed render
+objects for a fragment. RSS deltas were 28.8, 0.0, and -0.9 MiB and remain
+allocator-sensitive.
+
+This proves the repair separates the two costs: selection data is proportional
+to selected blocks, while render, element, layout, paint, and semantics state
+remain proportional to the viewport. Flutter continues to own the pointer
+gesture, auto-scroll, and visible highlight. The model owns only the durable
+range and Copy result.

@@ -45,6 +45,7 @@ final class GeometrySliverList extends SliverMultiBoxAdaptorWidget {
     required this.indexOf,
     required NullableIndexedWidgetBuilder itemBuilder,
     ChildIndexGetter? findChildIndexCallback,
+    bool addAutomaticKeepAlives = true,
     this.onExtentCorrection,
     this.pendingCorrection,
   }) : super(
@@ -52,6 +53,7 @@ final class GeometrySliverList extends SliverMultiBoxAdaptorWidget {
            itemBuilder,
            childCount: itemCount,
            findChildIndexCallback: findChildIndexCallback,
+           addAutomaticKeepAlives: addAutomaticKeepAlives,
          ),
        );
 

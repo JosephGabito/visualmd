@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/widgets/model_backed_selection_area.dart';
@@ -26,6 +27,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: ModelBackedSelectionArea(
+          selectionIdentity: 'document',
           wholeText: _wholeText,
           child: Text('opening', key: mounted),
         ),
@@ -66,6 +68,7 @@ void main() {
     const mounted = ValueKey('mounted-text');
     Widget page() => MaterialApp(
       home: ModelBackedSelectionArea(
+        selectionIdentity: 'document',
         wholeText: () => whole,
         child: const Text('committed prefix', key: mounted),
       ),
@@ -86,6 +89,42 @@ void main() {
     await tester.pump();
 
     expect(copied, 'committed prefix');
+  });
+
+  test('lazy block ranges assemble in document order', () {
+    final snapshot = ModelSelectionSnapshot();
+    snapshot.update(
+      identity: 'middle',
+      order: 1,
+      text: 'middle block',
+      range: const SelectedContentRange(startOffset: 0, endOffset: 12),
+      status: SelectionStatus.uncollapsed,
+    );
+    snapshot.update(
+      identity: 'opening',
+      order: 0,
+      text: 'opening block',
+      range: const SelectedContentRange(startOffset: 3, endOffset: 13),
+      status: SelectionStatus.uncollapsed,
+    );
+    snapshot.update(
+      identity: 'ending',
+      order: 2,
+      text: 'ending block',
+      range: const SelectedContentRange(startOffset: 6, endOffset: 0),
+      status: SelectionStatus.uncollapsed,
+    );
+
+    expect(snapshot.selectedText, 'ning block\n\nmiddle block\n\nending');
+
+    snapshot.update(
+      identity: 'middle',
+      order: 1,
+      text: 'middle block',
+      range: null,
+      status: SelectionStatus.none,
+    );
+    expect(snapshot.selectedText, 'ning block\n\nending');
   });
 }
 

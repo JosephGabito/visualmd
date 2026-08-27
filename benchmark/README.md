@@ -46,10 +46,11 @@ The first revisioned-append measurement is retained in
 The first end-to-end generated Markdown stream measurement is retained in
 `benchmark/results/2026-08-28-generated-stream.md`.
 
-The native selection-retention benchmark holds a mouse selection at the lower
-edge of a 5,000-block reading and lets Flutter's real auto-scroll machinery run
-for 60, 180, and 360 profile frames. It records copied characters and every
-retained paragraph, including offstage sliver keep-alives:
+The selection-retention benchmark holds a mouse selection at the lower edge of
+a 5,000-block reading and lets Flutter's real auto-scroll machinery run for 60,
+180, and 360 profile frames. It records copied characters and every retained
+paragraph, including offstage sliver children, and requires copied content to
+grow while render retention stays bounded:
 
 ```sh
 flutter drive --profile \
@@ -59,7 +60,7 @@ flutter drive --profile \
   -d macos
 ```
 
-The native-selection baseline is retained in
+The native baseline and model-owned range comparison are retained in
 `benchmark/results/2026-08-28-selection-retention.md`.
 
 The atomic-block benchmark isolates one fenced code block at 1,000, 10,000,

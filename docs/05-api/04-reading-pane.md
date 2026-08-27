@@ -24,10 +24,12 @@ The build (`lib/api/widgets/reading_pane.dart`):
   interaction, so a streamed tail cannot resize or relocate it under the
   pointer (`lib/api/widgets/reading_pane.dart`,
   `lib/api/widgets/quiet_scrollbar.dart`).
-- A `ModelBackedSelectionArea` around the scroll surface. Ordinary pointer
-  selection remains native and viewport-bounded. Select All snapshots
-  `DocumentContent.text`, forwards to Flutter for visible feedback, and lets
-  Copy include unmounted blocks with the model's authored separators
+- A `ModelBackedSelectionArea` around the scroll surface. Flutter owns the
+  pointer gesture, auto-scroll, and mounted highlight. Each mounted block
+  records its local source range before disposal, so Copy can assemble a long
+  drag from compact model ranges without retaining offstage widgets. Select All
+  snapshots `DocumentContent.text`, forwards to Flutter for visible feedback,
+  and includes blocks which never mounted with the model's authored separators
   (`lib/api/widgets/model_backed_selection_area.dart`,
   `lib/api/widgets/reading_pane.dart`).
 - A `ReadingTheme` built once per frame from the palette, the faces and the
@@ -132,6 +134,14 @@ so learning the final extents cannot leave a tail follower behind
 (`lib/api/widgets/quiet_scrollbar.dart`,
 `lib/api/widgets/reading_pane.dart`).
 
+Pointer selection is reset by a new primary-button gesture or native selection
+clear. A block range remains in `ModelSelectionSnapshot` when its lazy widget is
+disposed and is removed when the mounted block reports no selection. Switching
+`DocumentId` clears the snapshot; appending to the same identity preserves the
+selected end. Copy reads those ranges in document order without notifying or
+rebuilding the page (`lib/api/widgets/model_backed_selection_area.dart`,
+`lib/api/render/document_view.dart`).
+
 ## Failure and recovery
 
 `scrollToAnchor` does nothing for an unknown anchor
@@ -149,6 +159,8 @@ bounded, and visible scrollbar geometry is frozen against both tail growth and
 automatic physical correction. Select All and Copy are model-backed without
 remounting the page. The selected snapshot deliberately keeps its original end
 when a stream appends, matching a stable selection rather than silently
-claiming new words. Dragging a native selection through content which has never
-mounted still depends on Flutter's selectable protocol and remains a separate
-accessibility boundary.
+claiming new words. Long pointer selection retains compact source ranges rather
+than one render subtree per crossed block; the selection benchmark holds the
+retained paragraph count flat while copied text grows across the document
+(`benchmark/results/2026-08-28-selection-retention.md`). Semantic reading order
+across an unmounted span remains a separate accessibility boundary.
