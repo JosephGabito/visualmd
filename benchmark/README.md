@@ -62,3 +62,17 @@ The first atomic-code scaling measurement is retained in
 `benchmark/results/2026-08-28-atomic-code-block.md`.
 The first viewport-windowed comparison is retained in
 `benchmark/results/2026-08-28-windowed-code-block.md`.
+
+The atomic-line benchmark isolates horizontal shaping at 10,000, 100,000 and
+1,000,000 characters:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/atomic_line_performance_test.dart \
+  -d macos
+```
+
+The first atomic-line scaling measurement is retained in
+`benchmark/results/2026-08-28-atomic-code-line.md`.
