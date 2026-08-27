@@ -137,6 +137,35 @@ $body
     expect(tester.getTopLeft(find.text('Appendix')).dy, lessThan(80));
   });
 
+  testWidgets('block-local state never crosses a document identity', (
+    tester,
+  ) async {
+    DocumentReading codeReading(String root) {
+      final documentId = DocumentId(LibraryRootId(root), 'code.md');
+      const source = '```dart\nfinal answer = 42;\n```';
+      return DocumentReading(
+        document: Document(id: documentId, content: source),
+        source: source,
+        outline: DocumentOutline.parse(''),
+        content: const DocumentContent([
+          CodeBlock(code: 'final answer = 42;', language: 'dart'),
+        ]),
+      );
+    }
+
+    await pump(tester, codeReading('first'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('code-wrap')));
+    await tester.pump();
+    expect(find.byTooltip('Scroll long lines'), findsOneWidget);
+
+    await pump(tester, codeReading('second'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Wrap long lines'), findsOneWidget);
+    expect(find.byTooltip('Scroll long lines'), findsNothing);
+  });
+
   testWidgets('refresh replaces custom anchors for the same document', (
     tester,
   ) async {

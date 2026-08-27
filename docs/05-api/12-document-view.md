@@ -218,6 +218,12 @@ children may be retained by Flutter's selection keep-alive. The pane owns both
 key maps and clears them when a different document arrives or a non-append
 replacement changes the current source.
 
+Each lazy child key combines `DocumentId` with `DocumentBlockId`. Block
+identity preserves wrap, highlighting, diagram, and selection state across a
+revision of the same document, but can never carry that local state into a
+different document whose parser happened to issue the same block id
+(`lib/api/render/document_view.dart`).
+
 When a structural mutation arrives, the renderer reconciles its block index by
 stable identity. Unchanged revisions retain their measured extent; a changed
 revision receives a new estimate. Any resulting prefix delta is handed to the

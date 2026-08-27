@@ -290,7 +290,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
                 )
               : positioned;
           return KeyedSubtree(
-            key: ValueKey(entry.id!),
+            key: _DocumentBlockKey(widget.document, entry.id!),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -305,8 +305,9 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
         }
 
         int? findChildIndex(Key key) => switch (key) {
-          ValueKey<DocumentBlockId>(:final value) =>
-            _index.visibleIndexes[value],
+          _DocumentBlockKey(:final document, :final block)
+              when document == widget.document =>
+            _index.visibleIndexes[block],
           _ => null,
         };
 
@@ -619,6 +620,22 @@ class _BlockSequence extends StatelessWidget {
       children: children,
     );
   }
+}
+
+final class _DocumentBlockKey extends LocalKey {
+  final DocumentId? document;
+  final DocumentBlockId block;
+
+  const _DocumentBlockKey(this.document, this.block);
+
+  @override
+  bool operator ==(Object other) =>
+      other is _DocumentBlockKey &&
+      other.document == document &&
+      other.block == block;
+
+  @override
+  int get hashCode => Object.hash(document, block);
 }
 
 final class _VisibleBlock {
