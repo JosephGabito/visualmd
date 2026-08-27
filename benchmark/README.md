@@ -121,3 +121,19 @@ flutter drive --profile \
 
 The initial repeated-work baseline is retained in
 `benchmark/results/2026-08-28-library-search.md`.
+
+The desktop library-scan benchmark opens real directories containing 100,
+1,000, and 5,000 Markdown files. Fixture creation is excluded; the measurement
+includes directory walking, source reads, UTF-8 decoding, title extraction, and
+source identity construction:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/library_scan_performance_test.dart \
+  -d macos
+```
+
+The initial desktop-scan baseline is retained in
+`benchmark/results/2026-08-28-library-scan.md`.
