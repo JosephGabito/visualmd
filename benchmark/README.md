@@ -106,3 +106,18 @@ flutter drive --profile \
 
 The first viewport-classification comparison is retained in
 `benchmark/results/2026-08-28-windowed-highlighting.md`.
+
+The library-search benchmark measures three successive query refinements over
+100, 1,000, and 5,000 unchanged Markdown documents. It records source reads and
+parses as structural counters alongside elapsed time:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/search_performance_test.dart \
+  -d macos
+```
+
+The initial repeated-work baseline is retained in
+`benchmark/results/2026-08-28-library-search.md`.
