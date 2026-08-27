@@ -275,7 +275,14 @@ void main() {
       }).evaluate();
 
       expect(mountedLines().length, lessThan(100));
-      await tester.tap(find.byKey(const ValueKey('code-copy')));
+      tester
+          .widget<IconButton>(
+            find.descendant(
+              of: find.byKey(const ValueKey('code-copy')),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .onPressed!();
       await tester.pump();
       expect(copied, source);
 
@@ -292,6 +299,39 @@ void main() {
       expect(middle.length, lessThan(100));
       expect(middle.map(lineIndex).reduce(math.min), greaterThan(900));
       expect(middle.map(lineIndex).reduce(math.max), lessThan(1100));
+      expect(
+        highlighter.sources.map((source) => source.length),
+        everyElement(lessThan(10000)),
+      );
+
+      final wrap = tester.widget<IconButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('code-wrap')),
+          matching: find.byType(IconButton),
+        ),
+      );
+      wrap.onPressed!();
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(mountedLines().length, lessThan(100));
+
+      position.jumpTo(position.maxScrollExtent * 0.5);
+      await tester.pump();
+      await tester.pumpAndSettle();
+      final wrappedMiddle = mountedLines().toList(growable: false);
+      expect(wrappedMiddle.length, lessThan(100));
+      expect(wrappedMiddle.map(lineIndex).reduce(math.min), greaterThan(850));
+      expect(wrappedMiddle.map(lineIndex).reduce(math.max), lessThan(1150));
+      tester
+          .widget<IconButton>(
+            find.descendant(
+              of: find.byKey(const ValueKey('code-copy')),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .onPressed!();
+      await tester.pump();
+      expect(copied, source);
       expect(
         highlighter.sources.map((source) => source.length),
         everyElement(lessThan(10000)),

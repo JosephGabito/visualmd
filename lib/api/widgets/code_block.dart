@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:quiet_viewport/quiet_viewport.dart';
 
 import '../../presentation/code/code_highlighter.dart';
 import '../theme/library_chrome.dart';
@@ -128,7 +129,6 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final virtualize =
-        !_wrap &&
         widget.source.length >= _virtualizationThreshold &&
         Scrollable.maybeOf(context, axis: Axis.vertical) != null;
     final body = virtualize
@@ -144,6 +144,7 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
             ),
             selectionColor: p.selection,
             padding: widget.padding,
+            wrap: _wrap,
           )
         : _eagerBody(p.selection);
 
@@ -256,6 +257,7 @@ final class _WindowedCodeSource extends StatefulWidget {
   final TextStyle textStyle;
   final Color selectionColor;
   final EdgeInsets padding;
+  final bool wrap;
 
   const _WindowedCodeSource({
     super.key,
@@ -267,6 +269,7 @@ final class _WindowedCodeSource extends StatefulWidget {
     required this.textStyle,
     required this.selectionColor,
     required this.padding,
+    required this.wrap,
   });
 
   @override
@@ -288,6 +291,11 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   Timer? _highlightTimer;
   CodeHighlighting? _windowHighlighting;
   var _highlightRequest = 0;
+  IndexedExtentLedger? _wrappedGeometry;
+  double? _wrappedWidth;
+  var _wrappedLayoutRevision = 0;
+  var _pendingWrappedCorrection = 0.0;
+  var _wrappedCorrectionScheduled = false;
 
   double get _lineHeight =>
       (widget.textStyle.fontSize ?? 14) * (widget.textStyle.height ?? 1);
@@ -322,6 +330,8 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
       _firstColumn = 0;
       _lastColumn = 512;
       _windowHighlighting = null;
+      _wrappedGeometry = null;
+      _wrappedWidth = null;
     }
     final classificationChanged =
         sourceChanged ||
@@ -330,8 +340,18 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
         !identical(oldWidget.highlighter, widget.highlighter);
     final geometryChanged =
         sourceChanged ||
+        oldWidget.wrap != widget.wrap ||
         oldWidget.textStyle != widget.textStyle ||
         oldWidget.padding != widget.padding;
+    if (oldWidget.wrap != widget.wrap) {
+      _firstLine = 0;
+      _lastLine = math.min(1, _lines.length);
+      _firstColumn = 0;
+      _lastColumn = 512;
+      _windowHighlighting = null;
+      _wrappedGeometry = null;
+      _wrappedWidth = null;
+    }
     if (geometryChanged) {
       _scheduleSync();
     } else if (classificationChanged) {
@@ -349,6 +369,7 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   }
 
   void _syncColumns() {
+    if (widget.wrap) return;
     if (!_horizontal.hasClients) return;
     final position = _horizontal.position;
     final first = math.max(
@@ -382,21 +403,40 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
     final blockStart = viewport
         .getOffsetToReveal(render, 0, axis: Axis.vertical)
         .offset;
-    final local = (page.pixels - blockStart).clamp(
-      0.0,
-      math.max(0.0, _contentHeight - page.viewportDimension),
-    );
-    final first = math.max(0, (local / _lineHeight).floor() - _overscanLines);
-    final last = math.min(
-      _lines.length,
-      ((local + page.viewportDimension) / _lineHeight).ceil() + _overscanLines,
-    );
+    final local = (page.pixels - blockStart)
+        .clamp(0.0, math.max(0.0, _contentHeight - page.viewportDimension))
+        .toDouble();
+    final (first, last) = widget.wrap
+        ? _wrappedWindow(local, page.viewportDimension)
+        : (
+            math.max(0, (local / _lineHeight).floor() - _overscanLines),
+            math.min(
+              _lines.length,
+              ((local + page.viewportDimension) / _lineHeight).ceil() +
+                  _overscanLines,
+            ),
+          );
     if (first == _firstLine && last == _lastLine) return;
     setState(() {
       _firstLine = first;
       _lastLine = last;
     });
     _scheduleHighlighting();
+  }
+
+  (int, int) _wrappedWindow(double local, double viewport) {
+    final geometry = _wrappedGeometry;
+    if (geometry == null || geometry.length == 0) {
+      return (0, math.min(1, _lines.length));
+    }
+    final contentStart = math.max(0.0, local - widget.padding.top);
+    final contentEnd = math.max(0.0, local + viewport - widget.padding.top);
+    final firstVisible = geometry.indexAtOffset(contentStart) ?? 0;
+    final lastVisible = geometry.indexAtOffset(contentEnd) ?? firstVisible;
+    return (
+      math.max(0, firstVisible - _overscanLines),
+      math.min(_lines.length, lastVisible + _overscanLines + 1),
+    );
   }
 
   void _scheduleHighlighting() {
@@ -441,8 +481,8 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
     for (var line = _firstLine; line < _lastLine; line++) {
       final range = _lines.rangeAt(line);
       final columns = range.end - range.start;
-      final firstColumn = math.min(_firstColumn, columns);
-      final lastColumn = math.min(_lastColumn, columns);
+      final firstColumn = widget.wrap ? 0 : math.min(_firstColumn, columns);
+      final lastColumn = widget.wrap ? columns : math.min(_lastColumn, columns);
       final sourceStart = _safeSliceStart(
         widget.source,
         range.start + firstColumn,
@@ -470,7 +510,10 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   }
 
   double get _contentHeight =>
-      widget.padding.vertical + _lines.length * _lineHeight;
+      widget.padding.vertical +
+      (widget.wrap
+          ? (_wrappedGeometry?.totalExtent ?? _lines.length * _lineHeight)
+          : _lines.length * _lineHeight);
 
   @override
   void dispose() {
@@ -493,6 +536,7 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
           0.0,
           constraints.maxWidth - widget.padding.horizontal,
         );
+        if (widget.wrap) return _buildWrapped(context, availableWidth);
         final sourceWidth = math.max(
           availableWidth,
           _lines.maximumColumns * characterWidth,
@@ -600,6 +644,126 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
         );
       },
     );
+  }
+
+  Widget _buildWrapped(BuildContext context, double availableWidth) {
+    if (availableWidth <= 0) return const SizedBox.shrink();
+    _configureWrappedGeometry(availableWidth);
+    final geometry = _wrappedGeometry!;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final rows = <Widget>[];
+
+    for (var line = _firstLine; line < _lastLine; line++) {
+      final range = _lines.rangeAt(line);
+      final children = range.start < range.end
+          ? widget.spansForRange(_windowHighlighting, range.start, range.end)
+          : const <InlineSpan>[];
+      final span = TextSpan(style: widget.textStyle, children: children);
+      final painter = TextPainter(
+        text: span,
+        textDirection: TextDirection.ltr,
+        textScaler: textScaler,
+        strutStyle: StrutStyle.fromTextStyle(
+          widget.textStyle,
+          forceStrutHeight: true,
+        ),
+      )..layout(maxWidth: availableWidth);
+      final measured = math.max(_lineHeight, painter.height);
+      final correction = geometry.measure(
+        index: line,
+        layoutRevision: _wrappedLayoutRevision,
+        extent: measured,
+        anchor: _firstLine,
+      );
+      if (correction != null && correction.scrollOffsetDelta != 0) {
+        _queueWrappedCorrection(correction.scrollOffsetDelta);
+      }
+      rows.add(
+        Positioned(
+          key: ValueKey('code-line-$line'),
+          top: widget.padding.top + geometry.leadingOffsetAt(line),
+          left: widget.padding.left,
+          right: widget.padding.right,
+          height: geometry.extentAt(line),
+          child: range.start == range.end
+              ? const SizedBox.shrink()
+              : Text.rich(
+                  TextSpan(children: children),
+                  key: ValueKey('code-column-${range.start}-${range.end}'),
+                  softWrap: true,
+                  style: widget.textStyle,
+                  strutStyle: StrutStyle.fromTextStyle(
+                    widget.textStyle,
+                    forceStrutHeight: true,
+                  ),
+                  selectionColor: widget.selectionColor,
+                ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: widget.padding.vertical + geometry.totalExtent,
+      child: Stack(clipBehavior: Clip.hardEdge, children: rows),
+    );
+  }
+
+  void _configureWrappedGeometry(double width) {
+    final previousWidth = _wrappedWidth;
+    final characterWidth = _characterWidth;
+    if (_wrappedGeometry == null) {
+      final geometry = IndexedExtentLedger([
+        for (var line = 0; line < _lines.length; line++)
+          _estimatedWrappedExtent(line, width, characterWidth),
+      ], layoutRevision: _wrappedLayoutRevision);
+      _wrappedGeometry = geometry;
+      _wrappedWidth = width;
+      _scheduleSync();
+      return;
+    }
+    if (previousWidth == width) return;
+    _wrappedLayoutRevision++;
+    _wrappedGeometry!.relayout(
+      revision: _wrappedLayoutRevision,
+      estimatedExtents: [
+        for (var line = 0; line < _lines.length; line++)
+          _estimatedWrappedExtent(line, width, characterWidth),
+      ],
+      anchor: _firstLine,
+    );
+    _wrappedWidth = width;
+    _scheduleSync();
+  }
+
+  double _estimatedWrappedExtent(
+    int line,
+    double width,
+    double characterWidth,
+  ) {
+    final range = _lines.rangeAt(line);
+    final columns = range.end - range.start;
+    final rows = math.max(1, (columns * characterWidth / width).ceil());
+    return rows * _lineHeight;
+  }
+
+  void _queueWrappedCorrection(double delta) {
+    _pendingWrappedCorrection += delta;
+    if (_wrappedCorrectionScheduled) return;
+    _wrappedCorrectionScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _wrappedCorrectionScheduled = false;
+      final correction = _pendingWrappedCorrection;
+      _pendingWrappedCorrection = 0;
+      final page = _page;
+      if (!mounted || page == null || correction == 0) return;
+      page.jumpTo(
+        (page.pixels + correction).clamp(
+          page.minScrollExtent,
+          page.maxScrollExtent,
+        ),
+      );
+      _syncWindow();
+    });
   }
 }
 

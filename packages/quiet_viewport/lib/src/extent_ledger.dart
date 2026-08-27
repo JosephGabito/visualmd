@@ -276,6 +276,120 @@ final class StableExtentLedger<K extends Object> {
   }
 }
 
+/// Geometry for a dense sequence whose stable identity is its integer index.
+///
+/// Code rows and other immutable indexed media do not need a key map or one
+/// revision record per item. This form keeps the same logarithmic prefix,
+/// lookup, and measurement operations while constructing a complete estimate
+/// vector in O(n).
+final class IndexedExtentLedger {
+  final _FenwickTree _extents = _FenwickTree();
+  int _layoutRevision;
+
+  IndexedExtentLedger(
+    Iterable<double> estimatedExtents, {
+    int layoutRevision = 0,
+  }) : _layoutRevision = layoutRevision {
+    if (layoutRevision < 0) {
+      throw RangeError.value(layoutRevision, 'layoutRevision');
+    }
+    final extents = estimatedExtents.toList(growable: false);
+    for (final extent in extents) {
+      _requireExtent(extent);
+    }
+    _extents.replaceAll(extents);
+  }
+
+  int get length => _extents.length;
+  int get layoutRevision => _layoutRevision;
+  double get totalExtent => _extents.total;
+
+  double extentAt(int index) {
+    RangeError.checkValidIndex(index, this, 'index', length);
+    return _extents.valueAt(index);
+  }
+
+  double leadingOffsetAt(int index) {
+    RangeError.checkValidIndex(index, this, 'index', length);
+    return _extents.prefix(index);
+  }
+
+  int? indexAtOffset(double offset) {
+    if (length == 0) return null;
+    if (!offset.isFinite) {
+      throw RangeError.value(offset, 'offset', 'Must be finite');
+    }
+    final bounded = offset.clamp(0.0, totalExtent).toDouble();
+    return _extents.indexAtOffset(bounded).clamp(0, length - 1);
+  }
+
+  ExtentCorrection<int>? measure({
+    required int index,
+    required int layoutRevision,
+    required double extent,
+    int? anchor,
+  }) {
+    _requireExtent(extent);
+    if (layoutRevision != _layoutRevision) return null;
+    RangeError.checkValidIndex(index, this, 'index', length);
+    if (anchor != null) {
+      RangeError.checkValidIndex(anchor, this, 'anchor', length);
+    }
+    final previous = _extents.valueAt(index);
+    final delta = extent - previous;
+    if (delta != 0) _extents.update(index, extent);
+    return ExtentCorrection(
+      key: index,
+      contentExtentDelta: delta,
+      scrollOffsetDelta: anchor != null && index < anchor ? delta : 0,
+    );
+  }
+
+  ExtentCorrection<int> relayout({
+    required int revision,
+    required Iterable<double> estimatedExtents,
+    int? anchor,
+  }) {
+    if (revision <= _layoutRevision) {
+      throw StateError(
+        'Layout revision $revision does not follow $_layoutRevision.',
+      );
+    }
+    if (anchor != null) {
+      RangeError.checkValidIndex(anchor, this, 'anchor', length);
+    }
+    final next = estimatedExtents.toList(growable: false);
+    if (next.length != length) {
+      throw StateError(
+        'Relayout supplied ${next.length} extents for $length items.',
+      );
+    }
+    for (final extent in next) {
+      _requireExtent(extent);
+    }
+    final before = anchor == null ? 0.0 : _extents.prefix(anchor);
+    final totalBefore = totalExtent;
+    _extents.replaceAll(next);
+    _layoutRevision = revision;
+    final after = anchor == null ? 0.0 : _extents.prefix(anchor);
+    return ExtentCorrection(
+      key: anchor ?? (length == 0 ? null : 0),
+      contentExtentDelta: totalExtent - totalBefore,
+      scrollOffsetDelta: after - before,
+    );
+  }
+
+  static void _requireExtent(double extent) {
+    if (!extent.isFinite || extent < 0) {
+      throw RangeError.value(
+        extent,
+        'extent',
+        'Must be finite and nonnegative',
+      );
+    }
+  }
+}
+
 /// One-indexed Fenwick tree with correct dynamic append semantics.
 final class _FenwickTree {
   final List<double> _tree = [0];

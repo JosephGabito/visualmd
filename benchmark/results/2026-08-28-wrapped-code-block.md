@@ -13,8 +13,9 @@
 Each document contains one fenced Dart block whose deliberately long physical
 lines wrap at the real reading width. The opening unwrapped view is already
 windowed. The timed action presses **Wrap long lines**, waits for layout to
-settle, and verifies that Flutter's resulting `RenderParagraph` contains every
-authored source character.
+settle, and records how many physical lines and source characters become real
+render objects. Exact whole-source copying is verified separately through the
+block's model-backed Copy action.
 
 ## Result
 
@@ -46,3 +47,27 @@ near the outer document viewport. The outer scroll extent must still represent
 the complete wrapped height, and toggling wrap must not move the scrollbar thumb
 during an active interaction. Fixed character-count wrapping is not equivalent
 to the text engine and does not satisfy this contract.
+
+## Windowed result
+
+The repaired path keeps a dense height ledger for physical source lines. Its
+initial estimates establish the complete scrollbar coordinate system, while
+Flutter shapes only the mounted lines and replaces their estimates with exact
+heights. Syntax classification follows the same mounted source window.
+
+| Lines | Baseline worst frame | Windowed worst frame | Baseline RSS added | Windowed RSS added | Mounted lines | Mounted characters |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 28.7 ms | 7.4 ms | 17.1 MiB | 2.0 MiB | 27 | 3,156 |
+| 10,000 | 191.6 ms | 9.4 ms | 287.8 MiB | 1.1 MiB | 27 | 3,156 |
+| 50,000 | 896.7 ms | 19.3 ms | 1,593.2 MiB | 3.2 MiB | 27 | 3,156 |
+
+At 50,000 lines this removes about 46 times the worst-frame cost and about 500
+times the observed RSS growth. The block still copies all 6,366,669 source
+characters exactly because copying reads the model rather than the mounted
+render objects.
+
+The initial estimate vector is O(physical lines); it reads line lengths but
+does not shape text. Once that coordinate system exists, shaping, layout,
+paint, semantics and highlighting are bounded by the visible window plus
+overscan. A future streaming line index can make appending to one still-open
+fence incremental without weakening this viewport contract.

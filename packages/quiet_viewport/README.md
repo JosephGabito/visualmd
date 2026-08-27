@@ -72,6 +72,11 @@ The implementation performs no committed-prefix scan for an ordinary append or
 provisional-tail replacement. Measured extents before the replacement boundary
 remain authoritative.
 
+`IndexedExtentLedger` provides the same prefix geometry for immutable dense
+identities `0 … n-1` without allocating a key map or per-item revision vector.
+It is intended for code rows and similar media whose index is already the
+stable identity.
+
 ## Revision fencing
 
 Every item measurement names both the item revision and the layout revision.
