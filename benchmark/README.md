@@ -137,3 +137,18 @@ flutter drive --profile \
 
 The initial desktop-scan baseline is retained in
 `benchmark/results/2026-08-28-library-scan.md`.
+
+The wrapped atomic-block benchmark starts from the production windowed code
+view, then measures the explicit **Wrap long lines** action at 1,000, 10,000,
+and 50,000 lines:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/wrapped_atomic_block_performance_test.dart \
+  -d macos
+```
+
+The eager-wrap baseline is retained in
+`benchmark/results/2026-08-28-wrapped-code-block.md`.
