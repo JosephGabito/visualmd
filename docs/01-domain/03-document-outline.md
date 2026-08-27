@@ -101,8 +101,12 @@ The private `_Parser` works line by line
   after finding that title; it does not build sections or a table of contents
   for an unopened document (`lib/domain/reading/document_outline.dart`).
 
-`Heading` carries `level`, `text`, `anchor` and the zero-based source `line`
-(`lib/domain/reading/heading.dart`). `TableOfContents` adds `baseLevel`
+`Heading` carries `level`, `text`, `anchor` and an optional zero-based source
+`line` (`lib/domain/reading/heading.dart`). A canonical parse always supplies
+the line. `DocumentOutline.navigationOnly` deliberately leaves it absent while
+a generated document is still changing; that live projection carries a table
+of contents but does not invent front matter or exact source sections
+(`lib/domain/reading/document_outline.dart`). `TableOfContents` adds `baseLevel`
 (shallowest level present) and `byAnchor`
 (`lib/domain/reading/table_of_contents.dart`).
 
@@ -140,6 +144,11 @@ source-backed document returned by `ReadDocument` and lives only as long as
 that bounded reading-cache entry (`lib/domain/library/document.dart`,
 `lib/application/use_cases/read_document.dart`). Their agreement is asserted
 in `test/domain/document_outline_test.dart`.
+
+A generated document may publish `navigationOnly` revisions from stable parsed
+heading blocks. Those revisions omit exact source sections and line metadata
+until a final canonical source parse needs them; the reading UI consumes only
+the table of contents.
 
 ## Failure and recovery
 

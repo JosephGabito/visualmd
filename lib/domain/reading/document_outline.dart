@@ -19,6 +19,19 @@ final class DocumentOutline {
     required this.sections,
   });
 
+  /// A live navigation projection before canonical source sections exist.
+  ///
+  /// Generated Markdown can publish stable heading identity without copying
+  /// or splitting its complete source on every token. Finishing the source may
+  /// still replace this with [parse] when exact sections and line metadata are
+  /// required.
+  factory DocumentOutline.navigationOnly(List<Heading> headings) =>
+      DocumentOutline(
+        frontMatter: null,
+        tableOfContents: TableOfContents(headings),
+        sections: const [],
+      );
+
   /// A title the document declares about itself: `title:` in front matter,
   /// else the first h1.
   String? get title {

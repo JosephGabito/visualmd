@@ -9,14 +9,15 @@ final class Heading {
   /// GitHub-style slug, unique within the document.
   final String anchor;
 
-  /// Zero-based line where the heading starts in the source.
-  final int line;
+  /// Zero-based source line, or null for a live projection which has not
+  /// materialized source-location metadata.
+  final int? line;
 
   const Heading({
     required this.level,
     required this.text,
     required this.anchor,
-    required this.line,
+    this.line,
   });
 
   @override
