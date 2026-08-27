@@ -61,8 +61,10 @@ scrollbar is no longer visible or interactive.
 
 - identity lookup: O(1);
 - append: O(log n);
+- initial bulk construction: O(n);
 - suffix replacement: O(r + k log n) for `r` removed and `k` inserted items;
 - measurement/revision: O(log n);
+- complete layout-epoch replacement: O(n);
 - leading-offset query: O(log n);
 - total extent: O(log n).
 

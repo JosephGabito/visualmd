@@ -75,9 +75,22 @@ final class StableExtentLedger<K extends Object> {
     final claimed = _indexes.keys.toSet();
     for (final seed in incoming) {
       _requireExtent(seed.estimatedExtent);
+      if (seed.revision < 0) {
+        throw RangeError.value(seed.revision, 'revision');
+      }
       if (!claimed.add(seed.key)) {
         throw StateError('Duplicate viewport item key: ${seed.key}');
       }
+    }
+    if (_keys.isEmpty) {
+      for (var index = 0; index < incoming.length; index++) {
+        final seed = incoming[index];
+        _keys.add(seed.key);
+        _revisions.add(seed.revision);
+        _indexes[seed.key] = index;
+      }
+      _extents.replaceAll([for (final seed in incoming) seed.estimatedExtent]);
+      return;
     }
     for (final seed in incoming) {
       append(seed);
@@ -328,10 +341,16 @@ final class _FenwickTree {
   void replaceAll(List<double> values) {
     _tree
       ..clear()
-      ..add(0);
-    _values.clear();
-    for (final value in values) {
-      append(value);
+      ..addAll(List.filled(values.length + 1, 0));
+    _values
+      ..clear()
+      ..addAll(values);
+    for (var oneBased = 1; oneBased <= values.length; oneBased++) {
+      _tree[oneBased] += values[oneBased - 1];
+      final parent = oneBased + (oneBased & -oneBased);
+      if (parent <= values.length) {
+        _tree[parent] += _tree[oneBased];
+      }
     }
   }
 
