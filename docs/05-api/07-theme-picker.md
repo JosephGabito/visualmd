@@ -42,9 +42,12 @@ paragraph rows change how the page is *set* rather than what it is set in —
 see [Reading Scale](../04-presentation/07-reading-scale.md) for why the two
 markings are alternatives and never both.
 
-Each row lights up under the pointer before it acts
-(`lib/api/widgets/theme_picker.dart`). Each carries a `_Swatch`: the word "Aa" drawn in that theme's own accent
-on its own paper, framed in its own border
+Each row lights up under the pointer before it acts and draws a two-pixel focus
+ring when reached from the keyboard (`lib/api/widgets/theme_picker.dart`). It
+is exposed as a named button, with the current theme or paragraph choice also
+marked selected, and Enter or Space makes the same choice as a pointer. Each
+carries a `_Swatch`: the word "Aa" drawn in that theme's own accent on its own
+paper, framed in its own border
 (`lib/api/widgets/theme_picker.dart`). The button itself is the swatch
 of the theme currently in use (`lib/api/widgets/theme_picker.dart`), so
 the bar always shows what is being worn.

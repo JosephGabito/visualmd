@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +55,7 @@ void main() {
   Widget shelf({
     Library? library,
     DocumentId? selected,
+    VoidCallback? onOpenFolder,
     ValueChanged<LibraryRootId>? onRemove,
     ValueChanged<DocumentId>? onRemoveMarkdown,
     void Function(LibraryRootId, int)? onMove,
@@ -74,7 +77,7 @@ void main() {
           library: library ?? _library,
           selected: selected ?? DocumentId(_notesId, 'README.md'),
           onSelect: onSelect ?? (_) {},
-          onOpenFolder: () {},
+          onOpenFolder: onOpenFolder ?? () {},
           onRemoveFolder: onRemove ?? (_) {},
           onRemoveMarkdown: onRemoveMarkdown ?? (_) {},
           onMoveFolder: onMove ?? (_, _) {},
@@ -183,6 +186,46 @@ void main() {
 
     expect(find.text('README.md'), findsOneWidget);
     expect(find.text('Notes'), findsNothing);
+  });
+
+  testWidgets('library heading actions are distinct named keyboard buttons', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    ShelfLabelMode? chosen;
+    var openedFolders = 0;
+    await tester.pumpWidget(
+      shelf(
+        onOpenFolder: () => openedFolders++,
+        onLabelModeChanged: (mode) => chosen = mode,
+      ),
+    );
+
+    final labelMode = tester.getSemantics(
+      find.bySemanticsLabel('Show file names'),
+    );
+    final addFolder = tester.getSemantics(find.bySemanticsLabel('Add folder'));
+    expect(labelMode.label, 'Show file names');
+    expect(addFolder.label, 'Add folder');
+    expect(labelMode.flagsCollection.isButton, isTrue);
+    expect(addFolder.flagsCollection.isButton, isTrue);
+    expect(labelMode.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    expect(addFolder.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(chosen, ShelfLabelMode.fileName);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(openedFolders, 1);
+
+    await tester.pumpWidget(
+      shelf(labelMode: ShelfLabelMode.fileName, onLabelModeChanged: (_) {}),
+    );
+    expect(find.bySemanticsLabel('Show Markdown titles'), findsOneWidget);
+    expect(find.bySemanticsLabel('Show file names'), findsNothing);
+    semantics.dispose();
   });
 
   testWidgets('folder and document rows offer native source commands', (

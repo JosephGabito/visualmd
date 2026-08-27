@@ -38,6 +38,12 @@ top bar on macOS (see
 also means the menu's trigger leans in and gives under the press exactly as
 every other control in the bar does.
 
+The trigger exposes its open state through button semantics. Opening moves
+keyboard focus to the first focusable row; choosing, pressing Escape, or
+dismissing outside returns focus to the trigger after the surface closes
+(`lib/api/widgets/anchored_menu.dart`). This keeps the menu a short keyboard
+detour rather than dropping the reader elsewhere in the window.
+
 What it does *not* do is press-drag-release, the way a native menu bar lets you
 hold, slide down and let go on a row. Once a pointer is down, Flutter routes
 the rest of that pointer's events to the targets hit at the press, so a row
@@ -74,7 +80,7 @@ without asking for attention of its own.
 | `trigger` | `Widget Function(BuildContext, bool isOpen)` | The button; told whether the menu is open so it can respond |
 | `items` | `List<Widget> Function(BuildContext, VoidCallback close)` | The rows, in order; `close` dismisses |
 | `width` | `double` | Surface width, default 260 |
-| `tooltip` | `String?` | Optional tooltip on the trigger |
+| `tooltip` | `String` | Visible help and the trigger's stable accessible name |
 
 Out: nothing. Rows report to their own callers; the menu only opens and closes.
 
@@ -86,10 +92,10 @@ of it.
 
 ## Lifecycle
 
-One `AnimationController` lives as long as the widget
-(`lib/api/widgets/anchored_menu.dart`, disposed at `lib/api/widgets/anchored_menu.dart`). The overlay
-child exists only between `show()` and the reverse completing, so a closed menu
-costs nothing but the trigger.
+One `AnimationController`, a trigger focus node and a menu focus scope live as
+long as the widget (`lib/api/widgets/anchored_menu.dart`). The overlay child
+exists only between `show()` and the reverse completing, so a closed menu costs
+nothing but the trigger and those focus handles.
 
 ## Failure and recovery
 
@@ -97,7 +103,8 @@ costs nothing but the trigger.
   covers the trigger, so the press lands there
   (`lib/api/widgets/anchored_menu.dart`).
 - `Escape` dismisses (`lib/api/widgets/anchored_menu.dart`), as does a
-  press anywhere outside (`lib/api/widgets/anchored_menu.dart`).
+  press anywhere outside (`lib/api/widgets/anchored_menu.dart`). Both return
+  focus to the trigger.
 - The available height comes from layout, not from `MediaQuery`
   (`lib/api/widgets/anchored_menu.dart`): an `OverlayPortal`'s child
   inherits from the trigger's place in the tree. Using `MediaQuery` there can
@@ -109,7 +116,6 @@ costs nothing but the trigger.
 
 ## Transition
 
-The surface is deliberately plain so a slot can fill it. Two things are likely
-next: keyboard navigation through the rows, and a second anchor position for
-menus opened from the left of the window, where a top-*left* origin is the
-honest one.
+The surface is deliberately plain so a slot can fill it. A second anchor
+position may be needed for menus opened from the left of the window, where a
+top-*left* origin is the honest one.

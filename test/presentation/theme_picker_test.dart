@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -79,6 +81,53 @@ void main() {
     }
     expect(find.text('Open themes folder'), findsOneWidget);
   });
+
+  testWidgets(
+    'keyboard entry names the selected row and returns focus after dismissal',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpPicker(tester);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      final row = tester.getSemantics(find.bySemanticsLabel('Follow system'));
+      expect(row.flagsCollection.isButton, isTrue);
+      expect(row.flagsCollection.isSelected, Tristate.isTrue);
+
+      final focusedContainer = tester.widget<AnimatedContainer>(
+        find
+            .ancestor(
+              of: find.text('Follow system'),
+              matching: find.byType(AnimatedContainer),
+            )
+            .first,
+      );
+      final focusBorder =
+          (focusedContainer.decoration! as BoxDecoration).border! as Border;
+      expect(focusBorder.top.color, BuiltInThemes.paper.palette.accent);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pumpAndSettle();
+      expect(chosen, [registry.systemPair]);
+      expect(find.text('Follow system'), findsNothing);
+
+      // Closing restores the trigger, so keyboard users can reopen without
+      // traversing the entire reader again.
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Follow system'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('Follow system'), findsNothing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Follow system'), findsOneWidget);
+      semantics.dispose();
+    },
+  );
 
   testWidgets('the menu is clickable where it is drawn', (tester) async {
     await pumpPicker(tester);

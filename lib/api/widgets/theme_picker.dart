@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../presentation/theme/reader_theme.dart';
 import '../../presentation/theme/reading_scale.dart';
@@ -155,46 +156,80 @@ class _Row extends StatefulWidget {
 
 class _RowState extends State<_Row> {
   var _hovered = false;
+  var _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 110),
-          curve: Curves.easeOut,
-          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? p.accentSoft
-                : (widget.selected
-                      ? p.accentSoft.withValues(alpha: 0.55)
-                      : null),
-            borderRadius: BorderRadius.circular(8),
+    final still = MediaQuery.disableAnimationsOf(context);
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: true,
+      focusable: true,
+      focused: _focused,
+      selected: widget.selected,
+      label: widget.label,
+      excludeSemantics: true,
+      onTap: widget.onTap,
+      child: FocusableActionDetector(
+        includeFocusSemantics: false,
+        mouseCursor: SystemMouseCursors.click,
+        shortcuts: const {
+          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+          SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+        },
+        actions: {
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              widget.onTap();
+              return null;
+            },
           ),
-          child: Row(
-            children: [
-              widget.leading,
-              const SizedBox(width: 11),
-              Expanded(
-                child: Text(
-                  widget.label,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.type.sans(
-                    color: widget.selected ? p.accent : p.ink,
-                    weight: widget.selected ? FontWeight.w600 : FontWeight.w400,
+        },
+        onShowHoverHighlight: (value) => setState(() => _hovered = value),
+        onShowFocusHighlight: (value) => setState(() => _focused = value),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: still ? Duration.zero : const Duration(milliseconds: 110),
+            curve: Curves.easeOut,
+            constraints: const BoxConstraints(minHeight: 44),
+            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? p.accentSoft
+                  : (widget.selected
+                        ? p.accentSoft.withValues(alpha: 0.55)
+                        : null),
+              border: Border.all(
+                color: _focused ? p.accent : Colors.transparent,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                widget.leading,
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.type.sans(
+                      color: widget.selected ? p.accent : p.ink,
+                      weight: widget.selected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
-              if (widget.selected) Icon(Icons.check, size: 15, color: p.accent),
-            ],
+                if (widget.selected)
+                  Icon(Icons.check, size: 15, color: p.accent),
+              ],
+            ),
           ),
         ),
       ),
