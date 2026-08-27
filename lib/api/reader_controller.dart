@@ -2,7 +2,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart' show ChangeNotifier, Brightness;
+import 'package:flutter/foundation.dart'
+    show ChangeNotifier, ValueListenable, ValueNotifier;
+import 'package:flutter/material.dart' show Brightness;
 
 import '../application/ports/folder_scanner.dart';
 import '../application/ports/markdown_scanner.dart';
@@ -52,6 +54,31 @@ final class DocumentLink extends LinkTarget {
 final class ExternalLink extends LinkTarget {
   final String url;
   ExternalLink(this.url);
+}
+
+/// The small part of reader state that changes Flutter's application theme.
+///
+/// Keeping this projection separate prevents library, search, and document
+/// updates from rebuilding the application root above the reader shell.
+final class ReaderAppearance {
+  final ThemeChoice themeChoice;
+  final String? serifOverride;
+
+  const ReaderAppearance({
+    required this.themeChoice,
+    required this.serifOverride,
+  });
+
+  ReaderAppearance copyWith({
+    ThemeChoice? themeChoice,
+    String? serifOverride,
+    bool clearSerifOverride = false,
+  }) => ReaderAppearance(
+    themeChoice: themeChoice ?? this.themeChoice,
+    serifOverride: clearSerifOverride
+        ? null
+        : serifOverride ?? this.serifOverride,
+  );
 }
 
 /// UI state for the reader. Talks to use cases only; the UI talks to it.
@@ -125,11 +152,16 @@ final class ReaderController extends ChangeNotifier {
        _sampleFolder = sampleFolder,
        _sourceChanges = sourceChanges,
        _savePreference = savePreference ?? _discard,
-       themeChoice = themeChoice ?? themes.systemPair,
        readingScale = readingScale ?? ReadingScale.comfortable,
        panelWidths = panelWidths ?? const PanelWidths(),
        shelfLabelMode = shelfLabelMode ?? ShelfLabelMode.title,
        workspaceSession = workspaceSession {
+    _appearance = ValueNotifier(
+      ReaderAppearance(
+        themeChoice: themeChoice ?? themes.systemPair,
+        serifOverride: null,
+      ),
+    );
     _sourceChangeSubscription = sourceChanges?.events.listen(
       _handleSourceSyncEvent,
     );
@@ -164,7 +196,16 @@ final class ReaderController extends ChangeNotifier {
 
   /// Every theme the reader can wear, and what it currently wears.
   final ThemeRegistry themes;
-  ThemeChoice themeChoice;
+  late final ValueNotifier<ReaderAppearance> _appearance;
+
+  ValueListenable<ReaderAppearance> get appearance => _appearance;
+
+  ThemeChoice get themeChoice => _appearance.value.themeChoice;
+
+  set themeChoice(ThemeChoice value) {
+    if (value == themeChoice) return;
+    _appearance.value = _appearance.value.copyWith(themeChoice: value);
+  }
 
   /// The proportions of the reading column — body size, and everything cut
   /// from it.
@@ -179,7 +220,15 @@ final class ReaderController extends ChangeNotifier {
 
   /// A reading face named at launch, overriding whatever the theme asks for.
   /// Not persisted: it is for judging a face, not for living with one.
-  String? serifOverride;
+  String? get serifOverride => _appearance.value.serifOverride;
+
+  set serifOverride(String? value) {
+    if (value == serifOverride) return;
+    _appearance.value = _appearance.value.copyWith(
+      serifOverride: value,
+      clearSerifOverride: value == null,
+    );
+  }
 
   Future<void> addFolder(FolderRef ref, {int? atIndex}) async {
     final rootId = LibraryRootId(ref.id);
@@ -722,6 +771,7 @@ final class ReaderController extends ChangeNotifier {
     _folderTitleRevisions.clear();
     _readDocument.clear();
     _searchDocuments.clear();
+    _appearance.dispose();
     unawaited(_sourceChangeSubscription?.cancel());
     unawaited(_sourceChanges?.dispose());
     super.dispose();

@@ -79,7 +79,7 @@ class VisualMdApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: controller,
+      listenable: controller.appearance,
       builder: (context, _) => MaterialApp(
         title: 'Visual MD',
         debugShowCheckedModeBanner: false,
