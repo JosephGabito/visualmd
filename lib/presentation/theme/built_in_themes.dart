@@ -1,6 +1,8 @@
 import 'dart:ui' show Brightness, Color;
 
+import 'codex_theme_collection.dart';
 import 'reader_theme.dart';
+import 'theme_family.dart';
 import 'theme_palette.dart';
 
 /// The themes the reader ships with. The first light and the first dark one
@@ -40,41 +42,6 @@ abstract final class BuiltInThemes {
     ),
   );
 
-  // Catppuccin (MIT) — https://github.com/catppuccin/palette
-  static const catppuccinLatte = ReaderTheme(
-    id: 'catppuccin-latte',
-    name: 'Catppuccin Latte',
-    brightness: Brightness.light,
-    palette: ThemePalette(
-      paper: Color(0xFFEFF1F5),
-      panel: Color(0xFFE6E9EF),
-      border: Color(0xFFCCD0DA),
-      ink: Color(0xFF4C4F69),
-      muted: Color(0xFF5C5F77),
-      accent: Color(0xFF8839EF),
-      codeBackground: Color(0xFFE6E9EF),
-      accentSoft: Color(0xFFDACCF4),
-      selection: Color(0x4D8839EF),
-    ),
-  );
-
-  static const catppuccinMocha = ReaderTheme(
-    id: 'catppuccin-mocha',
-    name: 'Catppuccin Mocha',
-    brightness: Brightness.dark,
-    palette: ThemePalette(
-      paper: Color(0xFF1E1E2E),
-      panel: Color(0xFF181825),
-      border: Color(0xFF313244),
-      ink: Color(0xFFCDD6F4),
-      muted: Color(0xFFA6ADC8),
-      accent: Color(0xFFFAB387),
-      codeBackground: Color(0xFF181825),
-      accentSoft: Color(0xFF3A2F33),
-      selection: Color(0x4DFAB387),
-    ),
-  );
-
   // Nord (MIT) — https://www.nordtheme.com
   static const nord = ReaderTheme(
     id: 'nord',
@@ -93,32 +60,14 @@ abstract final class BuiltInThemes {
     ),
   );
 
-  // Gruvbox (MIT) — https://github.com/morhetz/gruvbox
-  static const gruvboxDark = ReaderTheme(
-    id: 'gruvbox-dark',
-    name: 'Gruvbox Dark',
-    brightness: Brightness.dark,
-    palette: ThemePalette(
-      paper: Color(0xFF282828),
-      panel: Color(0xFF1D2021),
-      border: Color(0xFF3C3836),
-      ink: Color(0xFFEBDBB2),
-      muted: Color(0xFFA89984),
-      accent: Color(0xFFFE8019),
-      codeBackground: Color(0xFF1D2021),
-      accentSoft: Color(0xFF4A3826),
-      selection: Color(0x4DFE8019),
-    ),
-  );
+  static const all = [paper, lamplight, ...CodexThemeCollection.all, nord];
 
-  static const all = [
-    paper,
-    lamplight,
-    catppuccinLatte,
-    catppuccinMocha,
-    nord,
-    gruvboxDark,
-  ];
+  /// Named light/dark pairs shown as one choice in the theme menu.
+  static const List<ThemeFamily> families = CodexThemeCollection.families;
+
+  static Set<String> get familyThemeIds => {
+    for (final family in families) ...family.themeIds,
+  };
 
   static const defaultLight = paper;
   static const defaultDark = lamplight;

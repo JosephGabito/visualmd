@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:katex/katex.dart';
 
 import '../render/reading_theme.dart';
+import '../theme/library_chrome.dart';
 
 /// An equation that belongs to the reading page rather than to a code panel.
 ///
@@ -79,7 +80,9 @@ final class _ReadableMathBlockState extends State<ReadableMathBlock> {
               builder: (context, constraints) => ScrollbarTheme(
                 data: ScrollbarTheme.of(context).copyWith(
                   thickness: const WidgetStatePropertyAll(4),
-                  radius: const Radius.circular(8),
+                  radius: const Radius.circular(
+                    LibraryChromeScale.componentRadius,
+                  ),
                   thumbColor: WidgetStatePropertyAll(
                     theme.palette.muted.withValues(alpha: 0.55),
                   ),

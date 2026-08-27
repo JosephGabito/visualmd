@@ -67,6 +67,6 @@ abstract interface class PlatformAdapters {
 
 /// A top bar with nothing to make room for.
 const ({double height, double leadingInset}) plainTopBar = (
-  height: 44,
+  height: 52,
   leadingInset: 8,
 );

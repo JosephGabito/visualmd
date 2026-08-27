@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
+import 'package:visualmd/api/widgets/chrome_list_row.dart';
 import 'package:visualmd/api/widgets/shelf_panel.dart';
 import 'package:visualmd/application/ports/shelf_source_actions.dart';
 import 'package:visualmd/domain/library/document.dart';
@@ -188,6 +189,23 @@ void main() {
     expect(find.text('Notes'), findsNothing);
   });
 
+  testWidgets('the selected document uses the shared location language', (
+    tester,
+  ) async {
+    await tester.pumpWidget(shelf());
+    await tester.tap(find.text('notes'));
+    await tester.pump();
+
+    final row = tester.widget<ChromeListRow>(
+      find.ancestor(
+        of: find.text('Notes'),
+        matching: find.byType(ChromeListRow),
+      ),
+    );
+    expect(row.selected, isTrue);
+    expect(row.showLocation, isTrue);
+  });
+
   testWidgets('library heading actions are distinct named keyboard buttons', (
     tester,
   ) async {
@@ -252,7 +270,11 @@ void main() {
 
     await tester.tap(find.text('notes'), buttons: kSecondaryMouseButton);
     await tester.pump();
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(
+      find.byType(BackdropFilter),
+      findsNothing,
+      reason: 'the menu uses the shared opaque elevated material',
+    );
     expect(
       ModalRoute.of(
         tester.element(find.byKey(const ValueKey('shelf-context-menu'))),
@@ -517,7 +539,7 @@ void main() {
     await tester.tap(find.text('notes'));
     await tester.pump();
     final pendingRootClick = tester
-        .widget<InkWell>(find.byKey(const ValueKey('root-toggle-notes')))
+        .widget<ChromeListRow>(find.byKey(const ValueKey('root-toggle-notes')))
         .onTap!;
     final notesPosition = tester.getTopLeft(find.text('notes'));
     final guidesPosition = tester.getTopLeft(find.text('guides'));
@@ -587,7 +609,7 @@ void main() {
     await tester.tap(find.text('notes'));
     await tester.pump();
     final pendingRootClick = tester
-        .widget<InkWell>(find.byKey(const ValueKey('root-toggle-notes')))
+        .widget<ChromeListRow>(find.byKey(const ValueKey('root-toggle-notes')))
         .onTap!;
 
     final drag = await tester.startGesture(

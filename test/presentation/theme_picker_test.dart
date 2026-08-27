@@ -26,14 +26,17 @@ void main() {
   Future<void> pumpPicker(
     WidgetTester tester, {
     bool reduceMotion = false,
+    Brightness brightness = Brightness.light,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: libraryTheme(BuiltInThemes.paper),
         builder: (context, child) => MediaQuery(
           // Keep the real size; only the motion preference changes.
-          data: MediaQuery.of(context)
-              .copyWith(disableAnimations: reduceMotion),
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: reduceMotion,
+            platformBrightness: brightness,
+          ),
           child: child!,
         ),
         home: Scaffold(
@@ -64,9 +67,7 @@ void main() {
       )
       .opacity;
 
-  testWidgets('opens on tap and lists every theme, grouped by brightness', (
-    tester,
-  ) async {
+  testWidgets('opens on tap and lists each family once', (tester) async {
     await pumpPicker(tester);
     expect(find.text('Catppuccin Mocha'), findsNothing);
 
@@ -74,12 +75,45 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Follow system'), findsOneWidget);
+    expect(find.text('THEMES'), findsOneWidget);
     expect(find.text('LIGHT'), findsOneWidget);
     expect(find.text('DARK'), findsOneWidget);
-    for (final theme in BuiltInThemes.all) {
-      expect(find.text(theme.name), findsOneWidget, reason: theme.id);
+    for (final family in BuiltInThemes.families) {
+      expect(find.text(family.name), findsOneWidget);
     }
+    expect(find.text('Paper'), findsOneWidget);
+    expect(find.text('Lamplight'), findsOneWidget);
+    expect(find.text('Nord'), findsOneWidget);
+    expect(find.text('Codex Light'), findsNothing);
+    expect(find.text('Codex Dark'), findsNothing);
     expect(find.text('Open themes folder'), findsOneWidget);
+  });
+
+  testWidgets('a paired family follows the system after it is chosen', (
+    tester,
+  ) async {
+    await pumpPicker(tester);
+    await tester.tap(find.byType(ThemePicker));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Codex'));
+    await tester.pumpAndSettle();
+
+    expect(chosen, [
+      const FollowSystem(light: 'codex-light', dark: 'codex-dark'),
+    ]);
+    expect(find.text('Codex'), findsNothing);
+  });
+
+  testWidgets('a family without a dark member is absent on a dark system', (
+    tester,
+  ) async {
+    await pumpPicker(tester, brightness: Brightness.dark);
+    await tester.tap(find.byType(ThemePicker));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Codex'), findsOneWidget);
+    expect(find.text('Proof'), findsNothing);
   });
 
   testWidgets(
@@ -104,9 +138,17 @@ void main() {
             )
             .first,
       );
-      final focusBorder =
-          (focusedContainer.decoration! as BoxDecoration).border! as Border;
-      expect(focusBorder.top.color, BuiltInThemes.paper.palette.accent);
+      final focusDecoration = focusedContainer.decoration! as BoxDecoration;
+      expect(
+        focusDecoration.color,
+        isNotNull,
+        reason: 'keyboard focus uses the same quiet ground as pointer hover',
+      );
+      expect(
+        focusDecoration.border,
+        isNull,
+        reason: 'a menu row does not add a second rounded outline signal',
+      );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pumpAndSettle();
@@ -136,11 +178,13 @@ void main() {
 
     // A menu that paints in one place and hit-tests in another is the bug
     // this guards: every row must be reachable by a real pointer.
-    for (final theme in BuiltInThemes.all) {
+    for (final family in BuiltInThemes.families) {
+      await tester.ensureVisible(find.text(family.name));
+      await tester.pumpAndSettle();
       expect(
-        find.text(theme.name).hitTestable(),
+        find.text(family.name).hitTestable(),
         findsOneWidget,
-        reason: theme.id,
+        reason: family.name,
       );
     }
   });
@@ -184,7 +228,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 70));
     final first = opacityOf(tester, 'Follow system');
-    final last = opacityOf(tester, BuiltInThemes.all.last.name);
+    final last = opacityOf(tester, BuiltInThemes.families.last.name);
     expect(
       first,
       greaterThan(last),
@@ -197,7 +241,7 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(opacityOf(tester, BuiltInThemes.all.last.name), 1.0);
+    expect(opacityOf(tester, BuiltInThemes.families.last.name), 1.0);
   });
 
   testWidgets('choosing a theme reports it and closes the menu', (
@@ -207,6 +251,8 @@ void main() {
     await tester.tap(find.byType(ThemePicker));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Nord'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Nord'));
     await tester.pumpAndSettle();
 
@@ -239,7 +285,7 @@ void main() {
 
     expect(find.text('Follow system'), findsOneWidget);
     expect(opacityOf(tester, 'Follow system'), 1.0);
-    expect(find.text('Nord').hitTestable(), findsOneWidget);
+    expect(find.text('Absolutely').hitTestable(), findsOneWidget);
   });
 
   testWidgets('the menu also chooses how paragraphs are marked', (

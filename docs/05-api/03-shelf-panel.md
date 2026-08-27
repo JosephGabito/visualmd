@@ -64,10 +64,11 @@ disabled through `settling` prevents both the active drag recognizer and a tap
 captured before the drag threshold from minimizing the root on release
 (`lib/api/widgets/shelf_panel.dart`, `lib/api/widgets/shelf_panel.dart`, `lib/api/widgets/shelf_panel.dart`).
 
-Nested folder and document rows retain the quiet existing treatment. Depth
-adds a fixed indent; the selected document receives one ground and one weight
-change, and README files keep their book icon
-(`lib/api/widgets/shelf_panel.dart`).
+Nested folder and document rows use the same `ChromeListRow` as the outline.
+Depth adds a fixed indent; the selected document receives one accessible
+ground, one weight change, and the same short location mark as active outline
+navigation. README files keep their book icon
+(`lib/api/widgets/chrome_list_row.dart`, `lib/api/widgets/shelf_panel.dart`).
 
 The Library heading switches every document row between its authored Markdown
 title and exact file name. `ReaderController` persists that one shelf-wide

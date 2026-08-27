@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
+import 'package:visualmd/api/theme/library_chrome.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reader_theme.dart';
 import 'package:visualmd/presentation/theme/theme_format_exception.dart';
@@ -184,6 +185,82 @@ void main() {
     );
   });
 
+  group('Codex theme families', () {
+    test(
+      'ship in the same order and under the same names as the source menu',
+      () {
+        expect(
+          BuiltInThemes.families.map((family) => family.name),
+          orderedEquals([
+            'Absolutely',
+            'Catppuccin',
+            'Codex',
+            'Everforest',
+            'GitHub',
+            'Gruvbox',
+            'Linear',
+            'Notion',
+            'One',
+            'Proof',
+            'Raycast',
+            'Rose Pine',
+            'Solarized',
+            'Vercel',
+            'VS Code Plus',
+            'Xcode',
+          ]),
+        );
+      },
+    );
+
+    test('every family member is registered with the promised brightness', () {
+      final registry = ThemeRegistry();
+      for (final family in BuiltInThemes.families) {
+        final light = family.light;
+        final dark = family.dark;
+        if (light != null) {
+          expect(
+            registry.byId(light)?.brightness,
+            Brightness.light,
+            reason: '${family.name} light',
+          );
+        }
+        if (dark != null) {
+          expect(
+            registry.byId(dark)?.brightness,
+            Brightness.dark,
+            reason: '${family.name} dark',
+          );
+        }
+      }
+    });
+
+    test('paired families follow the system while Proof stays light', () {
+      final codex = BuiltInThemes.families.singleWhere(
+        (family) => family.name == 'Codex',
+      );
+      expect(
+        codex.choiceFor(Brightness.light),
+        const FollowSystem(light: 'codex-light', dark: 'codex-dark'),
+      );
+      expect(
+        codex.selects(const FixedTheme('codex-light'), Brightness.light),
+        isTrue,
+        reason: 'a preference saved before families existed stays selected',
+      );
+
+      final proof = BuiltInThemes.families.singleWhere(
+        (family) => family.name == 'Proof',
+      );
+      expect(proof.supports(Brightness.light), isTrue);
+      expect(proof.supports(Brightness.dark), isFalse);
+      expect(
+        proof.choiceFor(Brightness.light),
+        const FixedTheme('proof-light'),
+      );
+    });
+  });
+
   group('built-in text contrast', () {
     test('every text token remains readable on every surface it uses', () {
       for (final theme in BuiltInThemes.all) {
@@ -205,6 +282,48 @@ void main() {
         }
       }
     });
+  });
+
+  group('derived chrome', () {
+    test(
+      'every theme produces opaque states that keep selected text legible',
+      () {
+        for (final theme in BuiltInThemes.all) {
+          final p = LibraryPalette.of(theme.palette);
+          final chrome = LibraryChrome.fromMaterials(
+            paper: p.paper,
+            panel: p.panel,
+            border: p.border,
+            ink: p.ink,
+            accent: p.accent,
+            brightness: theme.brightness,
+          );
+
+          for (final color in [
+            chrome.topBar,
+            chrome.panel,
+            chrome.separator,
+            chrome.hover,
+            chrome.pressed,
+            chrome.selected,
+            chrome.selectedHover,
+            chrome.elevated,
+          ]) {
+            expect(color.a, 1, reason: '${theme.name}: $color');
+          }
+          expect(
+            ThemePalette.contrastRatio(p.ink, chrome.selected),
+            greaterThanOrEqualTo(ThemePalette.minimumTextContrast),
+            reason: '${theme.name}: selected row',
+          );
+          expect(
+            ThemePalette.contrastRatio(p.ink, chrome.selectedHover),
+            greaterThanOrEqualTo(ThemePalette.minimumTextContrast),
+            reason: '${theme.name}: selected row hover',
+          );
+        }
+      },
+    );
   });
 
   group('reading font fallback', () {

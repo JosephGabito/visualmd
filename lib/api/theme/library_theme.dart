@@ -7,6 +7,7 @@ import 'font_metrics.dart';
 import '../../presentation/theme/reader_theme.dart';
 import '../../presentation/theme/theme_palette.dart';
 import '../../presentation/theme/theme_typefaces.dart';
+import 'library_chrome.dart';
 
 /// The library's materials as the widget tree reads them. Values come from
 /// the active [ReaderTheme]; widgets never see a hex.
@@ -204,18 +205,68 @@ extension LibraryTypefacesContext on BuildContext {
   LibraryTypefaces get type => Theme.of(this).extension<LibraryTypefaces>()!;
 }
 
+extension LibraryChromeContext on BuildContext {
+  LibraryChrome get chrome {
+    final theme = Theme.of(this);
+    final authored = theme.extension<LibraryChrome>();
+    if (authored != null) return authored;
+    return LibraryChrome.fromMaterials(
+      paper: theme.scaffoldBackgroundColor,
+      panel: theme.colorScheme.surface,
+      border: theme.dividerColor,
+      ink: theme.colorScheme.onSurface,
+      accent: theme.colorScheme.primary,
+      brightness: theme.brightness,
+    );
+  }
+
+  /// Short navigational text. All shelf and outline rows share this role.
+  TextStyle chromeRow({Color? color, FontWeight weight = FontWeight.w400}) =>
+      type.sans(
+        color: color ?? palette.ink,
+        size: 13.5,
+        height: 1.18,
+        weight: weight,
+      );
+
+  /// Supporting state or counts that must remain readable without competing.
+  TextStyle get chromeMetadata =>
+      type.sans(color: palette.muted, size: 12.5, height: 1.25);
+
+  /// A compact structural label. Tracking restores the air removed by caps.
+  TextStyle get chromeSectionLabel => type
+      .sans(color: palette.muted, size: 11, height: 1, weight: FontWeight.w600)
+      .copyWith(letterSpacing: 1.05);
+
+  /// A component's identity, subordinate to the document around it.
+  TextStyle get chromeComponentLabel => type.sans(
+    color: palette.muted,
+    size: 12,
+    height: 1,
+    weight: FontWeight.w600,
+  );
+}
+
 /// Material theme for a [ReaderTheme]: the palette and typefaces ride along
 /// as extensions, and the few Material surfaces the app shows are tinted to match.
 ThemeData libraryTheme(ReaderTheme theme) {
   final p = LibraryPalette.of(theme.palette);
   final type = LibraryTypefaces(theme.typefaces);
+  final chrome = LibraryChrome.fromMaterials(
+    paper: p.paper,
+    panel: p.panel,
+    border: p.border,
+    ink: p.ink,
+    accent: p.accent,
+    brightness: theme.brightness,
+  );
   return ThemeData(
     useMaterial3: true,
     brightness: theme.brightness,
     fontFamily: type.sans(color: p.ink).fontFamily,
     scaffoldBackgroundColor: p.paper,
     canvasColor: p.paper,
-    dividerColor: p.border,
+    dividerColor: chrome.separator,
     splashFactory: NoSplash.splashFactory,
     colorScheme: ColorScheme.fromSeed(
       seedColor: p.accent,
@@ -225,6 +276,31 @@ ThemeData libraryTheme(ReaderTheme theme) {
       onSurface: p.ink,
     ),
     iconTheme: IconThemeData(color: p.muted, size: 20),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(
+          Size.square(LibraryChromeScale.control),
+        ),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(5)),
+        foregroundColor: WidgetStatePropertyAll(p.muted),
+        overlayColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return chrome.pressed;
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.focused)) {
+            return chrome.hover;
+          }
+          return Colors.transparent;
+        }),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              LibraryChromeScale.controlRadius,
+            ),
+          ),
+        ),
+      ),
+    ),
     textSelectionTheme: TextSelectionThemeData(
       selectionColor: p.selection,
       cursorColor: p.accent,
@@ -233,7 +309,7 @@ ThemeData libraryTheme(ReaderTheme theme) {
       waitDuration: const Duration(milliseconds: 500),
       decoration: BoxDecoration(
         color: p.ink,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(LibraryChromeScale.controlRadius),
       ),
       textStyle: type.sans(color: p.paper, size: 12),
     ),
@@ -241,10 +317,10 @@ ThemeData libraryTheme(ReaderTheme theme) {
       color: p.panel,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: p.border),
+        borderRadius: BorderRadius.circular(LibraryChromeScale.floatingRadius),
+        side: BorderSide(color: chrome.separator),
       ),
     ),
-    extensions: [p, type],
+    extensions: [p, type, chrome],
   );
 }

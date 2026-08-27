@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/library_theme.dart';
+import '../theme/library_chrome.dart';
 import 'pressable.dart';
 
 /// A menu that opens from the thing you clicked.
@@ -178,7 +179,7 @@ class _MenuOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
+    final chrome = context.chrome;
 
     // Opacity leads and finishes early; the surface is fully visible while it
     // is still settling, which reads as faster than it is.
@@ -244,34 +245,55 @@ class _MenuOverlay extends StatelessWidget {
                           ),
                         ),
                       ),
-                      child: Material(
-                        color: p.panel,
-                        elevation: 10,
-                        shadowColor: Colors.black.withValues(alpha: 0.28),
-                        surfaceTintColor: Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: width,
-                          constraints: BoxConstraints(maxHeight: maxHeight),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: p.border),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: chrome.elevated,
+                          borderRadius: BorderRadius.circular(
+                            LibraryChromeScale.floatingRadius,
                           ),
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (var i = 0; i < items.length; i++)
-                                  _Staggered(
-                                    motion: motion,
-                                    index: i,
-                                    total: items.length,
-                                    still: still,
-                                    child: items[i],
-                                  ),
-                              ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: chrome.shadow,
+                              blurRadius: 24,
+                              offset: const Offset(0, 10),
+                            ),
+                            BoxShadow(
+                              color: chrome.shadow.withValues(alpha: 0.55),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            LibraryChromeScale.floatingRadius,
+                          ),
+                          child: Material(
+                            color: chrome.elevated,
+                            surfaceTintColor: Colors.transparent,
+                            child: Container(
+                              width: width,
+                              constraints: BoxConstraints(maxHeight: maxHeight),
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    for (var i = 0; i < items.length; i++)
+                                      _Staggered(
+                                        motion: motion,
+                                        index: i,
+                                        total: items.length,
+                                        still: still,
+                                        child: items[i],
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),

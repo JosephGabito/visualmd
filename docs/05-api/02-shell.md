@@ -67,12 +67,21 @@ values (`lib/api/screens/reader_screen.dart`).
 
 ### Top bar and transient layers
 
-`_TopBar` contains the shelf toggle, product mark and name, theme picker, and
-outline toggle. The picker arrives as a complete widget, so the bar owns its
-position without owning theme behavior
+`_TopBar` is one 52-point unified title bar. Its leading group contains the
+shelf toggle and product identity, its centre reports the active document title
+and file name, and its trailing group exposes document search, the theme picker,
+and the outline toggle. The picker arrives as a complete widget, so the bar owns
+its position without owning theme behavior
 (`lib/api/screens/reader_screen.dart`). Both toggles use
 [Pressable](09-pressable.md), carry separate Show/Hide shelf and outline names
 for assistive technology, and remain disabled until a library exists.
+
+The permanent room uses [Library Chrome](28-library-chrome.md)'s three opaque
+planes. Page, side panels, and the unified top bar separate mostly by surface
+tone; only the permanent seams keep a softened divider. Menus and find surfaces
+alone rise above that room with shadow. Their corners descend from the native
+window silhouette through one shared radius hierarchy; the host keeps ownership
+of the actual outer window clipping.
 
 Three layers may sit above the room:
 

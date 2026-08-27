@@ -15,6 +15,7 @@ import '../../presentation/theme/hanging_punctuation.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../../presentation/theme/theme_palette.dart';
 import '../../presentation/theme/widow_binding.dart';
+import '../theme/library_chrome.dart';
 import '../theme/reading_measure.dart';
 import '../widgets/code_block.dart';
 import '../widgets/math_expression.dart';
@@ -373,7 +374,9 @@ class _BlockView extends StatelessWidget {
             // would be the same signal twice, and a border has a height.
             decoration: BoxDecoration(
               color: theme.palette.codeBackground,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                LibraryChromeScale.componentRadius,
+              ),
             ),
           ),
         );
@@ -1176,7 +1179,7 @@ class _TableState extends State<_Table> {
         ];
 
         return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(LibraryChromeScale.controlRadius),
           child: Scrollbar(
             controller: _scroll,
             // A clipped column looks complete. The persistent thumb is the

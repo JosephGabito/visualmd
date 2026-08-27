@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../application/ports/mermaid_renderer.dart';
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 
 /// A Mermaid diagram with a quiet reading state and an exploratory state.
@@ -318,7 +319,9 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
                   key: const ValueKey('mermaid-surface'),
                   borderRadius: widget.fullScreen
                       ? BorderRadius.zero
-                      : BorderRadius.circular(8),
+                      : BorderRadius.circular(
+                          LibraryChromeScale.componentRadius,
+                        ),
                   child: ColoredBox(
                     color: p.paper,
                     child: Column(
@@ -387,12 +390,12 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
   }
 
   Widget _toolbar(double extent) {
-    final p = context.palette;
+    final chrome = context.chrome;
     return SizedBox(
       key: const ValueKey('mermaid-toolbar'),
       height: extent,
       child: ColoredBox(
-        color: p.panel,
+        color: chrome.elevated,
         child: Padding(
           padding: EdgeInsets.only(left: widget.beat * 0.45),
           child: Row(
@@ -402,14 +405,7 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
                   widget.rendering.title ?? 'Diagram',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: context.type
-                      .sans(
-                        color: p.muted,
-                        size: 12,
-                        height: 1,
-                        weight: FontWeight.w500,
-                      )
-                      .copyWith(letterSpacing: 0.15),
+                  style: context.chromeComponentLabel,
                 ),
               ),
               _DiagramAction(
@@ -509,7 +505,7 @@ final class _MermaidFallbackState extends State<_MermaidFallback> {
       label: 'Mermaid diagram could not be rendered; source follows',
       child: ClipRRect(
         key: const ValueKey('mermaid-fallback'),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(LibraryChromeScale.componentRadius),
         child: ColoredBox(
           color: p.codeBackground,
           child: Column(
@@ -524,12 +520,7 @@ final class _MermaidFallbackState extends State<_MermaidFallback> {
                       Expanded(
                         child: Text(
                           'Mermaid source',
-                          style: context.type.sans(
-                            color: p.muted,
-                            size: 12,
-                            height: 1,
-                            weight: FontWeight.w500,
-                          ),
+                          style: context.chromeComponentLabel,
                         ),
                       ),
                       _DiagramAction(

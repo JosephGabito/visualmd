@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../domain/library/library.dart';
 import '../../domain/search/search_result.dart';
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 
 final class DocumentFindBar extends StatelessWidget {
@@ -32,18 +33,31 @@ final class DocumentFindBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final chrome = context.chrome;
     return Material(
-      elevation: 8,
-      shadowColor: Colors.black.withValues(alpha: 0.14),
-      color: p.panel,
-      borderRadius: BorderRadius.circular(9),
+      elevation: 0,
+      color: chrome.elevated,
+      borderRadius: BorderRadius.circular(LibraryChromeScale.floatingRadius),
       child: Container(
         width: 390,
         height: 42,
         padding: const EdgeInsets.only(left: 10, right: 4),
         decoration: BoxDecoration(
-          border: Border.all(color: p.border),
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(
+            LibraryChromeScale.floatingRadius,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: chrome.shadow,
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+            BoxShadow(
+              color: chrome.shadow.withValues(alpha: 0.45),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -186,7 +200,9 @@ final class LibrarySearchPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: p.paper,
               border: Border.all(color: p.border),
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(
+                LibraryChromeScale.controlRadius,
+              ),
             ),
             child: Row(
               children: [
@@ -346,10 +362,11 @@ final class _SearchResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final chrome = context.chrome;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      hoverColor: p.accentSoft.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(LibraryChromeScale.rowRadius),
+      hoverColor: chrome.hover,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
         child: Column(
