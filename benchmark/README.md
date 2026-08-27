@@ -11,6 +11,20 @@ corpus size. A second append is injected while a ballistic scroll is active;
 that journey records its own frame distribution and must continue moving the
 reader while still visiting only the new record.
 
+The same run then exercises the generated-document pipeline rather than a
+hand-built mutation. It commits 5,000 Markdown paragraphs through
+`GeneratedDocumentStreamSession`, starts a ballistic scroll, and publishes 60
+small deltas forming 20 more paragraphs. This covers transport ordering,
+coalescing policy, chunked source retention, incremental Markdown parsing,
+persistent document revisions, navigation and render indexing, viewport
+geometry, layout, and paint. Every published revision must parse fewer than 256
+source characters, visit exactly one navigation and render record, keep fewer
+than 40 paragraphs mounted, and allow the ballistic scroll to continue.
+
+The generated journey intentionally supplies an empty outline. Incremental
+outline projection is a separate remaining slice; rebuilding it per revision
+would contaminate the renderer measurement with a known full-prefix operation.
+
 Run it on macOS in profile mode:
 
 ```sh
@@ -32,3 +46,5 @@ The first eager-versus-sliver measurement is retained in
 `benchmark/results/2026-08-28-viewport-sliver.md`.
 The first revisioned-append measurement is retained in
 `benchmark/results/2026-08-28-revisioned-append.md`.
+The first end-to-end generated Markdown stream measurement is retained in
+`benchmark/results/2026-08-28-generated-stream.md`.
