@@ -63,6 +63,21 @@ flutter drive --profile \
 The native baseline and model-owned range comparison are retained in
 `benchmark/results/2026-08-28-selection-retention.md`.
 
+The continuous-resize benchmark alternates a real reading surface across six
+widths with 100, 1,000, and 5,000 blocks. It records wall time and wraps the
+production geometry adapter to count every extent estimate consumed by layout:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/resize_performance_test.dart \
+  -d macos
+```
+
+The initial whole-document invalidation baseline is retained in
+`benchmark/results/2026-08-28-continuous-resize.md`.
+
 The atomic-block benchmark isolates one fenced code block at 1,000, 10,000,
 and 50,000 lines. It establishes the pre-virtualization slope separately from
 the top-level sliver benchmark:
