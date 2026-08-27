@@ -263,15 +263,26 @@ final class _WindowedCodeSource extends StatefulWidget {
 
 final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   static const _overscanLines = 8;
+  static const _overscanColumns = 32;
 
   final _horizontal = ScrollController();
   ScrollPosition? _page;
   late _CodeLineIndex _lines = _CodeLineIndex(widget.source);
   var _firstLine = 0;
   var _lastLine = 1;
+  var _firstColumn = 0;
+  var _lastColumn = 512;
 
   double get _lineHeight =>
       (widget.textStyle.fontSize ?? 14) * (widget.textStyle.height ?? 1);
+
+  double get _characterWidth => _monospaceAdvance(widget.textStyle);
+
+  @override
+  void initState() {
+    super.initState();
+    _horizontal.addListener(_syncColumns);
+  }
 
   @override
   void didChangeDependencies() {
@@ -291,13 +302,37 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
       _lines = _CodeLineIndex(widget.source);
       _firstLine = 0;
       _lastLine = math.min(1, _lines.length);
+      _firstColumn = 0;
+      _lastColumn = 512;
       _scheduleSync();
     }
   }
 
   void _scheduleSync() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncWindow();
+      if (!mounted) return;
+      _syncWindow();
+      _syncColumns();
+    });
+  }
+
+  void _syncColumns() {
+    if (!_horizontal.hasClients) return;
+    final position = _horizontal.position;
+    final first = math.max(
+      0,
+      (position.pixels / _characterWidth).floor() - _overscanColumns,
+    );
+    final last = math.min(
+      _lines.maximumColumns,
+      ((position.pixels + position.viewportDimension) / _characterWidth)
+              .ceil() +
+          _overscanColumns,
+    );
+    if (first == _firstColumn && last == _lastColumn) return;
+    setState(() {
+      _firstColumn = first;
+      _lastColumn = last;
     });
   }
 
@@ -336,41 +371,14 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   @override
   void dispose() {
     _page?.removeListener(_syncWindow);
+    _horizontal.removeListener(_syncColumns);
     _horizontal.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final rows = <Widget>[];
-    for (var line = _firstLine; line < _lastLine; line++) {
-      final range = _lines.rangeAt(line);
-      rows.add(
-        SizedBox(
-          key: ValueKey('code-line-$line'),
-          height: _lineHeight,
-          child: Text.rich(
-            TextSpan(
-              children: widget.spansForRange(
-                widget.highlighting,
-                range.start,
-                range.end,
-              ),
-            ),
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.clip,
-            style: widget.textStyle,
-            strutStyle: StrutStyle.fromTextStyle(
-              widget.textStyle,
-              forceStrutHeight: true,
-            ),
-            selectionColor: widget.selectionColor,
-          ),
-        ),
-      );
-    }
-    final characterWidth = _monospaceAdvance(widget.textStyle);
+    final characterWidth = _characterWidth;
     final top = widget.padding.top + _firstLine * _lineHeight;
 
     return LayoutBuilder(
@@ -383,6 +391,63 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
           availableWidth,
           _lines.maximumColumns * characterWidth,
         );
+        final rows = <Widget>[];
+        for (var line = _firstLine; line < _lastLine; line++) {
+          final range = _lines.rangeAt(line);
+          final columns = range.end - range.start;
+          final firstColumn = math.min(_firstColumn, columns);
+          final lastColumn = math.min(_lastColumn, columns);
+          final start = _safeSliceStart(
+            widget.source,
+            range.start + firstColumn,
+            range.start,
+          );
+          final end = _safeSliceEnd(
+            widget.source,
+            range.start + lastColumn,
+            range.end,
+          );
+          final text = start < end
+              ? Text.rich(
+                  TextSpan(
+                    children: widget.spansForRange(
+                      widget.highlighting,
+                      start,
+                      end,
+                    ),
+                  ),
+                  key: ValueKey('code-column-$start-$end'),
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.clip,
+                  style: widget.textStyle,
+                  strutStyle: StrutStyle.fromTextStyle(
+                    widget.textStyle,
+                    forceStrutHeight: true,
+                  ),
+                  selectionColor: widget.selectionColor,
+                )
+              : null;
+          rows.add(
+            SizedBox(
+              key: ValueKey('code-line-$line'),
+              width: sourceWidth,
+              height: _lineHeight,
+              child: text == null
+                  ? null
+                  : Stack(
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        Positioned(
+                          left: (start - range.start) * characterWidth,
+                          top: 0,
+                          child: text,
+                        ),
+                      ],
+                    ),
+            ),
+          );
+        }
         return SizedBox(
           height: _contentHeight,
           child: Stack(
@@ -430,6 +495,18 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
       },
     );
   }
+}
+
+int _safeSliceStart(String source, int value, int minimum) {
+  if (value <= minimum || value >= source.length) return value;
+  final unit = source.codeUnitAt(value);
+  return unit >= 0xDC00 && unit <= 0xDFFF ? value - 1 : value;
+}
+
+int _safeSliceEnd(String source, int value, int maximum) {
+  if (value <= 0 || value >= maximum) return value;
+  final unit = source.codeUnitAt(value);
+  return unit >= 0xDC00 && unit <= 0xDFFF ? value + 1 : value;
 }
 
 final class _CodeLineIndex {

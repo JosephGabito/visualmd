@@ -76,3 +76,5 @@ flutter drive --profile \
 
 The first atomic-line scaling measurement is retained in
 `benchmark/results/2026-08-28-atomic-code-line.md`.
+The first column-windowed comparison is retained in
+`benchmark/results/2026-08-28-windowed-code-line.md`.

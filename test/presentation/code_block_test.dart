@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide TableCell;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/render/document_view.dart';
@@ -283,6 +284,69 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('a generated line mounts only the horizontal source window', (
+    tester,
+  ) async {
+    final source = List.filled(100000, 'x').join();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(BuiltInThemes.paper),
+        home: Scaffold(
+          body: SelectionArea(
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Builder(
+                    builder: (context) => DocumentView(
+                      content: DocumentContent([CodeBlock(code: source)]),
+                      theme: ReadingTheme.of(context, ReadingScale.comfortable),
+                      anchorKeys: {},
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    List<String> mountedRanges() => [
+      for (final element in find.byWidgetPredicate((widget) {
+        final key = widget.key;
+        return key is ValueKey<String> && key.value.startsWith('code-column-');
+      }).evaluate())
+        (element.widget.key! as ValueKey<String>).value,
+    ];
+    int renderedCharacters() => find
+        .descendant(
+          of: find.byKey(const ValueKey('code-source')),
+          matching: find.byType(RichText),
+        )
+        .evaluate()
+        .map(
+          (element) =>
+              (element.renderObject! as RenderParagraph).text.toPlainText(),
+        )
+        .fold(0, (total, text) => total + text.length);
+
+    expect(renderedCharacters(), lessThan(1000));
+    final opening = mountedRanges().single.split('-');
+    expect(int.parse(opening[2]), 0);
+    expect(int.parse(opening[3]), lessThan(1000));
+
+    final position = horizontalPosition(tester);
+    position.jumpTo(position.maxScrollExtent * 0.5);
+    await tester.pump();
+    await tester.pump();
+
+    final parts = mountedRanges().single.split('-');
+    expect(int.parse(parts[2]), inInclusiveRange(49000, 51000));
+    expect(renderedCharacters(), lessThan(1000));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('the header identifies the language and exposes both actions', (
     tester,
