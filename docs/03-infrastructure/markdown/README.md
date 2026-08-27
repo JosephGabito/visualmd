@@ -1,9 +1,10 @@
 # Markdown Adapter
 
-This adapter gives meaning to the source text. It accepts a Markdown string and
-returns the domain's document blocks, using `package:markdown` for CommonMark
-parsing. The rest of Visual MD can then work with headings, paragraphs, lists,
-tables, and code without depending on that package.
+This adapter gives meaning to source text. It accepts either one completed
+Markdown string or one append-oriented generation and returns the domain's
+document blocks, using `package:markdown` for CommonMark parsing. The rest of
+Visual MD can then work with headings, paragraphs, lists, tables, and code
+without depending on that package.
 
 ## On this shelf
 
@@ -26,8 +27,8 @@ domain values while keeping the author's text intact.
 
 | Direction | Value | Meaning |
 |-----------|-------|---------|
-| In | `String` | The source exactly as it was read from the file |
-| Out | `DocumentContent` | The blocks and inline content understood by Visual MD |
+| In | `String` | A completed file, or one exact append to an incremental session |
+| Out | `DocumentContent` | A complete snapshot, or a revisioned snapshot with committed and provisional block identities |
 
 Appearance comes later. The parser keeps authored characters unchanged; the
 [Inline Composer](../../05-api/13-inline-composer.md) decides how those
@@ -38,3 +39,12 @@ The adapter has no Flutter, filesystem, or browser dependency. Unsupported or
 unfamiliar syntax degrades to the closest readable content instead of making
 the document impossible to open, as described by
 [Document Parser Port](../../02-application/04-document-parser-port.md).
+
+The incremental path keeps a committed prefix and reparses only the suffix
+which later source can still reinterpret
+(`lib/infrastructure/markdown/markdown_document_parser.dart`). Ordinary prose
+settles at blank-line boundaries. Open containers remain provisional. A late
+reference or footnote definition can change earlier inline semantics, so that
+rare global operation deliberately rebases the parse until a dependency index
+can target only affected blocks. `finish()` runs the complete parser as a
+final-equivalence oracle.

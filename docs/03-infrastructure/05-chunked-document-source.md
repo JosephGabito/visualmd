@@ -62,9 +62,10 @@ chunk prefix.
 
 ## Transition
 
-The next slice is a Markdown parser session with a committed prefix and a
-provisional tail. It will consume bounded ranges from this component and emit
-the revisioned mutations already understood by `DocumentContent`
-(`lib/domain/reading/content/document_content.dart`). The completed-file parser
-remains the final-equivalence oracle until the incremental path proves every
-supported Markdown shape.
+`MarkdownDocumentParser` now opens a session with a committed prefix and a
+provisional tail. It consumes bounded ranges from this component and emits the
+revisioned mutations already understood by `DocumentContent`
+(`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`lib/domain/reading/content/document_content.dart`). The next boundary is the
+application coordinator which validates ordered stream events, batches source
+without dropping it, and fences canceled generations.
