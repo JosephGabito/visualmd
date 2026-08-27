@@ -16,6 +16,7 @@ import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/search/search_result.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
+import 'package:visualmd/presentation/code/code_highlighter.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reader_theme.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
@@ -195,6 +196,49 @@ void main() {
         .toList();
     expect(TextSpan(children: spans).toPlainText(), source);
     expect(highlighted, ['👩🏽‍💻']);
+  });
+
+  testWidgets('a code window preserves global syntax and search offsets', (
+    tester,
+  ) async {
+    await makeComposer(tester);
+    const source = 'zero\none two\nthree';
+    final start = source.indexOf('one');
+    final end = source.indexOf('\nthree');
+    final spans =
+        InlineComposer(
+          theme: theme,
+          matches: [TextMatch(start: start + 4, end: end, excerpt: 'two')],
+        ).highlightedVerbatimRange(
+          source,
+          start: start,
+          end: end,
+          style: theme.code,
+          highlighting: CodeHighlighting([
+            CodeHighlightToken(
+              start: start,
+              end: start + 3,
+              role: CodeTokenRole.keyword,
+            ),
+            CodeHighlightToken(
+              start: start + 4,
+              end: end,
+              role: CodeTokenRole.string,
+            ),
+          ]),
+          styleFor: (token) => theme.code.copyWith(
+            color: token.role == CodeTokenRole.keyword
+                ? Colors.red
+                : Colors.blue,
+          ),
+        );
+
+    expect(TextSpan(children: spans).toPlainText(), 'one two');
+    final leaves = spans.whereType<TextSpan>().toList();
+    expect(leaves.first.style?.color, Colors.red);
+    final matched = leaves.singleWhere((span) => span.text == 'two');
+    expect(matched.style?.color, Colors.blue);
+    expect(matched.style?.backgroundColor, theme.palette.selection);
   });
 
   testWidgets('a match crosses marked runs without changing punctuation', (

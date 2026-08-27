@@ -875,6 +875,16 @@ class _BlockView extends StatelessWidget {
               styleFor: theme.codeToken,
               offset: offset,
             ),
+            spansForRange: (highlighting, start, end) =>
+                composer.highlightedVerbatimRange(
+                  code,
+                  start: start,
+                  end: end,
+                  style: theme.code,
+                  highlighting: highlighting,
+                  styleFor: theme.codeToken,
+                  offset: offset,
+                ),
             textStyle: theme.code,
             bodyBackground: theme.codeBodyBackground,
             beat: theme.baseline,

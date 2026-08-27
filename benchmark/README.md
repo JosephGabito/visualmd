@@ -60,3 +60,5 @@ flutter drive --profile \
 
 The first atomic-code scaling measurement is retained in
 `benchmark/results/2026-08-28-atomic-code-block.md`.
+The first viewport-windowed comparison is retained in
+`benchmark/results/2026-08-28-windowed-code-block.md`.

@@ -1,4 +1,5 @@
 import 'dart:ui' show Tristate;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide TableCell;
 import 'package:flutter/services.dart';
@@ -197,6 +198,91 @@ void main() {
     expect(copied, source);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
+
+  testWidgets(
+    'a huge fence keeps exact copy while its mounted lines follow the page',
+    (tester) async {
+      final source = List.generate(
+        2000,
+        (index) =>
+            'final value_$index = compute(input_$index); // bounded source row',
+      ).join('\n');
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied =
+                (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: libraryTheme(BuiltInThemes.paper),
+          home: Scaffold(
+            body: SelectionArea(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Builder(
+                      builder: (context) => DocumentView(
+                        content: DocumentContent([
+                          CodeBlock(code: source, language: 'dart'),
+                        ]),
+                        theme: ReadingTheme.of(
+                          context,
+                          ReadingScale.comfortable,
+                        ),
+                        anchorKeys: {},
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      int lineIndex(Element element) => int.parse(
+        (element.widget.key! as ValueKey<String>).value.substring(10),
+      );
+      Iterable<Element> mountedLines() => find.byWidgetPredicate((widget) {
+        final key = widget.key;
+        return key is ValueKey<String> && key.value.startsWith('code-line-');
+      }).evaluate();
+
+      expect(mountedLines().length, lessThan(100));
+      await tester.tap(find.byKey(const ValueKey('code-copy')));
+      await tester.pump();
+      expect(copied, source);
+
+      final vertical = find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      );
+      final position = tester.state<ScrollableState>(vertical.first).position;
+      position.jumpTo(position.maxScrollExtent * 0.5);
+      await tester.pump();
+      await tester.pump();
+
+      final middle = mountedLines().toList(growable: false);
+      expect(middle.length, lessThan(100));
+      expect(middle.map(lineIndex).reduce(math.min), greaterThan(900));
+      expect(middle.map(lineIndex).reduce(math.max), lessThan(1100));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('the header identifies the language and exposes both actions', (
     tester,

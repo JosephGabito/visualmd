@@ -115,7 +115,11 @@ Each block type is built by `_BlockView`
 - **Code** — a [`ReadableCodeBlock`](11-code-block.md) with half a beat of
   padding above and below and **no border**: its own ground already says what
   it is, and a border is both a second signal and a height that breaks the grid
-  (`lib/api/render/document_view.dart`).
+  (`lib/api/render/document_view.dart`). A large unwrapped fence reports its
+  complete height to the same geometry ledger but mounts only a viewport-sized
+  line window inside that one block. This closes the case where one giant
+  sliver child defeated top-level document laziness without introducing a
+  second vertical scroller (`lib/api/widgets/code_block.dart`).
 - **Mathematics** — a [Mathematical Expression](25-mathematical-expression.md)
   on the paper itself. A display equation scrolls locally at the wide measure
   and its completed height is reconciled to the body grid. A paragraph that
