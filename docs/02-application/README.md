@@ -40,6 +40,7 @@ involved:
 | [RemoveMarkdown](08-remove-markdown.md) | How a standalone document leaves the session without losing reading intent. |
 | [Workspace Lifecycle](09-workspace-lifecycle.md) | How New, Open, Save, Save As, restore, reconnect, and autosave fit together. |
 | [Source Synchronization](10-source-synchronization.md) | How external edits become ordered, atomic Library refreshes without moving the reader. |
+| [Generated Document Stream](11-generated-document-stream.md) | How ordered source deltas become lossless, bounded-cadence document revisions. |
 
 ## Where to continue
 
