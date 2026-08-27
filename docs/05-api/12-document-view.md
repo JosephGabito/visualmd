@@ -268,11 +268,18 @@ scaling (`integration_test/reading_performance_test.dart`,
 
 ## Transition
 
-Top-level widget, layout, paint and semantics work is viewport-bounded; far
-seeks and geometry correction use prefix queries rather than prefix layout.
-Revisioned tail indexing, persistent snapshots, source retention, and
-provisional-tail parsing are delta-bounded. Incremental outline projection is
-the remaining full-prefix derived index on the generated-document path.
-One unusually large container is still one top-level child and may need its own
-specialised virtualization later. Full-document select-all and wider code
-remain in the [backlog](../07-roadmap/02-backlog.md).
+Top-level widget, layout, paint and semantics work is viewport-bounded when
+blocks themselves are ordinary-sized; far seeks and geometry correction use
+prefix queries rather than prefix layout. Revisioned tail indexing, persistent
+snapshots, source retention, provisional-tail parsing, and live outline
+projection are delta-bounded. Large fenced code is additionally windowed by
+line and column.
+
+One unusually large prose paragraph, table, list, or quotation is still one
+top-level child. The native atomic-paragraph benchmark records a 233.8 ms frame
+and roughly 292 MiB process delta at one million provisional characters, so
+that boundary is neither called viewport-bounded nor hidden behind the usual
+document result (`integration_test/atomic_paragraph_performance_test.dart`,
+`benchmark/results/2026-08-28-atomic-paragraph.md`). It needs specialised
+virtualization which preserves final shaping, inline semantics, selection and
+stable outer scroll geometry.
