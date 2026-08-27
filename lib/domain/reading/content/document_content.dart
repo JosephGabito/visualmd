@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import '../../collection/persistent_sequence.dart';
 import 'block.dart';
 
 /// Stable identity for one block within a document generation.
@@ -197,9 +198,9 @@ final class DocumentContent {
         'Mutation revision ${mutation.revision} does not produce $revision.',
       );
     }
-    final stored = entries is _PersistentBlockList
+    final stored = entries is PersistentSequence<DocumentBlock>
         ? entries
-        : _PersistentBlockList.from(entries);
+        : PersistentSequence<DocumentBlock>.from(entries);
     return DocumentContent._revisioned(
       stored,
       _PersistentIdSet.from(stored),
@@ -209,7 +210,7 @@ final class DocumentContent {
   }
 
   DocumentContent._revisioned(
-    _PersistentBlockList entries,
+    PersistentSequence<DocumentBlock> entries,
     this._ids, {
     required this.revision,
     required this.mutation,
@@ -233,9 +234,9 @@ final class DocumentContent {
       );
     }
 
-    var changed = _revisionedEntries is _PersistentBlockList
+    var changed = _revisionedEntries is PersistentSequence<DocumentBlock>
         ? _revisionedEntries
-        : _PersistentBlockList.from(entries);
+        : PersistentSequence<DocumentBlock>.from(entries);
     var ids = _ids ?? _PersistentIdSet.from(changed);
     for (final operation in next.operations) {
       switch (operation) {
@@ -265,7 +266,7 @@ final class DocumentContent {
             changed = changed.replace(
               index: index,
               removeCount: 1,
-              blocks: [
+              values: [
                 entry.revise(
                   revision: next.revision,
                   commitment: BlockCommitment.committed,
@@ -339,8 +340,8 @@ final class DocumentContent {
   String get text => readingTextOfBlocks(blocks, '\n\n');
 }
 
-(_PersistentBlockList, _PersistentIdSet) _replacePersistent(
-  _PersistentBlockList entries,
+(PersistentSequence<DocumentBlock>, _PersistentIdSet) _replacePersistent(
+  PersistentSequence<DocumentBlock> entries,
   _PersistentIdSet ids, {
   required int index,
   required int removeCount,
@@ -358,7 +359,7 @@ final class DocumentContent {
     nextIds = inserted.set;
   }
   return (
-    entries.replace(index: index, removeCount: removeCount, blocks: blocks),
+    entries.replace(index: index, removeCount: removeCount, values: blocks),
     nextIds,
   );
 }
@@ -377,54 +378,8 @@ void _requireCountedRange(int index, int count, int length, String name) {
   }
 }
 
-/// An immutable AVL rope. Replacing a suffix shares every untouched subtree.
-final class _PersistentBlockList extends ListBase<DocumentBlock> {
-  final _BlockTree? _root;
-
-  _PersistentBlockList._(this._root);
-
-  factory _PersistentBlockList.from(Iterable<DocumentBlock> entries) {
-    if (entries is _PersistentBlockList) return entries;
-    final values = entries.toList(growable: false);
-    return _PersistentBlockList._(_blockTreeFrom(values));
-  }
-
-  @override
-  int get length => _root?.length ?? 0;
-
-  @override
-  set length(int value) =>
-      throw UnsupportedError('Document blocks are immutable');
-
-  @override
-  DocumentBlock operator [](int index) {
-    RangeError.checkValidIndex(index, this);
-    return _blockAt(_root!, index);
-  }
-
-  @override
-  void operator []=(int index, DocumentBlock value) =>
-      throw UnsupportedError('Document blocks are immutable');
-
-  @override
-  Iterator<DocumentBlock> get iterator => _BlockTreeIterator(_root);
-
-  _PersistentBlockList replace({
-    required int index,
-    required int removeCount,
-    required List<DocumentBlock> blocks,
-  }) {
-    final (before, remainder) = _splitBlockTree(_root, index);
-    final (_, after) = _splitBlockTree(remainder, removeCount);
-    final inserted = _blockTreeFrom(blocks);
-    return _PersistentBlockList._(
-      _joinBlockTrees(_joinBlockTrees(before, inserted), after),
-    );
-  }
-}
-
 final class _BlockView extends ListBase<Block> {
-  final _PersistentBlockList _entries;
+  final PersistentSequence<DocumentBlock> _entries;
 
   _BlockView(this._entries);
 
@@ -444,182 +399,6 @@ final class _BlockView extends ListBase<Block> {
 
   @override
   Iterator<Block> get iterator => _BlockIterator(_entries.iterator);
-}
-
-sealed class _BlockTree {
-  int get length;
-  int get height;
-}
-
-final class _BlockLeaf extends _BlockTree {
-  final List<DocumentBlock> values;
-
-  _BlockLeaf(List<DocumentBlock> values)
-    : values = List.unmodifiable(values),
-      assert(values.isNotEmpty);
-
-  @override
-  int get length => values.length;
-
-  @override
-  int get height => 1;
-}
-
-final class _BlockBranch extends _BlockTree {
-  final _BlockTree left;
-  final _BlockTree right;
-  @override
-  final int length;
-  @override
-  final int height;
-
-  _BlockBranch(this.left, this.right)
-    : length = left.length + right.length,
-      height = 1 + (left.height > right.height ? left.height : right.height);
-}
-
-_BlockTree? _blockTreeFrom(List<DocumentBlock> values) {
-  if (values.isEmpty) return null;
-  const leafSize = 32;
-  var level = <_BlockTree>[
-    for (var start = 0; start < values.length; start += leafSize)
-      _BlockLeaf(
-        values.sublist(
-          start,
-          start + leafSize < values.length ? start + leafSize : values.length,
-        ),
-      ),
-  ];
-  while (level.length > 1) {
-    final next = <_BlockTree>[];
-    for (var index = 0; index < level.length; index += 2) {
-      next.add(
-        index + 1 < level.length
-            ? _BlockBranch(level[index], level[index + 1])
-            : level[index],
-      );
-    }
-    level = next;
-  }
-  return level.single;
-}
-
-DocumentBlock _blockAt(_BlockTree tree, int index) {
-  var node = tree;
-  var offset = index;
-  while (node is _BlockBranch) {
-    if (offset < node.left.length) {
-      node = node.left;
-    } else {
-      offset -= node.left.length;
-      node = node.right;
-    }
-  }
-  return (node as _BlockLeaf).values[offset];
-}
-
-(_BlockTree?, _BlockTree?) _splitBlockTree(_BlockTree? tree, int index) {
-  if (tree == null) return (null, null);
-  if (index == 0) return (null, tree);
-  if (index == tree.length) return (tree, null);
-  switch (tree) {
-    case _BlockLeaf(:final values):
-      return (
-        _BlockLeaf(values.sublist(0, index)),
-        _BlockLeaf(values.sublist(index)),
-      );
-    case _BlockBranch(:final left, :final right):
-      if (index < left.length) {
-        final (before, after) = _splitBlockTree(left, index);
-        return (before, _joinBlockTrees(after, right));
-      }
-      if (index == left.length) return (left, right);
-      final (before, after) = _splitBlockTree(right, index - left.length);
-      return (_joinBlockTrees(left, before), after);
-  }
-}
-
-_BlockTree? _joinBlockTrees(_BlockTree? left, _BlockTree? right) {
-  if (left == null) return right;
-  if (right == null) return left;
-  if (left.height > right.height + 1) {
-    final branch = left as _BlockBranch;
-    return _balanceBlockTree(
-      _BlockBranch(branch.left, _joinBlockTrees(branch.right, right)!),
-    );
-  }
-  if (right.height > left.height + 1) {
-    final branch = right as _BlockBranch;
-    return _balanceBlockTree(
-      _BlockBranch(_joinBlockTrees(left, branch.left)!, branch.right),
-    );
-  }
-  return _BlockBranch(left, right);
-}
-
-_BlockTree _balanceBlockTree(_BlockBranch node) {
-  final balance = node.left.height - node.right.height;
-  if (balance > 1) {
-    final left = node.left as _BlockBranch;
-    if (left.right.height > left.left.height) {
-      final pivot = left.right as _BlockBranch;
-      return _BlockBranch(
-        _BlockBranch(left.left, pivot.left),
-        _BlockBranch(pivot.right, node.right),
-      );
-    }
-    return _BlockBranch(left.left, _BlockBranch(left.right, node.right));
-  }
-  if (balance < -1) {
-    final right = node.right as _BlockBranch;
-    if (right.left.height > right.right.height) {
-      final pivot = right.left as _BlockBranch;
-      return _BlockBranch(
-        _BlockBranch(node.left, pivot.left),
-        _BlockBranch(pivot.right, right.right),
-      );
-    }
-    return _BlockBranch(_BlockBranch(node.left, right.left), right.right);
-  }
-  return node;
-}
-
-final class _BlockTreeIterator implements Iterator<DocumentBlock> {
-  final List<_BlockTree> _stack = [];
-  Iterator<DocumentBlock>? _leaf;
-  DocumentBlock? _current;
-
-  _BlockTreeIterator(_BlockTree? root) {
-    if (root != null) _stack.add(root);
-  }
-
-  @override
-  DocumentBlock get current => _current as DocumentBlock;
-
-  @override
-  bool moveNext() {
-    while (true) {
-      final leaf = _leaf;
-      if (leaf != null && leaf.moveNext()) {
-        _current = leaf.current;
-        return true;
-      }
-      _leaf = null;
-      if (_stack.isEmpty) {
-        _current = null;
-        return false;
-      }
-      final node = _stack.removeLast();
-      switch (node) {
-        case _BlockLeaf(:final values):
-          _leaf = values.iterator;
-        case _BlockBranch(:final left, :final right):
-          _stack
-            ..add(right)
-            ..add(left);
-      }
-    }
-  }
 }
 
 final class _BlockIterator implements Iterator<Block> {
