@@ -51,3 +51,23 @@ must release its projection, and retained projections must have a byte budget.
 Matching the query against every projection remains proportional to library
 text; removing that final scan requires a token or n-gram index and is a later
 measurement, not something this baseline pretends to solve.
+
+## Retained-projection comparison
+
+After visible text moved into a source-invalidated, byte-bounded projection
+index, the same profile journey produced:
+
+| Documents | Query | Source reads | Parses | Before | After |
+|---:|---|---:|---:|---:|---:|
+| 100 | `needle 7` | 0 | 0 | 51.6 ms | 0.160 ms |
+| 100 | `needle 77` | 0 | 0 | 51.2 ms | 0.191 ms |
+| 1,000 | `needle 7` | 0 | 0 | 515.8 ms | 1.622 ms |
+| 1,000 | `needle 77` | 0 | 0 | 514.4 ms | 1.278 ms |
+| 5,000 | `needle 7` | 0 | 0 | 2,541.1 ms | 7.107 ms |
+| 5,000 | `needle 77` | 0 | 0 | 2,551.6 ms | 6.302 ms |
+
+The initial query still pays the necessary one-time projection cost: 5,000
+documents took 2,547.9 ms and performed 5,000 reads and parses. Later queries
+scan only derived visible text. At 5,000 documents that remaining linear match
+cost is under half of one 60 Hz frame on this fixture, while source changes
+evict and rebuild only their own identities.

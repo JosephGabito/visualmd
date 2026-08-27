@@ -11,8 +11,8 @@ which result is active on screen.
 
 ## Present wiring
 
-For each document, the injected `DocumentParser` produces
-`DocumentContent.text`; the result is cached by document identity
+On the first search of a document, the injected `DocumentParser` produces
+`DocumentContent.text`; that visible text is cached by stable document identity
 (`lib/infrastructure/search/literal_document_search.dart`). Searching
 therefore ignores Markdown markers and link destinations that the page does
 not show. Escape backslashes are grammar markers too: a reader can find
@@ -43,10 +43,12 @@ None. Infrastructure adapters do not publish search activity.
 
 ## Lifecycle
 
-One adapter lives for the app session. Parsed visible text is cached against
-the immutable `Document` instances in the current library. Opening another
-library creates new instances; old entries remain small session data and leave
-with the process.
+One adapter lives for the app session. It retains derived visible text in
+least-recently-used order, capped by an estimated 64 MiB UTF-16 payload budget;
+source text is never retained. A projection larger than the entire budget is
+used for the current query and immediately released. `SearchDocuments` routes
+source invalidation, library retention, and session clearing through the index
+contract (`lib/infrastructure/search/literal_document_search.dart`).
 
 ## Failure and recovery
 
@@ -61,7 +63,9 @@ graphemes, empty documents are omitted, and library order survives
 
 ## Transition
 
-The first measured performance limit should decide the next adapter: an
-in-memory index or worker scan. A shell `grep` would have different semantics:
-it cannot search browser-held folders and would match source punctuation rather
-than the words shown on the page.
+The retained projection makes query refinement avoid repeated IO and Markdown
+parsing. Matching still examines every projection, so the next measurement can
+decide whether an inverted token or n-gram index earns its memory and mutation
+cost. A shell `grep` would have different semantics: it cannot search
+browser-held folders and would match source punctuation rather than the words
+shown on the page.

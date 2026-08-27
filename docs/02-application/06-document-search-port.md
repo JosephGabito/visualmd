@@ -30,6 +30,11 @@ root supplies the adapter to `SearchDocuments` (`lib/main.dart`).
 The future keeps indexing and worker-based adapters possible without changing
 callers, even though the present matcher is local.
 
+`DocumentSearchIndex` is the optional retained-projection capability. Its
+`contains` query lets the application avoid source IO on a hit. `invalidate`
+removes changed identities, `retain` releases documents outside the current
+library, and `clear` ends the session (`lib/application/ports/document_search.dart`).
+
 ## Events
 
 None. Ports answer application needs; they do not publish domain events.
@@ -37,7 +42,10 @@ None. Ports answer application needs; they do not publish domain events.
 ## Lifecycle
 
 The port implementation is constructed once in `main.dart` and retained by
-`SearchDocuments`. The interface makes no cache or disposal promise.
+`SearchDocuments`. A plain `DocumentSearch` remains stateless from the
+application's perspective. A `DocumentSearchIndex` explicitly owns a derived
+cache and its invalidation lifecycle; it never makes source text part of the
+library model.
 
 ## Failure and recovery
 
@@ -47,7 +55,8 @@ to the caller rather than being presented as a complete set of zero results.
 
 ## Transition
 
-An index may replace the scan when measurements show that libraries need it.
-That adapter would preserve case-insensitive literal semantics and visible-text
-offsets. A different search meaning belongs in an explicit domain query option,
-not in an implementation swap.
+The current index removes repeated source IO and parsing, but matching is still
+a linear visible-text scan. A token or n-gram index may replace that scan when
+the benchmark justifies its memory and update cost. It must preserve
+case-insensitive literal semantics and visible-text offsets. A different search
+meaning belongs in an explicit domain query option, not an implementation swap.
