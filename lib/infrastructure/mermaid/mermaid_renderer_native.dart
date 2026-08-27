@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:merman/merman.dart';
 
 import '../../application/ports/mermaid_renderer.dart';
+import 'mermaid_render_cache.dart';
 import 'svg_style_inliner.dart';
 
 MermaidRenderer createMermaidRenderer() => NativeMermaidRenderer();
@@ -14,7 +15,7 @@ MermaidRenderer createMermaidRenderer() => NativeMermaidRenderer();
 /// a worker isolate. Completed SVG is cached by source and palette; resizing,
 /// panning, and rebuilding the page never ask the graph engine to work again.
 final class NativeMermaidRenderer implements MermaidRenderer {
-  final _cache = <String, Future<MermaidRendering>>{};
+  final _cache = MermaidRenderCache();
 
   @override
   Future<MermaidRendering> render({
@@ -23,7 +24,7 @@ final class NativeMermaidRenderer implements MermaidRenderer {
   }) {
     final options = _options(palette);
     final key = '$options\u0000$source';
-    return _cache.putIfAbsent(
+    return _cache.resolve(
       key,
       () => Isolate.run(() => _render(source, options)),
     );
