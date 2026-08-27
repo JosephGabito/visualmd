@@ -62,17 +62,39 @@ void main() {
         matching: find.byType(Scrollable),
       );
       final position = tester.state<ScrollableState>(scrollable.first).position;
+      final mountedAtOpen = _mountedCodeLines();
+      final seekFramesStart = timings.length;
+      final seekClock = Stopwatch()..start();
+      position.jumpTo(position.maxScrollExtent * 0.5);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      seekClock.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await tester.pump();
+      final mountedAtMiddle = _mountedCodeLines();
+      final mountedIndexes = _mountedCodeLineIndexes();
       runs.add({
         'lines': lineCount,
         'source_characters': reading.content.blocks.single.text.length,
         'open_wall_us': clock.elapsedMicroseconds,
         'maximum_scroll_extent': position.maxScrollExtent,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
+        'mounted_lines_at_open': mountedAtOpen,
+        'mounted_lines_at_middle': mountedAtMiddle,
+        'middle_line_min': mountedIndexes.reduce(math.min),
+        'middle_line_max': mountedIndexes.reduce(math.max),
+        'middle_seek_wall_us': seekClock.elapsedMicroseconds,
+        'middle_seek_frames': _frameSummary(
+          timings.skip(seekFramesStart).toList(growable: false),
+        ),
         'frames': _frameSummary(frames),
       });
 
       expect(find.byKey(const ValueKey('code-source')), findsOneWidget);
       expect(position.maxScrollExtent, greaterThan(0));
+      expect(mountedAtOpen, lessThan(100));
+      expect(mountedAtMiddle, lessThan(100));
+      expect(mountedIndexes.first, greaterThan(0));
       expect(tester.takeException(), isNull);
     }
 
@@ -84,6 +106,16 @@ void main() {
     };
   });
 }
+
+int _mountedCodeLines() => _mountedCodeLineIndexes().length;
+
+List<int> _mountedCodeLineIndexes() => [
+  for (final element in find.byWidgetPredicate((widget) {
+    final key = widget.key;
+    return key is ValueKey<String> && key.value.startsWith('code-line-');
+  }).evaluate())
+    int.parse((element.widget.key! as ValueKey<String>).value.substring(10)),
+];
 
 Widget _app(DocumentReading reading) => MaterialApp(
   theme: libraryTheme(BuiltInThemes.paper),

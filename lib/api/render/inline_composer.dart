@@ -122,6 +122,62 @@ final class InlineComposer {
     return spans;
   }
 
+  /// Composes one source window without making the complete code block a text
+  /// layout object.
+  ///
+  /// Highlight ranges remain relative to [source], while document search
+  /// ranges remain relative to the complete document. Only tokens intersecting
+  /// the requested window are copied and rebased. The binary seek matters for
+  /// long highlighted blocks: scrolling to the last page must not walk every
+  /// token that precedes it.
+  List<InlineSpan> highlightedVerbatimRange(
+    String source, {
+    required int start,
+    required int end,
+    required TextStyle style,
+    required CodeHighlighting? highlighting,
+    required TextStyle Function(CodeHighlightToken token) styleFor,
+    int offset = 0,
+  }) {
+    assert(start >= 0 && start <= end && end <= source.length);
+    final text = source.substring(start, end);
+    final all = highlighting?.tokens ?? const <CodeHighlightToken>[];
+    var low = 0;
+    var high = all.length;
+    while (low < high) {
+      final middle = low + ((high - low) >> 1);
+      if (all[middle].end <= start) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    final tokens = <CodeHighlightToken>[];
+    for (var index = low; index < all.length; index++) {
+      final token = all[index];
+      if (token.start >= end) break;
+      final clippedStart = token.start.clamp(start, end);
+      final clippedEnd = token.end.clamp(start, end);
+      if (clippedStart < clippedEnd) {
+        tokens.add(
+          CodeHighlightToken(
+            start: clippedStart - start,
+            end: clippedEnd - start,
+            role: token.role,
+            foreground: token.foreground,
+          ),
+        );
+      }
+    }
+    return highlightedVerbatim(
+      text,
+      style: style,
+      highlighting: highlighting == null ? null : CodeHighlighting(tokens),
+      styleFor: styleFor,
+      offset: offset + start,
+    );
+  }
+
   List<InlineSpan> _compose(
     List<Inline> runs, {
     TextStyle? style,

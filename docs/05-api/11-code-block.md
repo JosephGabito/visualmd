@@ -42,6 +42,21 @@ four-pixel scrollbar. The page itself never gains horizontal overflow
 more room than prose, before local scrolling begins
 (`lib/api/render/reading_theme.dart`).
 
+A source of at least 32,768 characters takes a bounded rendering path when it
+belongs to the scrolling reading page. A compact line-offset index establishes
+the complete block height without creating one paragraph for the complete
+source. The body then follows the page's existing vertical position and mounts
+the visible lines plus eight lines of overscan on each edge. It remains one
+continuous code surface in the outer document: there is no nested vertical
+scrollbar and no change to the reader's wheel, trackpad or scrollbar physics
+(`lib/api/widgets/code_block.dart`).
+
+Each mounted line asks `InlineComposer.highlightedVerbatimRange` for only its
+source window. The composer seeks into ordered syntax ranges rather than
+walking the preceding token prefix, then applies document search offsets in
+the same coordinate system (`lib/api/render/inline_composer.dart`). The Copy
+action still reads the complete source model rather than the mounted window.
+
 The colour surface uses one signal with two tones. On a dark theme the code
 body is darker than its header; on a light theme it is brighter. The header
 uses `codeBackground`, while `ReadingTheme.codeBodyBackground` derives the
@@ -68,7 +83,8 @@ the same `TextSpan`, and selection remains owned by the reading pane's single
 | `source` | Exact source text; the authority for painting and copying |
 | `language` | First word of the fence info string, or null |
 | `highlighter` / `scheme` | Optional semantic source ranges for light or dark ground |
-| `spansFor` | Merges ranges with search without surrendering source ownership |
+| `spansFor` | Merges ranges with search for an ordinary source block |
+| `spansForRange` | Performs the same composition for one mounted source window |
 | `textStyle` | Compact Geist Mono style from `ReadingTheme.code` |
 | `bodyBackground` | Derived second tone beneath source |
 | `beat` / `headerHeight` | Prose rhythm used to reconcile the complete surface |
@@ -85,7 +101,10 @@ is emitted because reading or copying an example does not mutate the library.
 ## Lifecycle
 
 One state object and horizontal `ScrollController` live with each rendered
-block (`lib/api/widgets/code_block.dart`). A source, language, scheme or
+block (`lib/api/widgets/code_block.dart`). A large unwrapped block additionally
+retains integer line starts and the currently mounted line window; the amount
+of text laid out, painted and registered with semantics stays bounded by the
+page viewport. A source, language, scheme or
 highlighter change invalidates the pending request and starts another. A
 request number prevents a late result from an earlier document repainting the
 new one. Copy confirmation owns a short timer; both timer and controller are
@@ -109,9 +128,21 @@ height before returning to prose. These contracts, keyboard access, copying,
 semantics, theme direction and fallback are held by
 `test/presentation/code_block_test.dart`.
 
+The native atomic-block benchmark verifies that opening and seeking through
+1,000, 10,000 and 50,000 source lines mounts fewer than 100 rows while keeping
+the complete outer scroll extent
+(`integration_test/atomic_block_performance_test.dart`).
+
 ## Transition
 
 Diagram fences such as `mermaid` need a different block renderer, not special
 cases in this text widget. The existing `CodeHighlighter` proves one narrow
 typed contributor; a general plugin registry should wait until more real
 contributors reveal the common shape.
+
+Selection inside the mounted source window remains native. Extending a drag
+through an unmounted window needs a model-backed selection delegate; the exact
+whole-block Copy action is the current lossless path. Wrapped large blocks and
+single lines wider than the horizontal viewport also remain eager text-layout
+boundaries. They are separate performance slices rather than reasons to weaken
+the default unwrapped reading path.
