@@ -187,6 +187,7 @@ Future<void> main() async {
     codec: workspaceCodec,
     access: workspaceAccess,
     folders: scanner,
+    metadataFolders: scanner,
     markdowns: platform.markdownScanner,
     restoration: restoration,
     mutations: mutations,

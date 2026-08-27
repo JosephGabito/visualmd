@@ -31,13 +31,6 @@ final class AddedFolder {
   Document? get openingDocument => root.openingDocument;
 }
 
-final class DeferredFolderTitles {
-  final FolderRef ref;
-  final ScannedFolder metadata;
-
-  const DeferredFolderTitles(this.ref, this.metadata);
-}
-
 /// Adds a scanned folder to the session, or refreshes it in place by identity.
 final class AddFolder {
   final FolderScanner _scanner;

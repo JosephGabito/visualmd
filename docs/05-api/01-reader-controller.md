@@ -7,8 +7,8 @@ emit intent through its methods; the controller calls application use cases
 and never scans a folder or writes a file itself
 (`lib/api/reader_controller.dart`).
 
-Its injected source operations are `AddFolder`, `AddMarkdown`, `RemoveFolder`,
-`RemoveMarkdown`, and `MoveFolder`. Reading, searching, and external-source
+Its injected source operations are `AddFolder`, `EnrichFolderTitles`,
+`AddMarkdown`, `RemoveFolder`, `RemoveMarkdown`, and `MoveFolder`. Reading, searching, and external-source
 refresh remain separate use cases. Folder
 picking, the sample ref, theme registry, restored preferences and the
 preference writer are also injected
@@ -24,6 +24,13 @@ absorbs an open standalone markdown, the controller opens its folder-scoped
 identity and requests that the tree expand to that document
 (`lib/api/reader_controller.dart`). The application queue beneath this
 method owns mutation order; the counter owns only interface state.
+
+When a folder or restored workspace carries deferred titles, the controller
+publishes the filename shelf before opening the selected document. It then
+schedules title enrichment under a per-root generation. Removing, reopening,
+replacing the workspace, or disposing the controller invalidates older work;
+a title-read failure quietly keeps the lossless filename label
+(`lib/api/reader_controller.dart`).
 
 `addMarkdown` opens a new standalone source immediately. When that physical
 source is already in a folder, it opens the existing folder document and sends
@@ -100,13 +107,15 @@ revision to refresh transient projections such as an open search.
 
 ## Lifecycle
 
-One controller lives for the app process and disposes its source subscription
-and coordinator with itself (`lib/api/reader_controller.dart`). Web launch options may add the sample
+One controller lives for the app process and disposes its source subscription,
+coordinator, and deferred-title generations with itself
+(`lib/api/reader_controller.dart`). Web launch options may add the sample
 root or change theme and reading parameters before the first frame
 (`lib/main.dart`). Startup creates an unbound workspace; opening a
 saved workspace is an explicit reader action.
 
-The controller-level tests prove both directions of physical-source adaptation:
+The controller-level tests prove the filename shelf is visible while its
+opening source is still blocked, as well as both directions of physical-source adaptation:
 a direct duplicate expands its existing root to the document, while a later
 containing folder removes the open standalone and reopens it under the folder
 identity

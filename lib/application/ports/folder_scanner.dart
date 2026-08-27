@@ -31,6 +31,15 @@ final class ScannedFolder {
   });
 }
 
+/// A publishable folder snapshot whose authored titles remain outside the
+/// first-shelf latency boundary.
+final class DeferredFolderTitles {
+  final FolderRef ref;
+  final ScannedFolder metadata;
+
+  const DeferredFolderTitles(this.ref, this.metadata);
+}
+
 /// Port: reads the files beneath a [FolderRef].
 abstract interface class FolderScanner {
   Future<ScannedFolder> scan(FolderRef ref);
