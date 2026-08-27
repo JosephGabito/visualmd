@@ -10,6 +10,14 @@ import '../../presentation/code/code_highlighter.dart';
 import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 
+/// An upstream-proven suffix for one adjacent source revision.
+final class CodeSourceAppend {
+  final int baseRevision;
+  final String text;
+
+  const CodeSourceAppend({required this.baseRevision, required this.text});
+}
+
 /// A fenced block with a quiet identity and two reading actions.
 ///
 /// The source is always rendered first and remains the authority for selection
@@ -18,6 +26,9 @@ import '../theme/library_theme.dart';
 /// reader may opt into wrapping for one block when comprehension benefits.
 final class ReadableCodeBlock extends StatefulWidget {
   final String source;
+  final int sourceRevision;
+  final CodeSourceAppend? sourceAppend;
+  final ValueChanged<int>? debugOnSourceIndexed;
   final String? language;
   final CodeHighlighter highlighter;
   final CodeHighlightScheme scheme;
@@ -38,6 +49,9 @@ final class ReadableCodeBlock extends StatefulWidget {
   const ReadableCodeBlock({
     super.key,
     required this.source,
+    this.sourceRevision = 0,
+    this.sourceAppend,
+    this.debugOnSourceIndexed,
     required this.language,
     required this.highlighter,
     required this.scheme,
@@ -135,6 +149,9 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
         ? _WindowedCodeSource(
             key: const ValueKey('code-source'),
             source: widget.source,
+            sourceRevision: widget.sourceRevision,
+            sourceAppend: widget.sourceAppend,
+            debugOnSourceIndexed: widget.debugOnSourceIndexed,
             highlighter: widget.highlighter,
             language: widget.language,
             scheme: widget.scheme,
@@ -250,6 +267,9 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
 /// property of code rather than document navigation.
 final class _WindowedCodeSource extends StatefulWidget {
   final String source;
+  final int sourceRevision;
+  final CodeSourceAppend? sourceAppend;
+  final ValueChanged<int>? debugOnSourceIndexed;
   final CodeHighlighter highlighter;
   final String? language;
   final CodeHighlightScheme scheme;
@@ -262,6 +282,9 @@ final class _WindowedCodeSource extends StatefulWidget {
   const _WindowedCodeSource({
     super.key,
     required this.source,
+    required this.sourceRevision,
+    required this.sourceAppend,
+    required this.debugOnSourceIndexed,
     required this.highlighter,
     required this.language,
     required this.scheme,
@@ -283,7 +306,7 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
 
   final _horizontal = ScrollController();
   ScrollPosition? _page;
-  late _CodeLineIndex _lines = _CodeLineIndex(widget.source);
+  late AppendLineIndex _lines;
   var _firstLine = 0;
   var _lastLine = 1;
   var _firstColumn = 0;
@@ -305,6 +328,8 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   @override
   void initState() {
     super.initState();
+    _lines = AppendLineIndex(widget.source);
+    widget.debugOnSourceIndexed?.call(_lines.lastIndexedCodeUnits);
     _horizontal.addListener(_syncColumns);
   }
 
@@ -323,15 +348,37 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   void didUpdateWidget(_WindowedCodeSource oldWidget) {
     super.didUpdateWidget(oldWidget);
     final sourceChanged = oldWidget.source != widget.source;
+    final append = widget.sourceAppend;
+    final sourceAppended =
+        sourceChanged &&
+        append != null &&
+        append.baseRevision == oldWidget.sourceRevision &&
+        widget.sourceRevision > oldWidget.sourceRevision &&
+        oldWidget.source.length + append.text.length == widget.source.length;
     if (sourceChanged) {
-      _lines = _CodeLineIndex(widget.source);
-      _firstLine = 0;
-      _lastLine = math.min(1, _lines.length);
-      _firstColumn = 0;
-      _lastColumn = 512;
+      if (sourceAppended) {
+        final previousLineCount = _lines.length;
+        _lines.append(append.text);
+        widget.debugOnSourceIndexed?.call(_lines.lastIndexedCodeUnits);
+        if (oldWidget.wrap == widget.wrap &&
+            oldWidget.textStyle == widget.textStyle &&
+            oldWidget.padding == widget.padding) {
+          _extendWrappedGeometry(previousLineCount);
+        } else {
+          _wrappedGeometry = null;
+          _wrappedWidth = null;
+        }
+      } else {
+        _lines = AppendLineIndex(widget.source);
+        widget.debugOnSourceIndexed?.call(_lines.lastIndexedCodeUnits);
+        _firstLine = 0;
+        _lastLine = math.min(1, _lines.length);
+        _firstColumn = 0;
+        _lastColumn = 512;
+        _wrappedGeometry = null;
+        _wrappedWidth = null;
+      }
       _windowHighlighting = null;
-      _wrappedGeometry = null;
-      _wrappedWidth = null;
     }
     final classificationChanged =
         sourceChanged ||
@@ -735,6 +782,32 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
     _scheduleSync();
   }
 
+  void _extendWrappedGeometry(int previousLineCount) {
+    final geometry = _wrappedGeometry;
+    final width = _wrappedWidth;
+    if (geometry == null ||
+        width == null ||
+        geometry.length != previousLineCount) {
+      _wrappedGeometry = null;
+      _wrappedWidth = null;
+      return;
+    }
+    final characterWidth = _characterWidth;
+    geometry.revise(
+      index: previousLineCount - 1,
+      estimatedExtent: _estimatedWrappedExtent(
+        previousLineCount - 1,
+        width,
+        characterWidth,
+      ),
+      anchor: _firstLine,
+    );
+    geometry.appendAll([
+      for (var line = previousLineCount; line < _lines.length; line++)
+        _estimatedWrappedExtent(line, width, characterWidth),
+    ]);
+  }
+
   double _estimatedWrappedExtent(
     int line,
     double width,
@@ -827,41 +900,6 @@ int _safeSliceEnd(String source, int value, int maximum) {
   if (value <= 0 || value >= maximum) return value;
   final unit = source.codeUnitAt(value);
   return unit >= 0xDC00 && unit <= 0xDFFF ? value + 1 : value;
-}
-
-final class _CodeLineIndex {
-  final List<int> _starts;
-  final int _sourceLength;
-  final int maximumColumns;
-
-  factory _CodeLineIndex(String source) {
-    final starts = <int>[0];
-    var maximumColumns = 0;
-    var currentColumns = 0;
-    for (var index = 0; index < source.length; index++) {
-      if (source.codeUnitAt(index) == 10) {
-        maximumColumns = math.max(maximumColumns, currentColumns);
-        currentColumns = 0;
-        starts.add(index + 1);
-      } else {
-        currentColumns++;
-      }
-    }
-    return _CodeLineIndex._(
-      starts,
-      source.length,
-      math.max(maximumColumns, currentColumns),
-    );
-  }
-
-  const _CodeLineIndex._(this._starts, this._sourceLength, this.maximumColumns);
-
-  int get length => _starts.length;
-
-  ({int start, int end}) rangeAt(int index) => (
-    start: _starts[index],
-    end: index + 1 < _starts.length ? _starts[index + 1] - 1 : _sourceLength,
-  );
 }
 
 double _monospaceAdvance(TextStyle style) {

@@ -251,7 +251,16 @@ final class _IncrementalMarkdownParserSession
     for (var index = 0; index < blocks.length; index++) {
       final previous = index < previousTail.length ? previousTail[index] : null;
       records.add(
-        _record(blocks[index], commitments[index], previous, revision),
+        _record(
+          blocks[index],
+          commitments[index],
+          previous,
+          revision,
+          allowTextAppend:
+              !rebase &&
+              commitments[index] == BlockCommitment.provisional &&
+              index == blocks.length - 1,
+        ),
       );
     }
 
@@ -320,16 +329,43 @@ final class _IncrementalMarkdownParserSession
     Block block,
     BlockCommitment commitment,
     DocumentBlock? previous,
-    int revision,
-  ) {
+    int revision, {
+    bool allowTextAppend = false,
+  }) {
     final sameShape =
         previous != null && previous.block.runtimeType == block.runtimeType;
+    final textAppend = sameShape && allowTextAppend
+        ? _textAppend(previous, block)
+        : null;
     return DocumentBlock(
       id: sameShape ? previous.id : DocumentBlockId('stream:${_nextBlockId++}'),
       revision: revision,
       commitment: commitment,
       block: block,
+      textAppend: textAppend,
     );
+  }
+
+  BlockTextAppend? _textAppend(DocumentBlock? previous, Block block) {
+    if (previous?.block case CodeBlock(
+      code: final previousCode,
+      language: final previousLanguage,
+    )) {
+      if (block case CodeBlock(code: final code, language: final language)) {
+        if (language == previousLanguage &&
+            code.length >= previousCode.length) {
+          // An append-only source cannot rewrite bytes already inside the
+          // same open verbatim block. Check the parser contract in debug; the
+          // release hot path deliberately does not rescan that prefix.
+          assert(code.startsWith(previousCode));
+          return BlockTextAppend(
+            baseRevision: previous!.revision,
+            text: code.substring(previousCode.length),
+          );
+        }
+      }
+    }
+    return null;
   }
 
   static int _lastBlankBoundary(String source) {

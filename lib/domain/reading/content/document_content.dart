@@ -27,20 +27,42 @@ final class DocumentBlockId {
 /// Whether later source is still allowed to reinterpret a block.
 enum BlockCommitment { committed, provisional }
 
+/// A parser-proven append to the visible text of one stable block.
+///
+/// Consumers must match [baseRevision] before applying the suffix. The parser
+/// owns this fact because recovering it later with `startsWith` would scan the
+/// complete accumulated block on every streaming update.
+final class BlockTextAppend {
+  final int baseRevision;
+  final String text;
+
+  const BlockTextAppend({required this.baseRevision, required this.text})
+    : assert(baseRevision >= 0);
+}
+
 /// One revisioned block in the reading model.
 final class DocumentBlock {
   final DocumentBlockId id;
   final int revision;
   final BlockCommitment commitment;
   final Block block;
+  final BlockTextAppend? textAppend;
 
   DocumentBlock({
     required this.id,
     required this.revision,
     required this.block,
     this.commitment = BlockCommitment.committed,
+    this.textAppend,
   }) {
     if (revision < 0) throw RangeError.value(revision, 'revision');
+    final append = textAppend;
+    if (append != null && append.baseRevision >= revision) {
+      throw StateError(
+        'Block $id append starts at revision ${append.baseRevision}; '
+        'the resulting revision is $revision.',
+      );
+    }
   }
 
   DocumentBlock revise({

@@ -16,6 +16,12 @@ facts rather than widget keys, so a future streaming parser and the current
 reader share one vocabulary without putting Flutter in the domain
 (`lib/domain/reading/content/document_content.dart`).
 
+When a stable block's reading text is known to have grown by an exact suffix,
+`BlockTextAppend` carries that suffix and the revision it follows. This is a
+parser-owned fact, not something a renderer rediscovers with a full-prefix
+string comparison. A consumer applies it only when its retained block revision
+matches the named base (`lib/domain/reading/content/document_content.dart`).
+
 The model's one rule is that it carries the author's **reading text** exactly.
 Markdown delimiters and escape backslashes have already served their grammar,
 so `\*literal\*` arrives as `*literal*`; the punctuation itself is not changed.
@@ -198,7 +204,9 @@ outline always resolves on the page.
 In: blocks for a complete snapshot, or revisioned `DocumentBlock` entries and
 `DocumentMutation` operations for an incremental sequence. Insert, replace,
 finalise, and remove operations name the revision they follow and the revision
-they create (`lib/domain/reading/content/document_content.dart`).
+they create. A revised entry may also carry a `BlockTextAppend` for consumers
+which own an appendable text index
+(`lib/domain/reading/content/document_content.dart`).
 
 Out: `entries` with stable identity, `blocks` and `headings` in source order,
 `revision`, `isEmpty`, and `text` — every word without decoration, for anything
@@ -229,6 +237,11 @@ producer instead creates revisioned entries and applies immutable mutations;
 committed prefix identities survive both an append and replacement of the
 provisional suffix
 (`lib/domain/reading/content/document_content.dart`).
+
+Text-append evidence lasts for exactly the revision it creates. Finalising a
+block changes its revision without replaying the prior append, and a consumer
+whose retained revision does not match falls back to the complete current
+block (`lib/domain/reading/content/document_content.dart`).
 
 Revisioned storage uses the framework-free `PersistentSequence` AVL rope and a
 persistent AVL identity set

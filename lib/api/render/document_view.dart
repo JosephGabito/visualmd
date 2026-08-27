@@ -162,6 +162,9 @@ class SliverDocumentView extends StatefulWidget {
   /// harness uses this to prove an append does not revisit its prefix.
   final ValueChanged<int>? debugOnBlocksIndexed;
 
+  /// Reports how many source code units a large fence line-index pass visited.
+  final ValueChanged<int>? debugOnCodeUnitsIndexed;
+
   SliverDocumentView({
     super.key,
     this.document,
@@ -181,6 +184,7 @@ class SliverDocumentView extends StatefulWidget {
     this.onExtentCorrection,
     this.viewportAnchor,
     this.debugOnBlocksIndexed,
+    this.debugOnCodeUnitsIndexed,
   }) : customAnchorKeys = customAnchorKeys ?? <String, GlobalKey>{},
        matchKeys = matchKeys ?? <int, GlobalKey>{};
 
@@ -263,6 +267,9 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
           final followingSpace = widget.theme.spaceAfter(block, next);
           final view = _BlockView(
             block: block,
+            sourceRevision: entry.revision,
+            textAppend: entry.textAppend,
+            debugOnCodeUnitsIndexed: widget.debugOnCodeUnitsIndexed,
             theme: widget.theme,
             composer: composer,
             codeHighlighter: widget.codeHighlighter,
@@ -645,6 +652,7 @@ final class _VisibleBlock {
     this.offset,
     this.id,
     this.revision,
+    this.textAppend,
   );
 
   final Block block;
@@ -652,6 +660,7 @@ final class _VisibleBlock {
   final int offset;
   final DocumentBlockId? id;
   final int revision;
+  final BlockTextAppend? textAppend;
 }
 
 final class _IndexedBlocks {
@@ -680,7 +689,8 @@ _IndexedBlocks _indexBlocks(
   int separatorLength = 2,
 }) {
   return _extendIndex(_emptyIndex(startOffset), [
-    for (final block in blocks) (block: block, id: null, revision: 0),
+    for (final block in blocks)
+      (block: block, id: null, revision: 0, textAppend: null),
   ], separatorLength: separatorLength);
 }
 
@@ -690,7 +700,12 @@ _IndexedBlocks _indexDocumentBlocks(
   int separatorLength = 2,
 }) => _extendIndex(_emptyIndex(startOffset), [
   for (final entry in blocks)
-    (block: entry.block, id: entry.id, revision: entry.revision),
+    (
+      block: entry.block,
+      id: entry.id,
+      revision: entry.revision,
+      textAppend: entry.textAppend,
+    ),
 ], separatorLength: separatorLength);
 
 _IndexedBlocks _appendDocumentBlocks(
@@ -699,7 +714,12 @@ _IndexedBlocks _appendDocumentBlocks(
   int separatorLength = 2,
 }) => _extendIndex(current, [
   for (final entry in appended)
-    (block: entry.block, id: entry.id, revision: entry.revision),
+    (
+      block: entry.block,
+      id: entry.id,
+      revision: entry.revision,
+      textAppend: entry.textAppend,
+    ),
 ], separatorLength: separatorLength);
 
 _IndexedBlocks _emptyIndex(int startOffset) => _IndexedBlocks(
@@ -714,7 +734,15 @@ _IndexedBlocks _emptyIndex(int startOffset) => _IndexedBlocks(
 
 _IndexedBlocks _extendIndex(
   _IndexedBlocks current,
-  List<({Block block, DocumentBlockId? id, int revision})> appended, {
+  List<
+    ({
+      Block block,
+      DocumentBlockId? id,
+      int revision,
+      BlockTextAppend? textAppend,
+    })
+  >
+  appended, {
   required int separatorLength,
 }) {
   final visible = current.visible;
@@ -734,7 +762,14 @@ _IndexedBlocks _extendIndex(
     final id = entry.id;
     if (id != null) visibleIndexes[id] = visibleIndex;
     visible.add(
-      _VisibleBlock(block, List.of(pendingAnchors), offset, id, entry.revision),
+      _VisibleBlock(
+        block,
+        List.of(pendingAnchors),
+        offset,
+        id,
+        entry.revision,
+        entry.textAppend,
+      ),
     );
     pendingAnchors.clear();
     offset += block.text.length + separatorLength;
@@ -792,6 +827,9 @@ Widget _withAnchorTargets(
 
 class _BlockView extends StatelessWidget {
   final Block block;
+  final int sourceRevision;
+  final BlockTextAppend? textAppend;
+  final ValueChanged<int>? debugOnCodeUnitsIndexed;
   final ReadingTheme theme;
   final InlineComposer composer;
   final CodeHighlighter codeHighlighter;
@@ -809,6 +847,9 @@ class _BlockView extends StatelessWidget {
 
   const _BlockView({
     required this.block,
+    this.sourceRevision = 0,
+    this.textAppend,
+    this.debugOnCodeUnitsIndexed,
     required this.theme,
     required this.composer,
     required this.codeHighlighter,
@@ -880,6 +921,13 @@ class _BlockView extends StatelessWidget {
         return _matchTarget(
           ReadableCodeBlock(
             source: code,
+            sourceRevision: sourceRevision,
+            sourceAppend: switch (textAppend) {
+              BlockTextAppend(:final baseRevision, :final text) =>
+                CodeSourceAppend(baseRevision: baseRevision, text: text),
+              null => null,
+            },
+            debugOnSourceIndexed: debugOnCodeUnitsIndexed,
             language: language,
             highlighter: codeHighlighter,
             scheme: Theme.of(context).brightness == Brightness.dark

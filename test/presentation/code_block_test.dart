@@ -340,6 +340,78 @@ void main() {
     },
   );
 
+  testWidgets('a streamed fence indexes only its parser-proven suffix', (
+    tester,
+  ) async {
+    final prefix = List.generate(
+      2000,
+      (index) => 'final value_$index = compute(input_$index);',
+    ).join('\n');
+    const suffix = '\nfinal streamed = true;';
+    final initial = DocumentContent.revisioned([
+      DocumentBlock(
+        id: const DocumentBlockId('streaming-code'),
+        revision: 1,
+        commitment: BlockCommitment.provisional,
+        block: CodeBlock(code: prefix, language: 'dart'),
+      ),
+    ], revision: 1);
+    final next = initial.apply(
+      DocumentMutation(
+        baseRevision: 1,
+        revision: 2,
+        operations: [
+          ReplaceBlocks(
+            index: 0,
+            removeCount: 1,
+            blocks: [
+              DocumentBlock(
+                id: const DocumentBlockId('streaming-code'),
+                revision: 2,
+                commitment: BlockCommitment.provisional,
+                block: CodeBlock(code: '$prefix$suffix', language: 'dart'),
+                textAppend: const BlockTextAppend(
+                  baseRevision: 1,
+                  text: suffix,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    final indexed = <int>[];
+
+    Widget app(DocumentContent content) => MaterialApp(
+      theme: libraryTheme(BuiltInThemes.paper),
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => CustomScrollView(
+            slivers: [
+              SliverDocumentView(
+                content: content,
+                theme: ReadingTheme.of(context, ReadingScale.comfortable),
+                anchorKeys: {},
+                debugOnCodeUnitsIndexed: indexed.add,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(app(initial));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('code-wrap')));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(next));
+    await tester.pumpAndSettle();
+
+    expect(indexed, [prefix.length, suffix.length]);
+    expect(find.byKey(const ValueKey('code-line-2000')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a generated line mounts only the horizontal source window', (
     tester,
   ) async {

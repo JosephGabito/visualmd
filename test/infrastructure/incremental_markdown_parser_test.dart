@@ -63,6 +63,23 @@ void main() {
     );
   });
 
+  test('an open code fence publishes only its newly visible suffix', () {
+    final session = parser.startSession();
+
+    final first = session.append('```dart\nfinal first = 1;');
+    final previous = first.entries.single;
+    final second = session.append('\nfinal second = 2;');
+    final current = second.entries.single;
+
+    expect(current.id, previous.id);
+    expect(current.textAppend?.baseRevision, previous.revision);
+    expect(current.textAppend?.text, '\nfinal second = 2;');
+    expect(
+      '${previous.block.text}${current.textAppend?.text}',
+      current.block.text,
+    );
+  });
+
   test('heading anchors remain unique across committed parse windows', () {
     final session = parser.startSession();
 
