@@ -72,7 +72,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   static const _compactBreakpoint = 1180.0;
 
   final _pane = GlobalKey<ReadingPaneState>();
-  String? _activeAnchor;
+  final _activeAnchor = ValueNotifier<String?>(null);
   bool _compactShelfVisible = false;
   bool _compactOutlineVisible = false;
   final _searchText = TextEditingController();
@@ -115,6 +115,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void dispose() {
     c.removeListener(_handleControllerChange);
     _searchDebounce?.cancel();
+    _activeAnchor.dispose();
     _searchText.dispose();
     _searchFocus.dispose();
     super.dispose();
@@ -441,8 +442,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     : -1,
                 onLink: _followLink,
                 onActiveHeadingChanged: (Heading? h) {
-                  if (h?.anchor == _activeAnchor) return;
-                  setState(() => _activeAnchor = h?.anchor);
+                  _activeAnchor.value = h?.anchor;
                 },
               );
               if (_searchMode != _SearchMode.document) return pane;
@@ -571,15 +571,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
                         onReset: () => unawaited(c.resetOutlineWidth()),
                       ),
                     Expanded(
-                      child: OutlinePanel(
-                        tableOfContents: toc ?? const TableOfContents([]),
-                        activeAnchor: _activeAnchor,
-                        onSelect: (h) {
-                          _pane.currentState?.scrollToAnchor(h.anchor);
-                          if (compact) {
-                            setState(() => _compactOutlineVisible = false);
-                          }
-                        },
+                      child: ValueListenableBuilder<String?>(
+                        valueListenable: _activeAnchor,
+                        builder: (context, activeAnchor, _) => OutlinePanel(
+                          tableOfContents: toc ?? const TableOfContents([]),
+                          activeAnchor: activeAnchor,
+                          onSelect: (h) {
+                            _pane.currentState?.scrollToAnchor(h.anchor);
+                            if (compact) {
+                              setState(() => _compactOutlineVisible = false);
+                            }
+                          },
+                        ),
                       ),
                     ),
                   ],
