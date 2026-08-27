@@ -30,6 +30,7 @@ final class PendingDocumentExtentCorrection {
 final class GeometrySliverList extends SliverMultiBoxAdaptorWidget {
   final DocumentViewportGeometry viewportGeometry;
   final int layoutRevision;
+  final double layoutScale;
   final int itemCount;
   final DocumentExtentSeedAt seedAt;
   final DocumentBlockIndexOf indexOf;
@@ -40,6 +41,7 @@ final class GeometrySliverList extends SliverMultiBoxAdaptorWidget {
     super.key,
     required this.viewportGeometry,
     required this.layoutRevision,
+    this.layoutScale = 1,
     required this.itemCount,
     required this.seedAt,
     required this.indexOf,
@@ -63,6 +65,7 @@ final class GeometrySliverList extends SliverMultiBoxAdaptorWidget {
         childManager: context as SliverMultiBoxAdaptorElement,
         viewportGeometry: viewportGeometry,
         layoutRevision: layoutRevision,
+        layoutScale: layoutScale,
         itemCount: itemCount,
         seedAt: seedAt,
         blockIndexOf: indexOf,
@@ -78,6 +81,7 @@ final class GeometrySliverList extends SliverMultiBoxAdaptorWidget {
     renderObject
       ..viewportGeometry = viewportGeometry
       ..layoutRevision = layoutRevision
+      ..layoutScale = layoutScale
       ..itemCount = itemCount
       ..seedAt = seedAt
       ..blockIndexOf = indexOf
@@ -92,6 +96,7 @@ final class RenderGeometrySliverList extends RenderSliverMultiBoxAdaptor {
     required super.childManager,
     required this._viewportGeometry,
     required this._layoutRevision,
+    required this._layoutScale,
     required this._itemCount,
     required this._seedAt,
     required this._blockIndexOf,
@@ -101,6 +106,7 @@ final class RenderGeometrySliverList extends RenderSliverMultiBoxAdaptor {
 
   DocumentViewportGeometry _viewportGeometry;
   int _layoutRevision;
+  double _layoutScale;
   int _itemCount;
   DocumentExtentSeedAt _seedAt;
   DocumentBlockIndexOf _blockIndexOf;
@@ -117,6 +123,12 @@ final class RenderGeometrySliverList extends RenderSliverMultiBoxAdaptor {
   set layoutRevision(int value) {
     if (value == _layoutRevision) return;
     _layoutRevision = value;
+    markNeedsLayout();
+  }
+
+  set layoutScale(double value) {
+    if (value == _layoutScale) return;
+    _layoutScale = value;
     markNeedsLayout();
   }
 
@@ -175,12 +187,9 @@ final class RenderGeometrySliverList extends RenderSliverMultiBoxAdaptor {
         final anchor = _viewportGeometry.blockAtOffset(
           sliverConstraints.scrollOffset,
         );
-        final correction = _viewportGeometry.relayout(
+        final correction = _viewportGeometry.scaleRelayout(
           revision: _layoutRevision,
-          estimatedExtents: Iterable<double>.generate(
-            _itemCount,
-            (index) => _seedAt(index).estimatedExtent,
-          ),
+          scale: _layoutScale,
           anchor: anchor,
         );
         _onExtentCorrection?.call(correction);

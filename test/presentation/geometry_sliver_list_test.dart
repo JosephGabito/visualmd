@@ -104,6 +104,7 @@ void main() {
         child: GeometrySliverList.builder(
           viewportGeometry: geometry,
           layoutRevision: revision,
+          layoutScale: extent / 40,
           itemCount: count,
           seedAt: (index) => _seed(index, extent),
           indexOf: (id) => int.parse(id.value.substring(6)),

@@ -242,6 +242,38 @@ final class StableExtentLedger<K extends Object> {
     );
   }
 
+  /// Starts a new layout epoch by transforming the existing coordinate space.
+  ///
+  /// A continuous resize cannot rebuild one estimate per offscreen item on
+  /// every frame. This applies one provisional scale to every prefix in O(1)
+  /// storage work; visible items then replace their own values through
+  /// [measure]. Prefix lookup and anchor compensation remain O(log n).
+  ExtentCorrection<K> scaleRelayout({
+    required int revision,
+    required double scale,
+    K? anchor,
+  }) {
+    if (revision <= _layoutRevision) {
+      throw StateError(
+        'Layout revision $revision does not follow $_layoutRevision.',
+      );
+    }
+    if (!scale.isFinite || scale <= 0) {
+      throw RangeError.value(scale, 'scale', 'Must be finite and positive');
+    }
+    final anchorIndex = anchor == null ? null : _indexOf(anchor);
+    final before = anchorIndex == null ? 0.0 : _extents.prefix(anchorIndex);
+    final totalBefore = totalExtent;
+    _extents.scaleAll(scale);
+    _layoutRevision = revision;
+    final after = anchorIndex == null ? 0.0 : _extents.prefix(anchorIndex);
+    return ExtentCorrection(
+      key: anchor ?? (_keys.isEmpty ? null : _keys.first),
+      contentExtentDelta: totalExtent - totalBefore,
+      scrollOffsetDelta: after - before,
+    );
+  }
+
   ExtentCorrection<K> _changeExtent(
     int index,
     K key,
@@ -429,25 +461,28 @@ final class IndexedExtentLedger {
 final class _FenwickTree {
   final List<double> _tree = [0];
   final List<double> _values = [];
+  var _scale = 1.0;
 
   int get length => _values.length;
   double get total => prefix(length);
 
-  double valueAt(int index) => _values[index];
+  double valueAt(int index) => _values[index] * _scale;
 
   void append(double value) {
+    final rawValue = value / _scale;
     final oneBased = length + 1;
     final span = oneBased & -oneBased;
     final first = oneBased - span;
-    final inherited = prefix(oneBased - 1) - prefix(first);
-    _values.add(value);
-    _tree.add(inherited + value);
+    final inherited = _rawPrefix(oneBased - 1) - _rawPrefix(first);
+    _values.add(rawValue);
+    _tree.add(inherited + rawValue);
   }
 
   void update(int index, double value) {
-    final delta = value - _values[index];
+    final rawValue = value / _scale;
+    final delta = rawValue - _values[index];
     if (delta == 0) return;
-    _values[index] = value;
+    _values[index] = rawValue;
     for (
       var cursor = index + 1;
       cursor < _tree.length;
@@ -458,7 +493,9 @@ final class _FenwickTree {
   }
 
   /// Sum of the first [count] values.
-  double prefix(int count) {
+  double prefix(int count) => _rawPrefix(count) * _scale;
+
+  double _rawPrefix(int count) {
     var cursor = count;
     var result = 0.0;
     while (cursor > 0) {
@@ -470,6 +507,7 @@ final class _FenwickTree {
 
   /// Index whose half-open extent interval contains [offset].
   int indexAtOffset(double offset) {
+    final rawOffset = offset / _scale;
     var index = 0;
     var accumulated = 0.0;
     var bit = 1;
@@ -478,7 +516,7 @@ final class _FenwickTree {
     }
     while (bit != 0) {
       final next = index + bit;
-      if (next < _tree.length && accumulated + _tree[next] <= offset) {
+      if (next < _tree.length && accumulated + _tree[next] <= rawOffset) {
         index = next;
         accumulated += _tree[next];
       }
@@ -488,6 +526,7 @@ final class _FenwickTree {
   }
 
   void replaceAll(List<double> values) {
+    _scale = 1;
     _tree
       ..clear()
       ..addAll(List.filled(values.length + 1, 0));
@@ -507,5 +546,13 @@ final class _FenwickTree {
     RangeError.checkValueInInterval(length, 0, _values.length, 'length');
     _values.removeRange(length, _values.length);
     _tree.removeRange(length + 1, _tree.length);
+  }
+
+  void scaleAll(double factor) {
+    final next = _scale * factor;
+    if (!next.isFinite || next <= 0) {
+      throw RangeError.value(factor, 'factor', 'Produces an invalid scale');
+    }
+    _scale = next;
   }
 }

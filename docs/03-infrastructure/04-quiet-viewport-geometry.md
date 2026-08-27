@@ -55,6 +55,14 @@ tail growth does not change `C`; a layout correction is accumulated as bias
 and subtracted from physical pixels before progress is calculated
 (`packages/quiet_viewport/lib/src/frozen_scroll_metrics.dart`).
 
+For an interactive width epoch, the host takes the next estimate of the
+viewport anchor divided by its current extent as a provisional scale `q`.
+Quiet Viewport stores that scale beside the Fenwick tree rather than rewriting
+its records. Every prefix therefore becomes `H′(k) = qH(k)` in constant storage
+work. The returned correction changes the physical position to
+`p′ = p + (q - 1)H(k)`, so `H′(k) - p′ = H(k) - p`: the anchor remains still.
+Visible blocks then replace their scaled estimates with exact measurements.
+
 ## Events
 
 None. The package and adapter are synchronous state machines. Flutter scroll
@@ -71,7 +79,8 @@ release and continues in the same coordinate system.
 A block ledger belongs to one document and layout lifetime. Appends extend its
 Fenwick tree in `O(log n)`, stable-key lookup is `O(1)`, and prefix position,
 measurement, and offset lookup are `O(log n)`. A width, type, or theme change
-starts a new layout revision rather than accepting stale measurements. A
+starts a scaled layout revision in `O(log n)` anchor work without visiting the
+document; only mounted blocks are immediately remeasured. A
 provisional suffix replacement truncates only that suffix, retains every
 measured prefix extent, and validates incoming identity without reconstructing
 a prefix set. Its work is proportional to the removed and inserted suffix, not
@@ -95,10 +104,13 @@ in `test/infrastructure/quiet_document_viewport_geometry_test.dart`.
 pre-paint measurement correction, and stable layout-epoch changes.
 `test/presentation/quiet_scrollbar_test.dart` proves both tail growth and a
 physical anchor correction leave a visible thumb exactly unchanged.
+`integration_test/resize_performance_test.dart` proves six width epochs visit
+zero offscreen estimates at 100, 1,000, and 5,000 blocks.
 
 ## Transition
 
-Geometry correction and provisional-tail replacement are live. Large atomic
-containers, incremental outline projection, and full-document select-all still
-need specialised policies; none require changing the geometry package's
-identity, prefix-sum, or frozen-metric contracts.
+Geometry correction, scaled layout epochs, provisional-tail replacement,
+incremental outline projection, large atomic containers, and model-backed
+selection are live. Semantic reading order across unmounted spans remains the
+next specialised viewport policy; it does not require changing the geometry
+package's identity, prefix-sum, or frozen-metric contracts.

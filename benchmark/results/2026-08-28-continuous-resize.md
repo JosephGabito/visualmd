@@ -40,3 +40,26 @@ The next geometry epoch must accept current extents in constant time, invalidate
 their measurement revision, and let mounted blocks correct themselves. Any
 later offscreen refinement must be bounded or scheduled outside the interactive
 resize frame; it cannot restore a corpus-length loop to layout.
+
+## Lazy-scale comparison
+
+`StableExtentLedger.scaleRelayout` now applies one latent scale to the complete
+coordinate system and returns the corresponding anchor correction. It does not
+iterate the stored extents. Mounted blocks replace their provisional values
+with real measurements under the new revision.
+
+| Blocks | Resize steps | Relayout calls | Extents visited | Visible paragraphs | Retained paragraphs | Wall time |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 6 | 6 | 0 | 7 | 9 | 50.3 ms |
+| 1,000 | 6 | 6 | 0 | 7 | 9 | 45.6 ms |
+| 5,000 | 6 | 6 | 0 | 7 | 9 | 51.0 ms |
+
+The structural curve falls from 600/6,000/30,000 extent visits to zero. The
+5,000-block journey differs from the 100-block journey by 0.7 ms; the middle
+run is faster, which shows why structural counts are the stronger proof here.
+RSS deltas were 0.9, 2.2, and -7.0 MiB and remain allocator-sensitive.
+
+The package tests prove scale, prefix, offset lookup, append, measurement,
+revision fencing, and reverse scaling compose correctly. The Flutter render
+test proves a distant anchor keeps its viewport coordinate as its extent scale
+doubles. The benchmark now fails if a resize consumes any offscreen extent.

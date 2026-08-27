@@ -238,6 +238,46 @@ void main() {
     },
   );
 
+  test('scaled relayout transforms every prefix without replacing records', () {
+    final ledger = StableExtentLedger<String>()
+      ..appendAll([
+        const ExtentSeed(key: 'a', revision: 0, estimatedExtent: 10),
+        const ExtentSeed(key: 'b', revision: 0, estimatedExtent: 20),
+        const ExtentSeed(key: 'c', revision: 0, estimatedExtent: 30),
+      ]);
+
+    final correction = ledger.scaleRelayout(revision: 1, scale: 2, anchor: 'c');
+
+    expect(correction.contentExtentDelta, 60);
+    expect(correction.scrollOffsetDelta, 30);
+    expect(ledger.extentOf('b'), 40);
+    expect(ledger.leadingOffsetOf('c'), 60);
+    expect(ledger.keyAtOffset(59), 'b');
+    expect(ledger.totalExtent, 120);
+    expect(
+      ledger.measure(key: 'b', itemRevision: 0, layoutRevision: 0, extent: 45),
+      isNull,
+    );
+    final measured = ledger.measure(
+      key: 'b',
+      itemRevision: 0,
+      layoutRevision: 1,
+      extent: 50,
+      anchor: 'c',
+    );
+    expect(measured?.scrollOffsetDelta, 10);
+    expect(ledger.leadingOffsetOf('c'), 70);
+    ledger.append(const ExtentSeed(key: 'd', revision: 0, estimatedExtent: 80));
+    expect(ledger.extentOf('d'), 80);
+    expect(ledger.totalExtent, 210);
+
+    final restored = ledger.scaleRelayout(revision: 2, scale: 0.5, anchor: 'd');
+    expect(restored.scrollOffsetDelta, -65);
+    expect(ledger.leadingOffsetOf('d'), 65);
+    expect(ledger.extentOf('d'), 40);
+    expect(ledger.totalExtent, 105);
+  });
+
   test('a tail replacement retains prefix geometry and direct lookup', () {
     final ledger = StableExtentLedger<String>()
       ..appendAll(const [

@@ -196,6 +196,7 @@ class SliverDocumentView extends StatefulWidget {
 class _SliverDocumentViewState extends State<SliverDocumentView> {
   late _IndexedBlocks _index = _initialIndex();
   Object? _layoutSignature;
+  _GeometryEstimateContext? _layoutContext;
   var _layoutRevision = 0;
   var _needsGeometryReset = true;
   PendingDocumentExtentCorrection? _pendingCorrection;
@@ -213,6 +214,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
     if (!identical(oldWidget.viewportGeometry, widget.viewportGeometry)) {
       _needsGeometryReset = true;
       _layoutSignature = null;
+      _layoutContext = null;
       _layoutRevision = widget.viewportGeometry?.layoutRevision ?? 0;
     }
     if (!identical(oldWidget.content, widget.content)) {
@@ -247,16 +249,20 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
         final available = constraints.crossAxisExtent;
         final prose = widget.theme.proseWidth(available);
         final wide = widget.theme.wideWidth(available);
+        final estimateContext = (
+          available: available,
+          prose: prose,
+          wide: wide,
+          theme: widget.theme,
+        );
         final geometry = widget.viewportGeometry;
-        if (geometry != null) {
-          _prepareGeometry(
-            geometry,
-            available,
-            prose,
-            wide,
-            widget.viewportAnchor,
-          );
-        }
+        final layoutScale = geometry == null
+            ? 1.0
+            : _prepareGeometry(
+                geometry,
+                estimateContext,
+                widget.viewportAnchor,
+              );
 
         Widget buildBlock(BuildContext context, int index) {
           final entry = _index.visible[index];
@@ -334,8 +340,9 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             : GeometrySliverList.builder(
                 viewportGeometry: geometry,
                 layoutRevision: _layoutRevision,
+                layoutScale: layoutScale,
                 itemCount: _index.visible.length,
-                seedAt: (index) => _seedFor(index, prose, wide),
+                seedAt: (index) => _seedFor(index, estimateContext),
                 indexOf: (id) => _index.visibleIndexes[id]!,
                 findChildIndexCallback: findChildIndex,
                 itemBuilder: buildBlock,
@@ -360,22 +367,21 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
     );
   }
 
-  void _prepareGeometry(
+  double _prepareGeometry(
     DocumentViewportGeometry geometry,
-    double available,
-    double prose,
-    double wide,
+    _GeometryEstimateContext current,
     DocumentBlockId? anchor,
   ) {
     final signature = (
-      available,
-      prose,
-      wide,
-      widget.theme.line,
-      widget.theme.renderedBase,
-      widget.theme.body.fontFamily,
-      widget.theme.scale.marking,
+      current.available,
+      current.prose,
+      current.wide,
+      current.theme.line,
+      current.theme.renderedBase,
+      current.theme.body.fontFamily,
+      current.theme.scale.marking,
     );
+    final previous = _layoutContext;
     final layoutChanged =
         _layoutSignature != null && _layoutSignature != signature;
     if (layoutChanged) {
@@ -385,22 +391,23 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
       );
     }
     _layoutSignature = signature;
+    _layoutContext = current;
 
     if (!_needsGeometryReset && layoutChanged) {
-      final correction = geometry.relayout(
+      final scaleAnchor =
+          anchor ?? (_index.visible.isEmpty ? null : _index.visible.first.id);
+      final scale = _layoutScale(scaleAnchor, previous!, current);
+      final correction = geometry.scaleRelayout(
         revision: _layoutRevision,
-        estimatedExtents: [
-          for (var index = 0; index < _index.visible.length; index++)
-            _seedFor(index, prose, wide).estimatedExtent,
-        ],
-        anchor: anchor,
+        scale: scale,
+        anchor: scaleAnchor,
       );
       if (correction.contentExtentDelta != 0 ||
           correction.scrollOffsetDelta != 0) {
         _pendingCorrection = PendingDocumentExtentCorrection(correction);
       }
       _pendingGeometryTailStart = null;
-      return;
+      return scale;
     }
 
     final tailStart = _pendingGeometryTailStart;
@@ -409,7 +416,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
         start: tailStart,
         seeds: [
           for (var index = tailStart; index < _index.visible.length; index++)
-            _seedFor(index, prose, wide),
+            _seedFor(index, current),
         ],
         anchor: anchor,
       );
@@ -418,14 +425,14 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
         _pendingCorrection = PendingDocumentExtentCorrection(correction);
       }
       _pendingGeometryTailStart = null;
-      return;
+      return 1;
     }
 
     if (_needsGeometryReset || geometry.length > _index.visible.length) {
       final correction = geometry.reset(
         [
           for (var index = 0; index < _index.visible.length; index++)
-            _seedFor(index, prose, wide),
+            _seedFor(index, current),
         ],
         layoutRevision: _layoutRevision,
         anchor: anchor,
@@ -435,7 +442,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
         _pendingCorrection = PendingDocumentExtentCorrection(correction);
       }
       _needsGeometryReset = false;
-      return;
+      return 1;
     }
     if (geometry.length < _index.visible.length) {
       geometry.appendAll([
@@ -444,29 +451,42 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
           index < _index.visible.length;
           index++
         )
-          _seedFor(index, prose, wide),
+          _seedFor(index, current),
       ]);
     }
+    return 1;
   }
 
-  DocumentExtentSeed _seedFor(int index, double prose, double wide) {
+  double _layoutScale(
+    DocumentBlockId? anchor,
+    _GeometryEstimateContext previous,
+    _GeometryEstimateContext current,
+  ) {
+    if (anchor == null) return 1;
+    final index = _index.visibleIndexes[anchor]!;
+    final previousEstimate = _seedFor(index, previous).estimatedExtent;
+    final nextEstimate = _seedFor(index, current).estimatedExtent;
+    if (previousEstimate <= 0 || nextEstimate <= 0) return 1;
+    return nextEstimate / previousEstimate;
+  }
+
+  DocumentExtentSeed _seedFor(int index, _GeometryEstimateContext context) {
     final entry = _index.visible[index];
     final next = index + 1 < _index.visible.length
         ? _index.visible[index + 1].block
         : null;
     final block = entry.block;
-    final width = DocumentView._widthFor(block, prose, wide);
+    final width = DocumentView._widthFor(block, context.prose, context.wide);
     return DocumentExtentSeed(
       id: entry.id!,
       revision: entry.revision,
       estimatedExtent:
-          _estimatedBlockExtent(block, width) +
-          widget.theme.spaceAfter(block, next),
+          _estimatedBlockExtent(block, width, context.theme) +
+          context.theme.spaceAfter(block, next),
     );
   }
 
-  double _estimatedBlockExtent(Block block, double width) {
-    final theme = widget.theme;
+  double _estimatedBlockExtent(Block block, double width, ReadingTheme theme) {
     final averageAdvance = math.max(theme.renderedBase * 0.52, 1.0);
     final charactersPerLine = math.max((width / averageAdvance).floor(), 12);
     int wrappedLines(String text) => text
@@ -492,6 +512,13 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
     };
   }
 }
+
+typedef _GeometryEstimateContext = ({
+  double available,
+  double prose,
+  double wide,
+  ReadingTheme theme,
+});
 
 class _MountObserver extends StatefulWidget {
   const _MountObserver({
