@@ -75,6 +75,25 @@ final class FakeSearch implements DocumentSearch {
   }
 }
 
+final class BlockingSearch implements DocumentSearch {
+  final started = Completer<void>();
+  final release = Completer<void>();
+  final queries = <String>[];
+
+  @override
+  Future<List<DocumentSearchResult>> find(
+    SearchQuery query,
+    Iterable<Document> documents,
+  ) async {
+    queries.add(query.text);
+    if (queries.length == 1) {
+      started.complete();
+      await release.future;
+    }
+    return const [];
+  }
+}
+
 void main() {
   const notesRef = FolderRef(id: 'drop-1', name: 'notes');
   const notesId = LibraryRootId('drop-1');
@@ -656,4 +675,23 @@ void main() {
     expect(results, isEmpty);
     expect(search.received, isEmpty);
   });
+
+  test(
+    'a newer query stops an older library scan at its current file',
+    () async {
+      final repo = FakeRepository();
+      await addFolder(repo).execute(notesRef);
+      final search = BlockingSearch();
+      final useCase = SearchDocuments(repository: repo, search: search);
+
+      final stale = useCase.execute('old');
+      await search.started.future;
+      final current = useCase.execute('new');
+      await current;
+      search.release.complete();
+
+      expect(await stale, isEmpty);
+      expect(search.queries, ['old', 'new', 'new']);
+    },
+  );
 }

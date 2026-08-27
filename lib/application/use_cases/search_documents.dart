@@ -11,8 +11,9 @@ final class SearchDocuments {
   final LibraryRepository _repository;
   final DocumentSearch _search;
   final DocumentSourceReader? _sources;
+  var _request = 0;
 
-  const SearchDocuments({
+  SearchDocuments({
     required LibraryRepository repository,
     required DocumentSearch search,
     DocumentSourceReader? sources,
@@ -24,8 +25,10 @@ final class SearchDocuments {
     String text, {
     DocumentId? within,
   }) async {
+    final request = ++_request;
     if (text.isEmpty) return const [];
     final library = await _repository.current();
+    if (request != _request) return const [];
     if (library == null) throw const NoLibraryOpen();
 
     final documents = within == null
@@ -42,7 +45,9 @@ final class SearchDocuments {
           (reader == null
               ? throw DocumentSourceUnavailable(document)
               : await reader.read(library, document));
+      if (request != _request) return const [];
       final found = await _search.find(query, [document.withContent(source)]);
+      if (request != _request) return const [];
       results.addAll([
         for (final result in found)
           DocumentSearchResult(document: document, matches: result.matches),
