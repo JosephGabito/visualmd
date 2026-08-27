@@ -25,8 +25,8 @@ Rendering belongs to the [reading pane](../05-api/04-reading-pane.md).
 4. Otherwise `DocumentSourceReader` routes the source request to the folder or
    standalone scanner port (`lib/application/document_source_reader.dart`).
 5. Build one source-backed `Document`, derive its outline, parse its blocks,
-   and retain the complete `DocumentReading` as the newest cache entry
-   (`lib/application/use_cases/read_document.dart`).
+   and retain the complete `DocumentReading` as the newest cache entry when it
+   fits both cache limits (`lib/application/use_cases/read_document.dart`).
 
 The outline and blocks are parsed separately, by different code, from the same
 transient source. They agree because both take their heading anchors from one rule,
@@ -61,10 +61,20 @@ documents. That event is roadmap direction, not part of the current use case.
 ## Lifecycle
 
 One stateful instance lives for the reader session. Its access-ordered cache
-holds at most ten complete readings. A hit removes and reinserts the entry,
-making the least recently used reading the next eviction candidate. Concurrent
-opens of one id share one in-flight source read and parse
+holds at most ten complete readings **and** at most 64 MiB of estimated retained
+reading data. A hit removes and reinserts the entry, making the least recently
+used reading the next eviction candidate. Either limit evicts from that same
+oldest edge. A reading larger than the entire byte budget is returned to its
+caller but never cached, so one pathological file cannot defeat the bound.
+Concurrent opens of one id share one in-flight source read and parse
 (`lib/application/use_cases/read_document.dart`).
+
+The portable Dart runtime does not expose object heap sizes. `ReadDocument`
+therefore uses a conservative policy estimate: four bytes per source UTF-16
+code unit for authoritative and parsed text, plus small fixed allowances per
+block and outline heading. This is a stable eviction rule rather than a claim
+about an individual VM allocation. Profile RSS remains the independent proof
+for process memory (`lib/application/use_cases/read_document.dart`).
 
 The controller invalidates changed sources, releases readings removed from the
 library, and clears the cache when a workspace is replaced or the controller
@@ -95,7 +105,8 @@ offered.
 
 The happy path — title, headings, and the outline agreeing with the page — is
 `test/application/use_cases_test.dart`; cache order, concurrency and
-invalidation are `test/application/read_document_cache_test.dart`.
+invalidation, entry limits, byte limits and oversized-reading bypass are
+`test/application/read_document_cache_test.dart`.
 
 ## Transition
 

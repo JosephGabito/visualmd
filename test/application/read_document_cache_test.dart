@@ -65,6 +65,54 @@ void main() {
     },
   );
 
+  test('retained bytes evict old readings before the entry cap', () async {
+    final open = library(3);
+    final repository = _Repository(open);
+    final sources = _FolderSources({
+      for (final document in open.documents)
+        document.id.path: '# Document\n\n${List.filled(120, 'x').join()}',
+    });
+    final parser = _CountingParser();
+    final reader = ReadDocument(
+      repository: repository,
+      parser: parser,
+      sources: DocumentSourceReader(
+        folderDocuments: sources,
+        markdowns: const _NoMarkdowns(),
+      ),
+      maximumCachedBytes: 1200,
+    );
+
+    await reader.execute(id(0));
+    await reader.execute(id(1));
+    await reader.execute(id(0));
+
+    expect(sources.calls[id(0).path], 2);
+    expect(sources.calls[id(1).path], 1);
+  });
+
+  test('one reading larger than the byte budget is never retained', () async {
+    final open = library(1);
+    final repository = _Repository(open);
+    final sources = _FolderSources({
+      id(0).path: '# Large\n\n${List.filled(2000, 'x').join()}',
+    });
+    final reader = ReadDocument(
+      repository: repository,
+      parser: const MarkdownDocumentParser(),
+      sources: DocumentSourceReader(
+        folderDocuments: sources,
+        markdowns: const _NoMarkdowns(),
+      ),
+      maximumCachedBytes: 1024,
+    );
+
+    await reader.execute(id(0));
+    await reader.execute(id(0));
+
+    expect(sources.calls[id(0).path], 2);
+  });
+
   test('source invalidation evicts an otherwise reusable reading', () async {
     final fixture = _Fixture(library(1));
     await fixture.reader.execute(id(0));

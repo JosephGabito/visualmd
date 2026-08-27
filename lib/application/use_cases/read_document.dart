@@ -44,22 +44,37 @@ final class DocumentNotFound implements Exception {
 /// Use case: read a document from the current library.
 final class ReadDocument {
   static const cacheCapacity = 10;
+  static const cacheByteCapacity = 64 * 1024 * 1024;
 
   final LibraryRepository _repository;
   final DocumentParser _parser;
   final DocumentSourceReader? _sources;
-  final LinkedHashMap<DocumentId, DocumentReading> _cache = LinkedHashMap();
+  final int _maximumCachedReadings;
+  final int _maximumCachedBytes;
+  final LinkedHashMap<DocumentId, _CachedReading> _cache = LinkedHashMap();
   final Map<DocumentId, Future<DocumentReading>> _inFlight = {};
   final Map<DocumentId, int> _invalidations = {};
   var _generation = 0;
+  var _cachedBytes = 0;
 
   ReadDocument({
     required LibraryRepository repository,
     required DocumentParser parser,
     DocumentSourceReader? sources,
+    int maximumCachedReadings = cacheCapacity,
+    int maximumCachedBytes = cacheByteCapacity,
   }) : _repository = repository,
        _parser = parser,
-       _sources = sources;
+       _sources = sources,
+       _maximumCachedReadings = maximumCachedReadings,
+       _maximumCachedBytes = maximumCachedBytes {
+    if (maximumCachedReadings < 1) {
+      throw RangeError.value(maximumCachedReadings, 'maximumCachedReadings');
+    }
+    if (maximumCachedBytes < 1) {
+      throw RangeError.value(maximumCachedBytes, 'maximumCachedBytes');
+    }
+  }
 
   Future<DocumentReading> execute(DocumentId id) async {
     final library = await _repository.current();
@@ -70,7 +85,7 @@ final class ReadDocument {
     final cached = _cache.remove(id);
     if (cached != null) {
       _cache[id] = cached;
-      return cached;
+      return cached.reading;
     }
 
     final existing = _inFlight[id];
@@ -83,9 +98,14 @@ final class ReadDocument {
       final reading = await loading;
       if (_generation == generation &&
           (_invalidations[id] ?? 0) == invalidation) {
-        _cache[id] = reading;
-        while (_cache.length > cacheCapacity) {
-          _cache.remove(_cache.keys.first);
+        final cached = _CachedReading(reading);
+        if (cached.retainedBytes <= _maximumCachedBytes) {
+          _cache[id] = cached;
+          _cachedBytes += cached.retainedBytes;
+        }
+        while (_cache.length > _maximumCachedReadings ||
+            _cachedBytes > _maximumCachedBytes) {
+          _removeCached(_cache.keys.first);
         }
       }
       return reading;
@@ -115,7 +135,7 @@ final class ReadDocument {
   /// them even when a path and physical identity remain unchanged.
   void invalidate(Iterable<DocumentId> ids) {
     for (final id in ids) {
-      _cache.remove(id);
+      _removeCached(id);
       _inFlight.remove(id);
       _invalidations[id] = (_invalidations[id] ?? 0) + 1;
     }
@@ -133,7 +153,30 @@ final class ReadDocument {
   void clear() {
     _generation++;
     _cache.clear();
+    _cachedBytes = 0;
     _inFlight.clear();
     _invalidations.clear();
   }
+
+  void _removeCached(DocumentId id) {
+    final removed = _cache.remove(id);
+    if (removed != null) _cachedBytes -= removed.retainedBytes;
+  }
+}
+
+/// A conservative retained-size estimate for one immutable reading.
+///
+/// Dart does not expose object heap sizes portably. Four bytes per UTF-16 code
+/// unit accounts for the authoritative source plus parsed visible text; small
+/// record allowances cover block and heading objects. The estimate is meant to
+/// enforce a stable upper policy, not impersonate a VM heap profiler.
+final class _CachedReading {
+  final DocumentReading reading;
+  final int retainedBytes;
+
+  _CachedReading(this.reading)
+    : retainedBytes =
+          reading.source.length * 4 +
+          reading.content.blocks.length * 96 +
+          reading.outline.tableOfContents.headings.length * 160;
 }
