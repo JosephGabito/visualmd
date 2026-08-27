@@ -77,6 +77,15 @@ Each code block guards its own asynchronous request, so adapter reuse does not
 allow a late token result to cross into another source
 (`lib/api/widgets/code_block.dart`).
 
+An ordinary block asks once for its complete immutable source. A block of at
+least 32,768 characters is different: the code widget debounces the mounted
+line-and-column window, asks the same contributor to classify only those
+bounded slices, and maps its window-relative tokens back to exact document
+offsets. Changing source, theme family, language or viewport invalidates the
+request revision. This policy stays at the API rendering edge; the
+framework-free contributor contract remains a simple source-in, ranges-out
+function (`lib/api/widgets/code_block.dart`).
+
 ## Failure and recovery
 
 The adapter catches grammar and worker failures and returns null. Tokens are
@@ -89,6 +98,12 @@ The curated corpus and aliases are exercised by
 `test/presentation/shiki_code_highlighter_test.dart`; plain and thrown
 contributors, exact copying and search composition are exercised by
 `test/presentation/code_block_test.dart`.
+
+Because a large window does not replay the unbounded lexical prefix, a token
+whose state opened far above it can lose syntax colour. That is a bounded
+enhancement failure, not a source failure: the exact plain characters remain
+visible. Stateful grammar checkpoints can improve this later without changing
+the `CodeHighlighter` fallback contract.
 
 ## Transition
 

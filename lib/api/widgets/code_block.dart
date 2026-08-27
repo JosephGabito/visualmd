@@ -84,6 +84,12 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
 
   Future<void> _loadHighlighting() async {
     final request = ++_request;
+    if (widget.source.length >= _virtualizationThreshold) {
+      // A large block classifies the mounted two-dimensional source window.
+      // Sending its complete source to an enhancement would restore the very
+      // length dependency that bounded layout removes.
+      return;
+    }
     CodeHighlighting? result;
     try {
       result = await widget.highlighter.highlight(
@@ -129,7 +135,9 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
         ? _WindowedCodeSource(
             key: const ValueKey('code-source'),
             source: widget.source,
-            highlighting: _highlighting,
+            highlighter: widget.highlighter,
+            language: widget.language,
+            scheme: widget.scheme,
             spansForRange: widget.spansForRange,
             textStyle: widget.textStyle.copyWith(
               backgroundColor: Colors.transparent,
@@ -241,7 +249,9 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
 /// property of code rather than document navigation.
 final class _WindowedCodeSource extends StatefulWidget {
   final String source;
-  final CodeHighlighting? highlighting;
+  final CodeHighlighter highlighter;
+  final String? language;
+  final CodeHighlightScheme scheme;
   final List<InlineSpan> Function(CodeHighlighting?, int, int) spansForRange;
   final TextStyle textStyle;
   final Color selectionColor;
@@ -250,7 +260,9 @@ final class _WindowedCodeSource extends StatefulWidget {
   const _WindowedCodeSource({
     super.key,
     required this.source,
-    required this.highlighting,
+    required this.highlighter,
+    required this.language,
+    required this.scheme,
     required this.spansForRange,
     required this.textStyle,
     required this.selectionColor,
@@ -264,6 +276,7 @@ final class _WindowedCodeSource extends StatefulWidget {
 final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   static const _overscanLines = 8;
   static const _overscanColumns = 32;
+  static const _highlightDebounce = Duration(milliseconds: 48);
 
   final _horizontal = ScrollController();
   ScrollPosition? _page;
@@ -272,6 +285,9 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   var _lastLine = 1;
   var _firstColumn = 0;
   var _lastColumn = 512;
+  Timer? _highlightTimer;
+  CodeHighlighting? _windowHighlighting;
+  var _highlightRequest = 0;
 
   double get _lineHeight =>
       (widget.textStyle.fontSize ?? 14) * (widget.textStyle.height ?? 1);
@@ -298,13 +314,28 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   @override
   void didUpdateWidget(_WindowedCodeSource oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.source != widget.source) {
+    final sourceChanged = oldWidget.source != widget.source;
+    if (sourceChanged) {
       _lines = _CodeLineIndex(widget.source);
       _firstLine = 0;
       _lastLine = math.min(1, _lines.length);
       _firstColumn = 0;
       _lastColumn = 512;
+      _windowHighlighting = null;
+    }
+    final classificationChanged =
+        sourceChanged ||
+        oldWidget.language != widget.language ||
+        oldWidget.scheme != widget.scheme ||
+        !identical(oldWidget.highlighter, widget.highlighter);
+    final geometryChanged =
+        sourceChanged ||
+        oldWidget.textStyle != widget.textStyle ||
+        oldWidget.padding != widget.padding;
+    if (geometryChanged) {
       _scheduleSync();
+    } else if (classificationChanged) {
+      _scheduleHighlighting();
     }
   }
 
@@ -313,6 +344,7 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
       if (!mounted) return;
       _syncWindow();
       _syncColumns();
+      _scheduleHighlighting();
     });
   }
 
@@ -334,6 +366,7 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
       _firstColumn = first;
       _lastColumn = last;
     });
+    _scheduleHighlighting();
   }
 
   void _syncWindow() {
@@ -363,6 +396,77 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
       _firstLine = first;
       _lastLine = last;
     });
+    _scheduleHighlighting();
+  }
+
+  void _scheduleHighlighting() {
+    final request = ++_highlightRequest;
+    _highlightTimer?.cancel();
+    _highlightTimer = Timer(_highlightDebounce, () {
+      if (mounted && request == _highlightRequest) {
+        _loadWindowHighlighting(request);
+      }
+    });
+  }
+
+  Future<void> _loadWindowHighlighting(int request) async {
+    final window = _highlightWindow();
+    if (window.text.isEmpty) {
+      if (mounted && request == _highlightRequest) {
+        setState(() => _windowHighlighting = null);
+      }
+      return;
+    }
+    CodeHighlighting? result;
+    try {
+      result = await widget.highlighter.highlight(
+        source: window.text,
+        language: widget.language,
+        scheme: widget.scheme,
+      );
+    } catch (_) {
+      result = null;
+    }
+    if (!mounted || request != _highlightRequest) return;
+    setState(() {
+      _windowHighlighting = result == null
+          ? null
+          : _mapWindowHighlighting(result, window.segments);
+    });
+  }
+
+  _CodeHighlightWindow _highlightWindow() {
+    final buffer = StringBuffer();
+    final segments = <_CodeHighlightSegment>[];
+    for (var line = _firstLine; line < _lastLine; line++) {
+      final range = _lines.rangeAt(line);
+      final columns = range.end - range.start;
+      final firstColumn = math.min(_firstColumn, columns);
+      final lastColumn = math.min(_lastColumn, columns);
+      final sourceStart = _safeSliceStart(
+        widget.source,
+        range.start + firstColumn,
+        range.start,
+      );
+      final sourceEnd = _safeSliceEnd(
+        widget.source,
+        range.start + lastColumn,
+        range.end,
+      );
+      if (sourceStart >= sourceEnd) continue;
+      if (buffer.isNotEmpty) buffer.write('\n');
+      final windowStart = buffer.length;
+      buffer.write(widget.source.substring(sourceStart, sourceEnd));
+      segments.add(
+        _CodeHighlightSegment(
+          sourceStart: sourceStart,
+          sourceEnd: sourceEnd,
+          windowStart: windowStart,
+          windowEnd: buffer.length,
+        ),
+      );
+    }
+    return _CodeHighlightWindow(buffer.toString(), segments);
   }
 
   double get _contentHeight =>
@@ -372,6 +476,8 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
   void dispose() {
     _page?.removeListener(_syncWindow);
     _horizontal.removeListener(_syncColumns);
+    _highlightRequest++;
+    _highlightTimer?.cancel();
     _horizontal.dispose();
     super.dispose();
   }
@@ -411,7 +517,7 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
               ? Text.rich(
                   TextSpan(
                     children: widget.spansForRange(
-                      widget.highlighting,
+                      _windowHighlighting,
                       start,
                       end,
                     ),
@@ -495,6 +601,56 @@ final class _WindowedCodeSourceState extends State<_WindowedCodeSource> {
       },
     );
   }
+}
+
+final class _CodeHighlightWindow {
+  final String text;
+  final List<_CodeHighlightSegment> segments;
+
+  const _CodeHighlightWindow(this.text, this.segments);
+}
+
+final class _CodeHighlightSegment {
+  final int sourceStart;
+  final int sourceEnd;
+  final int windowStart;
+  final int windowEnd;
+
+  const _CodeHighlightSegment({
+    required this.sourceStart,
+    required this.sourceEnd,
+    required this.windowStart,
+    required this.windowEnd,
+  });
+}
+
+CodeHighlighting _mapWindowHighlighting(
+  CodeHighlighting highlighting,
+  List<_CodeHighlightSegment> segments,
+) {
+  final tokens = <CodeHighlightToken>[];
+  for (final token in highlighting.tokens) {
+    for (final segment in segments) {
+      final start = math.max(token.start, segment.windowStart);
+      final end = math.min(token.end, segment.windowEnd);
+      if (start >= end) continue;
+      final sourceStart = segment.sourceStart + start - segment.windowStart;
+      final sourceEnd = segment.sourceStart + end - segment.windowStart;
+      if (sourceStart < segment.sourceStart || sourceEnd > segment.sourceEnd) {
+        continue;
+      }
+      tokens.add(
+        CodeHighlightToken(
+          start: sourceStart,
+          end: sourceEnd,
+          role: token.role,
+          foreground: token.foreground,
+        ),
+      );
+    }
+  }
+  tokens.sort((a, b) => a.start.compareTo(b.start));
+  return CodeHighlighting(tokens);
 }
 
 int _safeSliceStart(String source, int value, int minimum) {

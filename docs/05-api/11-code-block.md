@@ -59,6 +59,14 @@ walking the preceding token prefix, then applies document search offsets in
 the same coordinate system (`lib/api/render/inline_composer.dart`). The Copy
 action still reads the complete source model rather than the mounted window.
 
+Large blocks also classify only this mounted two-dimensional window. Movement
+restarts a 48 ms debounce; settled visible slices are joined for one bounded
+grammar request, and returned ranges are mapped back to their exact source
+offsets. A request revision rejects syntax from an earlier source or viewport.
+Plain source remains visible throughout. Blocks below the threshold keep the
+complete-source classification path and its full lexical context
+(`lib/api/widgets/code_block.dart`).
+
 The colour surface uses one signal with two tones. On a dark theme the code
 body is darker than its header; on a light theme it is brighter. The header
 uses `codeBackground`, while `ReadingTheme.codeBodyBackground` derives the
@@ -146,6 +154,8 @@ contributors reveal the common shape.
 Selection inside the mounted source window remains native. Extending a drag
 through an unmounted window needs a model-backed selection delegate; the exact
 whole-block Copy action is the current lossless path. Wrapped large blocks also
-remain an eager text-layout boundary. Bounded grammar tokenization, wrapped-row
-indexing and model-backed selection are separate performance slices rather than
-reasons to weaken the default unwrapped reading path.
+remain an eager text-layout boundary. Wrapped-row indexing and model-backed
+selection are separate performance slices rather than reasons to weaken the
+default unwrapped reading path. Windowed classification has bounded context: a
+multiline token opened far before the viewport may use plain or local-context
+colour until a stateful grammar checkpoint exists.
