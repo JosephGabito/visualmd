@@ -172,11 +172,9 @@ forces the reading column wider than the window.
 Both spellings become the same image run. The definition stays out of the
 rendered document, just as it does for a reference link.
 
-## Remote and unavailable
+## Remote artwork
 
 ![The CommonMark mark](https://commonmark.org/help/images/favicon.png)
-
-![A deliberately unavailable remote image](https://visualmd.invalid/missing.png)
 
 [visual-mark]: ../../images/visual-md-logo.png "The same Visual MD artwork"
 '''),
@@ -228,7 +226,7 @@ Loose items ask for a visible relationship:
      2. Long wrapping prose keeps its readable measure as the available column
         narrows through the hierarchy.
    - [x] A completed nested task
-   - [ ] An incomplete task with [a link](https://example.com)
+   - [ ] An incomplete task with [a CommonMark reference](https://spec.commonmark.org/0.31.2/#lists)
 2. The parent sequence resumes at the same text edge.
 
 123456789. A nine-digit marker receives the room it actually needs without
@@ -243,8 +241,8 @@ Loose items ask for a visible relationship:
       - Level four
         - Level five
           - Level six
-            - Level seven with `code`, **strength**, and a
-              [link](https://example.com/deep)
+            - Level seven with `code`, **strength**, and the
+              [CommonMark nesting rules](https://spec.commonmark.org/0.31.2/#lists)
               1. Ordered level eight
               2. The tree must remain finite, aligned, and reachable
 
