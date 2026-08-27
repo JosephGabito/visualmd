@@ -123,9 +123,10 @@ The initial repeated-work baseline is retained in
 `benchmark/results/2026-08-28-library-search.md`.
 
 The desktop library-scan benchmark opens real directories containing 100,
-1,000, and 5,000 Markdown files. Fixture creation is excluded; the measurement
-includes directory walking, source reads, UTF-8 decoding, title extraction, and
-source identity construction:
+1,000, and 5,000 Markdown files. Fixture creation is excluded. It reports the
+metadata walk that can publish the shelf separately from deferred source reads,
+UTF-8 decoding, and title extraction; both phases include physical source
+identity construction:
 
 ```sh
 flutter drive --profile \

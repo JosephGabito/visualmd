@@ -4,9 +4,10 @@
 
 Implements both folder scanning ports for folders on the local filesystem
 (`lib/infrastructure/io/local_folder_scanner.dart`). It is the desktop
-twin of [Browser Folder Scanner](../web/03-folder-scanner.md): a full scan
-indexes titles into metadata-only `FileEntry` values, while
-`scanDocument` reads one chosen source. Building the `Library` remains in the domain. It applies the same two
+twin of [Browser Folder Scanner](../web/03-folder-scanner.md): a metadata scan
+discovers paths without opening every document, deferred enrichment indexes
+titles into metadata-only `FileEntry` values, and `scanDocument` reads one
+chosen source. Building the `Library` remains in the domain. It applies the same two
 domain rules at the edge — only markdown, no hidden folders — so it avoids
 indexing what the domain would discard.
 
@@ -16,30 +17,31 @@ and scans it (`test/infrastructure/local_folder_scanner_test.dart`).
 
 ## Present wiring
 
-`scan(ref)` (`lib/infrastructure/io/local_folder_scanner.dart`) looks
+`scanMetadata(ref)` (`lib/infrastructure/io/local_folder_scanner.dart`) looks
 the ref up in the `LocalFolderRegistry`, throws `FolderUnavailable` when it
-is unknown (`lib/infrastructure/io/local_folder_scanner.dart`), then switches on the handle:
+is unknown, then switches on the handle:
 
 | Handle | Path | Evidence |
 |--------|------|----------|
-| `LocalDirectory(path, bookmark)` | `_walk(Directory(path))`, wrapped in `_access.within(bookmark, …)` | `lib/infrastructure/io/local_folder_scanner.dart` |
-| `LocalFiles(files)` | for each `(path, bookmark)`: keep if `MarkdownFile.isMarkdown(baseName)`, index its title inside scoped access, and emit metadata | `lib/infrastructure/io/local_folder_scanner.dart` |
+| `LocalDirectory(path, bookmark)` | `_walkMetadata(Directory(path))`, wrapped once in `_access.within(bookmark, …)` | `lib/infrastructure/io/local_folder_scanner.dart` |
+| `LocalFiles(files)` | keep each path whose base name is Markdown and emit its physical identity without reading bytes | `lib/infrastructure/io/local_folder_scanner.dart` |
 
-`_walk` lists the directory with `Directory.list(followLinks: false)` —
+`_walkMetadata` lists the directory with `Directory.list(followLinks: false)` —
 symlinks are not followed, which rules out cycles and escaping the chosen
 folder (`lib/infrastructure/io/local_folder_scanner.dart`). For each entry:
 
 - a `Directory` is skipped if `HiddenFolders.isHidden(name)`, otherwise
   recursed into with the prefix extended by `name/` (`lib/infrastructure/io/local_folder_scanner.dart`);
 - a `File` becomes a metadata entry only if `MarkdownFile.isMarkdown(name)`;
-  its source is decoded transiently to preserve its authored title, then
-  released (`lib/infrastructure/io/local_folder_scanner.dart`).
+  its path and source identity are enough for the first shelf publication
+  (`lib/infrastructure/io/local_folder_scanner.dart`).
 
-The walk first records eligible reads in discovery order. Eight workers then
-overlap file IO and title extraction while writing each result back to its
-original position. The bound prevents a large folder from opening thousands of
-descriptors at once, and stable result order keeps the adapter deterministic
-before `LibraryBuilder` applies shelf ordering
+`enrichTitles` receives that exact snapshot. Eight workers overlap file IO and
+title extraction while writing each result back to its original position. The
+bound prevents a large folder from opening thousands of descriptors at once,
+and stable result order keeps the adapter deterministic before
+`LibraryBuilder` applies shelf ordering. The compatibility `scan` method runs
+both phases for callers that require a title-complete result
 (`lib/infrastructure/io/local_folder_scanner.dart`).
 
 `scanDocument` locates one relative path and `_read` decodes it with
@@ -71,8 +73,9 @@ None. `AddFolder` owns the library change after a successful scan.
 ## Lifecycle
 
 One instance per desktop `PlatformAdapters`; stateless beyond the registry.
-Every full `scan` walks the tree afresh and indexes titles through a bounded
-eight-read pool without retaining Markdown source.
+Every metadata scan walks the tree afresh without opening Markdown bytes.
+Deferred enrichment indexes titles through a bounded eight-read pool without
+retaining Markdown source.
 `scanDocument` validates one portable relative path and reads only that
 Markdown when the reader opens it or a watcher invalidates it
 (`lib/infrastructure/io/local_folder_scanner.dart`). Watching itself is
@@ -85,7 +88,8 @@ What the tests pin down (`test/infrastructure/local_folder_scanner_test.dart`):
 | Behaviour | Test |
 |-----------|------|
 | only markdown is returned; dot-prefixed and recognised dependency/runtime trees are never entered; deep nesting keeps its relative path | `test/infrastructure/local_folder_scanner_test.dart` |
-| a full scan retains a title but no source, while an on-demand read tolerates invalid UTF-8 | `test/infrastructure/local_folder_scanner_test.dart` |
+| metadata discovery returns every physical identity with no title or source; enrichment retains a title but no source | `test/infrastructure/local_folder_scanner_test.dart` |
+| an on-demand read tolerates invalid UTF-8 | `test/infrastructure/local_folder_scanner_test.dart` |
 | loose files become a flat library with non-Markdown dropped | `test/infrastructure/local_folder_scanner_test.dart` |
 | title reads overlap, preserve input order, and never exceed eight concurrent operations | `test/infrastructure/local_folder_scanner_test.dart` |
 | an unknown ref raises `FolderUnavailable` | `test/infrastructure/local_folder_scanner_test.dart` |
@@ -97,8 +101,9 @@ the controller shows “Couldn't open”
 
 ## Transition
 
-- A directory walk still scales with entry count, but source bytes and parsed
-  readings are bounded by the application reading cache.
+- A directory walk still scales with entry count, but it is the only work on
+  the time-to-first-shelf path. Source bytes, authored-title reads, and parsed
+  readings are outside that publication boundary.
 - Relative image bytes are read on demand by `LocalDocumentImageLoader`, a
   separate port adapter. The scanner therefore remains Markdown-only and an
   image symlink cannot escape the canonical offered root

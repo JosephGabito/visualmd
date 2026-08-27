@@ -10,6 +10,7 @@ import '../application/ports/workspace_session_repository.dart';
 import '../application/source_watch_coordinator.dart';
 import '../application/use_cases/add_folder.dart';
 import '../application/use_cases/add_markdown.dart';
+import '../application/use_cases/enrich_folder_titles.dart';
 import '../application/use_cases/move_folder.dart';
 import '../application/use_cases/create_workspace.dart';
 import '../application/use_cases/open_workspace.dart';
@@ -57,6 +58,7 @@ final class ExternalLink extends LinkTarget {
 final class ReaderController extends ChangeNotifier {
   final AddFolder _addFolder;
   final AddMarkdown _addMarkdown;
+  final EnrichFolderTitles? _enrichFolderTitles;
   final RemoveFolder _removeFolder;
   final RemoveMarkdown _removeMarkdown;
   final MoveFolder _moveFolder;
@@ -79,6 +81,7 @@ final class ReaderController extends ChangeNotifier {
   ReaderController({
     required AddFolder addFolder,
     required AddMarkdown addMarkdown,
+    EnrichFolderTitles? enrichFolderTitles,
     required RemoveFolder removeFolder,
     required RemoveMarkdown removeMarkdown,
     required MoveFolder moveFolder,
@@ -104,6 +107,7 @@ final class ReaderController extends ChangeNotifier {
     Future<void> Function(String key, String value)? savePreference,
   }) : _addFolder = addFolder,
        _addMarkdown = addMarkdown,
+       _enrichFolderTitles = enrichFolderTitles,
        _removeFolder = removeFolder,
        _removeMarkdown = removeMarkdown,
        _moveFolder = moveFolder,
@@ -137,6 +141,9 @@ final class ReaderController extends ChangeNotifier {
   DocumentReading? reading;
   bool opening = false;
   var _sourcesOpening = 0;
+  var _nextFolderTitleRevision = 0;
+  final Map<LibraryRootId, int> _folderTitleRevisions = {};
+  var _disposed = false;
   var _expandRevision = 0;
   ({DocumentId id, int revision})? expandRequest;
   bool dragging = false;
@@ -175,6 +182,9 @@ final class ReaderController extends ChangeNotifier {
   String? serifOverride;
 
   Future<void> addFolder(FolderRef ref, {int? atIndex}) async {
+    final rootId = LibraryRootId(ref.id);
+    final titleRevision = ++_nextFolderTitleRevision;
+    _folderTitleRevisions[rootId] = titleRevision;
     _sourcesOpening++;
     opening = true;
     error = null;
@@ -189,6 +199,11 @@ final class ReaderController extends ChangeNotifier {
       library = added.library;
       _sourceChanges?.watchFolder(ref);
       _sourceChanges?.retainLibrary(library);
+      notifyListeners();
+      final deferredTitles = added.deferredTitles;
+      if (deferredTitles != null) {
+        _scheduleTitleEnrichment(rootId, titleRevision, deferredTitles);
+      }
       final next = added.nextDocument;
       if (added.refreshed) {
         _readDocument.invalidate(added.root.documents.map((item) => item.id));
@@ -293,6 +308,7 @@ final class ReaderController extends ChangeNotifier {
       _readDocument.clear();
       _searchDocuments.clear();
       _sourceChanges?.replace(folders: const [], markdowns: const []);
+      _folderTitleRevisions.clear();
       error = null;
     } on Object {
       error = "Couldn't create a new workspace.";
@@ -319,6 +335,7 @@ final class ReaderController extends ChangeNotifier {
         folders: result.folderRefs,
         markdowns: result.markdownRefs,
       );
+      _folderTitleRevisions.clear();
       final document = result.activeDocument;
       reading = document == null
           ? null
@@ -392,6 +409,7 @@ final class ReaderController extends ChangeNotifier {
   }
 
   Future<void> removeFolder(LibraryRootId id) async {
+    _folderTitleRevisions[id] = ++_nextFolderTitleRevision;
     try {
       final removed = await _removeFolder.execute(
         id,
@@ -658,6 +676,34 @@ final class ReaderController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _scheduleTitleEnrichment(
+    LibraryRootId rootId,
+    int revision,
+    DeferredFolderTitles deferred,
+  ) {
+    final enrich = _enrichFolderTitles;
+    if (enrich == null) return;
+    unawaited(() async {
+      try {
+        final result = await enrich.execute(
+          deferred,
+          isCurrent: () =>
+              !_disposed && _folderTitleRevisions[rootId] == revision,
+        );
+        if (result == null ||
+            _disposed ||
+            _folderTitleRevisions[rootId] != revision) {
+          return;
+        }
+        library = result.library;
+        notifyListeners();
+      } on Object {
+        // A filename is the lossless fallback. Deferred metadata failure must
+        // not turn a successfully opened folder into an error state.
+      }
+    }());
+  }
+
   void reportReaderSourcePickerFailure(Object failure) {
     error = "Couldn't choose a folder or Markdown file: $failure";
     notifyListeners();
@@ -665,6 +711,8 @@ final class ReaderController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _folderTitleRevisions.clear();
     _readDocument.clear();
     _searchDocuments.clear();
     unawaited(_sourceChangeSubscription?.cancel());

@@ -22,13 +22,26 @@ final class FolderRef {
 final class ScannedFolder {
   final String name;
   final List<FileEntry> files;
+  final bool titlesDeferred;
 
-  const ScannedFolder({required this.name, required this.files});
+  const ScannedFolder({
+    required this.name,
+    required this.files,
+    this.titlesDeferred = false,
+  });
 }
 
 /// Port: reads the files beneath a [FolderRef].
 abstract interface class FolderScanner {
   Future<ScannedFolder> scan(FolderRef ref);
+}
+
+/// Optional two-phase scan for platforms that can discover shelf metadata
+/// without opening every document.
+abstract interface class FolderMetadataScanner {
+  Future<ScannedFolder> scanMetadata(FolderRef ref);
+
+  Future<ScannedFolder> enrichTitles(FolderRef ref, ScannedFolder metadata);
 }
 
 /// The ref is unknown to this scanner, or the folder is no longer reachable.

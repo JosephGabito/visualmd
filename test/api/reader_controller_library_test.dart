@@ -11,6 +11,7 @@ import 'package:visualmd/application/ports/markdown_scanner.dart';
 import 'package:visualmd/application/ports/reader_source_picker.dart';
 import 'package:visualmd/application/use_cases/add_folder.dart';
 import 'package:visualmd/application/use_cases/add_markdown.dart';
+import 'package:visualmd/application/use_cases/enrich_folder_titles.dart';
 import 'package:visualmd/application/use_cases/move_folder.dart';
 import 'package:visualmd/application/use_cases/read_document.dart';
 import 'package:visualmd/application/use_cases/remove_folder.dart';
@@ -70,6 +71,43 @@ final class _MarkdownScanner implements MarkdownScanner {
 
   @override
   Future<ScannedMarkdown> scan(MarkdownRef ref) async => markdowns[ref.id]!;
+}
+
+final class _DeferredMetadataScanner
+    implements FolderScanner, FolderMetadataScanner, FolderDocumentScanner {
+  final documentStarted = Completer<void>();
+  final document = Completer<ScannedFolderDocument?>();
+  final titles = Completer<ScannedFolder>();
+
+  @override
+  Future<ScannedFolder> scan(FolderRef ref) => scanMetadata(ref);
+
+  @override
+  Future<ScannedFolder> scanMetadata(FolderRef ref) async =>
+      const ScannedFolder(
+        name: 'alpha',
+        titlesDeferred: true,
+        files: [
+          FileEntry(
+            'README.md',
+            null,
+            sourceId: DocumentSourceId('/alpha/README.md'),
+          ),
+        ],
+      );
+
+  @override
+  Future<ScannedFolder> enrichTitles(FolderRef ref, ScannedFolder metadata) =>
+      titles.future;
+
+  @override
+  Future<ScannedFolderDocument?> scanDocument(
+    FolderRef folder,
+    String relativePath,
+  ) {
+    if (!documentStarted.isCompleted) documentStarted.complete();
+    return document.future;
+  }
 }
 
 final class _ReaderSourcePicker implements ReaderSourcePicker {
@@ -163,6 +201,109 @@ void main() {
       expect(controller.library!.roots.single.id, alphaId);
       expect(controller.library!.markdowns.single.title, 'Plan');
       expect(controller.reading!.document.title, 'Plan');
+    },
+  );
+
+  test(
+    'folder opening publishes filename metadata before source and title reads',
+    () async {
+      final deferred = _DeferredMetadataScanner();
+      final repository = InMemoryLibraryRepository();
+      final mutations = LibraryMutationQueue();
+      const parser = MarkdownDocumentParser();
+      final sources = DocumentSourceReader(
+        folderDocuments: deferred,
+        markdowns: markdownScanner,
+      );
+      final titlePublished = Completer<void>();
+      final subject = ReaderController(
+        addFolder: AddFolder(
+          scanner: deferred,
+          metadataScanner: deferred,
+          repository: repository,
+          mutations: mutations,
+        ),
+        enrichFolderTitles: EnrichFolderTitles(
+          scanner: deferred,
+          repository: repository,
+          mutations: mutations,
+        ),
+        addMarkdown: AddMarkdown(
+          scanner: markdownScanner,
+          repository: repository,
+          mutations: mutations,
+        ),
+        removeFolder: RemoveFolder(
+          repository: repository,
+          mutations: mutations,
+        ),
+        removeMarkdown: RemoveMarkdown(
+          repository: repository,
+          mutations: mutations,
+        ),
+        moveFolder: MoveFolder(repository: repository, mutations: mutations),
+        readDocument: ReadDocument(
+          repository: repository,
+          parser: parser,
+          sources: sources,
+        ),
+        searchDocuments: SearchDocuments(
+          repository: repository,
+          search: LiteralDocumentSearch(parser: parser),
+          sources: sources,
+        ),
+        pickFolder: () async => null,
+        sampleFolder: alpha,
+        themes: ThemeRegistry(),
+      );
+      addTearDown(subject.dispose);
+      subject.addListener(() {
+        final title = subject.library
+            ?.find(DocumentId(alphaId, 'README.md'))
+            ?.indexedTitle;
+        if (title == 'Authored alpha' && !titlePublished.isCompleted) {
+          titlePublished.complete();
+        }
+      });
+
+      final opening = subject.addFolder(alpha);
+      await deferred.documentStarted.future;
+
+      expect(subject.opening, isTrue);
+      expect(subject.reading, isNull);
+      expect(
+        subject.library!.find(DocumentId(alphaId, 'README.md'))!.title,
+        'README',
+      );
+
+      deferred.document.complete(
+        const ScannedFolderDocument(
+          relativePath: 'README.md',
+          content: '# Authored alpha',
+          sourceId: DocumentSourceId('/alpha/README.md'),
+        ),
+      );
+      await opening;
+      deferred.titles.complete(
+        const ScannedFolder(
+          name: 'alpha',
+          files: [
+            FileEntry(
+              'README.md',
+              null,
+              sourceId: DocumentSourceId('/alpha/README.md'),
+              title: 'Authored alpha',
+            ),
+          ],
+        ),
+      );
+      await titlePublished.future;
+
+      expect(subject.reading!.document.title, 'Authored alpha');
+      expect(
+        subject.library!.find(DocumentId(alphaId, 'README.md'))!.title,
+        'Authored alpha',
+      );
     },
   );
 

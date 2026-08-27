@@ -61,3 +61,27 @@ removes much of the serialized small-file latency without weakening title or
 identity semantics. The remaining 289.6 ms is still paid before the first
 shelf snapshot, which confirms the next boundary: discovery and title
 enrichment must become separate publications rather than a larger IO pool.
+
+## Metadata-first publication
+
+After the shelf snapshot was separated from authored-title enrichment, the
+same profile fixture produced:
+
+| Documents | Source bytes | First shelf | Deferred titles | Total | Indexed titles |
+|---:|---:|---:|---:|---:|---:|
+| 100 | 109,490 | 1.0 ms | 8.9 ms | 9.9 ms | 100 |
+| 1,000 | 1,095,890 | 6.7 ms | 53.8 ms | 60.5 ms | 1,000 |
+| 5,000 | 5,483,890 | 33.2 ms | 282.6 ms | 315.8 ms | 5,000 |
+
+The first publication now depends on directory entries, not document bytes.
+At 5,000 files the usable shelf is available in 33.2 ms instead of waiting
+289.6 ms for title reads, an 89% reduction in time-to-first-shelf. Filename
+labels are lossless placeholders; the authored titles replace them after the
+bounded pool completes. RSS for the whole two-phase journey rose by 33.2 MiB at
+5,000 files because both immutable snapshots were alive at the sample point;
+the byte-bounded reading cache remains the authority for retained source.
+
+The controller test holds the opening document read unresolved and observes
+the filename shelf before releasing it. A separate use-case test removes a
+file during title IO and proves that enrichment updates only surviving physical
+identities rather than resurrecting stale scan membership.

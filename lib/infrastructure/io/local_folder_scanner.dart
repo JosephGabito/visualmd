@@ -1,6 +1,7 @@
 // ignore_for_file: prefer_initializing_formals — private fields stay private; named params stay public.
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
@@ -14,7 +15,8 @@ import 'scoped_access.dart';
 
 /// Adapter: reads markdown files out of folders on the local filesystem.
 /// Like the browser scanner, it only reads what the domain would keep.
-final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
+final class LocalFolderScanner
+    implements FolderScanner, FolderMetadataScanner, FolderDocumentScanner {
   static const _maximumConcurrentReads = 8;
 
   final LocalFolderRegistry _registry;
@@ -27,6 +29,12 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
 
   @override
   Future<ScannedFolder> scan(FolderRef ref) async {
+    final metadata = await scanMetadata(ref);
+    return enrichTitles(ref, metadata);
+  }
+
+  @override
+  Future<ScannedFolder> scanMetadata(FolderRef ref) async {
     final folder = _registry.lookup(ref);
     if (folder == null) throw FolderUnavailable(ref);
 
@@ -35,27 +43,74 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
       switch (folder) {
         case LocalDirectory(:final path, :final bookmark):
           files.addAll(
-            await _access.within(bookmark, () async {
-              final reads = <Future<FileEntry> Function()>[];
-              await _walk(Directory(path), '', reads);
-              return _readBounded(reads);
-            }),
+            await _access.within(
+              bookmark,
+              () => _walkMetadata(Directory(path), ''),
+            ),
           );
         case LocalFiles(files: final loose):
-          final reads = <Future<FileEntry> Function()>[];
-          for (final (path, bookmark) in loose) {
+          for (final (path, _) in loose) {
             final name = baseName(path);
             if (!MarkdownFile.isMarkdown(name)) continue;
-            reads.add(
-              () => _access.within(bookmark, () => _entry(name, File(path))),
+            files.add(
+              FileEntry(name, null, sourceId: localDocumentSourceId(path)),
             );
           }
-          files.addAll(await _readBounded(reads));
       }
-      return ScannedFolder(name: folder.name, files: files);
+      return ScannedFolder(
+        name: folder.name,
+        files: files,
+        titlesDeferred: true,
+      );
     } on FileSystemException {
       throw FolderUnavailable(ref);
     }
+  }
+
+  @override
+  Future<ScannedFolder> enrichTitles(
+    FolderRef ref,
+    ScannedFolder metadata,
+  ) async {
+    if (!metadata.titlesDeferred) return metadata;
+    final folder = _registry.lookup(ref);
+    if (folder == null) throw FolderUnavailable(ref);
+    try {
+      final files = switch (folder) {
+        LocalDirectory(:final path, :final bookmark) => await _access.within(
+          bookmark,
+          () => _readBounded([
+            for (final entry in metadata.files)
+              () => _entry(
+                entry.path,
+                File(
+                  [path, ...entry.path.split('/')].join(Platform.pathSeparator),
+                ),
+              ),
+          ]),
+        ),
+        LocalFiles(files: final loose) => await _enrichLooseFiles(
+          loose,
+          metadata.files,
+        ),
+      };
+      return ScannedFolder(name: metadata.name, files: files);
+    } on FileSystemException {
+      throw FolderUnavailable(ref);
+    }
+  }
+
+  Future<List<FileEntry>> _enrichLooseFiles(
+    List<(String, Uint8List?)> loose,
+    List<FileEntry> metadata,
+  ) {
+    final byName = {for (final item in loose) baseName(item.$1): item};
+    return _readBounded([
+      for (final entry in metadata)
+        if (byName[entry.path] case final item?)
+          () =>
+              _access.within(item.$2, () => _entry(entry.path, File(item.$1))),
+    ]);
   }
 
   static Future<FileEntry> _entry(String path, File file) async {
@@ -125,22 +180,25 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
     }
   }
 
-  Future<void> _walk(
+  Future<List<FileEntry>> _walkMetadata(
     Directory directory,
     String prefix,
-    List<Future<FileEntry> Function()> reads,
   ) async {
+    final files = <FileEntry>[];
     final entries = await directory.list(followLinks: false).toList();
     for (final entry in entries) {
       final name = baseName(entry.path);
       final path = '$prefix$name';
       if (entry is Directory) {
         if (HiddenFolders.isHidden(name)) continue;
-        await _walk(entry, '$path/', reads);
+        files.addAll(await _walkMetadata(entry, '$path/'));
       } else if (entry is File && MarkdownFile.isMarkdown(name)) {
-        reads.add(() => _entry(path, entry));
+        files.add(
+          FileEntry(path, null, sourceId: localDocumentSourceId(entry.path)),
+        );
       }
     }
+    return files;
   }
 
   static Future<List<FileEntry>> _readBounded(

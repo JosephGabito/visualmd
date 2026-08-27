@@ -5,11 +5,13 @@ import 'package:integration_test/integration_test.dart';
 import 'package:visualmd/infrastructure/io/local_folder.dart';
 import 'package:visualmd/infrastructure/io/local_folder_scanner.dart';
 
-/// Measures the desktop path from a real directory to shelf metadata.
+/// Measures the desktop path from a real directory to visible shelf metadata,
+/// then the deferred authored-title pass.
 ///
 /// Fixture creation is deliberately outside the timed region. The scan itself
 /// uses the production directory walker, UTF-8 decoder, title extraction, and
-/// physical source identity.
+/// physical source identity. Reporting the phases separately protects the
+/// first-visible-shelf contract from being hidden inside one total.
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -40,20 +42,30 @@ void main() {
       final ref = registry.register('library', LocalDirectory(root.path));
       final scanner = LocalFolderScanner(registry);
       final beforeRss = ProcessInfo.currentRss;
-      final clock = Stopwatch()..start();
-      final scanned = await scanner.scan(ref);
-      clock.stop();
+      final metadataClock = Stopwatch()..start();
+      final metadata = await scanner.scanMetadata(ref);
+      metadataClock.stop();
+      final enrichmentClock = Stopwatch()..start();
+      final enriched = await scanner.enrichTitles(ref, metadata);
+      enrichmentClock.stop();
+      final totalElapsed =
+          metadataClock.elapsedMicroseconds +
+          enrichmentClock.elapsedMicroseconds;
 
       runs.add({
         'documents': documentCount,
         'source_bytes': await _sourceBytes(root),
-        'elapsed_us': clock.elapsedMicroseconds,
+        'metadata_elapsed_us': metadataClock.elapsedMicroseconds,
+        'title_enrichment_elapsed_us': enrichmentClock.elapsedMicroseconds,
+        'elapsed_us': totalElapsed,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
-        'indexed_titles': scanned.files
+        'indexed_titles': enriched.files
             .where((file) => file.title != null)
             .length,
       });
-      expect(scanned.files, hasLength(documentCount));
+      expect(metadata.files, hasLength(documentCount));
+      expect(metadata.files.every((file) => file.title == null), isTrue);
+      expect(enriched.files, hasLength(documentCount));
     }
 
     binding.reportData = {
