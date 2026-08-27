@@ -21,6 +21,7 @@ import '../theme/reading_measure.dart';
 import '../widgets/code_block.dart';
 import '../widgets/math_expression.dart';
 import '../widgets/mermaid_diagram.dart';
+import '../widgets/model_backed_selection_area.dart';
 import 'inline_composer.dart';
 import 'geometry_sliver_list.dart';
 import 'reading_direction.dart';
@@ -298,15 +299,20 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
               : positioned;
           return KeyedSubtree(
             key: _DocumentBlockKey(widget.document, entry.id!),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _withAnchorTargets(observed, [
-                  ...entry.anchors,
-                  ..._footnoteReferenceAnchors(block),
-                ], widget.customAnchorKeys),
-                if (followingSpace > 0) SizedBox(height: followingSpace),
-              ],
+            child: ModelSelectionBlock(
+              identity: entry.id!,
+              order: index,
+              text: block.text,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _withAnchorTargets(observed, [
+                    ...entry.anchors,
+                    ..._footnoteReferenceAnchors(block),
+                  ], widget.customAnchorKeys),
+                  if (followingSpace > 0) SizedBox(height: followingSpace),
+                ],
+              ),
             ),
           );
         }
@@ -323,6 +329,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
                 findChildIndexCallback: findChildIndex,
                 itemCount: _index.visible.length,
                 itemBuilder: buildBlock,
+                addAutomaticKeepAlives: false,
               )
             : GeometrySliverList.builder(
                 viewportGeometry: geometry,
@@ -332,6 +339,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
                 indexOf: (id) => _index.visibleIndexes[id]!,
                 findChildIndexCallback: findChildIndex,
                 itemBuilder: buildBlock,
+                addAutomaticKeepAlives: false,
                 onExtentCorrection: widget.onExtentCorrection,
                 pendingCorrection: _pendingCorrection,
               );

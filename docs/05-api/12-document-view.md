@@ -213,10 +213,18 @@ index while content is unchanged. A direct revisioned tail append extends the
 index; a direct suffix replacement truncates at a recorded source checkpoint
 and indexes only its replacement. Both keep the mounted prefix. A transition
 involving explicit anchor blocks or an unknown/non-tail mutation safely
-rebuilds the index. Lazy children mount and dispose with the viewport; selected
-children may be retained by Flutter's selection keep-alive. The pane owns both
-key maps and clears them when a different document arrives or a non-append
-replacement changes the current source.
+rebuilds the index. Lazy children mount and dispose with the viewport, including
+children crossed by a long pointer selection. The pane owns both key maps and
+clears them when a different document arrives or a non-append replacement
+changes the current source.
+
+The sliver disables the framework's automatic selection keep-alive. Each child
+instead wraps its rendered subtree in `ModelSelectionBlock`, which records the
+block-local source range while mounted and leaves that compact record behind
+when disposed. Flutter still paints and auto-scrolls the mounted selection;
+render objects do not accumulate behind a long drag
+(`lib/api/render/document_view.dart`,
+`lib/api/widgets/model_backed_selection_area.dart`).
 
 Each lazy child key combines `DocumentId` with `DocumentBlockId`. Block
 identity preserves wrap, highlighting, diagram, and selection state across a

@@ -20,8 +20,8 @@ import 'package:visualmd/infrastructure/viewport/quiet_document_viewport_geometr
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 
-/// Exposes how Flutter's native selection keep-alive scales when a pointer
-/// selection crosses a lazy document.
+/// Proves a pointer selection crosses a lazy document without retaining its
+/// render trail.
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -80,6 +80,18 @@ void main() {
         'copied_characters': copied?.text?.length ?? 0,
       });
       expect(position.pixels, greaterThan(0));
+      expect(
+        find.byType(Paragraph, skipOffstage: false).evaluate().length,
+        lessThanOrEqualTo(24),
+        reason: 'selection must not retain one paragraph per crossed block',
+      );
+      if (runs.length > 1) {
+        expect(
+          copied?.text?.length ?? 0,
+          greaterThan(runs[runs.length - 2]['copied_characters']! as int),
+          reason: 'copy must still include the newly crossed document range',
+        );
+      }
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());

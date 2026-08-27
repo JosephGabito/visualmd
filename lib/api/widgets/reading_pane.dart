@@ -492,6 +492,7 @@ class ReadingPaneState extends State<ReadingPane> {
         final page = NotificationListener<ScrollNotification>(
           onNotification: _trackTailIntent,
           child: ModelBackedSelectionArea(
+            selectionIdentity: reading.document.id,
             wholeText: () => reading.content.text,
             child: CustomScrollView(
               key: _pageKey,
