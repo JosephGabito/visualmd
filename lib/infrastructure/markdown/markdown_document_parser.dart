@@ -6,6 +6,7 @@ import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
 import '../../domain/reading/content/inline.dart';
 import '../../domain/reading/heading_anchor.dart';
+import '../streaming/chunked_document_source.dart';
 import 'safe_html_picture.dart';
 import 'safe_html_text.dart';
 
@@ -17,35 +18,42 @@ import 'safe_html_text.dart';
 /// decides how anything looks: formatting whitespace is resolved into reading
 /// text, authorial punctuation remains source, and how it is *set* — which
 /// quote marks, which figures — is settled later, in presentation.
-final class MarkdownDocumentParser implements DocumentParser {
+final class MarkdownDocumentParser
+    implements DocumentParser, IncrementalDocumentParser {
   const MarkdownDocumentParser();
 
   @override
   DocumentContent parse(String markdown) {
-    final nodes = md.Document(
-      // package:markdown currently lets its delimiter resolver consume a
-      // shorter pair from a run of three or more tildes. GFM makes the whole
-      // run literal, so claim it before the extension syntax sees it.
-      inlineSyntaxes: [
-        _InlineMathSyntax(),
-        _LiteralAngleAutolinkNearMissSyntax(),
-        _DisallowedRawHtmlInlineSyntax(),
-        _RawHtmlInlineSyntax(),
-        _LiteralLongTildeRunSyntax(),
-      ],
-      blockSyntaxes: const [
-        _DisplayMathBlockSyntax(),
-        _PictureHtmlBlockSyntax(),
-        _RawHtmlBlockSyntax(),
-      ],
-      extensionSet: md.ExtensionSet.gitHubFlavored,
-      // The reader draws text, not HTML: escaping it here would put `&amp;`
-      // on the page.
-      encodeHtml: false,
-    ).parse(_withoutFrontMatter(markdown));
-
+    final document = _newMarkdownDocument();
+    final nodes = document.parse(_withoutFrontMatter(markdown));
     return DocumentContent(_Mapper().blocks(nodes));
   }
+
+  @override
+  IncrementalDocumentParserSession startSession() =>
+      _IncrementalMarkdownParserSession(this);
+
+  static md.Document _newMarkdownDocument() => md.Document(
+    // package:markdown currently lets its delimiter resolver consume a
+    // shorter pair from a run of three or more tildes. GFM makes the whole
+    // run literal, so claim it before the extension syntax sees it.
+    inlineSyntaxes: [
+      _InlineMathSyntax(),
+      _LiteralAngleAutolinkNearMissSyntax(),
+      _DisallowedRawHtmlInlineSyntax(),
+      _RawHtmlInlineSyntax(),
+      _LiteralLongTildeRunSyntax(),
+    ],
+    blockSyntaxes: const [
+      _DisplayMathBlockSyntax(),
+      _PictureHtmlBlockSyntax(),
+      _RawHtmlBlockSyntax(),
+    ],
+    extensionSet: md.ExtensionSet.gitHubFlavored,
+    // The reader draws text, not HTML: escaping it here would put `&amp;`
+    // on the page.
+    encodeHtml: false,
+  );
 
   /// Front matter belongs to whatever wrote the file, not to the reader, and
   /// is set aside the same way [HeadingAnchors]' neighbour does it in the
@@ -61,6 +69,383 @@ final class MarkdownDocumentParser implements DocumentParser {
       }
     }
     return source;
+  }
+}
+
+/// Incremental adapter for an append-only Markdown generation.
+///
+/// CommonMark is not stable at each character. This session therefore reparses
+/// only the unfinished suffix, commits top-level blocks after a safe blank-line
+/// boundary, and performs an explicit full semantic rebase when a new global
+/// reference definition can change an earlier inline.
+final class _IncrementalMarkdownParserSession
+    implements IncrementalDocumentParserSession {
+  static final _blankBoundary = RegExp(r'(?:\r\n|\r|\n)[ \t]*(?:\r\n|\r|\n)');
+  static final _globalDefinition = RegExp(
+    r'^ {0,3}\[(?:\^)?[^\]\r\n]+\]:',
+    multiLine: true,
+  );
+
+  final MarkdownDocumentParser _parser;
+  final ChunkedDocumentSource _source = ChunkedDocumentSource();
+  final _FragmentContext _context = _FragmentContext();
+  final _IncrementalHeadingAnchors _anchors = _IncrementalHeadingAnchors();
+  final List<DocumentBlock> _committed = [];
+  List<DocumentBlock> _provisional = [];
+  DocumentContent _content = DocumentContent.empty;
+  int _committedSourceLength = 0;
+  int _lastParsedSourceLength = 0;
+  int _nextBlockId = 0;
+  bool _finished = false;
+
+  _IncrementalMarkdownParserSession(this._parser);
+
+  @override
+  DocumentContent get content => _content;
+
+  @override
+  int get sourceLength => _source.length;
+
+  @override
+  int get committedSourceLength => _committedSourceLength;
+
+  @override
+  int get provisionalSourceLength => sourceLength - committedSourceLength;
+
+  @override
+  int get lastParsedSourceLength => _lastParsedSourceLength;
+
+  @override
+  DocumentContent append(String source) {
+    if (_finished) throw StateError('The Markdown stream has finished.');
+    if (source.isEmpty) return _content;
+    _source.append(source);
+
+    final tail = _source.tailFrom(_committedSourceLength);
+    final boundary = _lastBlankBoundary(tail);
+    if (boundary > 0 &&
+        _committedSourceLength > 0 &&
+        _globalDefinition.hasMatch(tail.substring(0, boundary))) {
+      // Link and footnote definitions are document-global. They are rare in
+      // generated prose, and their honest cost is the affected dependency
+      // graph; until that graph is indexed, rebase once instead of rendering
+      // a stale committed link.
+      return _rebase();
+    }
+    return _reviseTail();
+  }
+
+  @override
+  DocumentContent finish() {
+    if (_finished) return _content;
+    _finished = true;
+    final source = _source.materialize();
+    _lastParsedSourceLength = source.length;
+    final blocks = _parser.parse(source).blocks;
+    final revision = _content.revision + 1;
+    final previous = [..._committed, ..._provisional];
+    final entries = _records(
+      blocks,
+      BlockCommitment.committed,
+      previous,
+      revision,
+    );
+    _replaceAll(entries, revision);
+    _committed
+      ..clear()
+      ..addAll(entries);
+    _provisional = [];
+    _committedSourceLength = source.length;
+    return _content;
+  }
+
+  DocumentContent _rebase() {
+    _committedSourceLength = 0;
+    _context.clear();
+    _anchors.clear();
+    return _reviseTail(rebase: true);
+  }
+
+  DocumentContent _reviseTail({bool rebase = false}) {
+    final tail = _source.tailFrom(_committedSourceLength);
+    final boundary = _lastBlankBoundary(tail);
+    _lastParsedSourceLength = 0;
+
+    List<Block> committedBlocks = const [];
+    var acceptedBoundary = 0;
+    if (boundary > 0) {
+      final candidate = tail.substring(0, boundary);
+      final parsed = _parseFragment(
+        candidate,
+        frontMatter: _committedSourceLength == 0,
+      );
+      _lastParsedSourceLength += candidate.length;
+      if (_canCommit(parsed.blocks)) {
+        committedBlocks = parsed.blocks;
+        acceptedBoundary = boundary;
+        _context.commit(parsed.document);
+      }
+    }
+
+    if (acceptedBoundary == 0) {
+      _anchors.restoreCommitted();
+      final parsed = _parseFragment(
+        tail,
+        frontMatter: _committedSourceLength == 0,
+      );
+      _lastParsedSourceLength += tail.length;
+      final provisionalBlocks = _anchors.apply(parsed.blocks);
+      return _publish(
+        committedBlocks: const [],
+        provisionalBlocks: provisionalBlocks,
+        rebase: rebase,
+      );
+    }
+
+    _anchors.restoreCommitted();
+    final anchoredCommitted = _anchors.apply(committedBlocks);
+    _anchors.commit();
+    _committedSourceLength += acceptedBoundary;
+
+    final remaining = tail.substring(acceptedBoundary);
+    var provisionalBlocks = const <Block>[];
+    if (remaining.isNotEmpty) {
+      final parsed = _parseFragment(remaining, frontMatter: false);
+      _lastParsedSourceLength += remaining.length;
+      provisionalBlocks = _anchors.apply(parsed.blocks);
+    }
+    return _publish(
+      committedBlocks: anchoredCommitted,
+      provisionalBlocks: provisionalBlocks,
+      rebase: rebase,
+    );
+  }
+
+  _FragmentParse _parseFragment(String source, {required bool frontMatter}) {
+    final document = MarkdownDocumentParser._newMarkdownDocument();
+    _context.seed(document);
+    final input = frontMatter
+        ? MarkdownDocumentParser._withoutFrontMatter(source)
+        : source;
+    final nodes = document.parse(input);
+    return _FragmentParse(_Mapper().blocks(nodes), document);
+  }
+
+  DocumentContent _publish({
+    required List<Block> committedBlocks,
+    required List<Block> provisionalBlocks,
+    required bool rebase,
+  }) {
+    final revision = _content.revision + 1;
+    final previousTail = rebase
+        ? [..._committed, ..._provisional]
+        : _provisional;
+    final blocks = [...committedBlocks, ...provisionalBlocks];
+    final commitments = <BlockCommitment>[
+      for (var i = 0; i < committedBlocks.length; i++)
+        BlockCommitment.committed,
+      for (var i = 0; i < provisionalBlocks.length; i++)
+        BlockCommitment.provisional,
+    ];
+    final records = <DocumentBlock>[];
+    for (var index = 0; index < blocks.length; index++) {
+      final previous = index < previousTail.length ? previousTail[index] : null;
+      records.add(
+        _record(blocks[index], commitments[index], previous, revision),
+      );
+    }
+
+    if (rebase) {
+      _replaceAll(records, revision);
+      _committed
+        ..clear()
+        ..addAll(records.take(committedBlocks.length));
+    } else {
+      final mutation = DocumentMutation(
+        baseRevision: _content.revision,
+        revision: revision,
+        operations: [
+          ReplaceBlocks(
+            index: _committed.length,
+            removeCount: _provisional.length,
+            blocks: records,
+          ),
+        ],
+      );
+      _content = _content.apply(mutation);
+      _committed.addAll(records.take(committedBlocks.length));
+    }
+    _provisional = records.skip(committedBlocks.length).toList();
+    return _content;
+  }
+
+  void _replaceAll(List<DocumentBlock> entries, int revision) {
+    final mutation = DocumentMutation(
+      baseRevision: _content.revision,
+      revision: revision,
+      operations: [
+        ReplaceBlocks(
+          index: 0,
+          removeCount: _content.entries.length,
+          blocks: entries,
+        ),
+      ],
+    );
+    _content = _content.apply(mutation);
+  }
+
+  List<DocumentBlock> _records(
+    List<Block> blocks,
+    BlockCommitment commitment,
+    List<DocumentBlock> previous,
+    int revision,
+  ) => [
+    for (var index = 0; index < blocks.length; index++)
+      _record(
+        blocks[index],
+        commitment,
+        index < previous.length ? previous[index] : null,
+        revision,
+      ),
+  ];
+
+  DocumentBlock _record(
+    Block block,
+    BlockCommitment commitment,
+    DocumentBlock? previous,
+    int revision,
+  ) {
+    final sameShape =
+        previous != null && previous.block.runtimeType == block.runtimeType;
+    return DocumentBlock(
+      id: sameShape ? previous.id : DocumentBlockId('stream:${_nextBlockId++}'),
+      revision: revision,
+      commitment: commitment,
+      block: block,
+    );
+  }
+
+  static int _lastBlankBoundary(String source) {
+    var boundary = 0;
+    for (final match in _blankBoundary.allMatches(source)) {
+      boundary = match.end;
+    }
+    return boundary;
+  }
+
+  static bool _canCommit(List<Block> blocks) {
+    if (blocks.isEmpty) return true;
+    return switch (blocks.last) {
+      ParagraphBlock() ||
+      HeadingBlock() ||
+      AnchorBlock() ||
+      TableBlock() ||
+      RuleBlock() ||
+      MathBlock() => true,
+      _ => false,
+    };
+  }
+}
+
+final class _FragmentParse {
+  final List<Block> blocks;
+  final md.Document document;
+
+  const _FragmentParse(this.blocks, this.document);
+}
+
+final class _FragmentContext {
+  final Map<String, md.LinkReference> _links = {};
+  final Map<String, int> _footnoteReferences = {};
+  final List<String> _footnoteLabels = [];
+
+  void seed(md.Document document) {
+    document.linkReferences.addAll(_links);
+    document.footnoteReferences.addAll(_footnoteReferences);
+    document.footnoteLabels.addAll(_footnoteLabels);
+  }
+
+  void commit(md.Document document) {
+    _links
+      ..clear()
+      ..addAll(document.linkReferences);
+    _footnoteReferences
+      ..clear()
+      ..addAll(document.footnoteReferences);
+    _footnoteLabels
+      ..clear()
+      ..addAll(document.footnoteLabels);
+  }
+
+  void clear() {
+    _links.clear();
+    _footnoteReferences.clear();
+    _footnoteLabels.clear();
+  }
+}
+
+/// Reassigns heading anchors across independently parsed source windows.
+final class _IncrementalHeadingAnchors {
+  final Set<String> _taken = {};
+  final List<String> _history = [];
+  int _committed = 0;
+
+  List<Block> apply(List<Block> blocks) => [
+    for (final block in blocks) _block(block),
+  ];
+
+  void commit() => _committed = _history.length;
+
+  void restoreCommitted() {
+    while (_history.length > _committed) {
+      _taken.remove(_history.removeLast());
+    }
+  }
+
+  void clear() {
+    _taken.clear();
+    _history.clear();
+    _committed = 0;
+  }
+
+  Block _block(Block block) => switch (block) {
+    HeadingBlock(:final level, :final content) => HeadingBlock(
+      level: level,
+      content: content,
+      anchor: _take(content.map((inline) => inline.text).join()),
+    ),
+    QuoteBlock(:final blocks) => QuoteBlock(apply(blocks)),
+    ListBlock(:final ordered, :final start, :final loose, :final items) =>
+      ListBlock(
+        ordered: ordered,
+        start: start,
+        loose: loose,
+        items: [
+          for (final item in items)
+            ListItem(apply(item.blocks), checked: item.checked),
+        ],
+      ),
+    FootnoteSectionBlock(:final definitions) => FootnoteSectionBlock([
+      for (final definition in definitions)
+        FootnoteDefinition(
+          number: definition.number,
+          anchor: definition.anchor,
+          ownsAnchor: definition.ownsAnchor,
+          blocks: apply(definition.blocks),
+        ),
+    ]),
+    _ => block,
+  };
+
+  String _take(String text) {
+    final base = HeadingAnchors.slug(text);
+    var anchor = base;
+    var suffix = 1;
+    while (!_taken.add(anchor)) {
+      anchor = '$base-${suffix++}';
+    }
+    _history.add(anchor);
+    return anchor;
   }
 }
 

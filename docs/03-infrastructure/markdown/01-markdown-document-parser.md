@@ -310,8 +310,8 @@ remains a paragraph instead of swallowing the remainder of the document
 
 | | Type | Notes |
 |---|------|-------|
-| In | `String markdown` | Any source; line endings normalised while front matter is stripped (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
-| Out | `DocumentContent` | Blocks in source order |
+| In | `String markdown` or exact appended source | Completed source is parsed once; a session reparses only its unfinished suffix (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| Out | `DocumentContent` | Blocks in source order; sessions add stable identity, revision, and commitment |
 
 May import: `package:markdown`, the inert `package:html` fragment parser, the
 port, and the domain (`lib/infrastructure/markdown/markdown_document_parser.dart`,
@@ -321,17 +321,23 @@ meaning inward.
 
 ## Events
 
-None. Parsing is a deterministic conversion; the calling use case owns the
-reader action around it.
+None. Parsing is a deterministic conversion. Successive session snapshots carry
+`DocumentMutation`, but the calling coordinator owns stream events and the
+reader action around them.
 
 ## Lifecycle
 
-`MarkdownDocumentParser` is `const` and stateless
+`MarkdownDocumentParser` is `const` and stateless for complete documents
 (`lib/infrastructure/markdown/markdown_document_parser.dart`); it is
-constructed once in `lib/main.dart` and reused.
+constructed once in `lib/main.dart` and reused. `startSession()` creates state
+for exactly one append-only generation: chunked source, committed reference
+context, heading-anchor history, and a provisional suffix.
 
 All per-document state lives on the `_Mapper` created inside `parse`
 (`lib/infrastructure/markdown/markdown_document_parser.dart`, `lib/infrastructure/markdown/markdown_document_parser.dart`).
+In a session, ordinary paragraphs settle after a blank line. Open containers
+remain provisional until a following top-level block proves their boundary.
+Finishing runs the complete parser once and commits the canonical result.
 
 ## Failure and recovery
 
@@ -350,6 +356,14 @@ One shared ambiguity is worth knowing: a document whose **first line is `---`
 as a horizontal rule** is read as opening front matter and swallowed to the
 next `---`. The outline parser has the same behaviour, so the reader is at
 least self-consistent about it.
+
+Late chunks after `finish()` throw `StateError`. A newly committed link or
+footnote definition may change an earlier inline, so that uncommon operation
+performs a full semantic rebase. Ordinary appends visit only the new chunk plus
+the provisional tail. The measured work is exposed as
+`lastParsedSourceLength`; the performance test fixes a five-thousand-paragraph
+prefix and proves the next append parses only its new tail
+(`test/infrastructure/incremental_markdown_parser_test.dart`).
 
 Behaviour is covered in
 `test/infrastructure/markdown_document_parser_test.dart`, grouped by the shape
@@ -386,11 +400,8 @@ node while the empty label creates no invisible action.
 
 ## Transition
 
-Footnotes demonstrate that a package-generated HTML-shaped tree is transport,
-not the domain: the adapter recognises the complete reference and definition
-contract before constructing typed navigation values. The safe `sub`, `sup`,
-and `ins` meanings follow the same boundary: paired tokens
-become recursive domain marks, attributes disappear, and malformed nesting
-keeps its words without extending a style past the authored pair. The adapter
-still does not infer navigation or media meaning from a generic tag; each
-capability becomes a domain shape first and a mapping here second.
+The stream coordinator is next: ordered sequence validation, adaptive batching,
+cancellation, and stale-generation fencing belong outside this adapter. Outline
+and search must then consume the same block mutations. A reference-dependency
+index can eventually replace the correct but intentionally global semantic
+rebase with updates to only affected blocks.

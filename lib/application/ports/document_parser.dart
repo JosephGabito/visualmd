@@ -7,3 +7,29 @@ import '../../domain/reading/content/document_content.dart';
 abstract interface class DocumentParser {
   DocumentContent parse(String markdown);
 }
+
+/// Port: opens one append-oriented parse generation.
+///
+/// A session keeps already committed blocks stable and replaces only the
+/// suffix which later Markdown is still allowed to reinterpret. Transport,
+/// batching, and scheduling remain separate application concerns.
+abstract interface class IncrementalDocumentParser {
+  IncrementalDocumentParserSession startSession();
+}
+
+abstract interface class IncrementalDocumentParserSession {
+  DocumentContent get content;
+
+  int get sourceLength;
+
+  int get committedSourceLength;
+
+  int get provisionalSourceLength;
+
+  /// Source characters parsed to produce the most recent revision.
+  int get lastParsedSourceLength;
+
+  DocumentContent append(String source);
+
+  DocumentContent finish();
+}
