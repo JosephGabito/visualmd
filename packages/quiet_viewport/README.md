@@ -64,6 +64,7 @@ scrollbar is no longer visible or interactive.
 - initial bulk construction: O(n);
 - suffix replacement: O(r + k log n) for `r` removed and `k` inserted items;
 - measurement/revision: O(log n);
+- scaled layout epoch: O(log n) for anchor compensation, O(1) storage work;
 - complete layout-epoch replacement: O(n);
 - leading-offset query: O(log n);
 - total extent: O(log n).
@@ -71,6 +72,13 @@ scrollbar is no longer visible or interactive.
 The implementation performs no committed-prefix scan for an ordinary append or
 provisional-tail replacement. Measured extents before the replacement boundary
 remain authoritative.
+
+During a continuous resize, `scaleRelayout` multiplies the ledger's latent
+coordinate scale rather than rewriting its Fenwick records. If the provisional
+scale is `q`, then `H'(k) = qH(k)`. Returning
+`p' = p + (q - 1)H(k)` preserves the anchor because
+`H'(k) - p' = H(k) - p`. Mounted items replace their scaled estimates with real
+measurements under the new layout revision; stale measurements remain fenced.
 
 `IndexedExtentLedger` provides the same prefix geometry for immutable dense
 identities `0 … n-1` without allocating a key map or per-item revision vector.
@@ -91,7 +99,7 @@ epoch is ignored before it can alter geometry.
 ## Status
 
 Version 0.1 proves the framework-independent geometry. Visual MD is the first
-integration and benchmark host: its API paints and drags a scrollbar from the
-frozen metrics through an application port, so a streamed tail cannot twitch a
-visible thumb. Observing mounted render boxes and compensating an active anchor
-through `ScrollPosition` is the next integration layer.
+integration and benchmark host: its API observes mounted render boxes, applies
+anchor corrections through `ScrollPosition`, and paints and drags a scrollbar
+from frozen metrics. A streamed tail cannot twitch a visible thumb, and a
+layout epoch cannot require one estimate per offscreen item.

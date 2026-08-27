@@ -159,6 +159,15 @@ final class _QuietDocumentViewportGeometry implements DocumentViewportGeometry {
   );
 
   @override
+  DocumentExtentCorrection scaleRelayout({
+    required int revision,
+    required double scale,
+    DocumentBlockId? anchor,
+  }) => _correction(
+    _ledger.scaleRelayout(revision: revision, scale: scale, anchor: anchor),
+  );
+
+  @override
   DocumentExtentCorrection? measure({
     required DocumentBlockId id,
     required int itemRevision,

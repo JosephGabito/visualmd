@@ -172,6 +172,7 @@ anchor corrections, and frozen scrollbar geometry.
 | `blockAtOffset(offset)` | Find the stable identity occupying a content coordinate without scanning its prefix. |
 | `revise(seed, anchor)` | Replace one item's estimate under a newer item revision and return its anchor correction. |
 | `relayout(revision, estimates, anchor)` | Replace all estimates atomically for a new width, type, or theme epoch. |
+| `scaleRelayout(revision, scale, anchor)` | Begin an interactive layout epoch by scaling current prefixes without visiting offscreen records. |
 | `measure(...)` | Accept current-revision geometry, reject stale results, and return the exact content and anchor correction. |
 | `freeze(viewportExtent)` | Capture this ledger's logical scroll metrics for one interaction. |
 | `freezeMetrics(contentExtent, viewportExtent)` | Capture already-known physical scroll dimensions without exposing the geometry engine to the API. |

@@ -86,6 +86,13 @@ abstract interface class DocumentViewportGeometry {
     DocumentBlockId? anchor,
   });
 
+  /// Starts a layout epoch by scaling current prefixes without visiting them.
+  DocumentExtentCorrection scaleRelayout({
+    required int revision,
+    required double scale,
+    DocumentBlockId? anchor,
+  });
+
   DocumentExtentCorrection? measure({
     required DocumentBlockId id,
     required int itemRevision,

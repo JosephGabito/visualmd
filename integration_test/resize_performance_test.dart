@@ -58,6 +58,12 @@ void main() {
             .length,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
       });
+      expect(geometry.relayoutCalls, widths.length);
+      expect(
+        geometry.relayoutExtentVisits,
+        0,
+        reason: 'an interactive resize must not visit offscreen block extents',
+      );
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -194,6 +200,20 @@ final class _CountingGeometry implements DocumentViewportGeometry {
         owner.relayoutExtentVisits++;
         return extent;
       }),
+      anchor: anchor,
+    );
+  }
+
+  @override
+  DocumentExtentCorrection scaleRelayout({
+    required int revision,
+    required double scale,
+    DocumentBlockId? anchor,
+  }) {
+    owner.relayoutCalls++;
+    return delegate.scaleRelayout(
+      revision: revision,
+      scale: scale,
       anchor: anchor,
     );
   }

@@ -77,6 +77,15 @@ void main() {
     expect(relaid.scrollOffsetDelta, 10);
     expect(geometry.leadingOffsetOf(const DocumentBlockId('b')), 50);
     expect(geometry.totalExtent, 110);
+
+    final scaled = geometry.scaleRelayout(
+      revision: 2,
+      scale: 2,
+      anchor: const DocumentBlockId('b'),
+    );
+    expect(scaled.scrollOffsetDelta, 50);
+    expect(geometry.leadingOffsetOf(const DocumentBlockId('b')), 100);
+    expect(geometry.totalExtent, 220);
   });
 
   test('tail replacement retains measured prefix geometry and identity', () {
