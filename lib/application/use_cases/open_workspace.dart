@@ -26,6 +26,7 @@ final class OpenedWorkspace {
   final Document? activeDocument;
   final List<FolderRef> folderRefs;
   final List<MarkdownRef> markdownRefs;
+  final List<DeferredFolderTitles> deferredTitles;
 
   const OpenedWorkspace({
     required this.session,
@@ -33,6 +34,7 @@ final class OpenedWorkspace {
     required this.activeDocument,
     required this.folderRefs,
     required this.markdownRefs,
+    this.deferredTitles = const [],
   });
 }
 
@@ -42,6 +44,7 @@ final class OpenWorkspace {
   final WorkspaceCodec _codec;
   final WorkspaceSourceAccess _access;
   final FolderScanner _folders;
+  final FolderMetadataScanner? _metadataFolders;
   final MarkdownScanner _markdowns;
   final WorkspaceRestoration _restoration;
   final LibraryMutationQueue _mutations;
@@ -52,6 +55,7 @@ final class OpenWorkspace {
     required WorkspaceCodec codec,
     required WorkspaceSourceAccess access,
     required FolderScanner folders,
+    FolderMetadataScanner? metadataFolders,
     required MarkdownScanner markdowns,
     required WorkspaceRestoration restoration,
     required LibraryMutationQueue mutations,
@@ -60,6 +64,7 @@ final class OpenWorkspace {
        _codec = codec,
        _access = access,
        _folders = folders,
+       _metadataFolders = metadataFolders,
        _markdowns = markdowns,
        _restoration = restoration,
        _mutations = mutations,
@@ -81,13 +86,18 @@ final class OpenWorkspace {
     final roots = <LibraryRoot>[];
     final folderRefs = <FolderRef>[];
     final markdownRefs = <MarkdownRef>[];
+    final deferredTitles = <DeferredFolderTitles>[];
     final physicalDocuments = <DocumentSourceId, Document>{};
     final unavailable = <WorkspaceSourceId>{};
 
     for (final source in workspace.folders) {
       try {
         final ref = await _access.restoreFolder(workspace, source);
-        final scanned = await _folders.scan(ref);
+        final scanned =
+            await (_metadataFolders?.scanMetadata(ref) ?? _folders.scan(ref));
+        if (scanned.titlesDeferred) {
+          deferredTitles.add(DeferredFolderTitles(ref, scanned));
+        }
         final root = LibraryBuilder.buildRoot(
           id: LibraryRootId(source.id.value),
           name: scanned.name,
@@ -180,6 +190,7 @@ final class OpenWorkspace {
       activeDocument: opening,
       folderRefs: List.unmodifiable(folderRefs),
       markdownRefs: List.unmodifiable(markdownRefs),
+      deferredTitles: List.unmodifiable(deferredTitles),
     );
   });
 }

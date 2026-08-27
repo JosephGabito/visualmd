@@ -7,7 +7,6 @@ import '../../domain/library/library_root_id.dart';
 import '../library_mutation_queue.dart';
 import '../ports/folder_scanner.dart';
 import '../ports/library_repository.dart';
-import 'add_folder.dart';
 
 final class EnrichedFolderTitles {
   final Library library;

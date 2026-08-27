@@ -247,6 +247,29 @@ void main() {
   );
 
   test(
+    'workspace restoration publishes folder metadata before authored titles',
+    () async {
+      final folders = _MetadataFolders();
+      final opened = await _open(
+        _Files(),
+        _Libraries(null),
+        _Sessions(null),
+        _Access(),
+        folders: folders,
+        metadataFolders: folders,
+      ).restore(workspace(), file);
+
+      expect(folders.fullScans, 0);
+      expect(opened.deferredTitles, hasLength(1));
+      expect(opened.library.roots.single.documents.single.title, 'README');
+      expect(
+        opened.deferredTitles.single.metadata.files.single.sourceId,
+        const DocumentSourceId('/work/Notes/README.md'),
+      );
+    },
+  );
+
+  test(
     'folder restoration atomically absorbs an active standalone file',
     () async {
       final events = <String>[];
@@ -622,7 +645,8 @@ OpenWorkspace _open(
   _Libraries libraries,
   _Sessions sessions,
   _Access access, {
-  _Folders? folders,
+  FolderScanner? folders,
+  FolderMetadataScanner? metadataFolders,
   _Markdowns? markdowns,
 }) {
   final mutations = LibraryMutationQueue();
@@ -631,6 +655,7 @@ OpenWorkspace _open(
     codec: const WorkspaceJsonCodec(),
     access: access,
     folders: folders ?? _Folders(const {}),
+    metadataFolders: metadataFolders,
     markdowns: markdowns ?? _Markdowns(const {}),
     restoration: _Restoration(libraries, sessions),
     mutations: mutations,
@@ -825,6 +850,34 @@ final class _Folders implements FolderScanner {
     if (failure case final error?) throw error;
     return values[ref.id] ?? (throw FolderUnavailable(ref));
   }
+}
+
+final class _MetadataFolders implements FolderScanner, FolderMetadataScanner {
+  var fullScans = 0;
+
+  @override
+  Future<ScannedFolder> scan(FolderRef ref) async {
+    fullScans++;
+    throw StateError('workspace restoration must use metadata discovery');
+  }
+
+  @override
+  Future<ScannedFolder> scanMetadata(FolderRef ref) async =>
+      const ScannedFolder(
+        name: 'Notes',
+        titlesDeferred: true,
+        files: [
+          FileEntry(
+            'README.md',
+            null,
+            sourceId: DocumentSourceId('/work/Notes/README.md'),
+          ),
+        ],
+      );
+
+  @override
+  Future<ScannedFolder> enrichTitles(FolderRef ref, ScannedFolder metadata) =>
+      throw StateError('the controller owns deferred enrichment');
 }
 
 final class _Markdowns implements MarkdownScanner {

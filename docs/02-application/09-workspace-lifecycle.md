@@ -16,9 +16,12 @@ Workspace, and atomically replaces both in-memory projections
 selects and decodes a file before entering the shared mutation queue
 (`lib/application/use_cases/open_workspace.dart`).
 
-Restore scans every reachable folder and standalone Markdown into temporary
-collections. Only expected unavailable-source failures are retained as missing;
-an unexpected scanner failure aborts restoration
+Restore discovers every reachable folder and scans standalone Markdown into
+temporary collections. A metadata-capable folder adapter contributes paths and
+physical identities without putting authored-title reads on the atomic restore
+path. The result carries deferred title work beside the complete Library. Only
+expected unavailable-source failures are retained as missing; an unexpected
+scanner failure aborts restoration
 (`lib/application/use_cases/open_workspace.dart`,
 `lib/application/use_cases/open_workspace.dart`). If a restored folder
 contains a standalone source, the standalone membership is absorbed and the
@@ -26,7 +29,11 @@ active address follows the same physical document into the folder tree
 (`lib/application/use_cases/open_workspace.dart`).
 
 The Library and WorkspaceSession replace together only after restoration and
-normalization succeed (`lib/application/use_cases/open_workspace.dart`).
+normalization succeed. The controller can then publish that filename shelf
+before reading the active document and enrich authored titles through the same
+generation-fenced use case as a newly added folder
+(`lib/application/use_cases/open_workspace.dart`,
+`lib/api/reader_controller.dart`).
 Structural changes write first when a bound file supports automatic writes;
 theme and active-document changes are coalesced by autosave
 (`lib/application/use_cases/update_workspace.dart`).
@@ -36,7 +43,7 @@ theme and active-document changes are coalesced by autosave
 | Use case | Input | Output |
 |----------|-------|--------|
 | `CreateWorkspace` | current theme | unbound dirty `WorkspaceSession` |
-| `OpenWorkspace` | selected workspace file | restored session, Library, active Document |
+| `OpenWorkspace` | selected workspace file | restored session, Library, active Document, and deferred folder titles |
 | `SaveWorkspace` | current session | same identity bound and clean |
 | `SaveWorkspaceAs` | current session and new file | new identity bound and clean |
 | `ReconnectWorkspaceSource` | missing source identity | platform ref plus saved insertion index |
@@ -61,8 +68,9 @@ stays dirty until the reader explicitly saves.
 
 ## Failure and recovery
 
-Malformed documents and unexpected scan failures leave both current projections
-untouched. Expected missing sources remain in their original order and appear
+Malformed documents and unexpected metadata-scan failures leave both current
+projections untouched. Deferred title failure does not roll back a usable
+filename shelf. Expected missing sources remain in their original order and appear
 as reconnectable shelf rows. Autosave preserves `dirty: true` when a write fails
 and reports that failure visibly (`lib/application/workspace_autosave.dart`).
 

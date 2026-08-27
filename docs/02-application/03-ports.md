@@ -27,6 +27,7 @@ without inventing deferred work (`lib/application/ports/folder_scanner.dart`,
 |------|------------|---------|
 | `FolderRef(id, name)` | `lib/application/ports/folder_scanner.dart` | Opaque handle. Equality and hash by `id` only (`lib/application/ports/folder_scanner.dart`). The `name` is what the library will be called. |
 | `ScannedFolder(name, files, titlesDeferred)` | `lib/application/ports/folder_scanner.dart` | Name plus a flat list of metadata-first `FileEntry`; `titlesDeferred` distinguishes a publishable filename snapshot from a title-complete result. Bundled sources may embed content (`lib/domain/library/library_builder.dart`). |
+| `DeferredFolderTitles(ref, metadata)` | `lib/application/ports/folder_scanner.dart` | The opaque source capability paired with the exact publishable snapshot whose titles remain to be read. |
 | `FolderUnavailable(ref)` | `lib/application/ports/folder_scanner.dart` | The ref is unknown to this scanner, or the folder is gone. |
 
 ### Implementations

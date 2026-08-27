@@ -336,6 +336,13 @@ final class ReaderController extends ChangeNotifier {
         markdowns: result.markdownRefs,
       );
       _folderTitleRevisions.clear();
+      for (final deferred in result.deferredTitles) {
+        final rootId = LibraryRootId(deferred.ref.id);
+        final revision = ++_nextFolderTitleRevision;
+        _folderTitleRevisions[rootId] = revision;
+        _scheduleTitleEnrichment(rootId, revision, deferred);
+      }
+      notifyListeners();
       final document = result.activeDocument;
       reading = document == null
           ? null
