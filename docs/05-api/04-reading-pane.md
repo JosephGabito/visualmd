@@ -17,14 +17,14 @@ current scale, `onLink` and `onActiveHeadingChanged` bound
 
 The build (`lib/api/widgets/reading_pane.dart`):
 
-- A `Scrollbar` over a `SingleChildScrollView`, padded 48 px at the sides on
-  ordinary windows and 24 px below 600 px, then
-  in lines vertically — one and a half above, six below, so the last paragraph
-  is never pinned to the bottom edge
-  (`lib/api/widgets/reading_pane.dart`,
-  `lib/api/widgets/reading_pane.dart`).
-- A `SelectionArea` around everything, so text selects across the whole
-  document (`lib/api/widgets/reading_pane.dart`).
+- A `Scrollbar` over one `CustomScrollView`, padded 48 px at the sides on
+  ordinary windows and 24 px below 600 px, then in lines vertically — one and
+  a half above, six below, so the last paragraph is never pinned to the bottom
+  edge (`lib/api/widgets/reading_pane.dart`).
+- A `SelectionArea` around the scroll surface. Flutter keeps selected lazy
+  children alive while a selection extends through the page, without keeping
+  every unselected block alive (`lib/api/widgets/reading_pane.dart`,
+  `lib/api/render/document_view.dart`).
 - A `ReadingTheme` built once per frame from the palette, the faces and the
   scale (`lib/api/widgets/reading_pane.dart`). See
   [Reading Theme](14-reading-theme.md).
@@ -36,8 +36,10 @@ The build (`lib/api/widgets/reading_pane.dart`):
   of its own, so the page is never headless
   (`lib/api/widgets/reading_pane.dart`,
   `lib/api/widgets/reading_pane.dart`).
-- One `DocumentView` for the whole document
-  (`lib/api/widgets/reading_pane.dart`).
+- One `SliverDocumentView` for the whole document. It materialises only the
+  viewport and cache region rather than the corpus
+  (`lib/api/widgets/reading_pane.dart`,
+  `lib/api/render/document_view.dart`).
 
 ### One document, not a stack of sections
 
@@ -62,15 +64,18 @@ Out:
   (`lib/api/widgets/reading_pane.dart`).
 - `onActiveHeadingChanged(heading)` whenever the heading nearest the top
   changes (`lib/api/widgets/reading_pane.dart`).
-- `scrollToAnchor(anchor)`, called by the shell: `Scrollable.ensureVisible` on
-  an explicit custom anchor when present, otherwise the generated heading,
-  320 ms, `easeOutCubic`, aligned to the top
-  (`lib/api/widgets/reading_pane.dart`).
+- `scrollToAnchor(anchor)`, called by the shell: an already mounted explicit
+  or heading anchor uses `Scrollable.ensureVisible`. A distant lazy anchor is
+  first materialised near its indexed document position, then its real render
+  box corrects the variable-height estimate. The final motion is 320 ms,
+  `easeOutCubic`, aligned to the top (`lib/api/widgets/reading_pane.dart`).
 
-Active-heading tracking walks the outline's headings in order, measuring each
-keyed heading's top against the page's top; the last one at or above the
-120 px line wins (`lib/api/widgets/reading_pane.dart`,
-`lib/api/widgets/reading_pane.dart`), falling back to the first heading.
+Active-heading tracking visits only heading widgets mounted in the viewport
+and cache region. The last one at or above the 120 px line wins; between
+headings the previous active identity is retained. Its per-scroll work is
+therefore bounded by visible content rather than total heading count
+(`lib/api/widgets/reading_pane.dart`,
+`lib/api/render/document_view.dart`).
 
 ## Events
 
@@ -101,8 +106,8 @@ a different identity jumps to the top
 ## Failure and recovery
 
 `scrollToAnchor` does nothing for an unknown anchor
-(`lib/api/widgets/reading_pane.dart`); tracking skips headings with no
-render box yet (`lib/api/widgets/reading_pane.dart`) and reports nothing
+(`lib/api/widgets/reading_pane.dart`); a known distant anchor may take an
+estimate-and-correct frame before it has a render box. Tracking reports nothing
 for a document with no headings at all
 (`lib/api/widgets/reading_pane.dart`). An unavailable image is recovered by
 [Document Image](23-document-image.md) inside the page rather than failing the
@@ -110,6 +115,8 @@ reading.
 
 ## Transition
 
-Everything still builds at once inside one scroll view, which keeps
-`ensureVisible` exact and remains the first thing to revisit for very long
-documents. A lazy list would need anchor positions estimated ahead of layout.
+Viewport work is bounded, but Flutter's stock select-all action knows only the
+selectables currently registered by the lazy sliver. A future full-document
+select-all command must use `DocumentContent` as its source of truth rather
+than remounting the whole page. The limitation is recorded in the
+[backlog](../07-roadmap/02-backlog.md).

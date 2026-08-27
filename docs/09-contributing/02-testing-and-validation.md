@@ -21,6 +21,13 @@ flutter test --name "every relative link"
 `flutter test` without a path runs the complete suite. A focused run is for a
 short feedback loop, not a different standard of correctness.
 
+Reader scaling is a native macrobenchmark rather than a debug widget timing.
+Run the profile command in `benchmark/README.md`; it writes structured build,
+scroll, one-block update, mounted-widget and RSS measurements for 100, 1,000
+and 5,000 blocks to `build/integration_response_data.json`
+(`integration_test/reading_performance_test.dart`, `benchmark/README.md`).
+Judge the curve across sizes, not one wall-clock sample.
+
 ## Domain and application behavior
 
 The domain suites describe the rules that stay the same on every platform:
