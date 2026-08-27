@@ -107,6 +107,70 @@ void main() {
     expect(inserted.appendedSince(original), isNull);
   });
 
+  test('a direct suffix replacement exposes only its changed tail', () {
+    final original = DocumentContent.revisioned([
+      block('a', 'A'),
+      block('provisional', 'unfinished'),
+    ]);
+    final replacement = block('final', 'finished', revision: 1);
+    final next = original.apply(
+      DocumentMutation(
+        baseRevision: 0,
+        revision: 1,
+        operations: [
+          ReplaceBlocks(index: 1, removeCount: 1, blocks: [replacement]),
+        ],
+      ),
+    );
+
+    final change = next.tailChangeSince(original)!;
+    expect(change.index, 1);
+    expect(change.removeCount, 1);
+    expect(change.blocks, [same(replacement)]);
+    expect(next.appendedSince(original), isNull);
+  });
+
+  test('a direct suffix removal exposes an empty replacement', () {
+    final original = DocumentContent.revisioned([
+      block('a', 'A'),
+      block('provisional', 'unfinished'),
+    ]);
+    final next = original.apply(
+      DocumentMutation(
+        baseRevision: 0,
+        revision: 1,
+        operations: [const RemoveBlocks(index: 1, count: 1)],
+      ),
+    );
+
+    final change = next.tailChangeSince(original)!;
+    expect(change.index, 1);
+    expect(change.removeCount, 1);
+    expect(change.blocks, isEmpty);
+  });
+
+  test('a non-tail replacement is not advertised as bounded suffix work', () {
+    final original = DocumentContent.revisioned([
+      block('a', 'A'),
+      block('b', 'B'),
+    ]);
+    final next = original.apply(
+      DocumentMutation(
+        baseRevision: 0,
+        revision: 1,
+        operations: [
+          ReplaceBlocks(
+            index: 0,
+            removeCount: 1,
+            blocks: [block('x', 'X', revision: 1)],
+          ),
+        ],
+      ),
+    );
+
+    expect(next.tailChangeSince(original), isNull);
+  });
+
   test('a mutation owns immutable operation and block payloads', () {
     final original = DocumentContent.revisioned([block('a', 'A')]);
     final inserted = <DocumentBlock>[block('b', 'B')];

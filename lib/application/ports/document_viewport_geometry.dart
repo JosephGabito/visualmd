@@ -56,6 +56,12 @@ abstract interface class DocumentViewportGeometry {
 
   void appendAll(Iterable<DocumentExtentSeed> seeds);
 
+  DocumentExtentCorrection replaceTail({
+    required int start,
+    required Iterable<DocumentExtentSeed> seeds,
+    DocumentBlockId? anchor,
+  });
+
   /// Replaces the complete sequence after a non-append structural mutation.
   DocumentExtentCorrection reset(
     Iterable<DocumentExtentSeed> seeds, {
@@ -64,6 +70,8 @@ abstract interface class DocumentViewportGeometry {
   });
 
   double leadingOffsetOf(DocumentBlockId id);
+
+  int indexOf(DocumentBlockId id);
 
   DocumentBlockId? blockAtOffset(double offset);
 

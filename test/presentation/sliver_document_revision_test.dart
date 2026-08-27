@@ -86,4 +86,75 @@ void main() {
       expect(find.text('Appended tail.'), findsNothing);
     },
   );
+
+  testWidgets(
+    'a provisional tail replacement indexes only its replacement and retains mounted state',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final initial = DocumentContent.revisioned([
+        for (var index = 0; index < 500; index++)
+          paragraph(
+            'paragraph-$index',
+            'Paragraph $index has enough words to occupy the reading page.',
+          ),
+        paragraph('provisional', 'Unfinished tail.'),
+      ]);
+      final next = initial.apply(
+        DocumentMutation(
+          baseRevision: 0,
+          revision: 1,
+          operations: [
+            ReplaceBlocks(
+              index: 500,
+              removeCount: 1,
+              blocks: [
+                paragraph('final-500', 'Finished tail.', revision: 1),
+                paragraph('final-501', 'One more block.', revision: 1),
+              ],
+            ),
+          ],
+        ),
+      );
+      final indexed = <int>[];
+
+      Future<void> show(DocumentContent content) => tester.pumpWidget(
+        MaterialApp(
+          theme: libraryTheme(BuiltInThemes.paper),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => CustomScrollView(
+                slivers: [
+                  SliverDocumentView(
+                    content: content,
+                    theme: ReadingTheme.of(context, ReadingScale.comfortable),
+                    anchorKeys: <String, GlobalKey>{},
+                    debugOnBlocksIndexed: indexed.add,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await show(initial);
+      await tester.pumpAndSettle();
+      final firstElement = find.textContaining('Paragraph 0').evaluate().single;
+
+      await show(next);
+      await tester.pumpAndSettle();
+
+      expect(indexed, [501, 2]);
+      expect(
+        identical(
+          find.textContaining('Paragraph 0').evaluate().single,
+          firstElement,
+        ),
+        isTrue,
+      );
+    },
+  );
 }

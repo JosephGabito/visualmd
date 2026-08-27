@@ -136,6 +136,19 @@ final class DocumentMutation {
   );
 }
 
+/// One direct suffix transition between adjacent document revisions.
+final class DocumentTailChange {
+  final int index;
+  final int removeCount;
+  final List<DocumentBlock> blocks;
+
+  const DocumentTailChange({
+    required this.index,
+    required this.removeCount,
+    required this.blocks,
+  });
+}
+
 /// A document as the reader will meet it: an ordered, revisioned block list.
 final class DocumentContent {
   final List<DocumentBlock>? _revisionedEntries;
@@ -285,13 +298,38 @@ final class DocumentContent {
   /// The appended records when [previous] is this snapshot's direct prefix.
   /// Returns null when the transition could have changed existing geometry.
   List<DocumentBlock>? appendedSince(DocumentContent previous) {
+    final change = tailChangeSince(previous);
+    return change != null &&
+            change.index == previous.entries.length &&
+            change.removeCount == 0
+        ? change.blocks
+        : null;
+  }
+
+  /// The changed suffix when this snapshot directly follows [previous].
+  ///
+  /// Consumers which own derived indexes can truncate to [DocumentTailChange.index]
+  /// and visit only the replacement rather than rebuilding the committed
+  /// prefix. Non-tail edits deliberately return null.
+  DocumentTailChange? tailChangeSince(DocumentContent previous) {
     final change = mutation;
     if (change == null || change.baseRevision != previous.revision) return null;
-    if (change.operations case [InsertBlocks(:final index, :final blocks)]
-        when index == previous.entries.length) {
-      return blocks;
-    }
-    return null;
+    return switch (change.operations) {
+      [InsertBlocks(:final index, :final blocks)]
+          when index == previous.entries.length =>
+        DocumentTailChange(index: index, removeCount: 0, blocks: blocks),
+      [ReplaceBlocks(:final index, :final removeCount, :final blocks)]
+          when index + removeCount == previous.entries.length =>
+        DocumentTailChange(
+          index: index,
+          removeCount: removeCount,
+          blocks: blocks,
+        ),
+      [RemoveBlocks(:final index, :final count)]
+          when index + count == previous.entries.length =>
+        DocumentTailChange(index: index, removeCount: count, blocks: const []),
+      _ => null,
+    };
   }
 
   /// Every heading in order, for matching the outline to the page.

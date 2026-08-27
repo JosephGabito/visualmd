@@ -102,11 +102,13 @@ Changing the text size rebuilds with a new scale; the column follows, because
 it is derived rather than stored
 (`test/presentation/text_size_test.dart`).
 
-When revisioned content appends beneath the same `DocumentId`, the pane visits
-only the new records while retaining heading keys, mounted heading state, and
-its exact `ScrollController` offset. A replacement rebuilds the navigation
-index but still retains the offset. Only a different document identity jumps
-to the top. A reader already at the tail remains pinned while the lazy sliver
+When revisioned content changes only its suffix beneath the same `DocumentId`,
+the pane truncates its derived navigation arrays at that boundary and visits
+only replacement records while retaining its exact `ScrollController` offset.
+A suffix containing headings or explicit anchors currently takes the safe full
+navigation rebuild because outline projection is not incremental yet. A
+non-tail replacement also rebuilds navigation but retains the offset. Only a
+different document identity jumps to the top. A reader already at the tail remains pinned while the lazy sliver
 converges on its new maximum; a reader anywhere above it never enters that path
 (`lib/api/widgets/reading_pane.dart`).
 

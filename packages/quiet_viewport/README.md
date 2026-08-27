@@ -61,11 +61,14 @@ scrollbar is no longer visible or interactive.
 
 - identity lookup: O(1);
 - append: O(log n);
+- suffix replacement: O(r + k log n) for `r` removed and `k` inserted items;
 - measurement/revision: O(log n);
 - leading-offset query: O(log n);
 - total extent: O(log n).
 
-The implementation performs no committed-prefix scan for an ordinary append.
+The implementation performs no committed-prefix scan for an ordinary append or
+provisional-tail replacement. Measured extents before the replacement boundary
+remain authoritative.
 
 ## Revision fencing
 

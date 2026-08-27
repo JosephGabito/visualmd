@@ -86,6 +86,8 @@ final class StableExtentLedger<K extends Object> {
 
   double extentOf(K key) => _extents.valueAt(_indexOf(key));
 
+  int indexOf(K key) => _indexOf(key);
+
   /// The content coordinate at the leading edge of [key].
   double leadingOffsetOf(K key) => _extents.prefix(_indexOf(key));
 
@@ -100,6 +102,54 @@ final class StableExtentLedger<K extends Object> {
     }
     final bounded = offset.clamp(0.0, totalExtent).toDouble();
     return _keys[_extents.indexAtOffset(bounded).clamp(0, length - 1)];
+  }
+
+  /// Replaces `[start, length)` while retaining measured prefix geometry.
+  ExtentCorrection<K> replaceTail({
+    required int start,
+    required Iterable<ExtentSeed<K>> seeds,
+    K? anchor,
+  }) {
+    RangeError.checkValueInInterval(start, 0, length, 'start');
+    final incoming = seeds.toList(growable: false);
+    final retainedAnchor = anchor != null && _indexes.containsKey(anchor);
+    final anchorIndex = retainedAnchor ? _indexes[anchor]! : null;
+    final anchorBefore = anchorIndex == null
+        ? 0.0
+        : _extents.prefix(anchorIndex);
+    final totalBefore = totalExtent;
+
+    final incomingKeys = <K>{};
+    for (final seed in incoming) {
+      _requireExtent(seed.estimatedExtent);
+      if (seed.revision < 0) {
+        throw RangeError.value(seed.revision, 'revision');
+      }
+      final existing = _indexes[seed.key];
+      if (!incomingKeys.add(seed.key) ||
+          (existing != null && existing < start)) {
+        throw StateError('Duplicate viewport item key: ${seed.key}');
+      }
+    }
+
+    for (var index = start; index < _keys.length; index++) {
+      _indexes.remove(_keys[index]);
+    }
+    _keys.removeRange(start, _keys.length);
+    _revisions.removeRange(start, _revisions.length);
+    _extents.truncate(start);
+    for (final seed in incoming) {
+      append(seed);
+    }
+
+    final anchorAfter = anchor != null && _indexes.containsKey(anchor)
+        ? _extents.prefix(_indexes[anchor]!)
+        : anchorBefore;
+    return ExtentCorrection(
+      key: anchor,
+      contentExtentDelta: totalExtent - totalBefore,
+      scrollOffsetDelta: retainedAnchor ? anchorAfter - anchorBefore : 0,
+    );
   }
 
   /// Records real layout geometry when both the item and layout revisions are
@@ -283,5 +333,11 @@ final class _FenwickTree {
     for (final value in values) {
       append(value);
     }
+  }
+
+  void truncate(int length) {
+    RangeError.checkValueInInterval(length, 0, _values.length, 'length');
+    _values.removeRange(length, _values.length);
+    _tree.removeRange(length + 1, _tree.length);
   }
 }

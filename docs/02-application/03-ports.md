@@ -156,8 +156,10 @@ anchor corrections, and frozen scrollbar geometry.
 | Member | Contract |
 |--------|----------|
 | `appendAll(seeds)` | Add newly committed or provisional block identities without rebuilding their prefix. |
+| `replaceTail(start, seeds, anchor)` | Truncate and replace a provisional suffix while retaining measured prefix geometry and returning exact anchor correction. |
 | `reset(seeds, layoutRevision, anchor)` | Reconcile a structural snapshot, retaining measured extents for unchanged identities and returning the prefix delta before the retained anchor. |
 | `leadingOffsetOf(id)` | Return the prefix extent before one stable block identity. |
+| `indexOf(id)` | Return one stable identity's current sequence position without scanning. |
 | `blockAtOffset(offset)` | Find the stable identity occupying a content coordinate without scanning its prefix. |
 | `revise(seed, anchor)` | Replace one item's estimate under a newer item revision and return its anchor correction. |
 | `relayout(revision, estimates, anchor)` | Replace all estimates atomically for a new width, type, or theme epoch. |

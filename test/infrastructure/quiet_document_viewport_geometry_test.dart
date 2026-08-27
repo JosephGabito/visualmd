@@ -78,4 +78,53 @@ void main() {
     expect(geometry.leadingOffsetOf(const DocumentBlockId('b')), 50);
     expect(geometry.totalExtent, 110);
   });
+
+  test('tail replacement retains measured prefix geometry and identity', () {
+    final geometry = factory.create()
+      ..appendAll([
+        const DocumentExtentSeed(
+          id: DocumentBlockId('a'),
+          revision: 0,
+          estimatedExtent: 20,
+        ),
+        const DocumentExtentSeed(
+          id: DocumentBlockId('provisional'),
+          revision: 0,
+          estimatedExtent: 30,
+        ),
+      ]);
+    geometry.measure(
+      id: const DocumentBlockId('a'),
+      itemRevision: 0,
+      layoutRevision: 0,
+      extent: 27,
+    );
+
+    final correction = geometry.replaceTail(
+      start: 1,
+      seeds: const [
+        DocumentExtentSeed(
+          id: DocumentBlockId('final-1'),
+          revision: 1,
+          estimatedExtent: 40,
+        ),
+        DocumentExtentSeed(
+          id: DocumentBlockId('final-2'),
+          revision: 1,
+          estimatedExtent: 50,
+        ),
+      ],
+      anchor: const DocumentBlockId('a'),
+    );
+
+    expect(geometry.leadingOffsetOf(const DocumentBlockId('final-1')), 27);
+    expect(geometry.indexOf(const DocumentBlockId('final-2')), 2);
+    expect(geometry.totalExtent, 117);
+    expect(correction.contentExtentDelta, 60);
+    expect(correction.scrollOffsetDelta, 0);
+    expect(
+      () => geometry.indexOf(const DocumentBlockId('provisional')),
+      throwsStateError,
+    );
+  });
 }

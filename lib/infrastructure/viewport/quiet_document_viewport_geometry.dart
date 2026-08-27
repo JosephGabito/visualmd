@@ -58,6 +58,35 @@ final class _QuietDocumentViewportGeometry implements DocumentViewportGeometry {
   }
 
   @override
+  DocumentExtentCorrection replaceTail({
+    required int start,
+    required Iterable<DocumentExtentSeed> seeds,
+    DocumentBlockId? anchor,
+  }) {
+    final incoming = seeds.toList(growable: false);
+    final removed = _ledger.keys.skip(start).toList(growable: false);
+    final correction = _ledger.replaceTail(
+      start: start,
+      seeds: [
+        for (final seed in incoming)
+          ExtentSeed(
+            key: seed.id,
+            revision: seed.revision,
+            estimatedExtent: seed.estimatedExtent,
+          ),
+      ],
+      anchor: anchor,
+    );
+    for (final id in removed) {
+      _revisions.remove(id);
+    }
+    for (final seed in incoming) {
+      _revisions[seed.id] = seed.revision;
+    }
+    return _correction(correction);
+  }
+
+  @override
   DocumentExtentCorrection reset(
     Iterable<DocumentExtentSeed> seeds, {
     required int layoutRevision,
@@ -94,6 +123,9 @@ final class _QuietDocumentViewportGeometry implements DocumentViewportGeometry {
 
   @override
   double leadingOffsetOf(DocumentBlockId id) => _ledger.leadingOffsetOf(id);
+
+  @override
+  int indexOf(DocumentBlockId id) => _ledger.indexOf(id);
 
   @override
   DocumentBlockId? blockAtOffset(double offset) => _ledger.keyAtOffset(offset);
