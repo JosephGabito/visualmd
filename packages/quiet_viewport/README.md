@@ -77,6 +77,11 @@ identities `0 … n-1` without allocating a key map or per-item revision vector.
 It is intended for code rows and similar media whose index is already the
 stable identity.
 
+`AppendLineIndex` maps physical text lines to source ranges. Its initial build
+is O(source); an append visits only the new suffix and preserves every earlier
+range. Together, these two primitives let a streaming code surface extend its
+coordinate system without rereading the accumulated fence.
+
 ## Revision fencing
 
 Every item measurement names both the item revision and the layout revision.

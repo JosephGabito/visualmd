@@ -338,6 +338,11 @@ All per-document state lives on the `_Mapper` created inside `parse`
 In a session, ordinary paragraphs settle after a blank line. Open containers
 remain provisional until a following top-level block proves their boundary.
 Finishing runs the complete parser once and commits the canonical result.
+When the same provisional verbatim block grows without changing language, the
+session publishes its newly visible `BlockTextAppend` suffix alongside the
+revised block. The renderer can then extend its physical-line index without
+scanning the code it already indexed
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Failure and recovery
 
@@ -364,6 +369,8 @@ the provisional tail. The measured work is exposed as
 `lastParsedSourceLength`; the performance test fixes a five-thousand-paragraph
 prefix and proves the next append parses only its new tail
 (`test/infrastructure/incremental_markdown_parser_test.dart`).
+The same suite proves an open fence's published suffix reconstructs the next
+code block exactly from the preceding revision.
 
 Behaviour is covered in
 `test/infrastructure/markdown_document_parser_test.dart`, grouped by the shape

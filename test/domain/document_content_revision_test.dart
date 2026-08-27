@@ -81,6 +81,30 @@ void main() {
     expect(finalized.entries.single.commitment, BlockCommitment.committed);
   });
 
+  test('finalization does not replay an earlier text append', () {
+    final provisional = DocumentContent.revisioned([
+      DocumentBlock(
+        id: const DocumentBlockId('tail'),
+        revision: 1,
+        block: const CodeBlock(code: 'new'),
+        commitment: BlockCommitment.provisional,
+        textAppend: const BlockTextAppend(baseRevision: 0, text: 'new'),
+      ),
+    ], revision: 1);
+
+    final finalized = provisional.apply(
+      DocumentMutation(
+        baseRevision: 1,
+        revision: 2,
+        operations: [
+          FinalizeBlocks({const DocumentBlockId('tail')}),
+        ],
+      ),
+    );
+
+    expect(finalized.entries.single.textAppend, isNull);
+  });
+
   test('duplicate identities cannot enter a document snapshot', () {
     expect(
       () =>

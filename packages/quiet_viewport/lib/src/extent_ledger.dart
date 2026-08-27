@@ -314,6 +314,41 @@ final class IndexedExtentLedger {
     return _extents.prefix(index);
   }
 
+  /// Adds dense identities after the existing final index.
+  ///
+  /// No earlier extent is read or rewritten.
+  void appendAll(Iterable<double> estimatedExtents) {
+    final next = estimatedExtents.toList(growable: false);
+    for (final extent in next) {
+      _requireExtent(extent);
+    }
+    for (final extent in next) {
+      _extents.append(extent);
+    }
+  }
+
+  /// Replaces one measured value with a fresh estimate after its content
+  /// changes within the same layout epoch.
+  ExtentCorrection<int> revise({
+    required int index,
+    required double estimatedExtent,
+    int? anchor,
+  }) {
+    _requireExtent(estimatedExtent);
+    RangeError.checkValidIndex(index, this, 'index', length);
+    if (anchor != null) {
+      RangeError.checkValidIndex(anchor, this, 'anchor', length);
+    }
+    final previous = _extents.valueAt(index);
+    final delta = estimatedExtent - previous;
+    if (delta != 0) _extents.update(index, estimatedExtent);
+    return ExtentCorrection(
+      key: index,
+      contentExtentDelta: delta,
+      scrollOffsetDelta: anchor != null && index < anchor ? delta : 0,
+    );
+  }
+
   int? indexAtOffset(double offset) {
     if (length == 0) return null;
     if (!offset.isFinite) {

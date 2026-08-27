@@ -49,6 +49,18 @@ void main() {
     );
   });
 
+  test('dense geometry extends and revises without disturbing its prefix', () {
+    final ledger = IndexedExtentLedger([10, 20, 30]);
+
+    ledger.appendAll([40, 50]);
+    final correction = ledger.revise(index: 2, estimatedExtent: 35, anchor: 4);
+
+    expect(ledger.leadingOffsetAt(2), 30);
+    expect(ledger.leadingOffsetAt(4), 105);
+    expect(ledger.totalExtent, 155);
+    expect(correction.scrollOffsetDelta, 5);
+  });
+
   test('an empty ledger can begin a new layout epoch', () {
     final ledger = StableExtentLedger<String>();
 

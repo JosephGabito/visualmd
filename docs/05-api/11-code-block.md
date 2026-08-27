@@ -51,6 +51,14 @@ only the horizontal viewport plus 32 overscan columns on each edge becomes a
 text layout object. The full monospace width remains the local scroll
 coordinate system (`lib/api/widgets/code_block.dart`).
 
+The physical-line index is appendable. For a streaming revision whose domain
+record names an exact text suffix, the renderer visits only that suffix and
+retains all earlier source offsets. If wrapping is active, it revises the old
+final line's estimate and appends estimates for only the new physical lines.
+An absent or stale suffix signal falls back to rebuilding from the authoritative
+current source (`packages/quiet_viewport/lib/src/line_index.dart`,
+`lib/api/render/document_view.dart`, `lib/api/widgets/code_block.dart`).
+
 With wrapping on, a dense indexed extent ledger estimates every physical
 line's wrapped height from the measured monospace advance. Flutter shapes only
 the mounted physical lines, and each exact height replaces its estimate while
@@ -99,6 +107,7 @@ the same `TextSpan`, and selection remains owned by the reading pane's single
 | In | Meaning |
 |----|---------|
 | `source` | Exact source text; the authority for painting and copying |
+| `sourceRevision` / `sourceAppend` | Adjacent parser-owned revision and optional exact suffix for incremental line geometry |
 | `language` | First word of the fence info string, or null |
 | `highlighter` / `scheme` | Optional semantic source ranges for light or dark ground |
 | `spansFor` | Merges ranges with search for an ordinary source block |
@@ -170,7 +179,7 @@ through an unmounted window still needs range-aware model selection. Command-A
 and Command-C are lossless through the reading pane's model-backed whole-document
 snapshot, while the block's own Copy action remains an exact direct path.
 Building a wrapped block's first estimate vector remains O(physical lines),
-although it does not shape text; making that index append-aware is a separate
-streaming slice. Windowed classification has bounded context: a multiline token
-opened far before the viewport may use plain or local-context colour until a
-stateful grammar checkpoint exists.
+although it does not shape text. Later parser-proven appends extend both line
+and extent indexes from the suffix. Windowed classification has bounded
+context: a multiline token opened far before the viewport may use plain or
+local-context colour until a stateful grammar checkpoint exists.
