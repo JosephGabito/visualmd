@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/api/app.dart';
 import 'package:visualmd/api/reader_controller.dart';
 import 'package:visualmd/api/layout/panel_widths.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
@@ -39,11 +40,16 @@ import 'package:visualmd/infrastructure/memory/in_memory_library_repository.dart
 import 'package:visualmd/infrastructure/memory/in_memory_reader_state.dart';
 import 'package:visualmd/infrastructure/memory/in_memory_workspace_restoration.dart';
 import 'package:visualmd/infrastructure/memory/in_memory_workspace_session_repository.dart';
+import 'package:visualmd/infrastructure/memory/sample_document_image_loader.dart';
 import 'package:visualmd/infrastructure/search/literal_document_search.dart';
+import 'package:visualmd/infrastructure/viewport/quiet_document_viewport_geometry.dart';
 import 'package:visualmd/infrastructure/workspace/workspace_json_codec.dart';
+import 'package:visualmd/presentation/code/code_highlighter.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/shelf/shelf_label_mode.dart';
+import 'package:visualmd/presentation/theme/theme_choice.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
+import 'package:visualmd/application/ports/mermaid_renderer.dart';
 
 const _library = ScannedFolder(
   name: 'notes',
@@ -283,6 +289,39 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+    'ordinary reader state does not rebuild the application theme root',
+    (tester) async {
+      await pumpReader(tester, withLibrary: false);
+      var rootBuilds = 0;
+
+      await tester.pumpWidget(
+        VisualMdApp(
+          controller: controller,
+          codeHighlighter: const PlainCodeHighlighter(),
+          mermaidRenderer: const UnavailableMermaidRenderer(),
+          imageLoader: const SampleDocumentImageLoader(),
+          viewportGeometry: const QuietDocumentViewportGeometryFactory(),
+          openExternal: (_) {},
+          dropRegion: (child) {
+            rootBuilds++;
+            return child;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(rootBuilds, 1);
+
+      controller.setDragging(true);
+      await tester.pump();
+      expect(rootBuilds, 1);
+
+      await controller.chooseTheme(const FixedTheme('paper'));
+      await tester.pump();
+      expect(rootBuilds, 2);
+    },
+  );
 
   testWidgets(
     'Open and Open Workspace keep their distinct keyboard contracts',

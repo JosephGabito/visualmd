@@ -13,10 +13,13 @@ does not discover platform services for itself.
 
 ## Present wiring
 
-`VisualMdApp` rebuilds from the controller and creates the light and dark
-`ThemeData` values. A `FollowSystem` choice uses `ThemeMode.system`; a fixed
-choice uses the brightness of that theme. It then wraps `ReaderScreen` in the
-platform's drop region (`lib/api/app.dart`).
+`VisualMdApp` listens only to the controller's immutable appearance projection
+and creates the light and dark `ThemeData` values. A `FollowSystem` choice uses
+`ThemeMode.system`; a fixed choice uses the brightness of that theme. Library,
+search, panel, and document notifications therefore stop at `ReaderScreen`
+instead of reconstructing the `MaterialApp` above it. The app then wraps the
+screen in the platform's drop region (`lib/api/app.dart`,
+`lib/api/reader_controller.dart`).
 
 `ReaderScreen` has three persistent areas:
 
