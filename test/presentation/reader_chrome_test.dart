@@ -26,6 +26,7 @@ import 'package:visualmd/application/use_cases/open_workspace.dart';
 import 'package:visualmd/domain/library/document_id.dart';
 import 'package:visualmd/domain/library/library_builder.dart';
 import 'package:visualmd/domain/library/library_root_id.dart';
+import 'package:visualmd/domain/reading/heading.dart';
 import 'package:visualmd/domain/workspace/workspace.dart';
 import 'package:visualmd/domain/workspace/workspace_id.dart';
 import 'package:visualmd/domain/workspace/workspace_source.dart';
@@ -374,6 +375,24 @@ void main() {
       closeTo(PanelWidths.defaultOutline, 0.001),
     );
   });
+
+  testWidgets(
+    'scrolling into a heading rebuilds the outline without rebuilding the page',
+    (tester) async {
+      await pumpReader(tester, size: const Size(1280, 800));
+      final before = tester.widget<ReadingPane>(find.byType(ReadingPane));
+
+      before.onActiveHeadingChanged(
+        const Heading(level: 2, text: 'Second', anchor: 'second'),
+      );
+      await tester.pump();
+
+      final after = tester.widget<ReadingPane>(find.byType(ReadingPane));
+      final outline = tester.widget<OutlinePanel>(find.byType(OutlinePanel));
+      expect(after, same(before));
+      expect(outline.activeAnchor, 'second');
+    },
+  );
 
   testWidgets('the title bar keeps document context and named commands', (
     tester,

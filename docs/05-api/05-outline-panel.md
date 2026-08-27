@@ -14,15 +14,16 @@ Mounted in the shell's right column at a remembered width, only while
 `outlineVisible` is on and the table of contents is non-empty
 (`lib/api/screens/reader_screen.dart`,
 `lib/api/screens/reader_screen.dart`). Its resize seam sits on the
-left edge. `activeAnchor` comes from the
-shell's `_activeAnchor`, and `onSelect` scrolls the pane to the heading's
+left edge. `activeAnchor` comes from the shell's dedicated `ValueNotifier`, so
+crossing a heading while scrolling rebuilds the outline without rebuilding the
+reading pane, shelf, or window chrome. `onSelect` scrolls the pane to the heading's
 anchor; selecting inside a compact overlay also closes it
 (`lib/api/screens/reader_screen.dart`).
 
 The build (`lib/api/widgets/outline_panel.dart`):
 
 1. `PanelHeading('On this page')` (`lib/api/widgets/outline_panel.dart`).
-2. A `ListView` of `_OutlineEntry` rows, one per heading, with `depth`
+2. A lazy `ListView.builder` of `_OutlineEntry` rows, one per heading, with `depth`
    equal to `heading.level - tableOfContents.baseLevel`
    (`lib/api/widgets/outline_panel.dart`,
    `lib/api/widgets/outline_panel.dart`), so a document that starts at
@@ -53,8 +54,11 @@ front matter, word counts, or backlinks, stacked under the outline.
 
 ## Lifecycle
 
-Stateless; rebuilt whenever the shell rebuilds with a new document or a new
-active anchor.
+Stateless. A new document rebuilds it with a new table of contents. Active
+heading changes rebuild only its mounted viewport rows; a 10,000-heading
+outline does not construct the other 9,000-plus rows
+(`test/presentation/outline_panel_test.dart`,
+`test/presentation/reader_chrome_test.dart`).
 
 ## Failure and recovery
 

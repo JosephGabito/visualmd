@@ -23,30 +23,33 @@ class OutlinePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final base = tableOfContents.baseLevel;
+    final headings = tableOfContents.headings;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PanelHeading('On this page'),
         Expanded(
-          child: ListView(
+          child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(8, 2, 10, 24),
-            children: [
-              for (final heading in tableOfContents.headings)
-                _OutlineEntry(
-                  heading: heading,
-                  depth: heading.level - base,
-                  active: heading.anchor == activeAnchor,
-                  onTap: () => onSelect(heading),
-                ),
-              if (tableOfContents.isEmpty)
-                Padding(
+            itemCount: headings.isEmpty ? 1 : headings.length,
+            itemBuilder: (context, index) {
+              if (headings.isEmpty) {
+                return Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                   child: Text(
                     'No headings in this document.',
                     style: context.type.sans(color: p.muted, size: 12.5),
                   ),
-                ),
-            ],
+                );
+              }
+              final heading = headings[index];
+              return _OutlineEntry(
+                heading: heading,
+                depth: heading.level - base,
+                active: heading.anchor == activeAnchor,
+                onTap: () => onSelect(heading),
+              );
+            },
           ),
         ),
       ],
