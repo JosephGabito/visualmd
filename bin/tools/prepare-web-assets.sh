@@ -4,6 +4,7 @@ set -Eeuo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_shared.sh"
 
 readonly WEB_ROOT="$PROJECT_ROOT/web"
+readonly TRANSIENT_MODULES_ROOT="$WEB_ROOT/node_modules"
 readonly PACKAGE_ROOT="$WEB_ROOT/node_modules/@mermanjs/web-render"
 readonly VENDOR_ROOT="$WEB_ROOT/vendor/merman-web"
 readonly RENDER_ENTRY="$VENDOR_ROOT/dist/package-entries/render.js"
@@ -30,6 +31,7 @@ readonly EXPECTED_VERSION="$(
 )"
 
 if vendor_is_current; then
+  rm -rf "$TRANSIENT_MODULES_ROOT"
   exit 0
 fi
 
@@ -52,3 +54,4 @@ mv "$STAGING_DIR" "$VENDOR_ROOT"
 trap - EXIT
 
 vendor_is_current || fail "Merman web runtime is incomplete after installation"
+rm -rf "$TRANSIENT_MODULES_ROOT"

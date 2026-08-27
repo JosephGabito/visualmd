@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -17,6 +17,8 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, follow">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A local-first reader for folders of Markdown files.">
 
@@ -33,10 +35,70 @@
   <style>
     html, body { margin: 0; background: #F8F4EB; }
     @media (prefers-color-scheme: dark) { html, body { background: #1E1B16; } }
+    #flutter-loader {
+      display: grid;
+      position: fixed;
+      z-index: 1;
+      inset: 0;
+      place-content: center;
+      justify-items: center;
+      gap: 14px;
+      background: #F8F4EB;
+      color: #514B43;
+      font: 500 14px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      transition: opacity 180ms ease, visibility 180ms step-end;
+    }
+    #flutter-loader p { margin: 0; }
+    #flutter-loader img {
+      width: 64px;
+      height: 64px;
+      animation: loader-breathe 760ms ease-in-out infinite alternate;
+    }
+    #flutter-loader.is-ready { visibility: hidden; opacity: 0; }
+    #flutter-loader-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    #flutter-loader-actions[hidden] { display: none; }
+    #flutter-loader-actions button,
+    #flutter-loader-actions a {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      padding: 0 16px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    @keyframes loader-breathe {
+      from { transform: scale(.96); }
+      to { transform: scale(1.04); }
+    }
+    @media (prefers-color-scheme: dark) {
+      #flutter-loader { background: #1E1B16; color: #D8D2C7; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #flutter-loader { transition: none; }
+      #flutter-loader img { animation: none; }
+    }
   </style>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <div id="flutter-loader">
+    <img src="icons/Icon-192.png" width="64" height="64" alt="">
+    <p id="flutter-loader-label" role="status" aria-live="polite" aria-atomic="true">Opening Visual MD…</p>
+    <div id="flutter-loader-actions" hidden>
+      <button id="flutter-loader-retry" type="button">Try again</button>
+      <a href="/">Back to Visual MD</a>
+    </div>
+    <noscript>JavaScript is required to open the browser playground.</noscript>
+  </div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -48,5 +110,19 @@
   <!-- Pinned and shipped locally: diagrams render without a CDN or account. -->
   <script type="module" src="mermaid_bridge.js"></script>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.addEventListener("flutter-first-frame", () => {
+      const loader = document.getElementById("flutter-loader");
+      if (!loader) return;
+      loader.classList.add("is-ready");
+      window.setTimeout(() => loader.remove(), 220);
+    }, { once: true });
+    window.setTimeout(() => {
+      const label = document.getElementById("flutter-loader-label");
+      if (label) label.textContent = "Visual MD is taking longer to open.";
+      document.getElementById("flutter-loader-actions")?.removeAttribute("hidden");
+    }, 12000);
+    document.getElementById("flutter-loader-retry")?.addEventListener("click", () => location.reload());
+  </script>
 </body>
 </html>

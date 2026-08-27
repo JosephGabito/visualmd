@@ -4,15 +4,17 @@ import {
   renderSvg
 } from './vendor/merman-web/dist/package-entries/render.js';
 
-const ready = initMerman();
+let ready;
 let queue = Promise.resolve();
+
+const ensureReady = () => ready ??= initMerman();
 
 // Flutter calls one global bridge on web, just as it calls one typed renderer
 // on native targets. SVG is returned as inert data and never mounted in the
 // browser DOM; Flutter owns painting, accessibility, and every interaction.
 window.visualMdRenderMermaid = (source, paletteJson) => {
   const task = queue.then(async () => {
-    await ready;
+    await ensureReady();
     const palette = JSON.parse(paletteJson);
     const options = JSON.stringify({
       version: 2,
