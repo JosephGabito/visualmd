@@ -43,7 +43,7 @@ class VisualMdApp extends StatelessWidget {
     this.openReaderSources,
     this.shelfSourceActions,
     this.dropRegion = _identity,
-    this.topBar = (height: 44, leadingInset: 8),
+    this.topBar = (height: 52, leadingInset: 8),
     this.windowDragRegion = _identity,
     this.openThemesFolder,
   });

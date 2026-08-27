@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../presentation/theme/built_in_themes.dart';
 import '../../presentation/theme/reader_theme.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../../presentation/theme/theme_choice.dart';
 import '../../presentation/theme/theme_registry.dart';
 import '../theme/library_theme.dart';
+import '../theme/library_chrome.dart';
 import 'anchored_menu.dart';
 
-/// Pick what the reader wears: follow the system with the default pair, or
-/// wear one theme all day. Each entry shows its own paper and ink.
+/// Pick what the reader wears: the default pair, a named light/dark family, or
+/// one fixed theme. Each entry shows its own paper and ink.
 class ThemePicker extends StatelessWidget {
   final ThemeRegistry registry;
   final ThemeChoice choice;
@@ -36,7 +38,14 @@ class ThemePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final system = MediaQuery.platformBrightnessOf(context);
     final current = registry.resolve(choice, system);
-    final following = choice is FollowSystem;
+    final followingDefault = choice == registry.systemPair;
+    final familyIds = BuiltInThemes.familyThemeIds;
+    final individualLight = registry.light.where(
+      (theme) => !familyIds.contains(theme.id),
+    );
+    final individualDark = registry.dark.where(
+      (theme) => !familyIds.contains(theme.id),
+    );
 
     return AnchoredMenu(
       tooltip: 'Reading: ${current.name}',
@@ -59,24 +68,37 @@ class ThemePicker extends StatelessWidget {
               size: 18,
               color: context.palette.muted,
             ),
-            selected: following,
+            selected: followingDefault,
             onTap: () => pick(registry.systemPair),
           ),
           const _Rule(),
+          const _SectionLabel('Themes'),
+          for (final family in BuiltInThemes.families)
+            if (family.supports(system))
+              _Row(
+                label: family.name,
+                leading: _Swatch(
+                  theme: registry.byId(family.idFor(system)!)!,
+                  size: 24,
+                ),
+                selected: family.selects(choice, system),
+                onTap: () => pick(family.choiceFor(system)),
+              ),
+          const _Rule(),
           const _SectionLabel('Light'),
-          for (final theme in registry.light)
+          for (final theme in individualLight)
             _Row(
               label: theme.name,
               leading: _Swatch(theme: theme, size: 24),
-              selected: !following && theme.id == current.id,
+              selected: choice is FixedTheme && theme.id == current.id,
               onTap: () => pick(FixedTheme(theme.id)),
             ),
           const _SectionLabel('Dark'),
-          for (final theme in registry.dark)
+          for (final theme in individualDark)
             _Row(
               label: theme.name,
               leading: _Swatch(theme: theme, size: 24),
-              selected: !following && theme.id == current.id,
+              selected: choice is FixedTheme && theme.id == current.id,
               onTap: () => pick(FixedTheme(theme.id)),
             ),
           const _Rule(),
@@ -161,6 +183,7 @@ class _RowState extends State<_Row> {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final chrome = context.chrome;
     final still = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       container: true,
@@ -195,20 +218,16 @@ class _RowState extends State<_Row> {
           child: AnimatedContainer(
             duration: still ? Duration.zero : const Duration(milliseconds: 110),
             curve: Curves.easeOut,
-            constraints: const BoxConstraints(minHeight: 44),
+            constraints: const BoxConstraints(minHeight: 36),
             margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              color: _hovered
-                  ? p.accentSoft
-                  : (widget.selected
-                        ? p.accentSoft.withValues(alpha: 0.55)
-                        : null),
-              border: Border.all(
-                color: _focused ? p.accent : Colors.transparent,
-                width: 2,
+              color: _hovered || _focused
+                  ? (widget.selected ? chrome.selectedHover : chrome.hover)
+                  : (widget.selected ? chrome.selected : null),
+              borderRadius: BorderRadius.circular(
+                LibraryChromeScale.controlRadius,
               ),
-              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
@@ -245,16 +264,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-      child: Text(
-        text.toUpperCase(),
-        style: context.type
-            .sans(
-              color: context.palette.muted,
-              size: 10.5,
-              weight: FontWeight.w600,
-            )
-            .copyWith(letterSpacing: 1),
-      ),
+      child: Text(text.toUpperCase(), style: context.chromeSectionLabel),
     );
   }
 }
@@ -265,7 +275,7 @@ class _Rule extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    child: Divider(height: 1, thickness: 1, color: context.palette.border),
+    child: Divider(height: 1, thickness: 1, color: context.chrome.separator),
   );
 }
 

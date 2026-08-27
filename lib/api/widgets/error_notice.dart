@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 
 /// A persistent, dismissible failure notice for an occupied reader.
@@ -27,7 +28,9 @@ final class ErrorNotice extends StatelessWidget {
             key: const ValueKey('reader-error-notice'),
             decoration: BoxDecoration(
               color: p.panel,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                LibraryChromeScale.componentRadius,
+              ),
               border: Border.all(color: p.border),
             ),
             clipBehavior: Clip.antiAlias,

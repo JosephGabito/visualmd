@@ -114,7 +114,9 @@ void main() {
     expect(activations, 2);
   });
 
-  testWidgets('keyboard focus draws the theme focus colour', (tester) async {
+  testWidgets('only keyboard traversal draws the theme focus colour', (
+    tester,
+  ) async {
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);
     await pumpPressable(tester, onPress: () {}, focusNode: focusNode);
@@ -134,7 +136,19 @@ void main() {
     focusNode.requestFocus();
     await tester.pumpAndSettle();
 
+    expect(
+      focusBorder().top.color,
+      Colors.transparent,
+      reason: 'programmatic launch focus must not look user-selected',
+    );
+
+    focusNode.unfocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+
     final context = tester.element(find.byType(Pressable));
+    expect(focusNode.hasFocus, isTrue);
     expect(focusBorder().top.color, Theme.of(context).colorScheme.primary);
   });
 }

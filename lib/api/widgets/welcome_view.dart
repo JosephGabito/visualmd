@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 import 'brand_mark.dart';
 
@@ -68,8 +69,18 @@ class WelcomeView extends StatelessWidget {
                     Container(
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: p.border),
+                        color: context.chrome.elevated,
+                        borderRadius: BorderRadius.circular(
+                          LibraryChromeScale.windowRadius,
+                        ),
+                        border: Border.all(color: context.chrome.separator),
+                        boxShadow: [
+                          BoxShadow(
+                            color: context.chrome.shadow,
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -175,13 +186,14 @@ class _LaunchAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final chrome = context.chrome;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        hoverColor: p.accent.withValues(alpha: 0.07),
-        focusColor: p.accent.withValues(alpha: 0.09),
-        highlightColor: p.accent.withValues(alpha: 0.05),
+        hoverColor: chrome.hover,
+        focusColor: chrome.selected,
+        highlightColor: chrome.pressed,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           child: Row(

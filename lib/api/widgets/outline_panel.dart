@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/reading/table_of_contents.dart';
 import '../theme/library_theme.dart';
+import 'chrome_list_row.dart';
 import 'panel_heading.dart';
 
 /// The table of contents for the open document.
@@ -28,7 +29,7 @@ class OutlinePanel extends StatelessWidget {
         const PanelHeading('On this page'),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(8, 4, 12, 24),
+            padding: const EdgeInsets.fromLTRB(8, 2, 10, 24),
             children: [
               for (final heading in tableOfContents.headings)
                 _OutlineEntry(
@@ -69,29 +70,18 @@ class _OutlineEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return InkWell(
+    return ChromeListRow(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      hoverColor: p.accentSoft.withValues(alpha: 0.6),
-      child: Container(
-        padding: EdgeInsets.fromLTRB(10.0 + depth * 14, 5, 8, 5),
-        decoration: BoxDecoration(
-          border: Border(
-            left: BorderSide(
-              color: active ? p.accent : Colors.transparent,
-              width: 2,
-            ),
-          ),
-        ),
-        child: Text(
-          heading.text.isEmpty ? '(untitled)' : heading.text,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: context.type.sans(
-            color: active || depth == 0 ? p.ink : p.muted,
-            size: depth == 0 ? 13 : 12.5,
-            weight: active ? FontWeight.w600 : FontWeight.w400,
-          ),
+      selected: active,
+      showLocation: active,
+      padding: EdgeInsets.fromLTRB(10.0 + depth * 14, 6, 8, 6),
+      child: Text(
+        heading.text.isEmpty ? '(untitled)' : heading.text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: context.chromeRow(
+          color: active || depth == 0 ? p.ink : p.muted,
+          weight: active ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
     );

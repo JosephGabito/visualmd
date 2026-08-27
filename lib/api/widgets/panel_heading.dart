@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 
 /// Small-caps label atop a side panel.
@@ -11,18 +12,20 @@ class PanelHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 10, 8),
+      padding: const EdgeInsets.fromLTRB(
+        LibraryChromeScale.space4,
+        LibraryChromeScale.space4,
+        LibraryChromeScale.space2,
+        LibraryChromeScale.space2,
+      ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               text.toUpperCase(),
               overflow: TextOverflow.ellipsis,
-              style: context.type
-                  .sans(color: p.muted, size: 11, weight: FontWeight.w600)
-                  .copyWith(letterSpacing: 1.1),
+              style: context.chromeSectionLabel,
             ),
           ),
           ?trailing,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 import 'brand_mark.dart';
 
@@ -16,7 +17,9 @@ class DropOverlay extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(
+              LibraryChromeScale.windowRadius,
+            ),
             border: Border.all(color: p.accent, width: 2),
           ),
           child: Center(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/library_chrome.dart';
+import '../theme/library_theme.dart';
+
 /// A control that acts the moment the pointer goes down.
 ///
 /// Waiting for the release puts the interface a beat behind the hand, and a
@@ -8,8 +11,8 @@ import 'package:flutter/services.dart';
 /// window-drag handler that wraps the top bar on macOS: pointer events are not
 /// subject to the gesture arena, so nothing can defer the callback.
 ///
-/// The control leans in under the pointer and gives under the press, so it has
-/// answered before it acts.
+/// Its surface, rather than its geometry, answers hover and press. Stable icon
+/// geometry keeps a compact macOS toolbar from twitching under the pointer.
 class Pressable extends StatefulWidget {
   final VoidCallback? onPress;
 
@@ -47,9 +50,6 @@ class Pressable extends StatefulWidget {
 }
 
 class _PressableState extends State<Pressable> {
-  static const _hoverScale = 1.06;
-  static const _pressScale = 0.94;
-
   var _hovered = false;
   var _pressed = false;
   var _focused = false;
@@ -60,6 +60,7 @@ class _PressableState extends State<Pressable> {
   Widget build(BuildContext context) {
     final enabled = widget.onPress != null;
     final still = MediaQuery.disableAnimationsOf(context);
+    final chrome = context.chrome;
 
     final duration = still ? Duration.zero : const Duration(milliseconds: 120);
     final control = Semantics(
@@ -72,7 +73,10 @@ class _PressableState extends State<Pressable> {
       child: FocusableActionDetector(
         enabled: enabled,
         focusNode: widget.focusNode,
-        onFocusChange: (focused) => setState(() => _focused = focused),
+        // The first toolbar control receives programmatic focus when the
+        // window opens. Paint focus only after keyboard traversal; otherwise
+        // launch looks like an already-selected purple control on macOS.
+        onShowFocusHighlight: (focused) => setState(() => _focused = focused),
         shortcuts: const {
           SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
           SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
@@ -103,24 +107,22 @@ class _PressableState extends State<Pressable> {
               duration: duration,
               curve: Curves.easeOut,
               decoration: BoxDecoration(
+                color: !enabled
+                    ? Colors.transparent
+                    : _pressed
+                    ? chrome.pressed
+                    : (_hovered || widget.active)
+                    ? chrome.hover
+                    : Colors.transparent,
                 border: Border.all(
-                  color: _focused
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.transparent,
+                  color: _focused ? chrome.focus : Colors.transparent,
                   width: 2,
                 ),
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(
+                  LibraryChromeScale.controlRadius,
+                ),
               ),
-              child: AnimatedScale(
-                scale: !enabled
-                    ? 1
-                    : _pressed
-                    ? _pressScale
-                    : (_hovered || widget.active ? _hoverScale : 1),
-                duration: duration,
-                curve: Curves.easeOut,
-                child: Opacity(opacity: enabled ? 1 : 0.4, child: widget.child),
-              ),
+              child: Opacity(opacity: enabled ? 1 : 0.38, child: widget.child),
             ),
           ),
         ),

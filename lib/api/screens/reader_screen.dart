@@ -14,6 +14,7 @@ import '../layout/panel_widths.dart';
 import '../render/reading_theme.dart';
 import '../reader_controller.dart';
 import '../theme/library_theme.dart';
+import '../theme/library_chrome.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/collapsible_panel.dart';
 import '../widgets/drop_overlay.dart';
@@ -53,7 +54,7 @@ class ReaderScreen extends StatefulWidget {
     this.imageLoader,
     this.openReaderSources,
     this.shelfSourceActions,
-    this.topBar = (height: 44, leadingInset: 8),
+    this.topBar = (height: 52, leadingInset: 8),
     this.windowDragRegion = _identity,
     this.openThemesFolder,
   });
@@ -365,6 +366,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           listenable: c,
           builder: (context, _) {
             final p = context.palette;
+            final chrome = context.chrome;
             final library = c.library;
             final reading = c.reading;
             final toc = reading?.outline.tableOfContents;
@@ -468,7 +470,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
               width: shelfWidth,
               side: PanelSide.left,
               child: ColoredBox(
-                color: p.panel,
+                color: chrome.panel,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -509,7 +511,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             ),
                     ),
                     if (compact)
-                      VerticalDivider(width: 1, thickness: 1, color: p.border)
+                      VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: chrome.separator,
+                      )
                     else
                       PanelResizeHandle(
                         key: const ValueKey('shelf-resize-handle'),
@@ -535,12 +541,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
               width: outlineWidth,
               side: PanelSide.right,
               child: ColoredBox(
-                color: p.panel,
+                color: chrome.panel,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (compact)
-                      VerticalDivider(width: 1, thickness: 1, color: p.border)
+                      VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: chrome.separator,
+                      )
                     else
                       PanelResizeHandle(
                         key: const ValueKey('outline-resize-handle'),
@@ -585,8 +595,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           shelfVisible: shelfVisible,
                           outlineVisible: outlineVisible,
                           hasLibrary: library != null,
+                          documentTitle: reading?.document.title,
+                          documentLocation: reading?.document.fileName,
                           onToggleShelf: toggleShelf,
                           onToggleOutline: toggleOutline,
+                          onFind: reading == null
+                              ? null
+                              : () => _openSearch(_SearchMode.document),
                           themePicker: ThemePicker(
                             registry: c.themes,
                             choice: c.themeChoice,
@@ -676,8 +691,11 @@ class _TopBar extends StatelessWidget {
   final bool shelfVisible;
   final bool outlineVisible;
   final bool hasLibrary;
+  final String? documentTitle;
+  final String? documentLocation;
   final VoidCallback onToggleShelf;
   final VoidCallback onToggleOutline;
+  final VoidCallback? onFind;
   final Widget themePicker;
 
   const _TopBar({
@@ -686,20 +704,27 @@ class _TopBar extends StatelessWidget {
     required this.shelfVisible,
     required this.outlineVisible,
     required this.hasLibrary,
+    required this.documentTitle,
+    required this.documentLocation,
     required this.onToggleShelf,
     required this.onToggleOutline,
+    required this.onFind,
     required this.themePicker,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final chrome = context.chrome;
     return Container(
       height: height,
-      padding: EdgeInsets.only(left: leadingInset, right: 8),
+      padding: EdgeInsets.only(
+        left: leadingInset,
+        right: LibraryChromeScale.space2,
+      ),
       decoration: BoxDecoration(
-        color: p.paper,
-        border: Border(bottom: BorderSide(color: p.border)),
+        color: chrome.topBar,
+        border: Border(bottom: BorderSide(color: chrome.separator)),
       ),
       child: Row(
         children: [
@@ -711,9 +736,9 @@ class _TopBar extends StatelessWidget {
             active: shelfVisible,
             onPressed: hasLibrary ? onToggleShelf : null,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: LibraryChromeScale.space4),
           const BrandMark(size: 18),
-          const SizedBox(width: 8),
+          const SizedBox(width: LibraryChromeScale.space2),
           Text(
             'Visual MD',
             style: context.type.serif(
@@ -723,8 +748,51 @@ class _TopBar extends StatelessWidget {
               height: 1,
             ),
           ),
-          const Spacer(),
+          Expanded(
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 140),
+                child: documentTitle == null
+                    ? const SizedBox.shrink()
+                    : Column(
+                        key: ValueKey(documentLocation),
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            documentTitle!,
+                            key: const ValueKey('top-bar-document-title'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.chromeRow(
+                              color: p.ink,
+                              weight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            documentLocation!,
+                            key: const ValueKey('top-bar-document-location'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.type.sans(
+                              color: p.muted,
+                              size: 10.5,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+          _BarButton(
+            tooltip: 'Find in document  (⌘F)',
+            icon: Icons.search,
+            onPressed: onFind,
+          ),
+          const SizedBox(width: LibraryChromeScale.space1),
           themePicker,
+          const SizedBox(width: LibraryChromeScale.space1),
           _BarButton(
             tooltip: outlineVisible
                 ? 'Hide outline  (⌘.)'
@@ -762,7 +830,7 @@ class _BarButton extends StatelessWidget {
       semanticLabel: tooltip.split('  (').first,
       onPress: onPressed,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+        padding: const EdgeInsets.all(5),
         // The icon swaps as the panel comes and goes; cross-fading it keeps
         // the change as quiet as the panel's own movement.
         child: AnimatedSwitcher(
@@ -772,7 +840,7 @@ class _BarButton extends StatelessWidget {
           child: Icon(
             icon,
             key: ValueKey(icon),
-            size: 19,
+            size: 18,
             color: active ? p.accent : p.muted,
           ),
         ),

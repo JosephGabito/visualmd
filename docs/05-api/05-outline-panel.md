@@ -32,12 +32,12 @@ The build (`lib/api/widgets/outline_panel.dart`):
    shell's non-empty guard is removed.
 
 `_OutlineEntry` (`lib/api/widgets/outline_panel.dart`) indents 14 px
-per depth (`lib/api/widgets/outline_panel.dart`), paints a 2 px left border
-in accent when active (`lib/api/widgets/outline_panel.dart`), shows
+per depth, uses the shared 32 px `ChromeListRow`, paints an accessible selected
+ground and a short 2 px location mark when active, shows
 `(untitled)` for a blank heading (`lib/api/widgets/outline_panel.dart`),
 and styles top-level and active entries in ink, deeper inactive ones in muted,
 with the active entry semibold (`lib/api/widgets/outline_panel.dart`).
-The accent border alone carries the active colour signal.
+Text, ground, and the location mark ensure colour is not the only active cue.
 
 ## Inputs and outputs
 

@@ -375,18 +375,35 @@ void main() {
     );
   });
 
-  testWidgets('top-bar panels are distinct named keyboard buttons', (
+  testWidgets('the title bar keeps document context and named commands', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
     await pumpReader(tester, size: const Size(1280, 800));
 
     final shelf = tester.getSemantics(find.bySemanticsLabel('Hide shelf'));
+    final findCommand = tester.getSemantics(
+      find.bySemanticsLabel('Find in document'),
+    );
     final outline = tester.getSemantics(find.bySemanticsLabel('Hide outline'));
     expect(shelf.flagsCollection.isButton, isTrue);
+    expect(findCommand.flagsCollection.isButton, isTrue);
     expect(outline.flagsCollection.isButton, isTrue);
     expect(shelf.label, 'Hide shelf');
+    expect(findCommand.label, 'Find in document');
     expect(outline.label, 'Hide outline');
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('top-bar-document-title')))
+          .data,
+      'Notes',
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('top-bar-document-location')))
+          .data,
+      'README.md',
+    );
 
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -395,10 +412,23 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(controller.outlineVisible, isFalse);
     semantics.dispose();
+  });
+
+  testWidgets('the title-bar search opens the existing document finder', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    await tester.tap(barButton(tester, 'Find in document'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DocumentFindBar), findsOneWidget);
+    expect(find.byKey(const ValueKey('document-search-field')), findsOneWidget);
   });
 
   testWidgets('the shelf toggles on the press, not the release', (

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -14,7 +12,9 @@ import '../../domain/workspace/workspace.dart';
 import '../../domain/workspace/workspace_id.dart';
 import '../../domain/workspace/workspace_source.dart';
 import '../../presentation/shelf/shelf_label_mode.dart';
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
+import 'chrome_list_row.dart';
 import 'panel_heading.dart';
 
 part 'shelf_reorder_machine.dart';
@@ -255,7 +255,9 @@ class _ShelfPanelState extends State<ShelfPanel> {
             final unavailableSource = source!;
             assert(widget.unavailableSources.contains(unavailableSource.id));
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: LibraryChromeScale.space2,
+              ),
               child: _UnavailableSourceRow(
                 source: unavailableSource,
                 folder: true,
@@ -274,7 +276,9 @@ class _ShelfPanelState extends State<ShelfPanel> {
             (candidate) => candidate.id == root.id,
           );
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: LibraryChromeScale.space2,
+            ),
             child: _RootSection(
               key: ValueKey(root.id),
               rootRowKey: _rootKeys.putIfAbsent(
@@ -345,7 +349,6 @@ class _ShelfHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -402,11 +405,11 @@ class _ShelfHeader extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
             '${workspace?.folders.length ?? library.roots.length} ${(workspace?.folders.length ?? library.roots.length) == 1 ? 'folder' : 'folders'} · '
             '${library.folderDocumentCount} ${library.folderDocumentCount == 1 ? 'document' : 'documents'}',
-            style: context.type.sans(color: p.muted, size: 12),
+            style: context.chromeMetadata,
           ),
         ),
       ],
@@ -470,7 +473,10 @@ final class _ShelfHeaderButton extends StatelessWidget {
       child: IconButton(
         onPressed: onPressed,
         icon: Icon(icon, size: 18),
-        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints.tightFor(
+          width: LibraryChromeScale.control,
+          height: LibraryChromeScale.control,
+        ),
       ),
     ),
   );
@@ -502,42 +508,40 @@ class _UnavailableSourceRowState extends State<_UnavailableSourceRow> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: InkWell(
+      child: ChromeListRow(
         onTap: widget.onReconnect,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-          child: Row(
-            children: [
-              Icon(
-                widget.folder
-                    ? Icons.folder_off_outlined
-                    : Icons.description_outlined,
-                size: 17,
-                color: p.muted,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Icon(
+              widget.folder
+                  ? Icons.folder_off_outlined
+                  : Icons.description_outlined,
+              size: 17,
+              color: p.muted,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                widget.source.displayName,
+                overflow: TextOverflow.ellipsis,
+                style: context.chromeRow(color: p.muted),
               ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  widget.source.displayName,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.type.sans(color: p.muted, size: 13.5),
-                ),
+            ),
+            if (_hovered) ...[
+              Tooltip(
+                message: 'Reconnect',
+                child: Icon(Icons.link_outlined, size: 16, color: p.accent),
               ),
-              if (_hovered) ...[
-                Tooltip(
-                  message: 'Reconnect',
-                  child: Icon(Icons.link_outlined, size: 16, color: p.accent),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Remove from workspace',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: widget.onRemove,
-                  icon: Icon(Icons.delete_outline, size: 16, color: p.muted),
-                ),
-              ],
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Remove from workspace',
+                visualDensity: VisualDensity.compact,
+                onPressed: widget.onRemove,
+                icon: Icon(Icons.delete_outline, size: 16, color: p.muted),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -758,7 +762,7 @@ class _RootRowState extends State<_RootRow> {
                   ),
                   sourceActions: widget.sourceActions,
                   enabled: widget.interactionsEnabled,
-                  child: InkWell(
+                  child: ChromeListRow(
                     key: ValueKey('root-toggle-${widget.root.id.value}'),
                     onTap: widget.interactionsEnabled ? widget.onTap : null,
                     onSecondaryTapDown: widget.interactionsEnabled
@@ -772,41 +776,31 @@ class _RootRowState extends State<_RootRow> {
                             widget.sourceActions,
                           )
                         : null,
-                    borderRadius: BorderRadius.circular(6),
-                    hoverColor: p.accentSoft.withValues(alpha: 0.5),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(6, 2, 2, 2),
-                      child: Row(
-                        children: [
-                          Icon(
-                            widget.open
-                                ? Icons.expand_more
-                                : Icons.chevron_right,
-                            size: 16,
-                            color: p.muted,
+                    padding: const EdgeInsets.fromLTRB(6, 4, 2, 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          widget.open ? Icons.expand_more : Icons.chevron_right,
+                          size: 16,
+                          color: p.muted,
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          widget.open
+                              ? Icons.folder_open_outlined
+                              : Icons.folder_outlined,
+                          size: 17,
+                          color: p.muted,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.root.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.chromeRow(weight: FontWeight.w600),
                           ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            widget.open
-                                ? Icons.folder_open_outlined
-                                : Icons.folder_outlined,
-                            size: 17,
-                            color: p.muted,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              widget.root.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: context.type.sans(
-                                color: p.ink,
-                                size: 13,
-                                weight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -871,7 +865,7 @@ class _FolderRow extends StatelessWidget {
     return _ShelfContextShortcuts(
       source: source,
       sourceActions: sourceActions,
-      child: InkWell(
+      child: ChromeListRow(
         onTap: onTap,
         onSecondaryTapDown: (details) => _showShelfContextMenu(
           context,
@@ -879,37 +873,29 @@ class _FolderRow extends StatelessWidget {
           source,
           sourceActions,
         ),
-        borderRadius: BorderRadius.circular(6),
-        hoverColor: p.accentSoft.withValues(alpha: 0.5),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(22.0 + depth * _indent, 5, 8, 5),
-          child: Row(
-            children: [
-              Icon(
-                open ? Icons.expand_more : Icons.chevron_right,
-                size: 16,
-                color: p.muted,
+        padding: EdgeInsets.fromLTRB(22.0 + depth * _indent, 6, 8, 6),
+        child: Row(
+          children: [
+            Icon(
+              open ? Icons.expand_more : Icons.chevron_right,
+              size: 16,
+              color: p.muted,
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              open ? Icons.folder_open_outlined : Icons.folder_outlined,
+              size: 16,
+              color: p.muted,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                folder.name,
+                overflow: TextOverflow.ellipsis,
+                style: context.chromeRow(weight: FontWeight.w500),
               ),
-              const SizedBox(width: 4),
-              Icon(
-                open ? Icons.folder_open_outlined : Icons.folder_outlined,
-                size: 16,
-                color: p.muted,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  folder.name,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.type.sans(
-                    color: p.ink,
-                    size: 13,
-                    weight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -949,7 +935,7 @@ class _DocumentRow extends StatelessWidget {
       child: _ShelfContextShortcuts(
         source: source,
         sourceActions: sourceActions,
-        child: InkWell(
+        child: ChromeListRow(
           onTap: onTap,
           onSecondaryTapDown: (details) => _showShelfContextMenu(
             context,
@@ -957,37 +943,29 @@ class _DocumentRow extends StatelessWidget {
             source,
             sourceActions,
           ),
-          borderRadius: BorderRadius.circular(6),
-          hoverColor: p.accentSoft.withValues(alpha: 0.5),
-          child: Container(
-            padding: EdgeInsets.fromLTRB(leading + depth * _indent, 5, 8, 5),
-            decoration: BoxDecoration(
-              color: selected ? p.accentSoft : null,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  document.isReadme
-                      ? Icons.auto_stories_outlined
-                      : Icons.description_outlined,
-                  size: 15,
-                  color: selected ? p.ink : p.muted,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.type.sans(
-                      color: p.ink,
-                      size: 13,
-                      weight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
+          selected: selected,
+          showLocation: selected,
+          padding: EdgeInsets.fromLTRB(leading + depth * _indent, 6, 8, 6),
+          child: Row(
+            children: [
+              Icon(
+                document.isReadme
+                    ? Icons.auto_stories_outlined
+                    : Icons.description_outlined,
+                size: 15,
+                color: selected ? p.ink : p.muted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.chromeRow(
+                    weight: selected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1183,7 +1161,7 @@ final class _ShelfContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
+    final chrome = context.chrome;
     final size = MediaQuery.sizeOf(context);
     final menuHeight = entries.length * itemHeight + 12;
     final left = anchor.dx
@@ -1192,8 +1170,6 @@ final class _ShelfContextMenu extends StatelessWidget {
     final top = anchor.dy
         .clamp(_inset, size.height - menuHeight - _inset)
         .toDouble();
-    final dark = Theme.of(context).brightness == Brightness.dark;
-
     return Stack(
       children: [
         Positioned(
@@ -1203,41 +1179,40 @@ final class _ShelfContextMenu extends StatelessWidget {
           child: DecoratedBox(
             key: const ValueKey('shelf-context-menu'),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(
+                LibraryChromeScale.floatingRadius,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.26 : 0.13),
-                  blurRadius: 22,
-                  offset: const Offset(0, 7),
+                  color: chrome.shadow,
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: p.panel.withValues(alpha: dark ? 0.76 : 0.70),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: p.border.withValues(alpha: dark ? 0.70 : 0.82),
-                      width: 0.75,
-                    ),
+              borderRadius: BorderRadius.circular(
+                LibraryChromeScale.floatingRadius,
+              ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: chrome.elevated,
+                  borderRadius: BorderRadius.circular(
+                    LibraryChromeScale.floatingRadius,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final entry in entries)
-                          _ShelfContextMenuItem(
-                            command: entry.$1,
-                            icon: entry.$2,
-                            label: entry.$3,
-                          ),
-                      ],
-                    ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final entry in entries)
+                        _ShelfContextMenuItem(
+                          command: entry.$1,
+                          icon: entry.$2,
+                          label: entry.$3,
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -1270,8 +1245,8 @@ final class _ShelfContextMenuItem extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.of(context).pop(command),
-          borderRadius: BorderRadius.circular(7),
-          hoverColor: p.accentSoft.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(LibraryChromeScale.controlRadius),
+          hoverColor: context.chrome.selected,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 9),
             child: Row(

@@ -31,6 +31,11 @@ actions with tooltips and semantics:
 - **Copy code** sends the exact source to the clipboard, including tabs, blank
   lines and trailing spaces. A check briefly confirms completion.
 
+Its language name uses the shared chrome component-label role, while both
+actions inherit the same neutral hover and focus surfaces as the toolbar. The
+header therefore identifies the evidence without becoming another document
+heading (`lib/api/widgets/code_block.dart`).
+
 Unwrapped source lives in a horizontal `SingleChildScrollView` with a subdued
 four-pixel scrollbar. The page itself never gains horizontal overflow
 (`lib/api/widgets/code_block.dart`). Code receives `wideWidth`, about a third

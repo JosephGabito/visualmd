@@ -8,8 +8,8 @@ assistive technology one named button. It owns hover, press and focus feedback
 but not the control's icon or visible label. The caller supplies the child,
 accessible name and callback.
 
-It is a widget in the API ring. It knows nothing about themes, libraries or
-platforms; the [Anchored Menu](08-anchored-menu.md) trigger and the top bar's
+It is a widget in the API ring. It reads [Library Chrome](28-library-chrome.md)
+but knows nothing about libraries or platforms; the [Anchored Menu](08-anchored-menu.md) trigger and the top bar's
 shelf and outline buttons are its callers.
 
 ## Present wiring
@@ -28,12 +28,11 @@ The control is a raw `Listener`, not a `GestureDetector`
   recognizer competing with a pan recognizer can have its callback delayed
   until the arena resolves.
 
-Around that sits the anticipation. The control scales to 1.06 while the pointer
-is over it or while it is `active`, and gives to 0.94 while pressed
-(`lib/api/widgets/pressable.dart`, `lib/api/widgets/pressable.dart`),
-over 120 ms of `Curves.easeOut` (`lib/api/widgets/pressable.dart`). Hover
-is tracked by a `MouseRegion`, which also carries the cursor
-(`lib/api/widgets/pressable.dart`).
+Around that sits the response. Hover, active, and press move through the shared
+opaque chrome surfaces over 120 ms of `Curves.easeOut`; icon geometry remains
+still, so a compact toolbar never twitches under the pointer
+(`lib/api/widgets/pressable.dart`). Hover is tracked by a `MouseRegion`, which
+also carries the cursor.
 
 A reader who has asked for less motion gets the state changes with no
 animation at all (`lib/api/widgets/pressable.dart`,
@@ -79,7 +78,7 @@ it.
 
 - A `null` `onPress` disables the control rather than hiding it: pointer and
   keyboard activation are disabled, the semantic node reports that state, the
-  cursor stays plain, the scale stays at 1, and the child dims to 40 %
+  cursor stays plain, the surface stays clear, and the child dims to 38 %
   (`lib/api/widgets/pressable.dart`,
   `lib/api/widgets/pressable.dart`, `lib/api/widgets/pressable.dart`,
   `lib/api/widgets/pressable.dart`). The top bar uses this before a library

@@ -74,6 +74,7 @@ class _PanelResizeHandleState extends State<PanelResizeHandle> {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final chrome = context.chrome;
     final active = _hovering || _focused;
     return Semantics(
       label: 'Resize ${widget.panelName}',
@@ -114,7 +115,7 @@ class _PanelResizeHandleState extends State<PanelResizeHandle> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 100),
                     width: active ? 2 : 1,
-                    color: active ? p.accent : p.border,
+                    color: active ? p.accent : chrome.separator,
                   ),
                 ),
               ),

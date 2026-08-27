@@ -46,6 +46,11 @@ recomputes fit from the current viewport. Full screen creates a fresh explorer
 over the page, preserving the quiet state beneath it
 (`lib/api/widgets/mermaid_diagram.dart`).
 
+The explorer header uses [Library Chrome](28-library-chrome.md)'s elevated
+surface and component-label role. Its local actions therefore match code-block
+furniture without borrowing the document's heading hierarchy
+(`lib/api/widgets/mermaid_diagram.dart`).
+
 ## Inputs and outputs
 
 | In | Type | Meaning |

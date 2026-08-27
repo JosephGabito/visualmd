@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../../presentation/code/code_highlighter.dart';
+import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 
 /// A fenced block with a quiet identity and two reading actions.
@@ -124,7 +125,7 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
         : ScrollbarTheme(
             data: ScrollbarTheme.of(context).copyWith(
               thickness: const WidgetStatePropertyAll(4),
-              radius: const Radius.circular(8),
+              radius: const Radius.circular(LibraryChromeScale.componentRadius),
               thumbColor: WidgetStatePropertyAll(
                 p.muted.withValues(alpha: 0.55),
               ),
@@ -162,14 +163,7 @@ final class _ReadableCodeBlockState extends State<ReadableCodeBlock> {
                         key: const ValueKey('code-language'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: context.type
-                            .sans(
-                              color: p.muted,
-                              size: 12,
-                              height: 1,
-                              weight: FontWeight.w500,
-                            )
-                            .copyWith(letterSpacing: 0.15),
+                        style: context.chromeComponentLabel,
                       ),
                     ),
                     _CodeAction(
@@ -322,8 +316,8 @@ final class _CodeAction extends StatelessWidget {
           onPressed: onPressed,
           constraints: BoxConstraints.tightFor(width: extent, height: extent),
           padding: EdgeInsets.zero,
-          hoverColor: p.accentSoft,
-          focusColor: p.accentSoft,
+          hoverColor: context.chrome.hover,
+          focusColor: context.chrome.hover,
           highlightColor: Colors.transparent,
           icon: Icon(
             icon,

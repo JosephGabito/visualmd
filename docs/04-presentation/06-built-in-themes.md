@@ -2,42 +2,62 @@
 
 ## Purpose and boundary
 
-`BuiltInThemes` is the set of themes the reader ships with, written as Dart
-constants (`lib/presentation/theme/built_in_themes.dart`). It exists so
-the theme menu is never empty, so
-[ThemeRegistry](05-theme-registry.md) always has something to fall back to,
-and so every shipped theme is a worked example of the same contract a user
-file must satisfy.
+`BuiltInThemes` is the set of themes the reader ships with
+(`lib/presentation/theme/built_in_themes.dart`). It keeps the menu useful before
+a reader adds any files, gives the registry a dependable fallback, and makes
+every shipped palette obey the same contract as a theme document.
 
-It owns the values and the choice of defaults. It does not own precedence — a
-user theme with the same id replaces one of these, and the registry decides
-that.
+The two house themes and Nord stay directly in `BuiltInThemes`. The larger
+Codex-inspired collection lives in `CodexThemeCollection`
+(`lib/presentation/theme/codex_theme_collection.dart`), while `ThemeFamily`
+records which light and dark members belong under one menu name
+(`lib/presentation/theme/theme_family.dart`). These objects own palette values
+and pairings. They do not own loading precedence or menu rendering.
 
 ## Present wiring
 
-Six themes, in menu order (`lib/presentation/theme/built_in_themes.dart`):
+The reader ships 34 `ReaderTheme` values: Paper, Lamplight, Nord, and 31 members
+of 16 named families. Fifteen families have a light and dark member. Proof has
+only the light palette supplied by the source collection, so Visual MD does not
+invent a dark counterpart.
 
-| id | Name | Brightness | Source |
-|----|------|------------|--------|
-| `paper` | Paper | light | House (`lib/presentation/theme/built_in_themes.dart`) |
-| `lamplight` | Lamplight | dark | House (`lib/presentation/theme/built_in_themes.dart`) |
-| `catppuccin-latte` | Catppuccin Latte | light | Catppuccin (`lib/presentation/theme/built_in_themes.dart`) |
-| `catppuccin-mocha` | Catppuccin Mocha | dark | Catppuccin (`lib/presentation/theme/built_in_themes.dart`) |
-| `nord` | Nord | dark | Nord (`lib/presentation/theme/built_in_themes.dart`) |
-| `gruvbox-dark` | Gruvbox Dark | dark | Gruvbox (`lib/presentation/theme/built_in_themes.dart`) |
+| Menu name | Light member | Dark member |
+|-----------|--------------|-------------|
+| Absolutely | `absolutely-light` | `absolutely-dark` |
+| Catppuccin | `catppuccin-latte` | `catppuccin-mocha` |
+| Codex | `codex-light` | `codex-dark` |
+| Everforest | `everforest-light` | `everforest-dark` |
+| GitHub | `github-light` | `github-dark` |
+| Gruvbox | `gruvbox-light` | `gruvbox-dark` |
+| Linear | `linear-light` | `linear-dark` |
+| Notion | `notion-light` | `notion-dark` |
+| One | `one-light` | `one-dark` |
+| Proof | `proof-light` | — |
+| Raycast | `raycast-light` | `raycast-dark` |
+| Rose Pine | `rose-pine-dawn` | `rose-pine-moon` |
+| Solarized | `solarized-light` | `solarized-dark` |
+| Vercel | `vercel-light` | `vercel-dark` |
+| VS Code Plus | `vscode-plus-light` | `vscode-plus-dark` |
+| Xcode | `xcode-light` | `xcode-dark` |
 
-Paper and Lamplight are the defaults of their brightness
-(`lib/presentation/theme/built_in_themes.dart`), which makes them the
-two halves of `systemPair` and the destination of every fallback.
+Choosing a paired family creates a `FollowSystem` choice containing those two
+ids. The row's swatch changes with system brightness, but the family remains
+one choice. Proof appears only while the system is light and creates a fixed
+choice. Paper, Lamplight, Nord, and custom themes remain individual rows in the
+picker's Light and Dark sections (`lib/api/widgets/theme_picker.dart`).
+
+Paper and Lamplight remain the defaults of their brightness. They form
+`systemPair` and receive every missing-theme fallback, so adding this collection
+does not alter an existing reader's preference.
 
 ## Inputs and outputs
 
-No inputs: these are `const` values, resolved at compile time. Out: a
-`List<ReaderTheme>` as `all`, and the two named defaults.
+There are no runtime inputs. All palettes and family records are constants.
+`BuiltInThemes.all` supplies the registry, `BuiltInThemes.families` supplies the
+family rows, and `BuiltInThemes.familyThemeIds` lets the picker avoid repeating
+family members as individual themes (`lib/presentation/theme/built_in_themes.dart`).
 
-The house themes in full — the reference values a new theme can be measured
-against (`lib/presentation/theme/built_in_themes.dart`,
-`lib/presentation/theme/built_in_themes.dart`):
+The house themes remain the reference values for a custom palette:
 
 | Token | Paper | Lamplight |
 |-------|-------|-----------|
@@ -49,49 +69,57 @@ against (`lib/presentation/theme/built_in_themes.dart`,
 | `accent` | `#A65A2E` | `#DFA273` |
 | `codeBackground` | `#EDE6D4` | `#2A241D` |
 | `accentSoft` | `#F1E2D3` | `#3A2D22` |
-| `selection` | `#A65A2E` at 25 % | `#DFA273` at 30 % |
+| `selection` | `#A65A2E` at 25% | `#DFA273` at 30% |
 
-Both set `accentSoft` and `selection` explicitly rather than taking the
-derived values, because a hand-picked wash reads better than a computed one.
+### Adapting an editor palette to a reader
 
-### Attribution
+The collection follows the names and light/dark definitions in Codex's Copy
+theme control. Visual MD maps each definition into nine semantic reader tokens
+rather than importing editor syntax rules. Source backgrounds, foregrounds,
+and characteristic hues preserve each palette's identity. Muted text and
+accent values move only where the untouched hue would fall below the reader's
+4.5:1 text-contrast floor on paper or panel
+(`lib/presentation/theme/codex_theme_collection.dart`).
 
-Three of the six borrow published palettes, each MIT-licensed, credited in
-the source beside the theme that uses it:
+Colour is the only copied concern. Every member keeps Visual MD's existing
+serif, sans, and mono families, x-height normalization, measure, leading, and
+vertical rhythm. A theme changes the atmosphere around a document, not the
+typographic rules that make it readable.
 
-| Palette | Licence | Source |
-|---------|---------|--------|
-| Catppuccin | MIT | `https://github.com/catppuccin/palette` (`lib/presentation/theme/built_in_themes.dart`) |
-| Nord | MIT | `https://www.nordtheme.com` (`lib/presentation/theme/built_in_themes.dart`) |
-| Gruvbox | MIT | `https://github.com/morhetz/gruvbox` (`lib/presentation/theme/built_in_themes.dart`) |
+Nord and several family identities come from published theme systems. The
+mapping into Visual MD's semantic tokens is project-specific:
 
-The mapping from each published palette to Visual MD's nine semantic tokens is
-project-specific; the source colour values are the attributed material.
+| Palette | Published source |
+|---------|------------------|
+| Catppuccin | `https://github.com/catppuccin/palette` |
+| Everforest | `https://github.com/sainnhe/everforest` |
+| Gruvbox | `https://github.com/morhetz/gruvbox` |
+| Nord | `https://www.nordtheme.com` |
+| Rosé Pine | `https://github.com/rose-pine/rose-pine-theme` |
+| Solarized | `https://ethanschoonover.com/solarized/` |
 
 ## Events
 
-None today. These are constants. Under the
-[plugin architecture](../07-roadmap/01-plugin-architecture.md) they are simply
-the contributions that ship in the box.
+None. These are immutable contributions. Choosing one is handled by the reader
+controller in the same way as choosing a custom theme.
 
 ## Lifecycle
 
-Compile-time constants, alive for the life of the process, never reloaded.
-Every one is checked against the JSON format by a round-trip test, and every
-text token is checked at 4.5:1 or better against the paper and panel surfaces
-on which it is used (`test/presentation/theme_test.dart`). A built-in
-therefore cannot drift into an unreadable pairing or a shape a user file could
-not also express.
+The constants live for the process lifetime and are never reloaded. Every
+built-in round-trips through the public JSON format. Tests also assert that all
+family members exist at their promised brightness and that every ink, muted,
+and accent use reaches 4.5:1 contrast on its relevant surface
+(`test/presentation/theme_test.dart`).
 
 ## Failure and recovery
 
-None at runtime — a malformed built-in would not compile. Contrast is a
-measured invariant for shipped palettes; user theme documents are still
-format-checked rather than rejected for an author's colour choice.
+A malformed constant fails during development. A family cannot name an absent
+member without failing its registry test. At runtime, an old fixed choice for a
+family member remains recognized and selected; a missing id still falls back to
+Paper or Lamplight through the registry.
 
 ## Transition
 
-More themes are cheap and the list is the only thing that changes when one is
-added. If the set grows much past a dozen, the picker needs grouping or
-search before the menu does — see the
-[Theme Picker](../05-api/07-theme-picker.md).
+The family type deliberately describes only pairing and display. Search,
+favourites, or user-authored family metadata would need a product reason and a
+public file-format decision rather than more fields added speculatively.
