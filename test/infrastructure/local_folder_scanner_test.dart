@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/application/ports/folder_scanner.dart';
@@ -6,6 +7,7 @@ import 'package:visualmd/infrastructure/io/local_folder.dart';
 import 'package:visualmd/infrastructure/io/local_folder_scanner.dart';
 import 'package:visualmd/infrastructure/io/local_markdown.dart';
 import 'package:visualmd/infrastructure/io/local_markdown_scanner.dart';
+import 'package:visualmd/infrastructure/io/scoped_access.dart';
 
 void main() {
   late Directory root;
@@ -97,6 +99,31 @@ void main() {
     expect(scanned.files.map((f) => f.path), ['README.md']);
   });
 
+  test('title reads overlap without exceeding the desktop IO budget', () async {
+    final loose = <(String, Uint8List?)>[];
+    for (var index = 0; index < 20; index++) {
+      final file = File('${root.path}/book-$index.md');
+      await file.writeAsString('# Book $index');
+      loose.add((file.path, null));
+    }
+    final access = _CountingAccess();
+    final registry = LocalFolderRegistry('test');
+    final ref = registry.register(
+      'Books',
+      LocalFiles(name: 'Books', files: loose),
+    );
+
+    final scanned = await LocalFolderScanner(
+      registry,
+      access: access,
+    ).scan(ref);
+
+    expect(scanned.files.map((file) => file.title), [
+      for (var index = 0; index < 20; index++) 'Book $index',
+    ]);
+    expect(access.maximumActive, 8);
+  });
+
   test(
     'folder and single-file scans share one physical source identity',
     () async {
@@ -129,4 +156,21 @@ void main() {
       throwsA(isA<FolderUnavailable>()),
     );
   });
+}
+
+final class _CountingAccess implements ScopedAccess {
+  var _active = 0;
+  var maximumActive = 0;
+
+  @override
+  Future<T> within<T>(Uint8List? bookmark, Future<T> Function() body) async {
+    _active++;
+    if (_active > maximumActive) maximumActive = _active;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    try {
+      return await body();
+    } finally {
+      _active--;
+    }
+  }
 }

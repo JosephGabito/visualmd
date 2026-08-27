@@ -15,6 +15,8 @@ import 'scoped_access.dart';
 /// Adapter: reads markdown files out of folders on the local filesystem.
 /// Like the browser scanner, it only reads what the domain would keep.
 final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
+  static const _maximumConcurrentReads = 8;
+
   final LocalFolderRegistry _registry;
   final ScopedAccess _access;
 
@@ -32,18 +34,23 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
       final files = <FileEntry>[];
       switch (folder) {
         case LocalDirectory(:final path, :final bookmark):
-          await _access.within(
-            bookmark,
-            () => _walk(Directory(path), '', files),
+          files.addAll(
+            await _access.within(bookmark, () async {
+              final reads = <Future<FileEntry> Function()>[];
+              await _walk(Directory(path), '', reads);
+              return _readBounded(reads);
+            }),
           );
         case LocalFiles(files: final loose):
+          final reads = <Future<FileEntry> Function()>[];
           for (final (path, bookmark) in loose) {
             final name = baseName(path);
             if (!MarkdownFile.isMarkdown(name)) continue;
-            files.add(
-              await _access.within(bookmark, () => _entry(name, File(path))),
+            reads.add(
+              () => _access.within(bookmark, () => _entry(name, File(path))),
             );
           }
+          files.addAll(await _readBounded(reads));
       }
       return ScannedFolder(name: folder.name, files: files);
     } on FileSystemException {
@@ -121,7 +128,7 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
   Future<void> _walk(
     Directory directory,
     String prefix,
-    List<FileEntry> out,
+    List<Future<FileEntry> Function()> reads,
   ) async {
     final entries = await directory.list(followLinks: false).toList();
     for (final entry in entries) {
@@ -129,11 +136,32 @@ final class LocalFolderScanner implements FolderScanner, FolderDocumentScanner {
       final path = '$prefix$name';
       if (entry is Directory) {
         if (HiddenFolders.isHidden(name)) continue;
-        await _walk(entry, '$path/', out);
+        await _walk(entry, '$path/', reads);
       } else if (entry is File && MarkdownFile.isMarkdown(name)) {
-        out.add(await _entry(path, entry));
+        reads.add(() => _entry(path, entry));
       }
     }
+  }
+
+  static Future<List<FileEntry>> _readBounded(
+    List<Future<FileEntry> Function()> reads,
+  ) async {
+    if (reads.isEmpty) return const [];
+    final results = List<FileEntry?>.filled(reads.length, null);
+    var next = 0;
+
+    Future<void> worker() async {
+      while (next < reads.length) {
+        final index = next++;
+        results[index] = await reads[index]();
+      }
+    }
+
+    final workerCount = reads.length < _maximumConcurrentReads
+        ? reads.length
+        : _maximumConcurrentReads;
+    await Future.wait(List.generate(workerCount, (_) => worker()));
+    return results.cast<FileEntry>();
   }
 
   /// Markdown is text; a stray invalid byte should not sink the whole library.
