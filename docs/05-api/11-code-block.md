@@ -44,14 +44,22 @@ more room than prose, before local scrolling begins
 
 A source of at least 32,768 characters takes a bounded rendering path when it
 belongs to the scrolling reading page. A compact line-offset index establishes
-the complete block height without creating one paragraph for the complete
+the physical source rows without creating one paragraph for the complete
 source. The body then follows the page's existing vertical position and mounts
-the visible lines plus eight lines of overscan on each edge. Within those rows,
+the visible lines plus eight lines of overscan on each edge. With wrapping off,
 only the horizontal viewport plus 32 overscan columns on each edge becomes a
 text layout object. The full monospace width remains the local scroll
-coordinate system. It remains one continuous code surface in the outer
-document: there is no nested vertical scrollbar and no change to the reader's
-wheel, trackpad or scrollbar physics (`lib/api/widgets/code_block.dart`).
+coordinate system (`lib/api/widgets/code_block.dart`).
+
+With wrapping on, a dense indexed extent ledger estimates every physical
+line's wrapped height from the measured monospace advance. Flutter shapes only
+the mounted physical lines, and each exact height replaces its estimate while
+the viewport anchor is compensated. This retains Flutter's real wrapping and a
+complete outer scroll extent without one eager paragraph for the entire fence
+(`packages/quiet_viewport/lib/src/extent_ledger.dart`,
+`lib/api/widgets/code_block.dart`). Both modes remain one continuous code
+surface in the outer document: there is no nested vertical scrollbar and no
+change to the reader's wheel, trackpad or scrollbar physics.
 
 Each mounted line asks `InlineComposer.highlightedVerbatimRange` for only its
 source window. The composer seeks into ordered syntax ranges rather than
@@ -111,12 +119,12 @@ is emitted because reading or copying an example does not mutate the library.
 ## Lifecycle
 
 One state object and horizontal `ScrollController` live with each rendered
-block (`lib/api/widgets/code_block.dart`). A large unwrapped block additionally
-retains integer line starts and the currently mounted line and column window;
-the amount
-of text laid out, painted and registered with semantics stays bounded by the
-page viewport. A source, language, scheme or
-highlighter change invalidates the pending request and starts another. A
+block (`lib/api/widgets/code_block.dart`). A large block additionally retains
+integer line starts and its currently mounted source window. Wrapped blocks
+also retain one dense extent value per physical line; only mounted lines are
+shaped, painted, registered with semantics and syntax-classified. A source,
+language, scheme or highlighter change invalidates the pending request and
+starts another. A
 request number prevents a late result from an earlier document repainting the
 new one. Copy confirmation owns a short timer; both timer and controller are
 disposed with the block.
@@ -144,6 +152,12 @@ The native atomic-block benchmark verifies that opening and seeking through
 the complete outer scroll extent
 (`integration_test/atomic_block_performance_test.dart`).
 
+The wrapped benchmark holds the same bound after the explicit wrap action. At
+50,000 long lines it reduced the worst measured frame from 896.7 ms to 19.3 ms
+and observed RSS growth from 1,593.2 MiB to 3.2 MiB while mounting 27 physical
+lines (`integration_test/wrapped_atomic_block_performance_test.dart`,
+`benchmark/results/2026-08-28-wrapped-code-block.md`).
+
 ## Transition
 
 Diagram fences such as `mermaid` need a different block renderer, not special
@@ -155,9 +169,8 @@ Selection inside the mounted source window remains native. Extending a drag
 through an unmounted window still needs range-aware model selection. Command-A
 and Command-C are lossless through the reading pane's model-backed whole-document
 snapshot, while the block's own Copy action remains an exact direct path.
-Wrapped large blocks also remain an eager text-layout boundary. Wrapped-row
-indexing and range-aware drag selection are separate performance slices rather
-than reasons to weaken the default unwrapped reading path. Windowed
-classification has bounded context: a multiline token opened far before the
-viewport may use plain or local-context colour until a stateful grammar
-checkpoint exists.
+Building a wrapped block's first estimate vector remains O(physical lines),
+although it does not shape text; making that index append-aware is a separate
+streaming slice. Windowed classification has bounded context: a multiline token
+opened far before the viewport may use plain or local-context colour until a
+stateful grammar checkpoint exists.

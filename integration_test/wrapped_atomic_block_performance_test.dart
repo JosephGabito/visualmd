@@ -19,11 +19,11 @@ import 'package:visualmd/infrastructure/viewport/quiet_document_viewport_geometr
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 
-/// Measures the explicit escape hatch from windowed code into wrapped layout.
+/// Measures wrapped layout through the production windowed code path.
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('wrapping one huge fence exposes its eager layout cost', (
+  testWidgets('wrapping one huge fence keeps mounted work viewport-bounded', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 820);
@@ -51,7 +51,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 180));
       await tester.pump();
 
-      final rendered = find
+      final mountedCharacters = find
           .descendant(
             of: find.byKey(const ValueKey('code-source')),
             matching: find.byType(RichText),
@@ -62,18 +62,28 @@ void main() {
                 (element.renderObject! as RenderParagraph).text.toPlainText(),
           )
           .fold(0, (total, text) => total + text.length);
+      final mountedLines = find
+          .byWidgetPredicate((widget) {
+            final key = widget.key;
+            return key is ValueKey<String> &&
+                key.value.startsWith('code-line-');
+          })
+          .evaluate()
+          .length;
       runs.add({
         'lines': lineCount,
         'source_characters': reading.content.blocks.single.text.length,
         'wrap_wall_us': clock.elapsedMicroseconds,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
-        'rendered_characters': rendered,
+        'mounted_characters': mountedCharacters,
+        'mounted_lines': mountedLines,
         'frames': _frameSummary(
           timings.skip(beforeFrames).toList(growable: false),
         ),
       });
 
-      expect(rendered, reading.content.blocks.single.text.length);
+      expect(mountedCharacters, lessThan(20000));
+      expect(mountedLines, lessThan(100));
       expect(tester.takeException(), isNull);
     }
 

@@ -22,6 +22,33 @@ void main() {
     expect(ledger.totalExtent, prefix);
   });
 
+  test('dense indexed geometry measures and relayouts without key records', () {
+    final ledger = IndexedExtentLedger([10, 20, 30]);
+
+    expect(ledger.leadingOffsetAt(2), 30);
+    expect(ledger.indexAtOffset(10), 1);
+    final measured = ledger.measure(
+      index: 0,
+      layoutRevision: 0,
+      extent: 15,
+      anchor: 2,
+    );
+    expect(measured?.scrollOffsetDelta, 5);
+    expect(ledger.leadingOffsetAt(2), 35);
+
+    final relayout = ledger.relayout(
+      revision: 1,
+      estimatedExtents: [12, 18, 30],
+      anchor: 2,
+    );
+    expect(relayout.scrollOffsetDelta, -5);
+    expect(ledger.totalExtent, 60);
+    expect(
+      ledger.measure(index: 1, layoutRevision: 0, extent: 100, anchor: 2),
+      isNull,
+    );
+  });
+
   test('an empty ledger can begin a new layout epoch', () {
     final ledger = StableExtentLedger<String>();
 
