@@ -230,9 +230,12 @@ committed prefix identities survive both an append and replacement of the
 provisional suffix
 (`lib/domain/reading/content/document_content.dart`).
 
-Revisioned storage is an immutable balanced rope with a persistent AVL identity
-set. Replacing a provisional suffix shares every untouched subtree instead of
-copying the committed prefix. Appending or replacing `k` blocks in a document
+Revisioned storage uses the framework-free `PersistentSequence` AVL rope and a
+persistent AVL identity set
+(`lib/domain/collection/persistent_sequence.dart`,
+`lib/domain/reading/content/document_content.dart`). Replacing a provisional
+suffix shares every untouched subtree instead of copying the committed prefix.
+Appending or replacing `k` blocks in a document
 of `n` blocks costs `O(log n + k log n)` for sequence and identity updates;
 indexed lookup is `O(log n)`, while ordered iteration remains `O(n)`. The
 compatibility `blocks` view is lazy, so creating a new revision does not map
