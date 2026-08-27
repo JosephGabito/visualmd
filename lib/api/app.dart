@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../application/ports/document_image_loader.dart';
+import '../application/ports/document_viewport_geometry.dart';
 import '../application/ports/shelf_source_actions.dart';
 import 'reader_controller.dart';
 import '../presentation/code/code_highlighter.dart';
@@ -17,6 +18,7 @@ class VisualMdApp extends StatelessWidget {
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader imageLoader;
+  final DocumentViewportGeometryFactory viewportGeometry;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
   final ShelfSourceActions? shelfSourceActions;
@@ -39,6 +41,7 @@ class VisualMdApp extends StatelessWidget {
     required this.codeHighlighter,
     required this.mermaidRenderer,
     required this.imageLoader,
+    required this.viewportGeometry,
     required this.openExternal,
     this.openReaderSources,
     this.shelfSourceActions,
@@ -96,6 +99,7 @@ class VisualMdApp extends StatelessWidget {
             codeHighlighter: codeHighlighter,
             mermaidRenderer: mermaidRenderer,
             imageLoader: imageLoader,
+            viewportGeometry: viewportGeometry,
             openExternal: openExternal,
             openReaderSources: openReaderSources,
             shelfSourceActions: shelfSourceActions,

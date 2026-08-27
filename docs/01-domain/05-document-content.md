@@ -8,6 +8,14 @@ blocks, each block a list of runs
 page is built from, and it belongs to the domain because *what a document is*
 is a domain question, even though parsing markdown is not.
 
+The sequence can also carry stable block identity. `DocumentBlockId` says
+which reading unit survived an update; its item revision says whether that
+unit changed; and `BlockCommitment` distinguishes a settled unit from the
+provisional tail an incremental producer may still revise. Those are document
+facts rather than widget keys, so a future streaming parser and the current
+reader share one vocabulary without putting Flutter in the domain
+(`lib/domain/reading/content/document_content.dart`).
+
 The model's one rule is that it carries the author's **reading text** exactly.
 Markdown delimiters and escape backslashes have already served their grammar,
 so `\*literal\*` arrives as `*literal*`; the punctuation itself is not changed.
@@ -187,32 +195,45 @@ outline always resolves on the page.
 
 ## Inputs and outputs
 
-In: nothing. These are value objects; something else constructs them.
+In: blocks for a complete snapshot, or revisioned `DocumentBlock` entries and
+`DocumentMutation` operations for an incremental sequence. Insert, replace,
+finalise, and remove operations name the revision they follow and the revision
+they create (`lib/domain/reading/content/document_content.dart`).
 
-Out: `blocks`, `headings` in source order, `isEmpty`, and `text` — every word
-without decoration, for anything that needs words rather than shapes
-(`lib/domain/reading/content/document_content.dart`). Every block and
-run offers the same `text`
+Out: `entries` with stable identity, `blocks` and `headings` in source order,
+`revision`, `isEmpty`, and `text` — every word without decoration, for anything
+that needs words rather than shapes. `appendedSince` returns only a directly
+appended tail; replacements and non-tail edits deliberately return no delta
+(`lib/domain/reading/content/document_content.dart`). Every block and run
+offers the same `text`
 (`lib/domain/reading/content/block.dart`,
 `lib/domain/reading/content/inline.dart`).
 
 ## Events
 
-None today. Value objects do not publish events. The
+None today. A `DocumentMutation` is data applied explicitly, not an event bus.
+Value objects do not publish events. The
 [Plugin Architecture](../07-roadmap/01-plugin-architecture.md) places any
 future opened-document event in [ReadDocument](../02-application/02-read-document.md),
 after a complete reading has been assembled.
 
 ## Lifecycle
 
-Built once per document read and held on the `DocumentReading` that
-[ReadDocument](../02-application/02-read-document.md) returns
-(`lib/application/use_cases/read_document.dart`). Immutable, so it may be
-rebuilt or discarded freely.
+The current Markdown adapter builds one complete snapshot per document read
+and the returned `DocumentReading` holds it
+(`lib/application/use_cases/read_document.dart`). That legacy snapshot receives
+deterministic snapshot identities when `entries` is requested. An incremental
+producer instead creates revisioned entries and applies immutable mutations;
+committed prefix identities survive a tail append
+(`lib/domain/reading/content/document_content.dart`).
 
 ## Failure and recovery
 
-These immutable values add no failure mode of their own. Markup the parser
+Applying a mutation with the wrong base revision, an invalid range, a
+non-increasing revision, or a duplicate block identity throws `StateError`
+before publishing a new value. A stale update can therefore be rejected rather
+than silently corrupting the reader's coordinate system
+(`lib/domain/reading/content/document_content.dart`). Markup the parser
 cannot map becomes a `RawBlock` rather than being discarded, and an empty
 document is
 `DocumentContent.empty` (`lib/domain/reading/content/document_content.dart`)
@@ -223,7 +244,10 @@ fallback, comments and dangerous HTML source.
 
 ## Transition
 
-The domain still does not load an image or decide whether any selected source
+Mutation application currently copies the entry list. The renderer's append
+work is bounded, but a truly unbounded stream will eventually need a persistent
+or chunked sequence behind this same immutable contract. The domain still does
+not load an image or decide whether any selected source
 is local. Those are application and platform questions handled by
 [Document Image](../05-api/23-document-image.md). Syntax highlighting reads
 `CodeBlock.language` through the presentation contract and colours source in

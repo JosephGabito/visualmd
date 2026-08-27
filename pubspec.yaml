@@ -23,6 +23,8 @@ dependencies:
   html: 0.15.6
   merman: 0.7.0
   shiki_flutter: ^1.1.0
+  quiet_viewport:
+    path: packages/quiet_viewport
 
 dev_dependencies:
   flutter_test:

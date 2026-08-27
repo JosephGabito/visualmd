@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide TableCell;
 import 'package:flutter/rendering.dart';
 
 import '../../application/ports/document_image_loader.dart';
+import '../../application/ports/document_viewport_geometry.dart';
 import '../../domain/library/document_id.dart';
 import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
@@ -21,6 +22,7 @@ import '../widgets/code_block.dart';
 import '../widgets/math_expression.dart';
 import '../widgets/mermaid_diagram.dart';
 import 'inline_composer.dart';
+import 'geometry_sliver_list.dart';
 import 'reading_direction.dart';
 import 'reading_theme.dart';
 
@@ -152,6 +154,13 @@ class SliverDocumentView extends StatefulWidget {
   final int activeMatch;
   final Map<int, GlobalKey> matchKeys;
   final void Function(String anchor, bool mounted)? onHeadingMount;
+  final DocumentViewportGeometry? viewportGeometry;
+  final ValueChanged<DocumentExtentCorrection>? onExtentCorrection;
+  final DocumentBlockId? viewportAnchor;
+
+  /// Reports how many source records an indexing pass visited. The profile
+  /// harness uses this to prove an append does not revisit its prefix.
+  final ValueChanged<int>? debugOnBlocksIndexed;
 
   SliverDocumentView({
     super.key,
@@ -168,6 +177,10 @@ class SliverDocumentView extends StatefulWidget {
     this.activeMatch = -1,
     Map<int, GlobalKey>? matchKeys,
     this.onHeadingMount,
+    this.viewportGeometry,
+    this.onExtentCorrection,
+    this.viewportAnchor,
+    this.debugOnBlocksIndexed,
   }) : customAnchorKeys = customAnchorKeys ?? <String, GlobalKey>{},
        matchKeys = matchKeys ?? <int, GlobalKey>{};
 
@@ -176,13 +189,35 @@ class SliverDocumentView extends StatefulWidget {
 }
 
 class _SliverDocumentViewState extends State<SliverDocumentView> {
-  late _IndexedBlocks _index = _indexBlocks(widget.content.blocks);
+  late _IndexedBlocks _index = _initialIndex();
+  Object? _layoutSignature;
+  var _layoutRevision = 0;
+  var _needsGeometryReset = true;
+  PendingDocumentExtentCorrection? _pendingCorrection;
+
+  _IndexedBlocks _initialIndex() {
+    final entries = widget.content.entries;
+    widget.debugOnBlocksIndexed?.call(entries.length);
+    return _indexDocumentBlocks(entries);
+  }
 
   @override
   void didUpdateWidget(SliverDocumentView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.content.blocks, widget.content.blocks)) {
-      _index = _indexBlocks(widget.content.blocks);
+    if (!identical(oldWidget.viewportGeometry, widget.viewportGeometry)) {
+      _needsGeometryReset = true;
+      _layoutSignature = null;
+      _layoutRevision = widget.viewportGeometry?.layoutRevision ?? 0;
+    }
+    if (!identical(oldWidget.content, widget.content)) {
+      final appended = widget.content.appendedSince(oldWidget.content);
+      if (appended == null) {
+        _index = _initialIndex();
+        _needsGeometryReset = true;
+      } else if (appended.isNotEmpty) {
+        widget.debugOnBlocksIndexed?.call(appended.length);
+        _index = _appendDocumentBlocks(_index, appended);
+      }
     }
   }
 
@@ -202,56 +237,56 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
         final available = constraints.crossAxisExtent;
         final prose = widget.theme.proseWidth(available);
         final wide = widget.theme.wideWidth(available);
-        return SliverList.builder(
-          itemCount:
-              _index.visible.length + (_index.trailingAnchors.isEmpty ? 0 : 1),
-          itemBuilder: (context, index) {
-            if (index == _index.visible.length) {
-              return _withAnchorTargets(
-                const SizedBox.shrink(),
-                _index.trailingAnchors,
-                widget.customAnchorKeys,
-              );
-            }
-            final entry = _index.visible[index];
-            final block = entry.block;
-            final previous = index == 0
-                ? null
-                : _index.visible[index - 1].block;
-            final next = index + 1 < _index.visible.length
-                ? _index.visible[index + 1].block
-                : null;
-            final followingSpace = widget.theme.spaceAfter(block, next);
-            final view = _BlockView(
-              block: block,
-              theme: widget.theme,
-              composer: composer,
-              codeHighlighter: widget.codeHighlighter,
-              mermaidRenderer: widget.mermaidRenderer,
-              keys: widget.anchorKeys,
-              customKeys: widget.customAnchorKeys,
-              matchKeys: widget.matchKeys,
-              offset: entry.offset,
-              indent:
-                  ParagraphRules.indents(previous, widget.theme.scale.marking)
-                  ? widget.theme.indent
-                  : 0,
-              followingSpace: followingSpace,
-              reconcileContainer: true,
-            );
-            final width = DocumentView._widthFor(block, prose, wide);
-            final positioned = Align(
-              alignment: Alignment.topCenter,
-              child: SizedBox(width: width, child: view),
-            );
-            final observed = block is HeadingBlock
-                ? _MountObserver(
-                    identity: block.anchor,
-                    onChanged: widget.onHeadingMount,
-                    child: positioned,
-                  )
-                : positioned;
-            return Column(
+        final geometry = widget.viewportGeometry;
+        if (geometry != null) {
+          _prepareGeometry(
+            geometry,
+            available,
+            prose,
+            wide,
+            widget.viewportAnchor,
+          );
+        }
+
+        Widget buildBlock(BuildContext context, int index) {
+          final entry = _index.visible[index];
+          final block = entry.block;
+          final previous = index == 0 ? null : _index.visible[index - 1].block;
+          final next = index + 1 < _index.visible.length
+              ? _index.visible[index + 1].block
+              : null;
+          final followingSpace = widget.theme.spaceAfter(block, next);
+          final view = _BlockView(
+            block: block,
+            theme: widget.theme,
+            composer: composer,
+            codeHighlighter: widget.codeHighlighter,
+            mermaidRenderer: widget.mermaidRenderer,
+            keys: widget.anchorKeys,
+            customKeys: widget.customAnchorKeys,
+            matchKeys: widget.matchKeys,
+            offset: entry.offset,
+            indent: ParagraphRules.indents(previous, widget.theme.scale.marking)
+                ? widget.theme.indent
+                : 0,
+            followingSpace: followingSpace,
+            reconcileContainer: true,
+          );
+          final width = DocumentView._widthFor(block, prose, wide);
+          final positioned = Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(width: width, child: view),
+          );
+          final observed = block is HeadingBlock
+              ? _MountObserver(
+                  identity: block.anchor,
+                  onChanged: widget.onHeadingMount,
+                  child: positioned,
+                )
+              : positioned;
+          return KeyedSubtree(
+            key: ValueKey(entry.id!),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _withAnchorTargets(observed, [
@@ -260,11 +295,143 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
                 ], widget.customAnchorKeys),
                 if (followingSpace > 0) SizedBox(height: followingSpace),
               ],
-            );
-          },
+            ),
+          );
+        }
+
+        int? findChildIndex(Key key) => switch (key) {
+          ValueKey<DocumentBlockId>(:final value) =>
+            _index.visibleIndexes[value],
+          _ => null,
+        };
+
+        final list = geometry == null
+            ? SliverList.builder(
+                findChildIndexCallback: findChildIndex,
+                itemCount: _index.visible.length,
+                itemBuilder: buildBlock,
+              )
+            : GeometrySliverList.builder(
+                viewportGeometry: geometry,
+                layoutRevision: _layoutRevision,
+                itemCount: _index.visible.length,
+                seedAt: (index) => _seedFor(index, prose, wide),
+                indexOf: (id) => _index.visibleIndexes[id]!,
+                findChildIndexCallback: findChildIndex,
+                itemBuilder: buildBlock,
+                onExtentCorrection: widget.onExtentCorrection,
+                pendingCorrection: _pendingCorrection,
+              );
+        if (_index.trailingAnchors.isEmpty) return list;
+        return SliverMainAxisGroup(
+          slivers: [
+            list,
+            SliverToBoxAdapter(
+              child: _withAnchorTargets(
+                const SizedBox.shrink(),
+                _index.trailingAnchors,
+                widget.customAnchorKeys,
+              ),
+            ),
+          ],
         );
       },
     );
+  }
+
+  void _prepareGeometry(
+    DocumentViewportGeometry geometry,
+    double available,
+    double prose,
+    double wide,
+    DocumentBlockId? anchor,
+  ) {
+    final signature = (
+      available,
+      prose,
+      wide,
+      widget.theme.line,
+      widget.theme.renderedBase,
+      widget.theme.body.fontFamily,
+      widget.theme.scale.marking,
+    );
+    if (_layoutSignature != null && _layoutSignature != signature) {
+      _layoutRevision = math.max(
+        _layoutRevision + 1,
+        geometry.layoutRevision + 1,
+      );
+    }
+    _layoutSignature = signature;
+
+    if (_needsGeometryReset || geometry.length > _index.visible.length) {
+      final correction = geometry.reset(
+        [
+          for (var index = 0; index < _index.visible.length; index++)
+            _seedFor(index, prose, wide),
+        ],
+        layoutRevision: _layoutRevision,
+        anchor: anchor,
+      );
+      if (correction.contentExtentDelta != 0 ||
+          correction.scrollOffsetDelta != 0) {
+        _pendingCorrection = PendingDocumentExtentCorrection(correction);
+      }
+      _needsGeometryReset = false;
+      return;
+    }
+    if (geometry.length < _index.visible.length) {
+      geometry.appendAll([
+        for (
+          var index = geometry.length;
+          index < _index.visible.length;
+          index++
+        )
+          _seedFor(index, prose, wide),
+      ]);
+    }
+  }
+
+  DocumentExtentSeed _seedFor(int index, double prose, double wide) {
+    final entry = _index.visible[index];
+    final next = index + 1 < _index.visible.length
+        ? _index.visible[index + 1].block
+        : null;
+    final block = entry.block;
+    final width = DocumentView._widthFor(block, prose, wide);
+    return DocumentExtentSeed(
+      id: entry.id!,
+      revision: entry.revision,
+      estimatedExtent:
+          _estimatedBlockExtent(block, width) +
+          widget.theme.spaceAfter(block, next),
+    );
+  }
+
+  double _estimatedBlockExtent(Block block, double width) {
+    final theme = widget.theme;
+    final averageAdvance = math.max(theme.renderedBase * 0.52, 1.0);
+    final charactersPerLine = math.max((width / averageAdvance).floor(), 12);
+    int wrappedLines(String text) => text
+        .split('\n')
+        .fold(
+          0,
+          (sum, line) =>
+              sum + math.max(1, (line.length / charactersPerLine).ceil()),
+        );
+
+    return switch (block) {
+      HeadingBlock(:final level, :final text) => math.max(
+        theme.line,
+        wrappedLines(text) *
+            (theme.heading(level).fontSize ?? theme.renderedBase) *
+            (theme.heading(level).height ?? 1.2),
+      ),
+      CodeBlock(:final code) =>
+        math.max(2, code.split('\n').length + 1) * theme.line,
+      MathBlock() => theme.line * 4,
+      MermaidBlock() => theme.line * 8,
+      _ => math.max(theme.line, wrappedLines(block.text) * theme.line),
+    };
   }
 }
 
@@ -413,18 +580,35 @@ class _BlockSequence extends StatelessWidget {
 }
 
 final class _VisibleBlock {
-  const _VisibleBlock(this.block, this.anchors, this.offset);
+  const _VisibleBlock(
+    this.block,
+    this.anchors,
+    this.offset,
+    this.id,
+    this.revision,
+  );
 
   final Block block;
   final List<String> anchors;
   final int offset;
+  final DocumentBlockId? id;
+  final int revision;
 }
 
 final class _IndexedBlocks {
-  const _IndexedBlocks(this.visible, this.trailingAnchors);
+  const _IndexedBlocks({
+    required this.visible,
+    required this.trailingAnchors,
+    required this.claimedAnchors,
+    required this.nextOffset,
+    required this.visibleIndexes,
+  });
 
   final List<_VisibleBlock> visible;
   final List<String> trailingAnchors;
+  final Set<String> claimedAnchors;
+  final int nextOffset;
+  final Map<DocumentBlockId, int> visibleIndexes;
 }
 
 _IndexedBlocks _indexBlocks(
@@ -432,22 +616,68 @@ _IndexedBlocks _indexBlocks(
   int startOffset = 0,
   int separatorLength = 2,
 }) {
-  final visible = <_VisibleBlock>[];
-  final pendingAnchors = <String>[];
-  final claimedAnchors = <String>{};
-  var offset = startOffset;
-  for (final block in blocks) {
+  return _extendIndex(_emptyIndex(startOffset), [
+    for (final block in blocks) (block: block, id: null, revision: 0),
+  ], separatorLength: separatorLength);
+}
+
+_IndexedBlocks _indexDocumentBlocks(
+  List<DocumentBlock> blocks, {
+  int startOffset = 0,
+  int separatorLength = 2,
+}) => _extendIndex(_emptyIndex(startOffset), [
+  for (final entry in blocks)
+    (block: entry.block, id: entry.id, revision: entry.revision),
+], separatorLength: separatorLength);
+
+_IndexedBlocks _appendDocumentBlocks(
+  _IndexedBlocks current,
+  List<DocumentBlock> appended, {
+  int separatorLength = 2,
+}) => _extendIndex(current, [
+  for (final entry in appended)
+    (block: entry.block, id: entry.id, revision: entry.revision),
+], separatorLength: separatorLength);
+
+_IndexedBlocks _emptyIndex(int startOffset) => _IndexedBlocks(
+  visible: const [],
+  trailingAnchors: const [],
+  claimedAnchors: const {},
+  nextOffset: startOffset,
+  visibleIndexes: const {},
+);
+
+_IndexedBlocks _extendIndex(
+  _IndexedBlocks current,
+  List<({Block block, DocumentBlockId? id, int revision})> appended, {
+  required int separatorLength,
+}) {
+  final visible = current.visible.toList();
+  final pendingAnchors = current.trailingAnchors.toList();
+  final claimedAnchors = current.claimedAnchors.toSet();
+  final visibleIndexes = Map<DocumentBlockId, int>.of(current.visibleIndexes);
+  var offset = current.nextOffset;
+  for (final entry in appended) {
+    final block = entry.block;
     if (block case AnchorBlock(:final name)) {
       if (claimedAnchors.add(name)) pendingAnchors.add(name);
-    } else {
-      visible.add(_VisibleBlock(block, List.of(pendingAnchors), offset));
-      pendingAnchors.clear();
-      offset += block.text.length + separatorLength;
+      continue;
     }
+    final visibleIndex = visible.length;
+    final id = entry.id;
+    if (id != null) visibleIndexes[id] = visibleIndex;
+    visible.add(
+      _VisibleBlock(block, List.of(pendingAnchors), offset, id, entry.revision),
+    );
+    pendingAnchors.clear();
+    offset += block.text.length + separatorLength;
   }
   return _IndexedBlocks(
-    List.unmodifiable(visible),
-    List.unmodifiable(pendingAnchors),
+    visible: List.unmodifiable(visible),
+    trailingAnchors: List.unmodifiable(pendingAnchors),
+    claimedAnchors: Set.unmodifiable(claimedAnchors),
+    nextOffset: offset,
+    visibleIndexes: Map.unmodifiable(visibleIndexes),
   );
 }
 

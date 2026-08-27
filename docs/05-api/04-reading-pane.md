@@ -17,10 +17,13 @@ current scale, `onLink` and `onActiveHeadingChanged` bound
 
 The build (`lib/api/widgets/reading_pane.dart`):
 
-- A `Scrollbar` over one `CustomScrollView`, padded 48 px at the sides on
+- A `QuietScrollbar` over one `CustomScrollView`, padded 48 px at the sides on
   ordinary windows and 24 px below 600 px, then in lines vertically — one and
   a half above, six below, so the last paragraph is never pinned to the bottom
-  edge (`lib/api/widgets/reading_pane.dart`).
+  edge. The thumb freezes its content extent for the complete visible
+  interaction, so a streamed tail cannot resize or relocate it under the
+  pointer (`lib/api/widgets/reading_pane.dart`,
+  `lib/api/widgets/quiet_scrollbar.dart`).
 - A `SelectionArea` around the scroll surface. Flutter keeps selected lazy
   children alive while a selection extends through the page, without keeping
   every unselected block alive (`lib/api/widgets/reading_pane.dart`,
@@ -37,7 +40,8 @@ The build (`lib/api/widgets/reading_pane.dart`):
   (`lib/api/widgets/reading_pane.dart`,
   `lib/api/widgets/reading_pane.dart`).
 - One `SliverDocumentView` for the whole document. It materialises only the
-  viewport and cache region rather than the corpus
+  viewport and cache region rather than the corpus. Its extent corrections are
+  forwarded to the scrollbar's frozen interaction epoch
   (`lib/api/widgets/reading_pane.dart`,
   `lib/api/render/document_view.dart`).
 
@@ -54,7 +58,8 @@ partly supersedes.
 
 ## Inputs and outputs
 
-In: `reading` (document, outline and content), `imageLoader`, `scale`, `onLink`,
+In: `reading` (document, outline and content), `imageLoader`, `scale`, the
+application-owned `viewportGeometry` factory, `onLink`, and
 `onActiveHeadingChanged` (`lib/api/widgets/reading_pane.dart`).
 
 Out:
@@ -66,8 +71,8 @@ Out:
   changes (`lib/api/widgets/reading_pane.dart`).
 - `scrollToAnchor(anchor)`, called by the shell: an already mounted explicit
   or heading anchor uses `Scrollable.ensureVisible`. A distant lazy anchor is
-  first materialised near its indexed document position, then its real render
-  box corrects the variable-height estimate. The final motion is 320 ms,
+  materialised from the geometry ledger's prefix position without proportional
+  retries, then its real render box supplies the exact alignment. The final motion is 320 ms,
   `easeOutCubic`, aligned to the top (`lib/api/widgets/reading_pane.dart`).
 
 Active-heading tracking visits only heading widgets mounted in the viewport
@@ -97,17 +102,37 @@ Changing the text size rebuilds with a new scale; the column follows, because
 it is derived rather than stored
 (`test/presentation/text_size_test.dart`).
 
-When fresh bytes arrive under the same `DocumentId`, the pane rebuilds heading,
-custom, and match anchors but deliberately retains its `ScrollController`
-offset. Only
-a different identity jumps to the top
+When revisioned content appends beneath the same `DocumentId`, the pane visits
+only the new records while retaining heading keys, mounted heading state, and
+its exact `ScrollController` offset. A replacement rebuilds the navigation
+index but still retains the offset. Only a different document identity jumps
+to the top. A reader already at the tail remains pinned while the lazy sliver
+converges on its new maximum; a reader anywhere above it never enters that path
 (`lib/api/widgets/reading_pane.dart`).
+
+Before a non-append mutation, the pane identifies the stable block at the
+viewport's leading edge. Reconciliation retains measured extents for unchanged
+revisions and schedules the changed prefix as a one-shot pre-paint correction.
+The correction moves the physical scroll position by exactly the prefix delta;
+the anchor's screen coordinate is unchanged
+(`lib/api/widgets/reading_pane.dart`,
+`lib/api/render/geometry_sliver_list.dart`).
+
+The quiet scrollbar captures one logical coordinate system when scrolling
+starts and releases it only after the thumb fades. Metrics updates during that
+epoch cannot alter its extent. Dragging maps thumb travel through the frozen
+maximum and then clamps against the live position, so the control remains
+interactive even while the tail grows. A drag or overscroll that reaches the
+tail records reader intent until the bounded geometry-convergence window ends,
+so learning the final extents cannot leave a tail follower behind
+(`lib/api/widgets/quiet_scrollbar.dart`,
+`lib/api/widgets/reading_pane.dart`).
 
 ## Failure and recovery
 
 `scrollToAnchor` does nothing for an unknown anchor
-(`lib/api/widgets/reading_pane.dart`); a known distant anchor may take an
-estimate-and-correct frame before it has a render box. Tracking reports nothing
+(`lib/api/widgets/reading_pane.dart`); a known distant anchor is first mounted
+at its ledger coordinate and then aligned to its render box. Tracking reports nothing
 for a document with no headings at all
 (`lib/api/widgets/reading_pane.dart`). An unavailable image is recovered by
 [Document Image](23-document-image.md) inside the page rather than failing the
@@ -115,7 +140,9 @@ reading.
 
 ## Transition
 
-Viewport work is bounded, but Flutter's stock select-all action knows only the
+Viewport work, tail indexing, far navigation, and geometry correction are
+bounded, and visible scrollbar geometry is frozen against both tail growth and
+automatic physical correction. Flutter's stock select-all action knows only the
 selectables currently registered by the lazy sliver. A future full-document
 select-all command must use `DocumentContent` as its source of truth rather
 than remounting the whole page. The limitation is recorded in the

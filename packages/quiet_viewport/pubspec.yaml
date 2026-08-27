@@ -1,0 +1,11 @@
+name: quiet_viewport
+description: Stable geometry and scrollbar physics for lazy variable-height viewports.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.1
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0

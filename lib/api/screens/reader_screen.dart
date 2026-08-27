@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../application/ports/document_image_loader.dart';
+import '../../application/ports/document_viewport_geometry.dart';
 import '../../application/ports/shelf_source_actions.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/reading/table_of_contents.dart';
@@ -36,6 +37,7 @@ class ReaderScreen extends StatefulWidget {
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader? imageLoader;
+  final DocumentViewportGeometryFactory? viewportGeometry;
   final void Function(String url) openExternal;
   final Future<void> Function()? openReaderSources;
   final ShelfSourceActions? shelfSourceActions;
@@ -52,6 +54,7 @@ class ReaderScreen extends StatefulWidget {
     this.codeHighlighter = const PlainCodeHighlighter(),
     this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
+    this.viewportGeometry,
     this.openReaderSources,
     this.shelfSourceActions,
     this.topBar = (height: 52, leadingInset: 8),
@@ -429,6 +432,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 codeHighlighter: widget.codeHighlighter,
                 mermaidRenderer: widget.mermaidRenderer,
                 imageLoader: widget.imageLoader,
+                viewportGeometry: widget.viewportGeometry,
                 matches: _searchMode == _SearchMode.document
                     ? result?.matches ?? const []
                     : const [],

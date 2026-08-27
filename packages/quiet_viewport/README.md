@@ -1,0 +1,82 @@
+# Quiet Viewport
+
+Quiet Viewport is the rendering physics for lazy, variable-height documents.
+It is deliberately independent of Markdown, application state, typography,
+and Flutter widgets. A host supplies stable item identities, deterministic
+extent estimates, real measurements, and the item currently anchoring the
+viewport.
+
+The package answers two questions:
+
+1. How does a lazy viewport update its geometry without moving the content a
+   reader is looking at?
+2. How can the scrollbar show only user movement rather than corrections made
+   by the layout engine?
+
+## Coordinate model
+
+For item extents `h₀ … hₙ₋₁`, the leading content coordinate of item `k` is:
+
+```text
+H(k) = Σ hᵢ, 0 ≤ i < k
+```
+
+If the viewport scroll offset is `p`, the anchor's visible coordinate is:
+
+```text
+y = H(k) − p
+```
+
+Suppose measurement corrects an item before the anchor by `Δ`. The anchor's
+new content coordinate is `H'(k) = H(k) + Δ`. Choosing:
+
+```text
+p' = p + Δ
+```
+
+gives:
+
+```text
+y' = H'(k) − p' = H(k) + Δ − (p + Δ) = H(k) − p = y
+```
+
+The pixels therefore do not move.
+
+That physical compensation is not user input. During a visible scrollbar
+interaction, Quiet Viewport accumulates it as bias `c` and exposes:
+
+```text
+logicalPixels = physicalPixels − c
+```
+
+After the correction, both physical pixels and bias increase by `Δ`, so the
+logical position is identical. The scrollbar's content extent is frozen for
+the same interaction; measurements and tail appends therefore cannot resize
+or move its thumb. A host settles onto the new geometry only after the
+scrollbar is no longer visible or interactive.
+
+## Complexity
+
+`StableExtentLedger` uses an appendable Fenwick tree:
+
+- identity lookup: O(1);
+- append: O(log n);
+- measurement/revision: O(log n);
+- leading-offset query: O(log n);
+- total extent: O(log n).
+
+The implementation performs no committed-prefix scan for an ordinary append.
+
+## Revision fencing
+
+Every item measurement names both the item revision and the layout revision.
+A late measurement from replaced content, an old width, or an old type/theme
+epoch is ignored before it can alter geometry.
+
+## Status
+
+Version 0.1 proves the framework-independent geometry. Visual MD is the first
+integration and benchmark host: its API paints and drags a scrollbar from the
+frozen metrics through an application port, so a streamed tail cannot twitch a
+visible thumb. Observing mounted render boxes and compensating an active anchor
+through `ScrollPosition` is the next integration layer.

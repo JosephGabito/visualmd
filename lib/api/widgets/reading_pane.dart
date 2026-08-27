@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../application/ports/document_image_loader.dart';
+import '../../application/ports/document_viewport_geometry.dart';
 import '../../application/use_cases/read_document.dart';
 import '../../domain/reading/heading.dart';
 import '../../domain/reading/content/block.dart';
+import '../../domain/reading/content/document_content.dart';
 import '../../domain/search/search_result.dart';
 import '../../presentation/code/code_highlighter.dart';
 import '../../application/ports/mermaid_renderer.dart';
@@ -11,6 +14,7 @@ import '../../presentation/theme/reading_scale.dart';
 import '../render/document_view.dart';
 import '../render/reading_theme.dart';
 import '../theme/library_theme.dart';
+import 'quiet_scrollbar.dart';
 
 /// The page: one document, set by [DocumentView] and watched so the outline
 /// knows where the reader is.
@@ -20,10 +24,16 @@ class ReadingPane extends StatefulWidget {
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader? imageLoader;
+  final DocumentViewportGeometryFactory? viewportGeometry;
   final void Function(String href) onLink;
   final ValueChanged<Heading?> onActiveHeadingChanged;
   final List<TextMatch> matches;
   final int activeMatch;
+
+  /// Performance-harness hooks. Each value is the number of records visited
+  /// by one navigation or render indexing pass.
+  final ValueChanged<int>? debugOnNavigationBlocksIndexed;
+  final ValueChanged<int>? debugOnRenderBlocksIndexed;
 
   const ReadingPane({
     super.key,
@@ -32,10 +42,13 @@ class ReadingPane extends StatefulWidget {
     this.codeHighlighter = const PlainCodeHighlighter(),
     this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
+    this.viewportGeometry,
     required this.onLink,
     required this.onActiveHeadingChanged,
     this.matches = const [],
     this.activeMatch = -1,
+    this.debugOnNavigationBlocksIndexed,
+    this.debugOnRenderBlocksIndexed,
   });
 
   @override
@@ -48,7 +61,10 @@ class ReadingPaneState extends State<ReadingPane> {
   static const _activeLine = 120.0;
 
   final _scroll = ScrollController();
+  final _quietScrollbar = QuietScrollbarController();
   final _pageKey = GlobalKey();
+  final _documentSliverKey = GlobalKey();
+  DocumentViewportGeometry? _geometry;
   var _keys = <String, GlobalKey>{};
   var _customKeys = <String, GlobalKey>{};
   var _matchKeys = <int, GlobalKey>{};
@@ -57,13 +73,18 @@ class ReadingPaneState extends State<ReadingPane> {
   var _headingsByAnchor = <String, Heading>{};
   var _customAnchorIndexes = <String, int>{};
   var _blockOffsets = <int>[];
+  var _visibleBlockIds = <DocumentBlockId>[];
   var _visibleBlockCount = 0;
+  var _nextBlockOffset = 0;
+  var _indexedOutlineHeadings = 0;
   final _mountedHeadings = <String>{};
   String? _activeAnchor;
+  var _tailIntent = false;
 
   @override
   void initState() {
     super.initState();
+    _geometry = widget.viewportGeometry?.create();
     _indexNavigation();
     _scroll.addListener(_trackActiveHeading);
     WidgetsBinding.instance.addPostFrameCallback((_) => _trackActiveHeading());
@@ -72,7 +93,13 @@ class ReadingPaneState extends State<ReadingPane> {
   @override
   void didUpdateWidget(ReadingPane oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.reading.document.id != widget.reading.document.id) {
+    final documentChanged =
+        oldWidget.reading.document.id != widget.reading.document.id;
+    if (documentChanged ||
+        !identical(oldWidget.viewportGeometry, widget.viewportGeometry)) {
+      _geometry = widget.viewportGeometry?.create();
+    }
+    if (documentChanged) {
       _keys = {};
       _customKeys = {};
       _matchKeys = {};
@@ -83,15 +110,26 @@ class ReadingPaneState extends State<ReadingPane> {
         if (_scroll.hasClients) _scroll.jumpTo(0);
         _trackActiveHeading();
       });
-    } else if (oldWidget.reading.source != widget.reading.source) {
+    } else if (!identical(oldWidget.reading.content, widget.reading.content)) {
       // The page changed beneath the same document identity. Rebuild heading
       // anchors, but keep the scroll controller exactly where the reader was.
-      _keys = {};
-      _customKeys = {};
-      _matchKeys = {};
-      _mountedHeadings.clear();
-      _activeAnchor = null;
-      _indexNavigation();
+      final appended = widget.reading.content.appendedSince(
+        oldWidget.reading.content,
+      );
+      if (appended == null) {
+        _resetNavigation();
+      } else {
+        final wasFollowingTail =
+            _scroll.hasClients &&
+            _scroll.position.maxScrollExtent - _scroll.position.pixels <= 1;
+        _appendNavigation(appended);
+        if (wasFollowingTail) _settleAtTail();
+      }
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _trackActiveHeading(),
+      );
+    } else if (oldWidget.reading.source != widget.reading.source) {
+      _resetNavigation();
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _trackActiveHeading(),
       );
@@ -168,10 +206,10 @@ class ReadingPaneState extends State<ReadingPane> {
     );
   }
 
-  /// Materializes a lazy target near its proportional document position,
-  /// then lets Flutter align the real render box. The proportional jump is an
-  /// index seek, not the final placement; variable-height blocks are corrected
-  /// only after their actual layout exists.
+  /// Materializes a lazy target from the geometry ledger, then lets Flutter
+  /// align the real render box. The ledger seek does not scan or guess through
+  /// the target's prefix; proportional placement remains only as the fallback
+  /// for callers that did not install a viewport geometry adapter.
   void _revealLazyBlock(
     int index,
     BuildContext? Function() contextFor, {
@@ -181,10 +219,12 @@ class ReadingPaneState extends State<ReadingPane> {
   }) {
     if (!_scroll.hasClients || _visibleBlockCount == 0) return;
     final fraction = index / _visibleBlockCount;
-    final target = (_scroll.position.maxScrollExtent * fraction).clamp(
-      _scroll.position.minScrollExtent,
-      _scroll.position.maxScrollExtent,
-    );
+    final target =
+        (_ledgerOffsetFor(index) ?? _scroll.position.maxScrollExtent * fraction)
+            .clamp(
+              _scroll.position.minScrollExtent,
+              _scroll.position.maxScrollExtent,
+            );
     _scroll.jumpTo(target);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -203,44 +243,93 @@ class ReadingPaneState extends State<ReadingPane> {
     });
   }
 
+  double? _ledgerOffsetFor(int index) {
+    final geometry = _geometry;
+    if (geometry == null || index < 0 || index >= geometry.length) return null;
+    final renderSliver =
+        _documentSliverKey.currentContext?.findRenderObject() as RenderSliver?;
+    return (renderSliver?.constraints.precedingScrollExtent ?? 0) +
+        geometry.leadingOffsetOf(_visibleBlockIds[index]);
+  }
+
+  DocumentBlockId? _viewportAnchor() {
+    final geometry = _geometry;
+    if (geometry == null || geometry.length == 0 || !_scroll.hasClients) {
+      return null;
+    }
+    final renderSliver =
+        _documentSliverKey.currentContext?.findRenderObject() as RenderSliver?;
+    if (renderSliver == null) return null;
+    final localOffset =
+        _scroll.position.pixels -
+        renderSliver.constraints.precedingScrollExtent;
+    if (localOffset < 0) return null;
+    return geometry.blockAtOffset(localOffset);
+  }
+
   void _indexNavigation() {
-    final headings = <String, int>{};
-    final custom = <String, int>{};
-    final offsets = <int>[];
+    _headingIndexes = {};
+    _headingOrder = {};
+    _headingsByAnchor = {};
+    _customAnchorIndexes = {};
+    _blockOffsets = [];
+    _visibleBlockIds = [];
+    _visibleBlockCount = 0;
+    _nextBlockOffset = 0;
+    _indexedOutlineHeadings = 0;
+    _appendNavigation(widget.reading.content.entries);
+  }
+
+  void _resetNavigation() {
+    _keys = {};
+    _customKeys = {};
+    _matchKeys = {};
+    _mountedHeadings.clear();
+    _activeAnchor = null;
+    _indexNavigation();
+  }
+
+  void _appendNavigation(List<DocumentBlock> entries) {
+    widget.debugOnNavigationBlocksIndexed?.call(entries.length);
     final pendingAnchors = <String>[];
-    var visibleIndex = 0;
-    var offset = 0;
-    for (final block in widget.reading.content.blocks) {
+    for (final entry in entries) {
+      final block = entry.block;
       if (block case AnchorBlock(:final name)) {
         pendingAnchors.add(name);
         continue;
       }
       for (final anchor in pendingAnchors) {
-        custom.putIfAbsent(anchor, () => visibleIndex);
+        _customAnchorIndexes.putIfAbsent(anchor, () => _visibleBlockCount);
       }
       pendingAnchors.clear();
       if (block case HeadingBlock(:final anchor)) {
-        headings[anchor] = visibleIndex;
+        _headingIndexes[anchor] = _visibleBlockCount;
       }
-      offsets.add(offset);
-      offset += block.text.length + 2;
-      visibleIndex++;
+      _blockOffsets.add(_nextBlockOffset);
+      _visibleBlockIds.add(entry.id);
+      _nextBlockOffset += block.text.length + 2;
+      _visibleBlockCount++;
     }
     for (final anchor in pendingAnchors) {
-      custom.putIfAbsent(anchor, () => visibleIndex);
+      _customAnchorIndexes.putIfAbsent(anchor, () => _visibleBlockCount);
     }
-    _headingIndexes = headings;
+
     final outlineHeadings = widget.reading.outline.tableOfContents.headings;
-    _headingOrder = {
-      for (var index = 0; index < outlineHeadings.length; index++)
-        outlineHeadings[index].anchor: index,
-    };
-    _headingsByAnchor = {
-      for (final heading in outlineHeadings) heading.anchor: heading,
-    };
-    _customAnchorIndexes = custom;
-    _blockOffsets = offsets;
-    _visibleBlockCount = visibleIndex;
+    if (_indexedOutlineHeadings > outlineHeadings.length) {
+      _headingOrder = {};
+      _headingsByAnchor = {};
+      _indexedOutlineHeadings = 0;
+    }
+    for (
+      var index = _indexedOutlineHeadings;
+      index < outlineHeadings.length;
+      index++
+    ) {
+      final heading = outlineHeadings[index];
+      _headingOrder[heading.anchor] = index;
+      _headingsByAnchor[heading.anchor] = heading;
+    }
+    _indexedOutlineHeadings = outlineHeadings.length;
   }
 
   int _blockForOffset(int offset) {
@@ -303,6 +392,45 @@ class ReadingPaneState extends State<ReadingPane> {
     }
   }
 
+  bool _trackTailIntent(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    switch (notification) {
+      case ScrollStartNotification():
+        _tailIntent = false;
+      case ScrollUpdateNotification(:final dragDetails)
+          when dragDetails != null &&
+              notification.metrics.pixels >=
+                  notification.metrics.maxScrollExtent - 1:
+        _tailIntent = true;
+      case OverscrollNotification(:final overscroll) when overscroll > 0:
+        _tailIntent = true;
+      case ScrollEndNotification():
+        if (_tailIntent) _settleAtTail();
+        _tailIntent = false;
+      default:
+        break;
+    }
+    return false;
+  }
+
+  /// Keeps an existing follow-tail relationship through lazy layout.
+  ///
+  /// A sliver can refine its maximum after materialising the newly appended
+  /// child, so one extra frame is allowed to converge. Readers above the tail
+  /// never enter this path and retain their exact physical offset.
+  void _settleAtTail([int remainingPasses = 8]) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final position = _scroll.position;
+      final delta = position.maxScrollExtent - position.pixels;
+      if (delta.abs() > 0.01) position.jumpTo(position.maxScrollExtent);
+      // A geometry correction may land after this frame reports equality.
+      // Keep the tail relationship alive through the bounded convergence
+      // window rather than mistaking an intermediate maximum for the final one.
+      if (remainingPasses > 0) _settleAtTail(remainingPasses - 1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -323,8 +451,8 @@ class ReadingPaneState extends State<ReadingPane> {
         final column = theme.proseWidth(
           constraints.maxWidth - horizontalPadding * 2,
         );
-        return Scrollbar(
-          controller: _scroll,
+        final page = NotificationListener<ScrollNotification>(
+          onNotification: _trackTailIntent,
           child: SelectionArea(
             child: CustomScrollView(
               key: _pageKey,
@@ -374,6 +502,7 @@ class ReadingPaneState extends State<ReadingPane> {
                 SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                   sliver: SliverDocumentView(
+                    key: _documentSliverKey,
                     document: reading.document.id,
                     content: reading.content,
                     theme: theme,
@@ -386,6 +515,10 @@ class ReadingPaneState extends State<ReadingPane> {
                     activeMatch: widget.activeMatch,
                     matchKeys: _matchKeys,
                     onHeadingMount: _headingMountChanged,
+                    debugOnBlocksIndexed: widget.debugOnRenderBlocksIndexed,
+                    viewportGeometry: _geometry,
+                    viewportAnchor: _viewportAnchor(),
+                    onExtentCorrection: _quietScrollbar.absorb,
                     onTapLink: widget.onLink,
                   ),
                 ),
@@ -393,6 +526,16 @@ class ReadingPaneState extends State<ReadingPane> {
               ],
             ),
           ),
+        );
+        final viewportGeometry = widget.viewportGeometry;
+        if (viewportGeometry == null) {
+          return Scrollbar(controller: _scroll, child: page);
+        }
+        return QuietScrollbar(
+          controller: _scroll,
+          geometryFactory: viewportGeometry,
+          epochController: _quietScrollbar,
+          child: page,
         );
       },
     );

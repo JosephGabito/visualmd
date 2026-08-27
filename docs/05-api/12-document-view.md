@@ -33,12 +33,25 @@ width; everything else takes prose (`lib/api/render/document_view.dart`).
 
 The renderer has two surfaces over the same block implementation. `DocumentView`
 is the eager box form used for nested composition and focused rendering tests.
-`SliverDocumentView` is the top-level reading form: a `SliverList.builder`
-creates only the viewport and cache region, while each materialised child uses
+`SliverDocumentView` is the top-level reading form. Its `GeometrySliverList`
+uses an application-owned extent ledger to jump directly into a variable-height
+document and creates only the viewport and cache region. Each materialised child uses
 the same `_BlockView`, width rule, outgoing space and source offset as the eager
-form (`lib/api/render/document_view.dart`). The one linear pass that indexes
-blocks creates lightweight navigation and source-offset records; it does not
-build, lay out, paint or register semantics for every block.
+form (`lib/api/render/document_view.dart`). The first snapshot receives one
+linear indexing pass which creates lightweight navigation and source-offset
+records; it does not build, lay out, paint or register semantics for every
+block. A revisioned tail append extends that index from the delta only. Stable
+`DocumentBlockId` keys let Flutter retain already-mounted elements instead of
+mistaking an update for a new page (`lib/api/render/document_view.dart`).
+
+Each unmounted block has a deterministic estimate derived from block shape,
+available width, and the current reading scale. During layout the custom render
+sliver replaces estimates with the mounted child's real extent. A change before
+the block at the viewport edge is returned as `scrollOffsetCorrection`, which
+Flutter applies before paint. A width or type-scale change is one layout epoch:
+all estimates change together and the same anchor is compensated once
+(`lib/api/render/geometry_sliver_list.dart`,
+`lib/api/render/document_view.dart`).
 
 `_BlockSequence` owns order-sensitive gaps and indents at every depth
 (`lib/api/render/document_view.dart`). After rendering the current block it
@@ -170,6 +183,8 @@ while a long prose cell grows only to the researched 55-character measure.
 | `anchorKeys` | `Map<String, GlobalKey>` | Owned by the pane; filled in as headings build |
 | `customAnchorKeys` | `Map<String, GlobalKey>` | Owned separately by the pane; filled first-wins by standalone HTML and footnote navigation anchors without entering the outline |
 | `onHeadingMount` | `void Function(String, bool)?` | Sliver-only viewport registration used by bounded active-heading tracking |
+| `viewportGeometry` | `DocumentViewportGeometry?` | Document-scoped prefix geometry; omitted only by focused renderer tests |
+| `viewportAnchor` | `DocumentBlockId?` | Stable block occupying the reader's leading edge before a mutation |
 | `onTapLink` | `void Function(String href)?` | The pane's link handler |
 
 Out: nothing directly. Links report through the composer; the pane reads the
@@ -188,11 +203,19 @@ ranges do not replace the code widget. See the
 ## Lifecycle
 
 The eager box form is stateless. The sliver form retains its lightweight block
-index while the content list identity is unchanged and rebuilds that index when
-new content arrives. Lazy children mount and dispose with the viewport; selected
+index while content is unchanged. A direct revisioned tail append extends the
+index and keeps the mounted prefix; a replacement or unknown transition safely
+rebuilds it. Lazy children mount and dispose with the viewport; selected
 children may be retained by Flutter's selection keep-alive. The pane owns both
-key maps and clears them when a different document arrives or the current
-source changes beneath the same identity.
+key maps and clears them when a different document arrives or a non-append
+replacement changes the current source.
+
+When a structural mutation arrives, the renderer reconciles its block index by
+stable identity. Unchanged revisions retain their measured extent; a changed
+revision receives a new estimate. Any resulting prefix delta is handed to the
+render sliver as a one-shot correction, so a replacement above the viewport
+cannot move the block being read (`lib/api/render/document_view.dart`,
+`lib/api/render/geometry_sliver_list.dart`).
 
 ## Failure and recovery
 
@@ -213,14 +236,20 @@ bidirectional quotation treatment. The full recursive contract is documented in
 
 `test/presentation/reading_pane_refresh_test.dart` separately proves a
 500-paragraph reading mounts fewer than 40 paragraph widgets, and protects
-distant anchors plus scroll stability across a source refresh. The profile-mode
-native macrobenchmark extends that check to 5,000 blocks and records frame and
-memory scaling (`integration_test/reading_performance_test.dart`,
+distant anchors plus scroll stability across a source refresh. It also proves
+a revised block above the viewport cannot move a mounted anchor. A revisioned
+500-block append visits one new record in both navigation and render indexes
+and retains the mounted prefix. The profile-mode native macrobenchmark extends
+that proof to 5,001 blocks and records the pass counts, frame times, and memory
+scaling (`integration_test/reading_performance_test.dart`,
 `benchmark/README.md`).
 
 ## Transition
 
-Top-level widget, layout, paint and semantics work is now viewport-bounded.
+Top-level widget, layout, paint and semantics work is viewport-bounded; far
+seeks and geometry correction use prefix queries rather than prefix layout.
+Revisioned tail indexing is delta-bounded; immutable snapshot construction and
+the current one-shot Markdown parser are still whole-document work.
 One unusually large container is still one top-level child and may need its own
 specialised virtualization later. Full-document select-all and wider code
 remain in the [backlog](../07-roadmap/02-backlog.md).

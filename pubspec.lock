@@ -519,6 +519,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  quiet_viewport:
+    dependency: "direct main"
+    description:
+      path: "packages/quiet_viewport"
+      relative: true
+    source: path
+    version: "0.1.0"
   record_use:
     dependency: transitive
     description:
