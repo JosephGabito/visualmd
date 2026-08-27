@@ -23,6 +23,15 @@ therefore neither fills the reading cache nor accidentally retains every
 matched source through its result list. The search and reading cache contract
 is exercised together in `test/application/read_document_cache_test.dart`.
 
+Every execution receives a monotonically increasing request revision. Starting
+a newer query, including clearing the field, supersedes the older one. The old
+scan checks that revision after repository lookup, source IO and adapter work;
+it releases its current source and returns no stale partial result before
+opening another file (`lib/application/use_cases/search_documents.dart`). This
+does not pretend synchronous parsing can be interrupted midway, but it bounds
+wasted work to the one document already in progress rather than the remaining
+library.
+
 The composition root gives reading and search the same `DocumentSourceReader`,
 then injects the use case into `ReaderController` (`lib/main.dart`).
 
@@ -43,10 +52,12 @@ uses the existing document-opening path in the API.
 
 ## Lifecycle
 
-One stateless use-case instance lives for the application session. A search
+One stateful use-case instance lives for the application session. A search
 has bounded source residency: at most one source-backed document is handed to
 the adapter at a time. `LiteralDocumentSearch` does not cache source text
-(`lib/infrastructure/search/literal_document_search.dart`).
+(`lib/infrastructure/search/literal_document_search.dart`). The request
+revision is session-local coordination only; it retains neither queries nor
+results.
 
 ## Failure and recovery
 
@@ -58,10 +69,13 @@ document, so both failures indicate stale caller state.
 The scope selection and empty-query short circuit are covered in
 `test/application/use_cases_test.dart`. Streaming without warming or leaking
 the reading cache is covered in `test/application/read_document_cache_test.dart`.
+The same use-case suite proves that a newer query prevents an older scan from
+opening its next file.
 
 ## Transition
 
-Progressive or cancellable search may require a richer return shape later. The
+Progressive search and interruption inside source IO or parsing require richer
+ports later. The
 use case remains the owner of scope because “this document” and “this library”
 are application choices; an index is responsible only for finding occurrences
 within the documents it receives.
