@@ -25,6 +25,7 @@ final class _FakeHighlighter implements CodeHighlighter {
   final CodeHighlighting? result;
   final bool throws;
   int calls = 0;
+  final sources = <String>[];
 
   _FakeHighlighter({this.result, this.throws = false});
 
@@ -42,6 +43,7 @@ final class _FakeHighlighter implements CodeHighlighter {
     required CodeHighlightScheme scheme,
   }) async {
     calls++;
+    sources.add(source);
     if (throws) throw StateError('grammar failed');
     return result;
   }
@@ -203,6 +205,7 @@ void main() {
   testWidgets(
     'a huge fence keeps exact copy while its mounted lines follow the page',
     (tester) async {
+      final highlighter = _FakeHighlighter();
       final source = List.generate(
         2000,
         (index) =>
@@ -243,6 +246,7 @@ void main() {
                           context,
                           ReadingScale.comfortable,
                         ),
+                        codeHighlighter: highlighter,
                         anchorKeys: {},
                       ),
                     ),
@@ -254,6 +258,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+
+      expect(highlighter.calls, greaterThan(0));
+      expect(
+        highlighter.sources.map((source) => source.length),
+        everyElement(lessThan(10000)),
+      );
+      expect(highlighter.sources, isNot(contains(source)));
 
       int lineIndex(Element element) => int.parse(
         (element.widget.key! as ValueKey<String>).value.substring(10),
@@ -275,12 +286,16 @@ void main() {
       final position = tester.state<ScrollableState>(vertical.first).position;
       position.jumpTo(position.maxScrollExtent * 0.5);
       await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       final middle = mountedLines().toList(growable: false);
       expect(middle.length, lessThan(100));
       expect(middle.map(lineIndex).reduce(math.min), greaterThan(900));
       expect(middle.map(lineIndex).reduce(math.max), lessThan(1100));
+      expect(
+        highlighter.sources.map((source) => source.length),
+        everyElement(lessThan(10000)),
+      );
       expect(tester.takeException(), isNull);
     },
   );

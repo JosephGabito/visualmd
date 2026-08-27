@@ -92,3 +92,17 @@ flutter drive --profile \
 
 The first full-source classification measurement is retained in
 `benchmark/results/2026-08-28-full-source-highlighting.md`.
+
+The windowed-highlighting benchmark drives the production renderer and Shiki
+adapter together:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/windowed_highlighting_performance_test.dart \
+  -d macos
+```
+
+The first viewport-classification comparison is retained in
+`benchmark/results/2026-08-28-windowed-highlighting.md`.
