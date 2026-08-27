@@ -84,7 +84,36 @@ also trigger a documented semantic rebase because they can change earlier
 blocks. That exceptional dependency cost should eventually be indexed; it must
 not be disguised as constant work.
 
-The next performance experiment should compare the same delta sizes over
-100, 1,000, and 5,000 committed blocks in one run. The structural counters
-already prove prefix independence; the scaling run will quantify whether cache,
-GC, or scheduler effects introduce a practical slope the algorithm does not.
+The first run left one practical question open: whether cache, GC, or scheduler
+effects introduced a prefix-length slope which the structural counters could
+not reveal. The scaling verification below answers it.
+
+## Prefix-scaling verification
+
+The benchmark was then repeated as one native profile journey over 100, 1,000,
+and 5,000 committed blocks. Each row published the same 60 revisions while a
+ballistic scroll was active. The harness now records p99 as well as p50, p90,
+and worst-case latency.
+
+| Committed blocks | Initial parse | Parse/publish p50 | p90 | p99 | worst | Frame p90 | p99 | worst |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 10.681 ms | 0.155 ms | 0.234 ms | 0.285 ms | 0.295 ms | 2.119 ms | 2.778 ms | 2.929 ms |
+| 1,000 | 44.139 ms | 0.108 ms | 0.172 ms | 0.240 ms | 0.273 ms | 1.461 ms | 2.137 ms | 2.603 ms |
+| 5,000 | 209.458 ms | 0.104 ms | 0.173 ms | 0.324 ms | 0.335 ms | 1.455 ms | 2.163 ms | 2.385 ms |
+
+Initial parsing grows with source size, which is necessary work. The live
+update distributions do not grow with the committed prefix: p90 parse/publish
+latency is effectively identical at 1,000 and 5,000 blocks, and the 100-block
+run is slower rather than faster. Frame latency shows the same absence of a
+positive slope.
+
+Every row parsed at most 121 source characters per publication, visited one
+outline record, one navigation record, and one renderer record, retained eight
+paragraph widgets, and continued scrolling. RSS deltas were 6.3 MiB,
+-0.5 MiB, and 0.1 MiB; those single process snapshots reflect allocator timing
+and are not used as memory-slope evidence.
+
+This closes the earlier practical-scaling question for ordinary generated
+prose: the measured hot path is independent of the committed prefix on this
+machine. It does not close the separate large-atomic-tail or long-running heap
+plateau boundaries.

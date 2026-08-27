@@ -84,6 +84,13 @@ boundary and size flushes, duplicates, gaps, offsets, stale generations,
 canonical finish, failure preservation, incremental immutable outline
 projection, and a canceled timer which cannot publish late work.
 
+The native profile benchmark repeats the same 60 live revisions over 100,
+1,000, and 5,000 committed blocks. Every update visits one parser tail, outline
+record, navigation record, and renderer record; the parse/publish and frame
+latency distributions show no positive prefix-length slope
+(`integration_test/reading_performance_test.dart`,
+`benchmark/results/2026-08-28-generated-stream.md`).
+
 ## Transition
 
 The synthetic source and chunk-to-frame benchmark now consume the live outline.
