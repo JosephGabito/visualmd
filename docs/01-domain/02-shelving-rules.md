@@ -44,6 +44,13 @@ then converts the tree to immutable `Folder`s:
 7. **README first.** Within a folder, READMEs sort before everything else,
    then natural order applies (`lib/domain/library/library_builder.dart`).
 
+After the first build, `LibraryRoot.applyDocumentChanges` applies insertions,
+replacements, and removals through their `DocumentId` path. It copies only the
+changed ancestor chain, retains untouched `Folder` objects, prunes a branch
+when its final document disappears, and reapplies README/natural order only in
+directories whose direct children changed (`lib/domain/library/folder.dart`,
+`lib/domain/library/library_root.dart`).
+
 ## Inputs and outputs
 
 | Input paths (in arrival order) | Resulting tree |
@@ -67,9 +74,11 @@ where scanning and persistence complete.
 
 ## Lifecycle
 
-Called once per add, refresh, or workspace restoration. It runs synchronously
-over an in-memory metadata list and keeps no state between calls (`abstract
-final class` with a static method, `lib/domain/library/library_builder.dart`).
+Called once per add, full rescan, or workspace restoration. Targeted source
+refreshes use the path mutation rather than rebuilding the complete root. The
+builder runs synchronously over an in-memory metadata list and keeps no state
+between calls (`abstract final class` with a static method,
+`lib/domain/library/library_builder.dart`).
 Production folder entries carry no source bytes; source residency is therefore
 independent of library size.
 

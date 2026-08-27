@@ -64,7 +64,7 @@ void main() {
   );
 
   test(
-    'create and delete rebuild the tree and move a deleted selection',
+    'create and delete mutate changed paths and move a deleted selection',
     () async {
       final repository = _Repository(folderLibrary());
       final documents = _FolderDocuments({

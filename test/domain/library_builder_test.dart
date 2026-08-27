@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/domain/library/document.dart';
 import 'package:visualmd/domain/library/document_id.dart';
 import 'package:visualmd/domain/library/library_builder.dart';
 import 'package:visualmd/domain/library/library_root_id.dart';
@@ -163,6 +164,69 @@ void main() {
       );
       expect(library.documentCount, 0);
       expect(library.openingDocument, isNull);
+    });
+
+    test(
+      'path mutations share untouched branches and sort only changed ones',
+      () {
+        final library = LibraryBuilder.buildRoot(
+          id: rootId,
+          name: 'docs',
+          files: const [
+            FileEntry('alpha/old.md', ''),
+            FileEntry('stable/one.md', ''),
+            FileEntry('stable/two.md', ''),
+          ],
+        );
+        final stable = library.folder.folders.singleWhere(
+          (folder) => folder.name == 'stable',
+        );
+
+        final changed = library.applyDocumentChanges({
+          DocumentId(rootId, 'alpha/old.md'): null,
+          DocumentId(rootId, 'alpha/10-new.md'): Document(
+            id: DocumentId(rootId, 'alpha/10-new.md'),
+          ),
+          DocumentId(rootId, 'alpha/2-new.md'): Document(
+            id: DocumentId(rootId, 'alpha/2-new.md'),
+          ),
+        });
+
+        expect(
+          identical(
+            changed.folder.folders.singleWhere(
+              (folder) => folder.name == 'stable',
+            ),
+            stable,
+          ),
+          isTrue,
+        );
+        expect(
+          changed.folder.folders
+              .singleWhere((folder) => folder.name == 'alpha')
+              .documents
+              .map((document) => document.fileName),
+          ['2-new.md', '10-new.md'],
+        );
+      },
+    );
+
+    test('path mutation creates ancestors and removes an empty branch', () {
+      final library = LibraryBuilder.buildRoot(
+        id: rootId,
+        name: 'docs',
+        files: const [FileEntry('old/only.md', '')],
+      );
+      final replacement = DocumentId(rootId, 'new/deep/README.md');
+
+      final changed = library.applyDocumentChanges({
+        DocumentId(rootId, 'old/only.md'): null,
+        replacement: Document(id: replacement),
+      });
+
+      expect(changed.folder.folders.map((folder) => folder.name), ['new']);
+      expect(changed.find(replacement), isNotNull);
+      expect(changed.find(DocumentId(rootId, 'old/only.md')), isNull);
     });
   });
 }
