@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import '../../application/ports/mermaid_renderer.dart';
+import 'mermaid_render_cache.dart';
 import 'svg_style_inliner.dart';
 
 MermaidRenderer createMermaidRenderer() => WebMermaidRenderer();
@@ -18,7 +19,7 @@ external JSPromise<JSString> _renderMermaid(
 /// Flutter therefore owns painting and interaction exactly as it does on the
 /// desktop targets.
 final class WebMermaidRenderer implements MermaidRenderer {
-  final _cache = <String, Future<MermaidRendering>>{};
+  final _cache = MermaidRenderCache();
 
   @override
   Future<MermaidRendering> render({
@@ -36,7 +37,7 @@ final class WebMermaidRenderer implements MermaidRenderer {
       'dark': palette.dark,
     });
     final key = '$options\u0000$source';
-    return _cache.putIfAbsent(key, () async {
+    return _cache.resolve(key, () async {
       final raw = await _renderMermaid(source.toJS, options.toJS).toDart;
       final json = jsonDecode(raw.toDart) as Map<String, Object?>;
       return MermaidRendering(

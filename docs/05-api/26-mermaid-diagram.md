@@ -72,10 +72,14 @@ events.
 ## Lifecycle
 
 The composition root creates one renderer for the application. Each adapter
-caches completed work by exact source and palette, so page rebuilds, panel
-resizes and exploration never rerun graph layout. A diagram explorer owns one
-transformation controller and brief copy feedback; full screen owns another.
-Both are disposed with their surfaces (`lib/main.dart`,
+caches completed work by exact source and palette in one least-recently-used,
+byte-bounded store, so page rebuilds, panel resizes and exploration never rerun
+graph layout without letting generated diagrams accumulate for the lifetime of
+the process. Concurrent requests for the same rendering share one active job;
+failures and results too large for the budget are not retained
+(`lib/infrastructure/mermaid/mermaid_render_cache.dart`). A diagram explorer
+owns one transformation controller and brief copy feedback; full screen owns
+another. Both are disposed with their surfaces (`lib/main.dart`,
 `lib/api/widgets/mermaid_diagram.dart`).
 
 The web bridge initializes its bundled WASM engine only when a document first
@@ -100,7 +104,10 @@ Parsing is covered by `test/infrastructure/markdown_document_parser_test.dart`.
 CSS normalization is covered by
 `test/infrastructure/mermaid_svg_style_inliner_test.dart`. Fit, drag, zoom,
 reset, full screen, copy, caching, accessibility and exact-source failure are
-covered by `test/presentation/mermaid_diagram_test.dart`.
+covered by `test/presentation/mermaid_diagram_test.dart`. Cache byte limits,
+least-recent eviction, active-work deduplication, oversized results and retry
+after failure are covered by
+`test/infrastructure/mermaid_render_cache_test.dart`.
 
 ## Transition
 
