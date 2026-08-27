@@ -227,6 +227,14 @@ producer instead creates revisioned entries and applies immutable mutations;
 committed prefix identities survive a tail append
 (`lib/domain/reading/content/document_content.dart`).
 
+Revisioned storage is an immutable balanced rope with a persistent AVL identity
+set. Replacing a provisional suffix shares every untouched subtree instead of
+copying the committed prefix. Appending or replacing `k` blocks in a document
+of `n` blocks costs `O(log n + k log n)` for sequence and identity updates;
+indexed lookup is `O(log n)`, while ordered iteration remains `O(n)`. The
+compatibility `blocks` view is lazy, so creating a new revision does not map
+every entry into a second list (`lib/domain/reading/content/document_content.dart`).
+
 ## Failure and recovery
 
 Applying a mutation with the wrong base revision, an invalid range, a
@@ -244,10 +252,15 @@ fallback, comments and dangerous HTML source.
 
 ## Transition
 
-Mutation application currently copies the entry list. The renderer's append
-work is bounded, but a truly unbounded stream will eventually need a persistent
-or chunked sequence behind this same immutable contract. The domain still does
-not load an image or decide whether any selected source
+Mutation application now shares the unchanged sequence and identity index.
+Twenty thousand one-block revisions, random access, ordered iteration, suffix
+replacement, duplicate rejection, and immutable public views are exercised by
+`test/domain/persistent_document_content_test.dart`. Finalising an arbitrary
+set of IDs still scans the current sequence; the generated parser normally
+commits through suffix replacement, so that exceptional operation is not on
+the streaming hot path.
+
+The domain still does not load an image or decide whether any selected source
 is local. Those are application and platform questions handled by
 [Document Image](../05-api/23-document-image.md). Syntax highlighting reads
 `CodeBlock.language` through the presentation contract and colours source in

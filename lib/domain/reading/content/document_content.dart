@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'block.dart';
 
 /// Stable identity for one block within a document generation.
@@ -137,6 +139,7 @@ final class DocumentMutation {
 /// A document as the reader will meet it: an ordered, revisioned block list.
 final class DocumentContent {
   final List<DocumentBlock>? _revisionedEntries;
+  final _PersistentIdSet? _ids;
 
   /// Stable records for mutation-aware consumers.
   ///
@@ -166,23 +169,39 @@ final class DocumentContent {
 
   const DocumentContent(this.blocks)
     : _revisionedEntries = null,
+      _ids = null,
       revision = 0,
       mutation = null;
 
-  DocumentContent.revisioned(
+  factory DocumentContent.revisioned(
     List<DocumentBlock> entries, {
-    this.revision = 0,
-    this.mutation,
-  }) : _revisionedEntries = List.unmodifiable(entries),
-       blocks = List.unmodifiable(entries.map((entry) => entry.block)) {
+    int revision = 0,
+    DocumentMutation? mutation,
+  }) {
     if (revision < 0) throw RangeError.value(revision, 'revision');
-    if (mutation != null && mutation!.revision != revision) {
+    if (mutation != null && mutation.revision != revision) {
       throw StateError(
-        'Mutation revision ${mutation!.revision} does not produce $revision.',
+        'Mutation revision ${mutation.revision} does not produce $revision.',
       );
     }
-    _requireUniqueIds(_revisionedEntries!);
+    final stored = entries is _PersistentBlockList
+        ? entries
+        : _PersistentBlockList.from(entries);
+    return DocumentContent._revisioned(
+      stored,
+      _PersistentIdSet.from(stored),
+      revision: revision,
+      mutation: mutation,
+    );
   }
+
+  DocumentContent._revisioned(
+    _PersistentBlockList entries,
+    this._ids, {
+    required this.revision,
+    required this.mutation,
+  }) : _revisionedEntries = entries,
+       blocks = _BlockView(entries);
 
   static const empty = DocumentContent([]);
 
@@ -201,23 +220,44 @@ final class DocumentContent {
       );
     }
 
-    final changed = entries.toList();
+    var changed = _revisionedEntries is _PersistentBlockList
+        ? _revisionedEntries
+        : _PersistentBlockList.from(entries);
+    var ids = _ids ?? _PersistentIdSet.from(changed);
     for (final operation in next.operations) {
       switch (operation) {
         case InsertBlocks(:final index, :final blocks):
           _requireRange(index, 0, changed.length, 'insert index');
-          changed.insertAll(index, blocks);
+          (changed, ids) = _replacePersistent(
+            changed,
+            ids,
+            index: index,
+            removeCount: 0,
+            blocks: blocks,
+          );
         case ReplaceBlocks(:final index, :final removeCount, :final blocks):
           _requireCountedRange(index, removeCount, changed.length, 'replace');
-          changed.replaceRange(index, index + removeCount, blocks);
+          (changed, ids) = _replacePersistent(
+            changed,
+            ids,
+            index: index,
+            removeCount: removeCount,
+            blocks: blocks,
+          );
         case FinalizeBlocks(:final ids):
           final remaining = ids.toSet();
           for (var index = 0; index < changed.length; index++) {
             final entry = changed[index];
             if (!remaining.remove(entry.id)) continue;
-            changed[index] = entry.revise(
-              revision: next.revision,
-              commitment: BlockCommitment.committed,
+            changed = changed.replace(
+              index: index,
+              removeCount: 1,
+              blocks: [
+                entry.revise(
+                  revision: next.revision,
+                  commitment: BlockCommitment.committed,
+                ),
+              ],
             );
           }
           if (remaining.isNotEmpty) {
@@ -225,12 +265,18 @@ final class DocumentContent {
           }
         case RemoveBlocks(:final index, :final count):
           _requireCountedRange(index, count, changed.length, 'remove');
-          changed.removeRange(index, index + count);
+          (changed, ids) = _replacePersistent(
+            changed,
+            ids,
+            index: index,
+            removeCount: count,
+            blocks: const [],
+          );
       }
     }
-    _requireUniqueIds(changed);
-    return DocumentContent.revisioned(
+    return DocumentContent._revisioned(
       changed,
+      ids,
       revision: next.revision,
       mutation: next,
     );
@@ -255,13 +301,28 @@ final class DocumentContent {
   String get text => readingTextOfBlocks(blocks, '\n\n');
 }
 
-void _requireUniqueIds(Iterable<DocumentBlock> entries) {
-  final ids = <DocumentBlockId>{};
-  for (final entry in entries) {
-    if (!ids.add(entry.id)) {
-      throw StateError('Duplicate document block ID: ${entry.id}');
-    }
+(_PersistentBlockList, _PersistentIdSet) _replacePersistent(
+  _PersistentBlockList entries,
+  _PersistentIdSet ids, {
+  required int index,
+  required int removeCount,
+  required List<DocumentBlock> blocks,
+}) {
+  var nextIds = ids;
+  for (var removed = 0; removed < removeCount; removed++) {
+    nextIds = nextIds.remove(entries[index + removed].id);
   }
+  for (final block in blocks) {
+    final inserted = nextIds.add(block.id);
+    if (!inserted.added) {
+      throw StateError('Duplicate document block ID: ${block.id}');
+    }
+    nextIds = inserted.set;
+  }
+  return (
+    entries.replace(index: index, removeCount: removeCount, blocks: blocks),
+    nextIds,
+  );
 }
 
 void _requireRange(int value, int minimum, int maximum, String name) {
@@ -277,3 +338,384 @@ void _requireCountedRange(int index, int count, int length, String name) {
     throw RangeError.range(index + count, index, length, '$name end');
   }
 }
+
+/// An immutable AVL rope. Replacing a suffix shares every untouched subtree.
+final class _PersistentBlockList extends ListBase<DocumentBlock> {
+  final _BlockTree? _root;
+
+  _PersistentBlockList._(this._root);
+
+  factory _PersistentBlockList.from(Iterable<DocumentBlock> entries) {
+    if (entries is _PersistentBlockList) return entries;
+    final values = entries.toList(growable: false);
+    return _PersistentBlockList._(_blockTreeFrom(values));
+  }
+
+  @override
+  int get length => _root?.length ?? 0;
+
+  @override
+  set length(int value) =>
+      throw UnsupportedError('Document blocks are immutable');
+
+  @override
+  DocumentBlock operator [](int index) {
+    RangeError.checkValidIndex(index, this);
+    return _blockAt(_root!, index);
+  }
+
+  @override
+  void operator []=(int index, DocumentBlock value) =>
+      throw UnsupportedError('Document blocks are immutable');
+
+  @override
+  Iterator<DocumentBlock> get iterator => _BlockTreeIterator(_root);
+
+  _PersistentBlockList replace({
+    required int index,
+    required int removeCount,
+    required List<DocumentBlock> blocks,
+  }) {
+    final (before, remainder) = _splitBlockTree(_root, index);
+    final (_, after) = _splitBlockTree(remainder, removeCount);
+    final inserted = _blockTreeFrom(blocks);
+    return _PersistentBlockList._(
+      _joinBlockTrees(_joinBlockTrees(before, inserted), after),
+    );
+  }
+}
+
+final class _BlockView extends ListBase<Block> {
+  final _PersistentBlockList _entries;
+
+  _BlockView(this._entries);
+
+  @override
+  int get length => _entries.length;
+
+  @override
+  set length(int value) =>
+      throw UnsupportedError('Document blocks are immutable');
+
+  @override
+  Block operator [](int index) => _entries[index].block;
+
+  @override
+  void operator []=(int index, Block value) =>
+      throw UnsupportedError('Document blocks are immutable');
+
+  @override
+  Iterator<Block> get iterator => _BlockIterator(_entries.iterator);
+}
+
+sealed class _BlockTree {
+  int get length;
+  int get height;
+}
+
+final class _BlockLeaf extends _BlockTree {
+  final List<DocumentBlock> values;
+
+  _BlockLeaf(List<DocumentBlock> values)
+    : values = List.unmodifiable(values),
+      assert(values.isNotEmpty);
+
+  @override
+  int get length => values.length;
+
+  @override
+  int get height => 1;
+}
+
+final class _BlockBranch extends _BlockTree {
+  final _BlockTree left;
+  final _BlockTree right;
+  @override
+  final int length;
+  @override
+  final int height;
+
+  _BlockBranch(this.left, this.right)
+    : length = left.length + right.length,
+      height = 1 + (left.height > right.height ? left.height : right.height);
+}
+
+_BlockTree? _blockTreeFrom(List<DocumentBlock> values) {
+  if (values.isEmpty) return null;
+  const leafSize = 32;
+  var level = <_BlockTree>[
+    for (var start = 0; start < values.length; start += leafSize)
+      _BlockLeaf(
+        values.sublist(
+          start,
+          start + leafSize < values.length ? start + leafSize : values.length,
+        ),
+      ),
+  ];
+  while (level.length > 1) {
+    final next = <_BlockTree>[];
+    for (var index = 0; index < level.length; index += 2) {
+      next.add(
+        index + 1 < level.length
+            ? _BlockBranch(level[index], level[index + 1])
+            : level[index],
+      );
+    }
+    level = next;
+  }
+  return level.single;
+}
+
+DocumentBlock _blockAt(_BlockTree tree, int index) {
+  var node = tree;
+  var offset = index;
+  while (node is _BlockBranch) {
+    if (offset < node.left.length) {
+      node = node.left;
+    } else {
+      offset -= node.left.length;
+      node = node.right;
+    }
+  }
+  return (node as _BlockLeaf).values[offset];
+}
+
+(_BlockTree?, _BlockTree?) _splitBlockTree(_BlockTree? tree, int index) {
+  if (tree == null) return (null, null);
+  if (index == 0) return (null, tree);
+  if (index == tree.length) return (tree, null);
+  switch (tree) {
+    case _BlockLeaf(:final values):
+      return (
+        _BlockLeaf(values.sublist(0, index)),
+        _BlockLeaf(values.sublist(index)),
+      );
+    case _BlockBranch(:final left, :final right):
+      if (index < left.length) {
+        final (before, after) = _splitBlockTree(left, index);
+        return (before, _joinBlockTrees(after, right));
+      }
+      if (index == left.length) return (left, right);
+      final (before, after) = _splitBlockTree(right, index - left.length);
+      return (_joinBlockTrees(left, before), after);
+  }
+}
+
+_BlockTree? _joinBlockTrees(_BlockTree? left, _BlockTree? right) {
+  if (left == null) return right;
+  if (right == null) return left;
+  if (left.height > right.height + 1) {
+    final branch = left as _BlockBranch;
+    return _balanceBlockTree(
+      _BlockBranch(branch.left, _joinBlockTrees(branch.right, right)!),
+    );
+  }
+  if (right.height > left.height + 1) {
+    final branch = right as _BlockBranch;
+    return _balanceBlockTree(
+      _BlockBranch(_joinBlockTrees(left, branch.left)!, branch.right),
+    );
+  }
+  return _BlockBranch(left, right);
+}
+
+_BlockTree _balanceBlockTree(_BlockBranch node) {
+  final balance = node.left.height - node.right.height;
+  if (balance > 1) {
+    final left = node.left as _BlockBranch;
+    if (left.right.height > left.left.height) {
+      final pivot = left.right as _BlockBranch;
+      return _BlockBranch(
+        _BlockBranch(left.left, pivot.left),
+        _BlockBranch(pivot.right, node.right),
+      );
+    }
+    return _BlockBranch(left.left, _BlockBranch(left.right, node.right));
+  }
+  if (balance < -1) {
+    final right = node.right as _BlockBranch;
+    if (right.left.height > right.right.height) {
+      final pivot = right.left as _BlockBranch;
+      return _BlockBranch(
+        _BlockBranch(node.left, pivot.left),
+        _BlockBranch(pivot.right, right.right),
+      );
+    }
+    return _BlockBranch(_BlockBranch(node.left, right.left), right.right);
+  }
+  return node;
+}
+
+final class _BlockTreeIterator implements Iterator<DocumentBlock> {
+  final List<_BlockTree> _stack = [];
+  Iterator<DocumentBlock>? _leaf;
+  DocumentBlock? _current;
+
+  _BlockTreeIterator(_BlockTree? root) {
+    if (root != null) _stack.add(root);
+  }
+
+  @override
+  DocumentBlock get current => _current as DocumentBlock;
+
+  @override
+  bool moveNext() {
+    while (true) {
+      final leaf = _leaf;
+      if (leaf != null && leaf.moveNext()) {
+        _current = leaf.current;
+        return true;
+      }
+      _leaf = null;
+      if (_stack.isEmpty) {
+        _current = null;
+        return false;
+      }
+      final node = _stack.removeLast();
+      switch (node) {
+        case _BlockLeaf(:final values):
+          _leaf = values.iterator;
+        case _BlockBranch(:final left, :final right):
+          _stack
+            ..add(right)
+            ..add(left);
+      }
+    }
+  }
+}
+
+final class _BlockIterator implements Iterator<Block> {
+  final Iterator<DocumentBlock> _entries;
+
+  _BlockIterator(this._entries);
+
+  @override
+  Block get current => _entries.current.block;
+
+  @override
+  bool moveNext() => _entries.moveNext();
+}
+
+final class _PersistentIdSet {
+  final _IdNode? _root;
+
+  const _PersistentIdSet._(this._root);
+
+  factory _PersistentIdSet.from(Iterable<DocumentBlock> entries) {
+    final values = <String>{};
+    for (final entry in entries) {
+      if (!values.add(entry.id.value)) {
+        throw StateError('Duplicate document block ID: ${entry.id}');
+      }
+    }
+    final sorted = values.toList()..sort();
+    return _PersistentIdSet._(_idTreeFromSorted(sorted, 0, sorted.length));
+  }
+
+  ({_PersistentIdSet set, bool added}) add(DocumentBlockId id) {
+    final result = _insertId(_root, id.value);
+    return (set: _PersistentIdSet._(result.node), added: result.added);
+  }
+
+  _PersistentIdSet remove(DocumentBlockId id) =>
+      _PersistentIdSet._(_removeId(_root, id.value));
+}
+
+final class _IdNode {
+  final String key;
+  final _IdNode? left;
+  final _IdNode? right;
+  final int height;
+
+  _IdNode(this.key, this.left, this.right)
+    : height = 1 + _maxInt(left?.height ?? 0, right?.height ?? 0);
+}
+
+_IdNode? _idTreeFromSorted(List<String> values, int start, int end) {
+  if (start >= end) return null;
+  final middle = start + ((end - start) >> 1);
+  return _IdNode(
+    values[middle],
+    _idTreeFromSorted(values, start, middle),
+    _idTreeFromSorted(values, middle + 1, end),
+  );
+}
+
+({_IdNode node, bool added}) _insertId(_IdNode? node, String key) {
+  if (node == null) return (node: _IdNode(key, null, null), added: true);
+  final order = key.compareTo(node.key);
+  if (order == 0) return (node: node, added: false);
+  if (order < 0) {
+    final inserted = _insertId(node.left, key);
+    if (!inserted.added) return (node: node, added: false);
+    return (
+      node: _balanceId(_IdNode(node.key, inserted.node, node.right)),
+      added: true,
+    );
+  }
+  final inserted = _insertId(node.right, key);
+  if (!inserted.added) return (node: node, added: false);
+  return (
+    node: _balanceId(_IdNode(node.key, node.left, inserted.node)),
+    added: true,
+  );
+}
+
+_IdNode? _removeId(_IdNode? node, String key) {
+  if (node == null) return null;
+  final order = key.compareTo(node.key);
+  if (order < 0) {
+    return _balanceId(_IdNode(node.key, _removeId(node.left, key), node.right));
+  }
+  if (order > 0) {
+    return _balanceId(_IdNode(node.key, node.left, _removeId(node.right, key)));
+  }
+  if (node.left == null) return node.right;
+  if (node.right == null) return node.left;
+  var successor = node.right!;
+  while (successor.left != null) {
+    successor = successor.left!;
+  }
+  return _balanceId(
+    _IdNode(successor.key, node.left, _removeId(node.right, successor.key)),
+  );
+}
+
+_IdNode _balanceId(_IdNode node) {
+  final balance = (node.left?.height ?? 0) - (node.right?.height ?? 0);
+  if (balance > 1) {
+    var left = node.left!;
+    if ((left.right?.height ?? 0) > (left.left?.height ?? 0)) {
+      left = _rotateIdLeft(left);
+    }
+    return _rotateIdRight(_IdNode(node.key, left, node.right));
+  }
+  if (balance < -1) {
+    var right = node.right!;
+    if ((right.left?.height ?? 0) > (right.right?.height ?? 0)) {
+      right = _rotateIdRight(right);
+    }
+    return _rotateIdLeft(_IdNode(node.key, node.left, right));
+  }
+  return node;
+}
+
+_IdNode _rotateIdLeft(_IdNode node) {
+  final pivot = node.right!;
+  return _IdNode(
+    pivot.key,
+    _IdNode(node.key, node.left, pivot.left),
+    pivot.right,
+  );
+}
+
+_IdNode _rotateIdRight(_IdNode node) {
+  final pivot = node.left!;
+  return _IdNode(
+    pivot.key,
+    pivot.left,
+    _IdNode(node.key, pivot.right, node.right),
+  );
+}
+
+int _maxInt(int a, int b) => a > b ? a : b;
