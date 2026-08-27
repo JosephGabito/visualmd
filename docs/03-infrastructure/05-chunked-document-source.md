@@ -68,4 +68,6 @@ revisioned mutations already understood by `DocumentContent`
 (`lib/infrastructure/markdown/markdown_document_parser.dart`,
 `lib/domain/reading/content/document_content.dart`). The next boundary is the
 application coordinator which validates ordered stream events, batches source
-without dropping it, and fences canceled generations.
+without dropping it, and fences canceled generations. That coordinator now
+lives in `lib/application/generated_document_stream.dart`; the next consumer is
+an incremental outline projection.
