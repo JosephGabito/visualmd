@@ -152,10 +152,12 @@ typed contributor; a general plugin registry should wait until more real
 contributors reveal the common shape.
 
 Selection inside the mounted source window remains native. Extending a drag
-through an unmounted window needs a model-backed selection delegate; the exact
-whole-block Copy action is the current lossless path. Wrapped large blocks also
-remain an eager text-layout boundary. Wrapped-row indexing and model-backed
-selection are separate performance slices rather than reasons to weaken the
-default unwrapped reading path. Windowed classification has bounded context: a
-multiline token opened far before the viewport may use plain or local-context
-colour until a stateful grammar checkpoint exists.
+through an unmounted window still needs range-aware model selection. Command-A
+and Command-C are lossless through the reading pane's model-backed whole-document
+snapshot, while the block's own Copy action remains an exact direct path.
+Wrapped large blocks also remain an eager text-layout boundary. Wrapped-row
+indexing and range-aware drag selection are separate performance slices rather
+than reasons to weaken the default unwrapped reading path. Windowed
+classification has bounded context: a multiline token opened far before the
+viewport may use plain or local-context colour until a stateful grammar
+checkpoint exists.
