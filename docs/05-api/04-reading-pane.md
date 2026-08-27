@@ -24,10 +24,12 @@ The build (`lib/api/widgets/reading_pane.dart`):
   interaction, so a streamed tail cannot resize or relocate it under the
   pointer (`lib/api/widgets/reading_pane.dart`,
   `lib/api/widgets/quiet_scrollbar.dart`).
-- A `SelectionArea` around the scroll surface. Flutter keeps selected lazy
-  children alive while a selection extends through the page, without keeping
-  every unselected block alive (`lib/api/widgets/reading_pane.dart`,
-  `lib/api/render/document_view.dart`).
+- A `ModelBackedSelectionArea` around the scroll surface. Ordinary pointer
+  selection remains native and viewport-bounded. Select All snapshots
+  `DocumentContent.text`, forwards to Flutter for visible feedback, and lets
+  Copy include unmounted blocks with the model's authored separators
+  (`lib/api/widgets/model_backed_selection_area.dart`,
+  `lib/api/widgets/reading_pane.dart`).
 - A `ReadingTheme` built once per frame from the palette, the faces and the
   scale (`lib/api/widgets/reading_pane.dart`). See
   [Reading Theme](14-reading-theme.md).
@@ -144,8 +146,9 @@ reading.
 
 Viewport work, tail indexing, far navigation, and geometry correction are
 bounded, and visible scrollbar geometry is frozen against both tail growth and
-automatic physical correction. Flutter's stock select-all action knows only the
-selectables currently registered by the lazy sliver. A future full-document
-select-all command must use `DocumentContent` as its source of truth rather
-than remounting the whole page. The limitation is recorded in the
-[backlog](../07-roadmap/02-backlog.md).
+automatic physical correction. Select All and Copy are model-backed without
+remounting the page. The selected snapshot deliberately keeps its original end
+when a stream appends, matching a stable selection rather than silently
+claiming new words. Dragging a native selection through content which has never
+mounted still depends on Flutter's selectable protocol and remains a separate
+accessibility boundary.

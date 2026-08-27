@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/render/document_view.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
@@ -206,6 +207,55 @@ $body
       lessThan(40),
       reason: 'work must stay proportional to the viewport, not 500 blocks',
     );
+  });
+
+  testWidgets('select all copies every block without mounting the corpus', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final source = List.generate(
+      500,
+      (index) => 'Paragraph $index remains model-owned when it is off screen.',
+    ).join('\n\n');
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map<Object?, Object?>)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+
+    await pump(tester, reading(source));
+    await tester.pumpAndSettle();
+    final mountedBefore = find.byType(Paragraph).evaluate().length;
+    final context = tester.element(find.byType(CustomScrollView));
+    Actions.invoke(
+      context,
+      const SelectAllTextIntent(SelectionChangedCause.keyboard),
+    );
+    await tester.pump();
+    await pump(tester, reading('$source\n\nstreamed tail'));
+    await tester.pumpAndSettle();
+    Actions.invoke(
+      tester.element(find.byType(CustomScrollView)),
+      CopySelectionTextIntent.copy,
+    );
+    await tester.pump();
+
+    expect(copied, source);
+    expect(find.byType(Paragraph).evaluate().length, mountedBefore);
+    expect(mountedBefore, lessThan(40));
   });
 
   testWidgets(

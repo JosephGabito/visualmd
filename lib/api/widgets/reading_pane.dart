@@ -15,6 +15,7 @@ import '../render/document_view.dart';
 import '../render/reading_theme.dart';
 import '../theme/library_theme.dart';
 import 'quiet_scrollbar.dart';
+import 'model_backed_selection_area.dart';
 
 /// The page: one document, set by [DocumentView] and watched so the outline
 /// knows where the reader is.
@@ -490,7 +491,8 @@ class ReadingPaneState extends State<ReadingPane> {
         );
         final page = NotificationListener<ScrollNotification>(
           onNotification: _trackTailIntent,
-          child: SelectionArea(
+          child: ModelBackedSelectionArea(
+            wholeText: () => reading.content.text,
             child: CustomScrollView(
               key: _pageKey,
               controller: _scroll,
