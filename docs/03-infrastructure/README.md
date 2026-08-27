@@ -17,6 +17,7 @@ adapter translates platform details into the values understood by
 | [Folder Registry](02-folder-registry.md) | How native folder handles travel through the application as small, opaque `FolderRef` values |
 | [Workspace Persistence](03-workspace-persistence.md) | Portable workspace JSON, machine-local access records, save, open, and recovery |
 | [Quiet Viewport Geometry](04-quiet-viewport-geometry.md) | Stable block geometry, anchor compensation, and scrollbar interaction epochs |
+| [Chunked Document Source](05-chunked-document-source.md) | Append-efficient source storage and bounded parser windows |
 | [Web Adapters](web/README.md) | Browser drag-and-drop, picking, scanning, links, and workspace files |
 | [Desktop Adapters](desktop/README.md) | Local files, native dialogs, window chrome, and macOS sandbox access |
 | [Memory Adapters](memory/README.md) | Session state, scanner routing, and the bundled welcome library |
