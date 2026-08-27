@@ -5,7 +5,7 @@
 Implements both folder scanning ports for folders on the local filesystem
 (`lib/infrastructure/io/local_folder_scanner.dart`). It is the desktop
 twin of [Browser Folder Scanner](../web/03-folder-scanner.md): a full scan
-indexes one title at a time into metadata-only `FileEntry` values, while
+indexes titles into metadata-only `FileEntry` values, while
 `scanDocument` reads one chosen source. Building the `Library` remains in the domain. It applies the same two
 domain rules at the edge — only markdown, no hidden folders — so it avoids
 indexing what the domain would discard.
@@ -34,6 +34,13 @@ folder (`lib/infrastructure/io/local_folder_scanner.dart`). For each entry:
 - a `File` becomes a metadata entry only if `MarkdownFile.isMarkdown(name)`;
   its source is decoded transiently to preserve its authored title, then
   released (`lib/infrastructure/io/local_folder_scanner.dart`).
+
+The walk first records eligible reads in discovery order. Eight workers then
+overlap file IO and title extraction while writing each result back to its
+original position. The bound prevents a large folder from opening thousands of
+descriptors at once, and stable result order keeps the adapter deterministic
+before `LibraryBuilder` applies shelf ordering
+(`lib/infrastructure/io/local_folder_scanner.dart`).
 
 `scanDocument` locates one relative path and `_read` decodes it with
 `utf8.decode(..., allowMalformed: true)`, so a stray
@@ -64,8 +71,8 @@ None. `AddFolder` owns the library change after a successful scan.
 ## Lifecycle
 
 One instance per desktop `PlatformAdapters`; stateless beyond the registry.
-Every full `scan` walks the tree afresh and indexes titles sequentially without
-retaining Markdown source.
+Every full `scan` walks the tree afresh and indexes titles through a bounded
+eight-read pool without retaining Markdown source.
 `scanDocument` validates one portable relative path and reads only that
 Markdown when the reader opens it or a watcher invalidates it
 (`lib/infrastructure/io/local_folder_scanner.dart`). Watching itself is
@@ -80,6 +87,7 @@ What the tests pin down (`test/infrastructure/local_folder_scanner_test.dart`):
 | only markdown is returned; dot-prefixed and recognised dependency/runtime trees are never entered; deep nesting keeps its relative path | `test/infrastructure/local_folder_scanner_test.dart` |
 | a full scan retains a title but no source, while an on-demand read tolerates invalid UTF-8 | `test/infrastructure/local_folder_scanner_test.dart` |
 | loose files become a flat library with non-Markdown dropped | `test/infrastructure/local_folder_scanner_test.dart` |
+| title reads overlap, preserve input order, and never exceed eight concurrent operations | `test/infrastructure/local_folder_scanner_test.dart` |
 | an unknown ref raises `FolderUnavailable` | `test/infrastructure/local_folder_scanner_test.dart` |
 
 Not handled today: a file that disappears before an on-demand read, or a
