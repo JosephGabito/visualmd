@@ -46,10 +46,12 @@ A source of at least 32,768 characters takes a bounded rendering path when it
 belongs to the scrolling reading page. A compact line-offset index establishes
 the complete block height without creating one paragraph for the complete
 source. The body then follows the page's existing vertical position and mounts
-the visible lines plus eight lines of overscan on each edge. It remains one
-continuous code surface in the outer document: there is no nested vertical
-scrollbar and no change to the reader's wheel, trackpad or scrollbar physics
-(`lib/api/widgets/code_block.dart`).
+the visible lines plus eight lines of overscan on each edge. Within those rows,
+only the horizontal viewport plus 32 overscan columns on each edge becomes a
+text layout object. The full monospace width remains the local scroll
+coordinate system. It remains one continuous code surface in the outer
+document: there is no nested vertical scrollbar and no change to the reader's
+wheel, trackpad or scrollbar physics (`lib/api/widgets/code_block.dart`).
 
 Each mounted line asks `InlineComposer.highlightedVerbatimRange` for only its
 source window. The composer seeks into ordered syntax ranges rather than
@@ -102,7 +104,8 @@ is emitted because reading or copying an example does not mutate the library.
 
 One state object and horizontal `ScrollController` live with each rendered
 block (`lib/api/widgets/code_block.dart`). A large unwrapped block additionally
-retains integer line starts and the currently mounted line window; the amount
+retains integer line starts and the currently mounted line and column window;
+the amount
 of text laid out, painted and registered with semantics stays bounded by the
 page viewport. A source, language, scheme or
 highlighter change invalidates the pending request and starts another. A
@@ -142,7 +145,7 @@ contributors reveal the common shape.
 
 Selection inside the mounted source window remains native. Extending a drag
 through an unmounted window needs a model-backed selection delegate; the exact
-whole-block Copy action is the current lossless path. Wrapped large blocks and
-single lines wider than the horizontal viewport also remain eager text-layout
-boundaries. They are separate performance slices rather than reasons to weaken
-the default unwrapped reading path.
+whole-block Copy action is the current lossless path. Wrapped large blocks also
+remain an eager text-layout boundary. Bounded grammar tokenization, wrapped-row
+indexing and model-backed selection are separate performance slices rather than
+reasons to weaken the default unwrapped reading path.

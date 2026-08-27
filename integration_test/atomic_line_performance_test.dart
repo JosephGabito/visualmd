@@ -66,29 +66,39 @@ void main() {
           .widget<SingleChildScrollView>(horizontal)
           .controller!
           .position;
-      final renderedCharacters = find
-          .descendant(
-            of: find.byKey(const ValueKey('code-source')),
-            matching: find.byType(RichText),
-          )
-          .evaluate()
-          .map(
-            (element) =>
-                (element.renderObject! as RenderParagraph).text.toPlainText(),
-          )
-          .fold(0, (total, text) => total + text.length);
+      final renderedCharacters = _renderedCharacters();
+      final maximumExtent = position.maxScrollExtent;
+      position.jumpTo(maximumExtent * 0.5);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await tester.pump();
+      final middleRanges = _mountedColumnRanges();
       runs.add({
         'source_characters': characters,
         'rendered_characters': renderedCharacters,
+        'middle_rendered_characters': _renderedCharacters(),
+        'middle_column_start': middleRanges.isEmpty
+            ? null
+            : middleRanges.map((range) => range.start).reduce(math.min),
+        'middle_column_end': middleRanges.isEmpty
+            ? null
+            : middleRanges.map((range) => range.end).reduce(math.max),
         'open_wall_us': clock.elapsedMicroseconds,
-        'maximum_horizontal_scroll_extent': position.maxScrollExtent,
+        'maximum_horizontal_scroll_extent': maximumExtent,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
         'frames': _frameSummary(
           timings.skip(beforeFrames).toList(growable: false),
         ),
       });
 
-      expect(position.maxScrollExtent, greaterThan(0));
+      expect(maximumExtent, greaterThan(0));
+      expect(renderedCharacters, lessThanOrEqualTo(32768));
+      expect(_renderedCharacters(), lessThanOrEqualTo(32768));
+      if (characters >= 32768) {
+        expect(middleRanges, isNotEmpty);
+        expect(middleRanges.first.start, greaterThan(characters * 0.4));
+      }
       expect(tester.takeException(), isNull);
     }
 
@@ -99,6 +109,31 @@ void main() {
       'runs': runs,
     };
   });
+}
+
+int _renderedCharacters() => find
+    .descendant(
+      of: find.byKey(const ValueKey('code-source')),
+      matching: find.byType(RichText),
+    )
+    .evaluate()
+    .map(
+      (element) =>
+          (element.renderObject! as RenderParagraph).text.toPlainText().length,
+    )
+    .fold(0, (total, length) => total + length);
+
+List<({int start, int end})> _mountedColumnRanges() => [
+  for (final element in find.byWidgetPredicate((widget) {
+    final key = widget.key;
+    return key is ValueKey<String> && key.value.startsWith('code-column-');
+  }).evaluate())
+    _columnRange((element.widget.key! as ValueKey<String>).value),
+];
+
+({int start, int end}) _columnRange(String key) {
+  final parts = key.split('-');
+  return (start: int.parse(parts[2]), end: int.parse(parts[3]));
 }
 
 Widget _app(DocumentReading reading) => MaterialApp(
