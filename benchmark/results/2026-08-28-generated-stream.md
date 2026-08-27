@@ -36,14 +36,15 @@ ordered source delta
 | Committed prefix | 5,000 blocks |
 | Published revisions | 60 |
 | Largest parsed suffix | 124 characters |
-| Parse and publish p50 | 0.151 ms |
-| Parse and publish p90 | 0.252 ms |
-| Parse and publish worst | 0.331 ms |
+| Parse, outline, and publish p50 | 0.186 ms |
+| Parse, outline, and publish p90 | 0.262 ms |
+| Parse, outline, and publish worst | 0.342 ms |
+| Outline blocks visited per revision | 1 |
 | Navigation records visited per revision | 1 |
 | Renderer records visited per revision | 1 |
 | Mounted paragraphs after the journey | 11 |
-| Frame total p90 | 1.952 ms |
-| Frame total worst | 4.337 ms |
+| Frame total p90 | 2.290 ms |
+| Frame total worst | 2.870 ms |
 | Ballistic scroll progress | 2,609 logical pixels |
 
 The 60 parse sizes repeated the expected bounded pattern: 59–60 characters for
@@ -54,14 +55,17 @@ prefix.
 The benchmark also records a harness revision wall time around 25 ms. That is
 not application latency: the harness deliberately advances two frames for each
 publication, including an 8 ms simulated-time step. Synchronous source accept,
-parse, mutation, and publication are the 0.151/0.252/0.331 ms distribution;
-Flutter frame timings independently report the rendering cost.
+parse, mutation, outline projection, and publication are the
+0.186/0.262/0.342 ms distribution; Flutter frame timings independently report
+the rendering cost.
 
 ## What this proves
 
 - Normal generated prose does not reparse its committed source prefix.
 - A provisional paragraph can change repeatedly without copying the committed
   block model or rebuilding derived reader indexes.
+- The live table of contents projects the same suffix mutation and preserves
+  immutable prior revisions without rescanning committed headings.
 - The geometry ledger retains measured prefix extents while its suffix changes.
 - Widget, element, layout, paint, and semantics work remains proportional to
   the viewport; 5,020 paragraphs leave only 11 mounted.
@@ -74,12 +78,11 @@ of that committed prefix for this grammar path.
 
 ## Remaining boundary
 
-The journey intentionally uses an empty outline. Outline generation is still a
-whole-source projection, so generated headings need an incremental outline
-contract before they can join this benchmark honestly. Rare late global link or
-footnote definitions also trigger a documented semantic rebase because they can
-change earlier blocks. That exceptional dependency cost should eventually be
-indexed; it must not be disguised as constant work.
+Live outline headings omit exact source lines and source-sliced sections; the
+reader does not consume either. Rare late global link or footnote definitions
+also trigger a documented semantic rebase because they can change earlier
+blocks. That exceptional dependency cost should eventually be indexed; it must
+not be disguised as constant work.
 
 The next performance experiment should compare the same delta sizes over
 100, 1,000, and 5,000 committed blocks in one run. The structural counters

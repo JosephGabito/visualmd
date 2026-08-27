@@ -23,9 +23,9 @@ production transport or `ReaderController`. Its parser is supplied through
 
 Opening a session supplies one `DocumentId` and one `DocumentStreamId`. The
 caller then delivers deltas, finish, or failure events. Revisions are published
-on a broadcast stream so presentation, outline, and search projections can
-eventually consume the same ordered commit instead of inventing separate
-refresh paths.
+on a broadcast stream with a live outline derived from the same block mutation,
+so presentation and navigation consume one ordered commit instead of inventing
+separate refresh paths. Search can attach to that boundary later.
 
 ## Inputs and outputs
 
@@ -34,7 +34,7 @@ refresh paths.
 | `GeneratedDocumentDelta` | Exact source, generation ID, monotonically increasing sequence, and the required source offset |
 | `GeneratedDocumentFinished` | Final sequence and accepted source length; no hidden suffix is allowed |
 | `GeneratedDocumentFailed` | Final sequence and reason; accepted source remains readable, including a provisional tail |
-| `GeneratedDocumentRevision` | Highest included sequence, accepted source length, actual parsed character count, status, and revisioned `DocumentContent` |
+| `GeneratedDocumentRevision` | Highest included sequence, accepted source length, actual parsed character count, outline blocks visited, status, revisioned `DocumentContent`, and its live `DocumentOutline` |
 
 Duplicates are idempotent. An event from another generation is stale and is
 ignored. A gap or wrong source offset throws
@@ -62,6 +62,15 @@ preserves provisional meaning instead of pretending the document completed.
 the timer, closes revision delivery, and fences every late event. There is no
 idle loop: a quiet stream schedules no work.
 
+The outline projection keeps one source-entry checkpoint per block and a
+persistent heading sequence. A suffix mutation truncates at its checkpoint and
+visits only replacement blocks. Paragraph-only revisions reuse the exact same
+outline object; a heading revision structurally shares every committed heading.
+Live headings omit source lines and exact sections rather than fabricating
+metadata the streaming parser does not retain
+(`lib/application/generated_document_stream.dart`,
+`lib/domain/collection/persistent_sequence.dart`).
+
 ## Failure and recovery
 
 Protocol gaps and offset mismatches are explicit failures because rendering
@@ -72,14 +81,13 @@ its current parsed content so the reader does not lose a partial answer.
 
 `test/application/generated_document_stream_test.dart` proves coalescing,
 boundary and size flushes, duplicates, gaps, offsets, stale generations,
-canonical finish, failure preservation, and a canceled timer which cannot
-publish late work.
+canonical finish, failure preservation, incremental immutable outline
+projection, and a canceled timer which cannot publish late work.
 
 ## Transition
 
-The next slice is a derived outline projection built from the same
-`DocumentMutation`, followed by a synthetic in-app source and chunk-to-frame
-benchmark. If profiling shows parse work still contends with scrolling, this
-same synchronous session contract can move behind one persistent worker isolate;
+The synthetic source and chunk-to-frame benchmark now consume the live outline.
+If later profiling shows parse work contends with scrolling, this same
+synchronous session contract can move behind one persistent worker isolate;
 creating one isolate per transport chunk would defeat batching and lifecycle
 ownership.
