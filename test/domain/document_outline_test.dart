@@ -3,6 +3,7 @@ import 'package:visualmd/domain/library/document.dart';
 import 'package:visualmd/domain/library/document_id.dart';
 import 'package:visualmd/domain/library/library_root_id.dart';
 import 'package:visualmd/domain/reading/document_outline.dart';
+import 'package:visualmd/domain/reading/heading.dart';
 
 void main() {
   const rootId = LibraryRootId('test');
@@ -437,6 +438,17 @@ Sub
       final empty = DocumentOutline.parse('');
       expect(empty.sections, isEmpty);
       expect(empty.title, isNull);
+    });
+
+    test('a live navigation projection does not invent source locations', () {
+      final outline = DocumentOutline.navigationOnly(const [
+        Heading(level: 1, text: 'Live answer', anchor: 'live-answer'),
+      ]);
+
+      expect(outline.title, 'Live answer');
+      expect(outline.tableOfContents.headings.single.line, isNull);
+      expect(outline.sections, isEmpty);
+      expect(outline.frontMatter, isNull);
     });
   });
 
