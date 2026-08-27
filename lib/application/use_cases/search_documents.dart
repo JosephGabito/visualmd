@@ -1,6 +1,8 @@
 // ignore_for_file: prefer_initializing_formals — private fields keep public constructor names.
 import '../document_source_reader.dart';
+import '../../domain/library/document.dart';
 import '../../domain/library/document_id.dart';
+import '../../domain/library/library.dart';
 import '../../domain/search/search_result.dart';
 import '../ports/document_search.dart';
 import '../ports/library_repository.dart';
@@ -36,17 +38,22 @@ final class SearchDocuments {
         : [library.find(within) ?? (throw DocumentNotFound(within))];
     final query = SearchQuery(text);
     final results = <DocumentSearchResult>[];
+    final index = switch (_search) {
+      DocumentSearchIndex indexed => indexed,
+      _ => null,
+    };
     // Whole-library search deliberately does not warm the reading cache. One
-    // source is loaded, searched, and released before the next one is read.
+    // uncached source is loaded, projected, and released before the next one
+    // is read. Query refinement reuses the adapter's byte-bounded projection.
     for (final document in documents) {
-      final reader = _sources;
-      final source =
-          document.loadedContent ??
-          (reader == null
-              ? throw DocumentSourceUnavailable(document)
-              : await reader.read(library, document));
+      final indexed = index?.contains(document.id) ?? false;
+      final searchable = indexed
+          ? document
+          : document.withContent(
+              document.loadedContent ?? (await _loadSource(library, document)),
+            );
       if (request != _request) return const [];
-      final found = await _search.find(query, [document.withContent(source)]);
+      final found = await _search.find(query, [searchable]);
       if (request != _request) return const [];
       results.addAll([
         for (final result in found)
@@ -54,5 +61,31 @@ final class SearchDocuments {
       ]);
     }
     return results;
+  }
+
+  Future<String> _loadSource(Library library, Document document) {
+    final reader = _sources;
+    if (reader == null) throw DocumentSourceUnavailable(document);
+    return reader.read(library, document);
+  }
+
+  /// Evicts projections whose source bytes may have changed.
+  void invalidate(Iterable<DocumentId> ids) {
+    _request++;
+    final search = _search;
+    if (search is DocumentSearchIndex) search.invalidate(ids);
+  }
+
+  /// Releases projections for documents no longer present in the library.
+  void retain(Iterable<DocumentId> ids) {
+    _request++;
+    final search = _search;
+    if (search is DocumentSearchIndex) search.retain(ids);
+  }
+
+  void clear() {
+    _request++;
+    final search = _search;
+    if (search is DocumentSearchIndex) search.clear();
   }
 }

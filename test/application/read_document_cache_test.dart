@@ -215,6 +215,69 @@ void main() {
       expect(fixture.sources.calls[id(0).path], 2);
     },
   );
+
+  test(
+    'query refinement reuses projections without rereading or reparsing',
+    () async {
+      final fixture = _Fixture(library(3));
+      final search = SearchDocuments(
+        repository: fixture.repository,
+        search: LiteralDocumentSearch(parser: fixture.parser),
+        sources: fixture.sourceReader,
+      );
+
+      await search.execute('document');
+      await search.execute('document-1');
+
+      expect(fixture.sources.calls.values, everyElement(1));
+      expect(fixture.parser.calls, 3);
+    },
+  );
+
+  test(
+    'source invalidation rebuilds only the changed search projection',
+    () async {
+      final fixture = _Fixture(library(3));
+      final search = SearchDocuments(
+        repository: fixture.repository,
+        search: LiteralDocumentSearch(parser: fixture.parser),
+        sources: fixture.sourceReader,
+      );
+
+      await search.execute('document');
+      fixture.sources.contents[id(1).path] = '# Current needle';
+      search.invalidate([id(1)]);
+      final results = await search.execute('current');
+
+      expect(results.single.document.id, id(1));
+      expect(fixture.sources.calls[id(0).path], 1);
+      expect(fixture.sources.calls[id(1).path], 2);
+      expect(fixture.sources.calls[id(2).path], 1);
+      expect(fixture.parser.calls, 4);
+    },
+  );
+
+  test('an invalidated in-flight search cannot retain stale source', () async {
+    final repository = _Repository(library(1));
+    final sources = _BlockingSources();
+    final index = LiteralDocumentSearch(parser: const MarkdownDocumentParser());
+    final search = SearchDocuments(
+      repository: repository,
+      search: index,
+      sources: DocumentSourceReader(
+        folderDocuments: sources,
+        markdowns: const _NoMarkdowns(),
+      ),
+    );
+
+    final stale = search.execute('shared');
+    await sources.started.future;
+    search.invalidate([id(0)]);
+    sources.release.complete();
+
+    expect(await stale, isEmpty);
+    expect(index.contains(id(0)), isFalse);
+  });
 }
 
 final class _Fixture {

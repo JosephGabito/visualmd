@@ -1,14 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/application/ports/document_parser.dart';
 import 'package:visualmd/domain/library/document.dart';
 import 'package:visualmd/domain/library/document_id.dart';
 import 'package:visualmd/domain/library/library_root_id.dart';
+import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/search/search_result.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/infrastructure/search/literal_document_search.dart';
 
 void main() {
   const rootId = LibraryRootId('test');
-  final search = LiteralDocumentSearch(parser: const MarkdownDocumentParser());
+  late LiteralDocumentSearch search;
+
+  setUp(() {
+    search = LiteralDocumentSearch(parser: const MarkdownDocumentParser());
+  });
 
   test(
     'finds every literal without treating punctuation as an expression',
@@ -362,4 +368,70 @@ https://example.com/bare www.example.com reader@example.com
 
     expect(results.map((result) => result.document.id.path), ['a.md', 'c.md']);
   });
+
+  test('an unchanged document reuses its visible-text projection', () async {
+    final parser = _CountingParser();
+    final indexed = LiteralDocumentSearch(parser: parser);
+    final id = DocumentId(rootId, 'retained.md');
+
+    await indexed.find(SearchQuery('needle'), [
+      Document(id: id, content: '**needle**'),
+    ]);
+    final refined = await indexed.find(SearchQuery('need'), [Document(id: id)]);
+
+    expect(refined, hasLength(1));
+    expect(parser.calls, 1);
+    expect(indexed.contains(id), isTrue);
+  });
+
+  test('invalidating one document rebuilds only that projection', () async {
+    final parser = _CountingParser();
+    final indexed = LiteralDocumentSearch(parser: parser);
+    final first = DocumentId(rootId, 'first.md');
+    final second = DocumentId(rootId, 'second.md');
+
+    await indexed.find(SearchQuery('old'), [
+      Document(id: first, content: 'old first'),
+      Document(id: second, content: 'old second'),
+    ]);
+    indexed.invalidate([first]);
+    final results = await indexed.find(SearchQuery('current'), [
+      Document(id: first, content: 'current first'),
+      Document(id: second),
+    ]);
+
+    expect(results.single.document.id, first);
+    expect(parser.calls, 3);
+  });
+
+  test('retained visible text never exceeds its byte budget', () async {
+    final indexed = LiteralDocumentSearch(
+      parser: const MarkdownDocumentParser(),
+      maximumRetainedBytes: 100,
+    );
+    final first = DocumentId(rootId, 'first.md');
+    final second = DocumentId(rootId, 'second.md');
+
+    await indexed.find(SearchQuery('text'), [
+      Document(id: first, content: 'first text'),
+      Document(id: second, content: 'second text'),
+    ]);
+
+    expect(indexed.retainedBytes, lessThanOrEqualTo(100));
+    expect(indexed.retainedCount, 1);
+    expect(indexed.contains(first), isFalse);
+    expect(indexed.contains(second), isTrue);
+  });
+}
+
+final class _CountingParser implements DocumentParser {
+  static const _delegate = MarkdownDocumentParser();
+
+  var calls = 0;
+
+  @override
+  DocumentContent parse(String markdown) {
+    calls++;
+    return _delegate.parse(markdown);
+  }
 }

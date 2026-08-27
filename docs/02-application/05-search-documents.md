@@ -2,21 +2,24 @@
 
 ## Purpose and boundary
 
-`SearchDocuments` chooses the documents in scope, streams their sources, and
+`SearchDocuments` chooses the documents in scope, prepares missing search
+projections, and
 delegates matching through the [Document Search Port](06-document-search-port.md)
 (`lib/application/use_cases/search_documents.dart`). It searches either
-the whole open `Library` or one `DocumentId`; it does not retain source,
-parse Markdown, match strings, construct excerpts, or render results.
+the whole open `Library` or one `DocumentId`; it does not retain source, parse
+Markdown, match strings, construct excerpts, or render results.
 
 ## Present wiring
 
 `execute(text, within:)` returns immediately for an empty field, then reads the
 current library through `LibraryRepository` (`lib/application/use_cases/search_documents.dart`).
-Without `within`, documents are visited in shelf order. For each one,
-`DocumentSourceReader` obtains the source, the search port receives a
-source-backed one-item iterable, and the source is released before the next
-document is visited (`lib/application/use_cases/search_documents.dart`). With
-an id, the same pipeline visits exactly that document.
+Without `within`, documents are visited in shelf order. For each one, the use
+case first asks an indexed adapter whether a visible-text projection already
+exists. A miss loads source through `DocumentSourceReader` and gives the port a
+source-backed one-item iterable; a hit gives it metadata alone. Source is
+released before the next document is visited
+(`lib/application/use_cases/search_documents.dart`). With an id, the same
+pipeline visits exactly that document.
 
 Results are rebound to the metadata-only `Document` from the library. Search
 therefore neither fills the reading cache nor accidentally retains every
@@ -31,6 +34,10 @@ opening another file (`lib/application/use_cases/search_documents.dart`). This
 does not pretend synchronous parsing can be interrupted midway, but it bounds
 wasted work to the one document already in progress rather than the remaining
 library.
+
+Index invalidation, retention, and clearing advance the same request revision.
+An old source read therefore cannot finish after invalidation and repopulate a
+stale visible-text projection (`lib/application/use_cases/search_documents.dart`).
 
 The composition root gives reading and search the same `DocumentSourceReader`,
 then injects the use case into `ReaderController` (`lib/main.dart`).
@@ -52,12 +59,13 @@ uses the existing document-opening path in the API.
 
 ## Lifecycle
 
-One stateful use-case instance lives for the application session. A search
-has bounded source residency: at most one source-backed document is handed to
-the adapter at a time. `LiteralDocumentSearch` does not cache source text
-(`lib/infrastructure/search/literal_document_search.dart`). The request
-revision is session-local coordination only; it retains neither queries nor
-results.
+One stateful use-case instance lives for the application session. A search has
+bounded source residency: at most one source-backed document is handed to the
+adapter at a time. The adapter may retain only its derived visible text behind
+`DocumentSearchIndex`; `invalidate`, `retain`, and `clear` align that projection
+with source refresh and library ownership
+(`lib/application/use_cases/search_documents.dart`). The request revision is
+session-local coordination only; it retains neither queries nor results.
 
 ## Failure and recovery
 
@@ -74,8 +82,9 @@ opening its next file.
 
 ## Transition
 
-Progressive search and interruption inside source IO or parsing require richer
-ports later. The
-use case remains the owner of scope because “this document” and “this library”
-are application choices; an index is responsible only for finding occurrences
-within the documents it receives.
+Matching still scans every retained visible-text projection for each query.
+The profile baseline in `benchmark/results/2026-08-28-library-search.md`
+separates that remaining cost from source IO and Markdown parsing. A later
+token or n-gram index must preserve exact literal offsets and excerpts. The use
+case remains the owner of scope because “this document” and “this library” are
+application choices.

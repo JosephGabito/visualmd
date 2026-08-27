@@ -44,7 +44,9 @@ aggregate but intentionally leaves `reading` unchanged
 (`lib/api/reader_controller.dart`).
 
 `openDocument` skips an already-open identity. Search delegates scope to
-`SearchDocuments` without retaining query state
+`SearchDocuments` without retaining query state. Library mutations align both
+the reading cache and the search projection index: changed identities are
+invalidated, removed identities are released, and a new workspace clears both
 (`lib/api/reader_controller.dart`).
 
 Relative links are resolved from the current `DocumentId`. Because resolution
@@ -92,7 +94,8 @@ through `ListenableBuilder` (`lib/api/screens/reader_screen.dart`,
 The controller subscribes to committed `SourceSyncEvent` values. A successful
 refresh replaces the Library, rereads the active document when its bytes or
 identity changed, increments `contentRevision`, and keeps the selected identity
-when it survived (`lib/api/reader_controller.dart`). Widgets use that
+when it survived. The same changed-document set invalidates only those retained
+search projections (`lib/api/reader_controller.dart`). Widgets use that
 revision to refresh transient projections such as an open search.
 
 ## Lifecycle
