@@ -71,7 +71,8 @@ values (`lib/api/screens/reader_screen.dart`).
 outline toggle. The picker arrives as a complete widget, so the bar owns its
 position without owning theme behavior
 (`lib/api/screens/reader_screen.dart`). Both toggles use
-[Pressable](09-pressable.md) and remain disabled until a library exists.
+[Pressable](09-pressable.md), carry separate Show/Hide shelf and outline names
+for assistive technology, and remain disabled until a library exists.
 
 Three layers may sit above the room:
 

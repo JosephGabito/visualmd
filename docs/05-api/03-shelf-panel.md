@@ -15,7 +15,10 @@ from the domain's [Shelving Rules](../01-domain/02-shelving-rules.md).
 
 When standalone sources exist, “Markdowns” and their document rows appear
 above “Library.” The Library heading offers an add-folder action and its count
-describes folders only (`lib/api/widgets/shelf_panel.dart`). Each
+describes folders only. Its add-folder and title/file-name actions each expose
+one named button to assistive technology; their visible tooltips stay help text
+rather than becoming separate semantic labels
+(`lib/api/widgets/shelf_panel.dart`). Each
 standalone row reserves the same quiet action space as a root: its delete icon
 appears only on hover, while semantic dismiss remains available. That intent
 reports the document id and never reaches disk

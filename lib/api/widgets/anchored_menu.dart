@@ -37,14 +37,14 @@ class AnchoredMenu extends StatefulWidget {
   final List<Widget> Function(BuildContext context, VoidCallback close) items;
 
   final double width;
-  final String? tooltip;
+  final String tooltip;
 
   const AnchoredMenu({
     super.key,
     required this.trigger,
     required this.items,
+    required this.tooltip,
     this.width = 260,
-    this.tooltip,
   });
 
   @override
@@ -58,11 +58,14 @@ class _AnchoredMenuState extends State<AnchoredMenu>
 
   final _link = LayerLink();
   final _portal = OverlayPortalController();
+  final _triggerFocus = FocusNode(debugLabel: 'Anchored menu trigger');
+  final _menuScope = FocusScopeNode(debugLabel: 'Anchored menu');
   late final _motion = AnimationController(
     vsync: this,
     duration: _enter,
     reverseDuration: _leave,
   );
+  var _restoreTriggerFocus = false;
 
   bool get _isOpen => _portal.isShowing;
 
@@ -73,6 +76,12 @@ class _AnchoredMenuState extends State<AnchoredMenu>
       if (status == AnimationStatus.dismissed && _portal.isShowing) {
         _portal.hide();
         setState(() {});
+        if (_restoreTriggerFocus) {
+          _restoreTriggerFocus = false;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _triggerFocus.requestFocus();
+          });
+        }
       }
     });
   }
@@ -80,18 +89,32 @@ class _AnchoredMenuState extends State<AnchoredMenu>
   @override
   void dispose() {
     _motion.dispose();
+    _triggerFocus.dispose();
+    _menuScope.dispose();
     super.dispose();
   }
 
   void _open() {
     if (_isOpen) return;
+    _restoreTriggerFocus = false;
     _portal.show();
     _motion.forward();
     setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_isOpen) return;
+      for (final node in _menuScope.traversalDescendants) {
+        if (node.canRequestFocus) {
+          node.requestFocus();
+          return;
+        }
+      }
+      _menuScope.requestFocus();
+    });
   }
 
   void _close() {
     if (!_isOpen) return;
+    _restoreTriggerFocus = true;
     // The status listener hides the portal once the surface has gone.
     _motion.reverse();
   }
@@ -108,6 +131,9 @@ class _AnchoredMenuState extends State<AnchoredMenu>
     final trigger = Pressable(
       onPress: _open,
       active: _isOpen,
+      expanded: _isOpen,
+      focusNode: _triggerFocus,
+      semanticLabel: widget.tooltip,
       tooltip: widget.tooltip,
       child: widget.trigger(context, _isOpen),
     );
@@ -118,6 +144,7 @@ class _AnchoredMenuState extends State<AnchoredMenu>
         controller: _portal,
         overlayChildBuilder: (context) => _MenuOverlay(
           link: _link,
+          focusScope: _menuScope,
           motion: _motion,
           width: widget.width,
           still: still,
@@ -132,6 +159,7 @@ class _AnchoredMenuState extends State<AnchoredMenu>
 
 class _MenuOverlay extends StatelessWidget {
   final LayerLink link;
+  final FocusScopeNode focusScope;
   final Animation<double> motion;
   final double width;
   final bool still;
@@ -140,6 +168,7 @@ class _MenuOverlay extends StatelessWidget {
 
   const _MenuOverlay({
     required this.link,
+    required this.focusScope,
     required this.motion,
     required this.width,
     required this.still,
@@ -196,8 +225,8 @@ class _MenuOverlay extends StatelessWidget {
                   bindings: {
                     const SingleActivator(LogicalKeyboardKey.escape): onDismiss,
                   },
-                  child: Focus(
-                    autofocus: true,
+                  child: FocusScope(
+                    node: focusScope,
                     child: AnimatedBuilder(
                       animation: motion,
                       builder: (context, child) => Opacity(

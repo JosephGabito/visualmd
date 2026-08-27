@@ -759,6 +759,7 @@ class _BarButton extends StatelessWidget {
     final p = context.palette;
     return Pressable(
       tooltip: tooltip,
+      semanticLabel: tooltip.split('  (').first,
       onPress: onPressed,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),

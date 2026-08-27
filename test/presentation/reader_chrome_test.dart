@@ -375,6 +375,32 @@ void main() {
     );
   });
 
+  testWidgets('top-bar panels are distinct named keyboard buttons', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpReader(tester, size: const Size(1280, 800));
+
+    final shelf = tester.getSemantics(find.bySemanticsLabel('Hide shelf'));
+    final outline = tester.getSemantics(find.bySemanticsLabel('Hide outline'));
+    expect(shelf.flagsCollection.isButton, isTrue);
+    expect(outline.flagsCollection.isButton, isTrue);
+    expect(shelf.label, 'Hide shelf');
+    expect(outline.label, 'Hide outline');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(controller.shelfVisible, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(controller.outlineVisible, isFalse);
+    semantics.dispose();
+  });
+
   testWidgets('the shelf toggles on the press, not the release', (
     tester,
   ) async {

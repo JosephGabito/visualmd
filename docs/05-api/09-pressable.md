@@ -2,10 +2,11 @@
 
 ## Purpose and boundary
 
-`Pressable` is the press behaviour every control in the chrome shares: it acts
-the moment the pointer goes down, and it answers before it acts. It owns the
-hover and press feedback and nothing else — no painting, no icon, no label. The
-caller supplies the child and the callback.
+`Pressable` is the interaction contract every control in the chrome shares: it
+acts the moment the pointer goes down, activates from Enter or Space, and gives
+assistive technology one named button. It owns hover, press and focus feedback
+but not the control's icon or visible label. The caller supplies the child,
+accessible name and callback.
 
 It is a widget in the API ring. It knows nothing about themes, libraries or
 platforms; the [Anchored Menu](08-anchored-menu.md) trigger and the top bar's
@@ -38,16 +39,27 @@ A reader who has asked for less motion gets the state changes with no
 animation at all (`lib/api/widgets/pressable.dart`,
 `lib/api/widgets/pressable.dart`).
 
+The same callback is exposed through a semantic tap action and through
+`ActivateIntent` for Enter and Space (`lib/api/widgets/pressable.dart`). A
+transparent two-pixel border reserves room for the focus ring, so keyboard
+focus becomes visible without shifting the bar. The caller's explicit
+`semanticLabel` replaces the icon and tooltip in the accessibility tree; the
+tooltip remains visual help rather than a second competing name
+(`lib/api/widgets/pressable.dart`).
+
 ## Inputs and outputs
 
 | In | Type | Meaning |
 |---|---|---|
 | `onPress` | `VoidCallback?` | Called on pointer down. `null` disables the control |
+| `semanticLabel` | `String` | Stable accessible name, independent of icon and tooltip |
 | `active` | `bool` | Holds it raised while what it opened is still on screen |
+| `expanded` | `bool?` | Exposes whether a controlled surface is open |
+| `focusNode` | `FocusNode?` | Optional caller-owned node for focus restoration |
 | `tooltip` | `String?` | Wraps the control in a `Tooltip` when given (`lib/api/widgets/pressable.dart`) |
 | `child` | `Widget` | What is drawn |
 
-Out: `onPress()`, once per press. Nothing else.
+Out: `onPress()`, once per pointer press or keyboard activation. Nothing else.
 
 ## Events
 
@@ -59,14 +71,16 @@ matches the rest of the bar without each contributor re-deciding it.
 ## Lifecycle
 
 One `State` per control, alive as long as the control is on screen. It keeps
-two flags — hovered and pressed (`lib/api/widgets/pressable.dart`) — and
-nothing else; there is no controller or subscription to dispose.
+hovered, pressed and focused flags (`lib/api/widgets/pressable.dart`). A focus
+node supplied by the caller remains caller-owned; `Pressable` never disposes
+it.
 
 ## Failure and recovery
 
-- A `null` `onPress` disables the control rather than hiding it: the pointer
-  callback is not installed, the cursor stays plain, the scale stays at 1, and
-  the child dims to 40 % (`lib/api/widgets/pressable.dart`,
+- A `null` `onPress` disables the control rather than hiding it: pointer and
+  keyboard activation are disabled, the semantic node reports that state, the
+  cursor stays plain, the scale stays at 1, and the child dims to 40 %
+  (`lib/api/widgets/pressable.dart`,
   `lib/api/widgets/pressable.dart`, `lib/api/widgets/pressable.dart`,
   `lib/api/widgets/pressable.dart`). The top bar uses this before a library
   is open.
@@ -79,7 +93,7 @@ nothing else; there is no controller or subscription to dispose.
 
 ## Transition
 
-Two things are likely next: a keyboard path, so the same controls can be
-reached without a pointer, and a focus ring drawn from the palette. Both belong
-here rather than in each caller, which is the reason this exists as a widget
-instead of a copied `Listener`.
+Future chrome controls should reuse this contract rather than recreating
+pointer, keyboard, focus and semantic behavior at each call site. A different
+interaction primitive belongs here only when a new control cannot honestly be
+described as a button.

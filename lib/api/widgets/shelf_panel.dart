@@ -379,33 +379,24 @@ class _ShelfHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (onLabelModeChanged != null)
-                Tooltip(
-                  message: labelMode == ShelfLabelMode.title
+                _ShelfHeaderButton(
+                  key: const ValueKey('shelf-label-mode-toggle'),
+                  label: labelMode == ShelfLabelMode.title
                       ? 'Show file names'
                       : 'Show Markdown titles',
-                  child: IconButton(
-                    key: const ValueKey('shelf-label-mode-toggle'),
-                    onPressed: () => onLabelModeChanged!(
-                      labelMode == ShelfLabelMode.title
-                          ? ShelfLabelMode.fileName
-                          : ShelfLabelMode.title,
-                    ),
-                    icon: Icon(
-                      labelMode == ShelfLabelMode.title
-                          ? Icons.title_outlined
-                          : Icons.description_outlined,
-                      size: 18,
-                    ),
-                    visualDensity: VisualDensity.compact,
+                  icon: labelMode == ShelfLabelMode.title
+                      ? Icons.title_outlined
+                      : Icons.description_outlined,
+                  onPressed: () => onLabelModeChanged!(
+                    labelMode == ShelfLabelMode.title
+                        ? ShelfLabelMode.fileName
+                        : ShelfLabelMode.title,
                   ),
                 ),
-              Tooltip(
-                message: 'Add folder',
-                child: IconButton(
-                  onPressed: onOpenFolder,
-                  icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-                  visualDensity: VisualDensity.compact,
-                ),
+              _ShelfHeaderButton(
+                label: 'Add folder',
+                icon: Icons.create_new_folder_outlined,
+                onPressed: onOpenFolder,
               ),
             ],
           ),
@@ -453,6 +444,36 @@ class _ShelfHeader extends StatelessWidget {
           : () => onRemoveUnavailableSource!(source.id),
     );
   }
+}
+
+final class _ShelfHeaderButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _ShelfHeaderButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: label,
+    excludeFromSemantics: true,
+    child: Semantics(
+      button: true,
+      label: label,
+      onTap: onPressed,
+      excludeSemantics: true,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18),
+        visualDensity: VisualDensity.compact,
+      ),
+    ),
+  );
 }
 
 class _UnavailableSourceRow extends StatefulWidget {
