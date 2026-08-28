@@ -53,6 +53,8 @@ void main() {
 
     test('bundle metadata answers App Store submission questions once', () {
       final information = source('macos/Runner/Info.plist');
+      final appInfo = source('macos/Runner/Configs/AppInfo.xcconfig');
+      final menu = source('macos/Runner/Base.lproj/MainMenu.xib');
 
       expect(
         information,
@@ -62,6 +64,18 @@ void main() {
         information,
         contains('<key>ITSAppUsesNonExemptEncryption</key>\n\t<false/>'),
       );
+      expect(
+        information,
+        contains(
+          '<key>NSHumanReadableCopyright</key>\n'
+          '\t<string>\$(PRODUCT_COPYRIGHT)</string>',
+        ),
+      );
+      expect(
+        appInfo,
+        contains('Copyright © 2026 Joseph Gabito. All rights reserved.'),
+      );
+      expect(menu, contains('selector="orderFrontStandardAboutPanel:"'));
     });
   });
 }
