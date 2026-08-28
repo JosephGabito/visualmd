@@ -365,6 +365,25 @@ final class _IncrementalMarkdownParserSession
         }
       }
     }
+    if (previous?.block case ParagraphBlock(
+      content: [TextRun(text: final previousText)],
+    )) {
+      if (block case ParagraphBlock(content: [TextRun(text: final text)])) {
+        // Unlike verbatim source, Markdown prose may reinterpret earlier
+        // characters when a delimiter closes. The fragment parser has already
+        // paid to rebuild this provisional tail, so compare its visible result
+        // once and advertise an append only when the exact prefix survived.
+        // Presentation can then retain all settled line geometry instead of
+        // shaping that prefix again.
+        if (text.length >= previousText.length &&
+            text.startsWith(previousText)) {
+          return BlockTextAppend(
+            baseRevision: previous!.revision,
+            text: text.substring(previousText.length),
+          );
+        }
+      }
+    }
     return null;
   }
 

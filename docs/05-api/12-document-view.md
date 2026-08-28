@@ -275,11 +275,22 @@ snapshots, source retention, provisional-tail parsing, and live outline
 projection are delta-bounded. Large fenced code is additionally windowed by
 line and column.
 
-One unusually large prose paragraph, table, list, or quotation is still one
-top-level child. The native atomic-paragraph benchmark records a 233.8 ms frame
-and roughly 292 MiB process delta at one million provisional characters, so
-that boundary is neither called viewport-bounded nor hidden behind the usual
-document result (`integration_test/atomic_paragraph_performance_test.dart`,
-`benchmark/results/2026-08-28-atomic-paragraph.md`). It needs specialised
-virtualization which preserves final shaping, inline semantics, selection and
-stable outer scroll geometry.
+A large provisional paragraph containing one plain text run is windowed by
+`lib/api/widgets/windowed_paragraph.dart`. Flutter's `TextPainter` remains the
+line-breaking authority: bounded layout windows commit every complete visual
+line, and `packages/quiet_viewport/lib/src/wrap_index.dart` retains those source
+boundaries across a proven suffix. The outer block reports the same complete
+height as one eager paragraph, while only nearby lines own render objects. Its
+semantic label remains the complete source, and the mounted selection range is
+rebased into complete-block coordinates by
+`lib/api/widgets/model_backed_selection_area.dart`.
+
+The native result holds mounted text near 2,475 characters at both 100,000 and
+1,000,000 source characters. A middle seek and an adjacent append remain below
+4 ms, and the append moves the parked reader by exactly zero pixels
+(`integration_test/atomic_paragraph_performance_test.dart`,
+`benchmark/results/2026-08-28-atomic-paragraph.md`). Initial line discovery is
+still O(source), reaching 238 ms for a pre-existing million-character blob.
+Committed final typography, rich inline content, active search, indented prose,
+tables, lists and quotations still take their eager paths; those boundaries are
+recorded rather than called solved.

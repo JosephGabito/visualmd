@@ -9,6 +9,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:visualmd/api/render/document_view.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/reading_pane.dart';
+import 'package:visualmd/api/widgets/windowed_paragraph.dart';
 import 'package:visualmd/application/use_cases/read_document.dart';
 import 'package:visualmd/domain/library/document.dart';
 import 'package:visualmd/domain/library/document_id.dart';
@@ -23,9 +24,9 @@ import 'package:visualmd/presentation/theme/reading_scale.dart';
 
 /// Measures the atomic-block failure mode most likely during AI generation.
 ///
-/// A paragraph has no authored line boundaries. Flutter therefore receives it
-/// as one shaped object even when the top-level document is a lazy sliver. This
-/// profile journey establishes that slope before provisional line windowing.
+/// A paragraph has no authored line boundaries. This journey measures the
+/// eager small-block path beside provisional line windowing at pathological
+/// sizes, including a deep seek through the outer document viewport.
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -64,7 +65,11 @@ void main() {
         matching: find.byType(Scrollable),
       );
       final position = tester.state<ScrollableState>(scrollable.first).position;
-      final renderedCharacters = _renderedCharacters();
+      final mountedCharacters = _mountedCharacters();
+      final windowed = find
+          .byType(WindowedProvisionalParagraph)
+          .evaluate()
+          .isNotEmpty;
       final seekFramesStart = timings.length;
       final seekClock = Stopwatch()..start();
       position.jumpTo(position.maxScrollExtent * 0.5);
@@ -73,24 +78,53 @@ void main() {
       seekClock.stop();
       await Future<void>.delayed(const Duration(milliseconds: 180));
       await tester.pump();
+      final seekFrames = _frameSummary(
+        timings.skip(seekFramesStart).toList(growable: false),
+      );
+
+      const suffix = ' One bounded streamed sentence arrives at the tail.';
+      final pixelsBeforeAppend = position.pixels;
+      final appendFramesStart = timings.length;
+      final appendClock = Stopwatch()..start();
+      await tester.pumpWidget(
+        _app(
+          _reading(
+            characters,
+            suffix: suffix,
+            append: BlockTextAppend(baseRevision: characters, text: suffix),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      appendClock.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await tester.pump();
+      final pixelsAfterAppend = position.pixels;
+      final appendFrames = _frameSummary(
+        timings.skip(appendFramesStart).toList(growable: false),
+      );
 
       runs.add({
         'source_characters': characters,
-        'rendered_characters': renderedCharacters,
+        'mounted_characters': mountedCharacters,
+        'windowed': windowed,
         'open_wall_us': clock.elapsedMicroseconds,
         'maximum_scroll_extent': position.maxScrollExtent,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
         'middle_seek_wall_us': seekClock.elapsedMicroseconds,
-        'middle_seek_frames': _frameSummary(
-          timings.skip(seekFramesStart).toList(growable: false),
-        ),
+        'middle_seek_frames': seekFrames,
+        'append_wall_us': appendClock.elapsedMicroseconds,
+        'append_scroll_delta': pixelsAfterAppend - pixelsBeforeAppend,
+        'append_frames': appendFrames,
         'frames': _frameSummary(
           timings.skip(beforeFrames).toList(growable: false),
         ),
       });
 
-      expect(renderedCharacters, characters);
+      expect(mountedCharacters, windowed ? lessThan(5000) : equals(characters));
       expect(position.maxScrollExtent, greaterThan(0));
+      expect(pixelsAfterAppend, pixelsBeforeAppend);
       expect(tester.takeException(), isNull);
     }
 
@@ -103,8 +137,13 @@ void main() {
   });
 }
 
-int _renderedCharacters() => find
-    .descendant(of: find.byType(Paragraph), matching: find.byType(RichText))
+int _mountedCharacters() => find
+    .descendant(
+      of: find.byType(Paragraph).evaluate().isNotEmpty
+          ? find.byType(Paragraph)
+          : find.byType(WindowedProvisionalParagraph),
+      matching: find.byType(RichText),
+    )
     .evaluate()
     .map(
       (element) =>
@@ -125,17 +164,22 @@ Widget _app(DocumentReading reading) => MaterialApp(
   ),
 );
 
-DocumentReading _reading(int characters) {
+DocumentReading _reading(
+  int characters, {
+  String suffix = '',
+  BlockTextAppend? append,
+}) {
   const unit =
       'Generated prose keeps extending without an authored paragraph break. ';
-  final source =
+  final prefix =
       (StringBuffer()
             ..writeAll(List.filled((characters / unit.length).ceil(), unit)))
           .toString()
           .substring(0, characters);
+  final source = '$prefix$suffix';
   final id = DocumentId(
     const LibraryRootId('atomic-paragraph-benchmark'),
-    'paragraph-$characters.md',
+    'paragraph.md',
   );
   return DocumentReading(
     document: Document(id: id, content: source, title: 'Atomic paragraph'),
@@ -144,9 +188,10 @@ DocumentReading _reading(int characters) {
     content: DocumentContent.revisioned([
       DocumentBlock(
         id: const DocumentBlockId('provisional-paragraph'),
-        revision: characters,
+        revision: characters + (append == null ? 0 : 1),
         commitment: BlockCommitment.provisional,
         block: ParagraphBlock([TextRun(source)]),
+        textAppend: append,
       ),
     ]),
   );

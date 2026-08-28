@@ -114,6 +114,7 @@ final class ModelSelectionSnapshot {
     required Object identity,
     required int order,
     required String text,
+    int rangeOffset = 0,
     required SelectedContentRange? range,
     required SelectionStatus status,
   }) {
@@ -122,8 +123,10 @@ final class ModelSelectionSnapshot {
       _ranges.remove(identity);
       return;
     }
-    final start = range.startOffset.clamp(0, text.length).toInt();
-    final end = range.endOffset.clamp(0, text.length).toInt();
+    final start = (range.startOffset + rangeOffset)
+        .clamp(0, text.length)
+        .toInt();
+    final end = (range.endOffset + rangeOffset).clamp(0, text.length).toInt();
     if (start == end) {
       _ranges.remove(identity);
       return;
@@ -170,6 +173,7 @@ final class ModelSelectionBlock extends StatefulWidget {
   final Object identity;
   final int order;
   final String text;
+  final int rangeOffset;
   final Widget child;
 
   const ModelSelectionBlock({
@@ -177,8 +181,9 @@ final class ModelSelectionBlock extends StatefulWidget {
     required this.identity,
     required this.order,
     required this.text,
+    this.rangeOffset = 0,
     required this.child,
-  });
+  }) : assert(rangeOffset >= 0);
 
   @override
   State<ModelSelectionBlock> createState() => _ModelSelectionBlockState();
@@ -222,6 +227,7 @@ final class _ModelSelectionBlockState extends State<ModelSelectionBlock> {
       identity: widget.identity,
       order: widget.order,
       text: widget.text,
+      rangeOffset: widget.rangeOffset,
       range: selection.range,
       status: selection.status,
     );
