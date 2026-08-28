@@ -1,4 +1,40 @@
-# Rich atomic-paragraph baseline
+# Streamable rich paragraph: baseline to stable suffix
+
+## Problem
+
+An AI response can remain one provisional Markdown paragraph for a long time.
+As soon as it contains emphasis, code or a link, the old reader mounted and
+reparsed the complete paragraph on every publication. At one million
+characters, opening blocked a Flutter frame for 5.28 seconds and appending a
+57-character Markdown suffix spent 7.10 seconds reparsing the prefix. Repeating
+that work for token-sized updates is quadratic.
+
+## Solution
+
+The reader now treats rendering and parsing as two retained indexes. Flutter
+mounts only the exact rich-text viewport while persistent range, line and block
+facts extend from a parser-owned suffix proof. The incremental parser keeps a
+stable inline checkpoint and sends only the unresolved tail through
+`package:markdown`. Ambiguous Markdown deliberately falls back to the complete
+parser, and no partial geometry is ever published to the scrollbar.
+
+## Before and after at one million characters
+
+| Boundary | Before | After |
+|---|---:|---:|
+| Rich characters mounted by Flutter | 1,000,032 | 1,650 |
+| Worst opening frame | 5,280.5 ms | 39.1 ms |
+| Indexing pumps after a 51-character rich append | 119 | 0 |
+| Worst append frame | 37.9 ms | 8.7 ms |
+| Parse time for a 57-character Markdown append | 7.10 s | 0.133 ms |
+| Source characters parsed for that append | 1,000,122 | 58 |
+| Scroll delta during append | 0 px | 0 px |
+
+The append path is now bounded by the incoming suffix on the accepted
+single-line checkpoint path. Initial parsing remains O(source), and ambiguous
+or block-changing syntax remains an explicit fallback. The sections below keep
+each intermediate baseline so the result can be reproduced rather than merely
+asserted.
 
 ## Environment
 
@@ -231,3 +267,28 @@ tail and `_inlineAppend` then compares the complete prior inline prefix to
 recover five suffix runs. Repeating this for token-sized publications is
 quadratic. This is now the dominant end-to-end stream hazard and the next
 contract boundary; the numbers above are the proof before changing it.
+
+## Stable inline checkpoints
+
+The incremental session now retains a parsed inline prefix at conservative
+single-line checkpoints. A checkpoint is accepted only after whitespace when
+code spans, emphasis/strong/strikethrough delimiters, brackets and parentheses
+are closed. Raw HTML, character references, line breaks and any ambiguous
+delimiter state keep the complete-parser fallback. Between checkpoints, only
+the unresolved inline tail is reparsed through `package:markdown`'s ordinary
+inline parser; the block grammar and retained prefix are not revisited.
+
+| Existing Markdown | Appended | Append parse | Parsed on append | Runs after | Proven runs |
+|---:|---:|---:|---:|---:|---:|
+| 10,070 | 57 | 0.091 ms | 58 | 642 | 5 |
+| 100,035 | 57 | 0.075 ms | 58 | 6,324 | 5 |
+| 1,000,065 | 57 | 0.133 ms | 58 | 63,168 | 5 |
+
+The million-character append falls from 7.10 seconds to 0.133 ms—more than
+53,000× faster—and its parsed input is constant at the 57-character suffix plus
+the one retained boundary space. The 10k, 100k and 1M results have no positive
+prefix slope. The initial parse remains necessarily O(source), and the native
+fixture still records 7.10 seconds for opening this deliberately dense
+million-character Markdown paragraph. Multi-line block reinterpretation and
+ambiguous inline tails remain explicit fallbacks rather than being called
+constant work.
