@@ -8,3 +8,5 @@
   rendering framework.
 - Transform a layout epoch through a lazy global extent scale without walking
   offscreen records.
+- Retain soft-wrap boundaries across source appends while delegating line
+  breaking to the host text engine.

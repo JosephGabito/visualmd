@@ -90,6 +90,14 @@ is O(source); an append visits only the new suffix and preserves every earlier
 range. Together, these two primitives let a streaming code surface extend its
 coordinate system without rereading the accumulated fence.
 
+`AppendWrapIndex` applies the same persistence to visual lines. The host's text
+engine resolves line starts inside bounded windows; the index commits every
+complete line and retains only the final unfinished line for the next append.
+Its steady-state work is O(new suffix + previous final line), without making
+the package depend on Flutter or on one typography system. A width, face,
+scale, locale, direction, or feature change is a new layout epoch and must use
+`replace`, because each can legitimately change every line boundary.
+
 ## Revision fencing
 
 Every item measurement names both the item revision and the layout revision.
