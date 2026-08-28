@@ -64,6 +64,7 @@ class _ShelfPanelState extends State<ShelfPanel> {
   final _expandedRoots = <LibraryRootId>{};
   final _expandedFolders = <(LibraryRootId, String)>{};
   final _rootKeys = <LibraryRootId, GlobalKey>{};
+  final _tree = _ShelfTreeNavigation();
   final _shelfKey = GlobalKey();
   final _reorder = _ShelfReorderMachine();
   EdgeDraggingAutoScroller? _autoScroller;
@@ -204,6 +205,7 @@ class _ShelfPanelState extends State<ShelfPanel> {
   @override
   void dispose() {
     _stopAutoScroll();
+    _tree.dispose();
     super.dispose();
   }
 
@@ -244,6 +246,7 @@ class _ShelfPanelState extends State<ShelfPanel> {
               labelMode: widget.labelMode,
               onLabelModeChanged: widget.onLabelModeChanged,
               sourceActions: widget.sourceActions,
+              tree: _tree,
             );
           }
           final index = listIndex - 1;
@@ -269,6 +272,7 @@ class _ShelfPanelState extends State<ShelfPanel> {
                     : () => widget.onRemoveUnavailableSource!(
                         unavailableSource.id,
                       ),
+                tree: _tree,
               ),
             );
           }
@@ -310,6 +314,7 @@ class _ShelfPanelState extends State<ShelfPanel> {
               onRemove: () => widget.onRemoveFolder(root.id),
               labelMode: widget.labelMode,
               sourceActions: widget.sourceActions,
+              tree: _tree,
             ),
           );
         },
@@ -318,7 +323,113 @@ class _ShelfPanelState extends State<ShelfPanel> {
   }
 }
 
+final class _ShelfTreeNavigation {
+  final _focusNodes = <Object, FocusNode>{};
+
+  FocusNode focusNodeFor(Object id) =>
+      _focusNodes.putIfAbsent(id, () => FocusNode(debugLabel: 'shelf-$id'));
+
+  void moveFocus(TraversalDirection direction) {
+    FocusManager.instance.primaryFocus?.focusInDirection(direction);
+  }
+
+  void requestFocus(Object id) {
+    final node = focusNodeFor(id);
+    if (node.context == null) return;
+    node.requestFocus();
+    Scrollable.ensureVisible(
+      node.context!,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+    );
+  }
+
+  void dispose() {
+    for (final node in _focusNodes.values) {
+      node.dispose();
+    }
+  }
+}
+
+final class _ShelfTreeRow extends StatelessWidget {
+  final _ShelfTreeNavigation tree;
+  final Object id;
+  final Object? parent;
+  final String label;
+  final bool button;
+  final bool? selected;
+  final bool? expanded;
+  final bool hasChildren;
+  final VoidCallback? onToggle;
+  final VoidCallback? onDismiss;
+  final VoidCallback? onIncrease;
+  final VoidCallback? onDecrease;
+  final ValueChanged<bool>? onFocusChange;
+  final Widget child;
+
+  const _ShelfTreeRow({
+    required this.tree,
+    required this.id,
+    this.parent,
+    required this.label,
+    this.button = true,
+    this.selected,
+    this.expanded,
+    this.hasChildren = false,
+    this.onToggle,
+    this.onDismiss,
+    this.onIncrease,
+    this.onDecrease,
+    this.onFocusChange,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+            tree.moveFocus(TraversalDirection.up),
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+            tree.moveFocus(TraversalDirection.down),
+        const SingleActivator(LogicalKeyboardKey.arrowRight): () {
+          if (onToggle == null) return;
+          if (expanded != true) {
+            onToggle!();
+          } else if (hasChildren) {
+            tree.moveFocus(TraversalDirection.down);
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): () {
+          if (onToggle != null && expanded == true) {
+            onToggle!();
+          } else if (parent != null) {
+            tree.requestFocus(parent!);
+          }
+        },
+      },
+      child: Focus(
+        canRequestFocus: false,
+        onFocusChange: onFocusChange,
+        child: Semantics(
+          container: true,
+          button: button,
+          label: label,
+          selected: selected,
+          expanded: expanded,
+          onTap: onToggle,
+          onDismiss: onDismiss,
+          onIncrease: onIncrease,
+          onDecrease: onDecrease,
+          excludeSemantics: true,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 class _ShelfHeader extends StatelessWidget {
+  final _ShelfTreeNavigation tree;
   final Library library;
   final DocumentId? selected;
   final ValueChanged<DocumentId> onSelect;
@@ -333,6 +444,7 @@ class _ShelfHeader extends StatelessWidget {
   final ShelfSourceActions? sourceActions;
 
   const _ShelfHeader({
+    required this.tree,
     required this.library,
     required this.selected,
     required this.onSelect,
@@ -362,6 +474,7 @@ class _ShelfHeader extends StatelessWidget {
                 if (workspace == null)
                   for (final document in library.markdowns)
                     _StandaloneDocumentRow(
+                      tree: tree,
                       document: document,
                       selected: document.id == selected,
                       onTap: () => onSelect(document.id),
@@ -427,6 +540,7 @@ class _ShelfHeader extends StatelessWidget {
     }
     if (document != null) {
       return _StandaloneDocumentRow(
+        tree: tree,
         document: document,
         selected: document.id == selected,
         onTap: () => onSelect(document!.id),
@@ -437,6 +551,7 @@ class _ShelfHeader extends StatelessWidget {
     }
     assert(unavailableSources.contains(source.id));
     return _UnavailableSourceRow(
+      tree: tree,
       source: source,
       folder: false,
       onReconnect: onReconnectSource == null
@@ -483,12 +598,14 @@ final class _ShelfHeaderButton extends StatelessWidget {
 }
 
 class _UnavailableSourceRow extends StatefulWidget {
+  final _ShelfTreeNavigation tree;
   final WorkspaceSource source;
   final bool folder;
   final VoidCallback? onReconnect;
   final VoidCallback? onRemove;
 
   const _UnavailableSourceRow({
+    required this.tree,
     required this.source,
     required this.folder,
     required this.onReconnect,
@@ -501,47 +618,60 @@ class _UnavailableSourceRow extends StatefulWidget {
 
 class _UnavailableSourceRowState extends State<_UnavailableSourceRow> {
   var _hovered = false;
+  var _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final id = (widget.source.id, widget.folder);
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: ChromeListRow(
-        onTap: widget.onReconnect,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Row(
-          children: [
-            Icon(
-              widget.folder
-                  ? Icons.folder_off_outlined
-                  : Icons.description_outlined,
-              size: 17,
-              color: p.muted,
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                widget.source.displayName,
-                overflow: TextOverflow.ellipsis,
-                style: context.chromeRow(color: p.muted),
+      child: _ShelfTreeRow(
+        tree: widget.tree,
+        id: id,
+        button: widget.onReconnect != null,
+        label:
+            '${widget.source.displayName}, unavailable ${widget.folder ? 'folder' : 'document'}',
+        onToggle: widget.onReconnect,
+        onDismiss: widget.onRemove,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: ChromeListRow(
+          focusNode: widget.tree.focusNodeFor(id),
+          onTap: widget.onReconnect,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              Icon(
+                widget.folder
+                    ? Icons.folder_off_outlined
+                    : Icons.description_outlined,
+                size: 17,
+                color: p.muted,
               ),
-            ),
-            if (_hovered) ...[
-              Tooltip(
-                message: 'Reconnect',
-                child: Icon(Icons.link_outlined, size: 16, color: p.accent),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  widget.source.displayName,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.chromeRow(color: p.muted),
+                ),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Remove from workspace',
-                visualDensity: VisualDensity.compact,
-                onPressed: widget.onRemove,
-                icon: Icon(Icons.delete_outline, size: 16, color: p.muted),
-              ),
+              if (_hovered || _focused) ...[
+                Tooltip(
+                  message: 'Reconnect',
+                  child: Icon(Icons.link_outlined, size: 16, color: p.accent),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Remove from workspace',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: widget.onRemove,
+                  icon: Icon(Icons.delete_outline, size: 16, color: p.muted),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -549,6 +679,7 @@ class _UnavailableSourceRowState extends State<_UnavailableSourceRow> {
 }
 
 class _RootSection extends StatelessWidget {
+  final _ShelfTreeNavigation tree;
   final GlobalKey rootRowKey;
   final LibraryRoot root;
   final int index;
@@ -572,6 +703,7 @@ class _RootSection extends StatelessWidget {
 
   const _RootSection({
     super.key,
+    required this.tree,
     required this.rootRowKey,
     required this.root,
     required this.index,
@@ -597,7 +729,7 @@ class _RootSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[];
-    if (open) _addFolder(rows, root.folder, 0);
+    if (open) _addFolder(rows, root.folder, 0, root.id);
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -605,6 +737,7 @@ class _RootSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _RootRow(
+              tree: tree,
               key: rootRowKey,
               root: root,
               index: index,
@@ -628,12 +761,14 @@ class _RootSection extends StatelessWidget {
     );
   }
 
-  void _addFolder(List<Widget> rows, Folder folder, int depth) {
+  void _addFolder(List<Widget> rows, Folder folder, int depth, Object parent) {
     for (final document in folder.documents) {
       rows.add(
         _DocumentRow(
+          tree: tree,
           document: document,
           depth: depth,
+          parent: parent,
           selected: document.id == selected,
           onTap: () => onSelect(document.id),
           labelMode: labelMode,
@@ -642,18 +777,21 @@ class _RootSection extends StatelessWidget {
       );
     }
     for (final child in folder.folders) {
+      final childId = (root.id, child.path);
       final open = expandedFolders.contains((root.id, child.path));
       rows.add(
         _FolderRow(
+          tree: tree,
           folder: child,
           depth: depth,
+          parent: parent,
           open: open,
           onTap: () => onToggleFolder(child.path),
           rootId: root.id,
           sourceActions: sourceActions,
         ),
       );
-      if (open) _addFolder(rows, child, depth + 1);
+      if (open) _addFolder(rows, child, depth + 1, childId);
     }
   }
 }
@@ -684,6 +822,7 @@ class _DropIndicator extends StatelessWidget {
 }
 
 class _RootRow extends StatefulWidget {
+  final _ShelfTreeNavigation tree;
   final LibraryRoot root;
   final int index;
   final int rootCount;
@@ -699,6 +838,7 @@ class _RootRow extends StatefulWidget {
 
   const _RootRow({
     super.key,
+    required this.tree,
     required this.root,
     required this.index,
     required this.rootCount,
@@ -719,16 +859,25 @@ class _RootRow extends StatefulWidget {
 
 class _RootRowState extends State<_RootRow> {
   var _hovered = false;
+  var _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final id = widget.root.id;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(
+      child: _ShelfTreeRow(
+        tree: widget.tree,
+        id: id,
         label:
             '${widget.root.name}, folder ${widget.index + 1} of ${widget.rootCount}',
+        expanded: widget.open,
+        hasChildren:
+            widget.root.folder.documents.isNotEmpty ||
+            widget.root.folder.folders.isNotEmpty,
+        onToggle: widget.interactionsEnabled ? widget.onTap : null,
         onIncrease:
             widget.interactionsEnabled && widget.index < widget.rootCount - 1
             ? () => widget.onMove(widget.index + 1)
@@ -737,6 +886,7 @@ class _RootRowState extends State<_RootRow> {
             ? () => widget.onMove(widget.index - 1)
             : null,
         onDismiss: widget.interactionsEnabled ? widget.onRemove : null,
+        onFocusChange: (focused) => setState(() => _focused = focused),
         child: Row(
           children: [
             Expanded(
@@ -764,6 +914,7 @@ class _RootRowState extends State<_RootRow> {
                   enabled: widget.interactionsEnabled,
                   child: ChromeListRow(
                     key: ValueKey('root-toggle-${widget.root.id.value}'),
+                    focusNode: widget.tree.focusNodeFor(id),
                     onTap: widget.interactionsEnabled ? widget.onTap : null,
                     onSecondaryTapDown: widget.interactionsEnabled
                         ? (details) => _showShelfContextMenu(
@@ -809,7 +960,7 @@ class _RootRowState extends State<_RootRow> {
             SizedBox(
               width: 24,
               height: 24,
-              child: _hovered && widget.interactionsEnabled
+              child: (_hovered || _focused) && widget.interactionsEnabled
                   ? Tooltip(
                       message: 'Remove from library',
                       child: IconButton(
@@ -839,16 +990,20 @@ class _RootRowState extends State<_RootRow> {
 const _indent = 16.0;
 
 class _FolderRow extends StatelessWidget {
+  final _ShelfTreeNavigation tree;
   final Folder folder;
   final int depth;
+  final Object parent;
   final bool open;
   final VoidCallback onTap;
   final LibraryRootId rootId;
   final ShelfSourceActions? sourceActions;
 
   const _FolderRow({
+    required this.tree,
     required this.folder,
     required this.depth,
+    required this.parent,
     required this.open,
     required this.onTap,
     required this.rootId,
@@ -858,44 +1013,55 @@ class _FolderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final id = (rootId, folder.path);
     final source = ShelfFolderLocation(
       rootId: rootId,
       relativePath: folder.path,
     );
-    return _ShelfContextShortcuts(
-      source: source,
-      sourceActions: sourceActions,
-      child: ChromeListRow(
-        onTap: onTap,
-        onSecondaryTapDown: (details) => _showShelfContextMenu(
-          context,
-          details.globalPosition,
-          source,
-          sourceActions,
-        ),
-        padding: EdgeInsets.fromLTRB(22.0 + depth * _indent, 6, 8, 6),
-        child: Row(
-          children: [
-            Icon(
-              open ? Icons.expand_more : Icons.chevron_right,
-              size: 16,
-              color: p.muted,
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              open ? Icons.folder_open_outlined : Icons.folder_outlined,
-              size: 16,
-              color: p.muted,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                folder.name,
-                overflow: TextOverflow.ellipsis,
-                style: context.chromeRow(weight: FontWeight.w500),
+    return _ShelfTreeRow(
+      tree: tree,
+      id: id,
+      parent: parent,
+      label: '${folder.name}, folder',
+      expanded: open,
+      hasChildren: folder.documents.isNotEmpty || folder.folders.isNotEmpty,
+      onToggle: onTap,
+      child: _ShelfContextShortcuts(
+        source: source,
+        sourceActions: sourceActions,
+        child: ChromeListRow(
+          focusNode: tree.focusNodeFor(id),
+          onTap: onTap,
+          onSecondaryTapDown: (details) => _showShelfContextMenu(
+            context,
+            details.globalPosition,
+            source,
+            sourceActions,
+          ),
+          padding: EdgeInsets.fromLTRB(22.0 + depth * _indent, 6, 8, 6),
+          child: Row(
+            children: [
+              Icon(
+                open ? Icons.expand_more : Icons.chevron_right,
+                size: 16,
+                color: p.muted,
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Icon(
+                open ? Icons.folder_open_outlined : Icons.folder_outlined,
+                size: 16,
+                color: p.muted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  folder.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.chromeRow(weight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -903,8 +1069,10 @@ class _FolderRow extends StatelessWidget {
 }
 
 class _DocumentRow extends StatelessWidget {
+  final _ShelfTreeNavigation tree;
   final Document document;
   final int depth;
+  final Object? parent;
   final double leading;
   final bool selected;
   final VoidCallback onTap;
@@ -912,8 +1080,10 @@ class _DocumentRow extends StatelessWidget {
   final ShelfSourceActions? sourceActions;
 
   const _DocumentRow({
+    required this.tree,
     required this.document,
     required this.depth,
+    this.parent,
     this.leading = 42,
     required this.selected,
     required this.onTap,
@@ -927,45 +1097,55 @@ class _DocumentRow extends StatelessWidget {
     final label = labelMode == ShelfLabelMode.title
         ? document.title
         : document.fileName;
+    final id = document.id;
     final source = ShelfDocumentLocation(document.id);
-    return Tooltip(
-      message: labelMode == ShelfLabelMode.title
-          ? document.fileName
-          : document.title,
-      child: _ShelfContextShortcuts(
-        source: source,
-        sourceActions: sourceActions,
-        child: ChromeListRow(
-          onTap: onTap,
-          onSecondaryTapDown: (details) => _showShelfContextMenu(
-            context,
-            details.globalPosition,
-            source,
-            sourceActions,
-          ),
-          selected: selected,
-          showLocation: selected,
-          padding: EdgeInsets.fromLTRB(leading + depth * _indent, 6, 8, 6),
-          child: Row(
-            children: [
-              Icon(
-                document.isReadme
-                    ? Icons.auto_stories_outlined
-                    : Icons.description_outlined,
-                size: 15,
-                color: selected ? p.ink : p.muted,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.chromeRow(
-                    weight: selected ? FontWeight.w600 : FontWeight.w400,
+    return _ShelfTreeRow(
+      tree: tree,
+      id: id,
+      parent: parent,
+      label: '$label, document',
+      selected: selected,
+      onToggle: onTap,
+      child: Tooltip(
+        message: labelMode == ShelfLabelMode.title
+            ? document.fileName
+            : document.title,
+        child: _ShelfContextShortcuts(
+          source: source,
+          sourceActions: sourceActions,
+          child: ChromeListRow(
+            focusNode: tree.focusNodeFor(id),
+            onTap: onTap,
+            onSecondaryTapDown: (details) => _showShelfContextMenu(
+              context,
+              details.globalPosition,
+              source,
+              sourceActions,
+            ),
+            selected: selected,
+            showLocation: selected,
+            padding: EdgeInsets.fromLTRB(leading + depth * _indent, 6, 8, 6),
+            child: Row(
+              children: [
+                Icon(
+                  document.isReadme
+                      ? Icons.auto_stories_outlined
+                      : Icons.description_outlined,
+                  size: 15,
+                  color: selected ? p.ink : p.muted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.chromeRow(
+                      weight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -974,6 +1154,7 @@ class _DocumentRow extends StatelessWidget {
 }
 
 class _StandaloneDocumentRow extends StatefulWidget {
+  final _ShelfTreeNavigation tree;
   final Document document;
   final bool selected;
   final VoidCallback onTap;
@@ -982,6 +1163,7 @@ class _StandaloneDocumentRow extends StatefulWidget {
   final ShelfSourceActions? sourceActions;
 
   const _StandaloneDocumentRow({
+    required this.tree,
     required this.document,
     required this.selected,
     required this.onTap,
@@ -996,6 +1178,7 @@ class _StandaloneDocumentRow extends StatefulWidget {
 
 class _StandaloneDocumentRowState extends State<_StandaloneDocumentRow> {
   var _hovered = false;
+  var _focused = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1004,15 +1187,21 @@ class _StandaloneDocumentRowState extends State<_StandaloneDocumentRow> {
       key: ValueKey('standalone-document-${widget.document.id}'),
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(
+      child: _ShelfTreeRow(
+        tree: widget.tree,
+        id: widget.document.id,
         label: widget.labelMode == ShelfLabelMode.title
-            ? widget.document.title
-            : widget.document.fileName,
+            ? '${widget.document.title}, document'
+            : '${widget.document.fileName}, document',
+        selected: widget.selected,
+        onToggle: widget.onTap,
         onDismiss: widget.onRemove,
+        onFocusChange: (focused) => setState(() => _focused = focused),
         child: Row(
           children: [
             Expanded(
               child: _DocumentRow(
+                tree: widget.tree,
                 document: widget.document,
                 depth: 0,
                 leading: 18,
@@ -1025,7 +1214,7 @@ class _StandaloneDocumentRowState extends State<_StandaloneDocumentRow> {
             SizedBox(
               width: 24,
               height: 24,
-              child: _hovered
+              child: _hovered || _focused
                   ? Tooltip(
                       message: 'Remove from Markdowns',
                       child: IconButton(

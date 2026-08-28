@@ -11,6 +11,7 @@ import '../theme/library_theme.dart';
 final class ChromeListRow extends StatefulWidget {
   final bool selected;
   final bool showLocation;
+  final FocusNode? focusNode;
   final VoidCallback? onTap;
   final GestureTapDownCallback? onSecondaryTapDown;
   final EdgeInsetsGeometry padding;
@@ -20,6 +21,7 @@ final class ChromeListRow extends StatefulWidget {
     super.key,
     this.selected = false,
     this.showLocation = false,
+    this.focusNode,
     required this.onTap,
     this.onSecondaryTapDown,
     required this.padding,
@@ -49,6 +51,7 @@ final class _ChromeListRowState extends State<ChromeListRow> {
           ),
         ),
         child: InkWell(
+          focusNode: widget.focusNode,
           onTap: widget.onTap,
           onSecondaryTapDown: widget.onSecondaryTapDown,
           onFocusChange: (focused) => setState(() => _focused = focused),
