@@ -81,8 +81,9 @@ final class OpenWorkspace {
 
   Future<OpenedWorkspace> restore(
     Workspace workspace,
-    WorkspaceFileRef file,
-  ) => _mutations.run(() async {
+    WorkspaceFileRef? file, {
+    bool preserveUnresolvedActive = false,
+  }) => _mutations.run(() async {
     final roots = <LibraryRoot>[];
     final folderRefs = <FolderRef>[];
     final markdownRefs = <MarkdownRef>[];
@@ -167,23 +168,24 @@ final class OpenWorkspace {
     final opening = selected ?? library.openingDocument;
     if (restored.activeDocument != null &&
         selected == null &&
-        opening != null) {
+        opening != null &&
+        !preserveUnresolvedActive) {
       restored = restored.copyWith(activeDocument: _addressOf(opening.id));
     }
 
     // Absorption is part of opening the workspace, so the normalized document
     // reaches disk before either in-memory repository is replaced.
     final normalized = retainedMarkdowns.length != workspace.markdowns.length;
-    if (normalized && file.supportsAutomaticWrites) {
+    if (normalized && file != null && file.supportsAutomaticWrites) {
       await _files.write(file, _codec.encode(restored));
     }
     final session = WorkspaceSession(
       workspace: restored,
       file: file,
-      dirty: normalized && !file.supportsAutomaticWrites,
+      dirty: file == null || (normalized && !file.supportsAutomaticWrites),
       unavailableSources: unavailable,
     );
-    _restoration.replace(library, session);
+    await _restoration.replace(library, session);
     return OpenedWorkspace(
       session: session,
       library: library,

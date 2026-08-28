@@ -3,8 +3,9 @@
 ## Purpose and boundary
 
 `ReaderFiles` owns Visual MD's private application-support files: preferences,
-user themes, and machine-local workspace source bindings. It moves strings,
-paths, and bookmark bytes; it does not interpret themes or Workspace JSON.
+user themes, machine-local workspace source bindings, and the location of the
+last-session journal. It moves strings, paths, and bookmark bytes; the recovery
+adapter, not `ReaderFiles`, interprets Workspace JSON.
 
 ## Present wiring
 
@@ -18,6 +19,7 @@ application-support root and a self-documenting themes directory
 | Path | Holds |
 |------|-------|
 | `Visual MD/preferences.json` | String preferences. |
+| `Visual MD/session.json` | Private last reading room; never a public file binding. |
 | `Visual MD/workspace-access.json` | Machine-local path and optional bookmark by Workspace/source IDs. |
 | `Visual MD/themes/*.json` | User theme documents, read in name order. |
 | `Visual MD/themes/README.md` | First-run theme format guide. |
@@ -29,7 +31,8 @@ named source bindings to the new Workspace ID
 
 ## Inputs and outputs
 
-Preference methods accept a string key and value. Theme reads return
+Preference methods accept a string key and value. `sessionJournal` identifies
+the recovery adapter's private file without reading it. Theme reads return
 `(origin, json)` records. Workspace access reads return a path plus optional
 bookmark bytes; writes and forks retain those values locally.
 
@@ -54,6 +57,9 @@ A missing or malformed preferences or access file reads as empty
 `lib/infrastructure/io/reader_files.dart`). A failed replacement leaves
 the target and backup available rather than presenting a partial JSON file.
 Non-JSON theme files are ignored; theme-format errors belong to ThemeRegistry.
+Session parsing and backup fallback belong to
+`DesktopWorkspaceRecoveryStore`
+(`lib/infrastructure/io/desktop_workspace_recovery_store.dart`).
 
 ## Transition
 

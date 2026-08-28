@@ -12,6 +12,7 @@ import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/shelf_source_actions.dart';
 import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/workspace_files.dart';
+import '../../application/ports/workspace_recovery_store.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../io/desktop_folder_drop.dart';
 import '../io/desktop_external_open_items.dart';
@@ -24,6 +25,7 @@ import '../io/desktop_security_scope.dart';
 import '../io/desktop_shelf_source_actions.dart';
 import '../io/desktop_source_change_monitor.dart';
 import '../io/desktop_workspace_files.dart';
+import '../io/desktop_workspace_recovery_store.dart';
 import '../io/desktop_workspace_source_access.dart';
 import '../io/local_folder.dart';
 import '../io/local_document_image_loader.dart';
@@ -31,6 +33,7 @@ import '../io/local_folder_scanner.dart';
 import '../io/local_markdown.dart';
 import '../io/local_markdown_scanner.dart';
 import '../io/reader_files.dart';
+import '../workspace/workspace_json_codec.dart';
 import 'platform_adapters.dart';
 import 'platform_command.dart';
 
@@ -100,6 +103,10 @@ final class _DesktopAdapters implements PlatformAdapters {
 
   @override
   WorkspaceFiles get workspaceFiles => _workspaceFiles;
+
+  @override
+  late final WorkspaceRecoveryStore workspaceRecoveryStore =
+      DesktopWorkspaceRecoveryStore(_files, const WorkspaceJsonCodec());
 
   @override
   late final WorkspaceSourceAccess workspaceSourceAccess =

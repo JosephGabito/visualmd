@@ -10,6 +10,7 @@ import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/shelf_source_actions.dart';
 import '../../application/ports/workspace_files.dart';
+import '../../application/ports/workspace_recovery_store.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../web/browser_folder.dart';
 import '../web/browser_document_image_loader.dart';
@@ -23,6 +24,7 @@ import '../web/browser_markdown_scanner.dart';
 import '../web/browser_source_identity.dart';
 import '../web/browser_source_change_monitor.dart';
 import '../web/browser_workspace_files.dart';
+import '../memory/noop_workspace_recovery_store.dart';
 import '../web/browser_workspace_source_access.dart';
 import '../web/browser_links.dart';
 import 'platform_adapters.dart';
@@ -65,6 +67,10 @@ final class _WebAdapters implements PlatformAdapters {
 
   @override
   final WorkspaceFiles workspaceFiles = BrowserWorkspaceFiles();
+
+  @override
+  final WorkspaceRecoveryStore workspaceRecoveryStore =
+      const NoopWorkspaceRecoveryStore();
 
   @override
   late final WorkspaceSourceAccess workspaceSourceAccess =

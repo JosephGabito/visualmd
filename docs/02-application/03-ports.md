@@ -204,6 +204,7 @@ The ports keep both concerns out of the domain model:
 | `WorkspaceFiles` | Select, read, and write a user-owned workspace file (`lib/application/ports/workspace_files.dart`). |
 | `WorkspaceIds` | Create opaque workspace and source identities without coupling the domain to randomness (`lib/application/ports/workspace_ids.dart`). |
 | `WorkspaceSourceAccess` | Locate, bind, restore, and reconnect machine-local source handles (`lib/application/ports/workspace_source_access.dart`). |
+| `WorkspaceRecoveryStore` | Load and journal the private last reading room without creating a public file binding (`lib/application/ports/workspace_recovery_store.dart`). |
 | `WorkspaceSessionRepository` | Hold the current workspace, its file binding, dirty state, and unavailable sources (`lib/application/ports/workspace_session_repository.dart`). |
 | `WorkspaceRestoration` | Replace the Library and WorkspaceSession projections together after a complete restore (`lib/application/ports/workspace_restoration.dart`). |
 | `WorkspaceMutationCommitter` | Synchronize durable workspace intent before a library mutation becomes visible (`lib/application/ports/workspace_mutation_committer.dart`). |

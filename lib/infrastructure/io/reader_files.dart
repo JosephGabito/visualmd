@@ -8,8 +8,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'desktop_atomic_files.dart';
 
-/// Adapter: the reader's own files on disk — preferences and user themes —
-/// under the platform's application-support directory
+/// Adapter: the reader's own preferences, themes, recovery journal location,
+/// and machine-local source authority under application support
 /// (`~/Library/Application Support/Visual MD` on macOS).
 final class ReaderFiles {
   final Directory root;
@@ -41,6 +41,11 @@ final class ReaderFiles {
 
   File get _preferences =>
       File('${root.path}${Platform.pathSeparator}preferences.json');
+
+  /// Private reading-room recovery, separate from preferences and public
+  /// workspace files selected by the reader.
+  File get sessionJournal =>
+      File('${root.path}${Platform.pathSeparator}session.json');
 
   Future<Map<String, Object?>> _readPreferences() async {
     if (!await _preferences.exists()) return {};

@@ -28,6 +28,7 @@ import 'application/use_cases/create_workspace.dart';
 import 'application/use_cases/move_folder.dart';
 import 'application/use_cases/open_workspace.dart';
 import 'application/use_cases/read_document.dart';
+import 'application/use_cases/recover_workspace.dart';
 import 'application/use_cases/refresh_source.dart';
 import 'application/use_cases/reconnect_workspace_source.dart';
 import 'application/use_cases/remove_folder.dart';
@@ -49,6 +50,7 @@ import 'infrastructure/platform/platform_command.dart';
 import 'infrastructure/routing_folder_scanner.dart';
 import 'infrastructure/routing_document_image_loader.dart';
 import 'infrastructure/routing_workspace_source_access.dart';
+import 'infrastructure/recovery/recovering_workspace_state.dart';
 import 'infrastructure/search/literal_document_search.dart';
 import 'infrastructure/viewport/quiet_document_viewport_geometry.dart';
 import 'infrastructure/workspace/random_workspace_ids.dart';
@@ -64,8 +66,14 @@ Future<void> main() async {
   final mermaidRenderer = createMermaidRenderer();
   final readerState = InMemoryReaderState();
   final repository = InMemoryLibraryRepository(readerState);
-  final sessions = InMemoryWorkspaceSessionRepository(readerState);
-  final restoration = InMemoryWorkspaceRestoration(readerState);
+  final sessions = RecoveringWorkspaceSessionRepository(
+    InMemoryWorkspaceSessionRepository(readerState),
+    platform.workspaceRecoveryStore,
+  );
+  final restoration = RecoveringWorkspaceRestoration(
+    InMemoryWorkspaceRestoration(readerState),
+    platform.workspaceRecoveryStore,
+  );
   const workspaceCodec = WorkspaceJsonCodec();
   final workspaceIds = RandomWorkspaceIds();
   final workspaceAccess = RoutingWorkspaceSourceAccess(
@@ -192,9 +200,6 @@ Future<void> main() async {
     mutations: mutations,
     autosave: workspaceAutosave,
   );
-  final workspaceSession = await createWorkspace.execute(
-    _workspaceTheme(themeChoice ?? themes.systemPair),
-  );
   final openWorkspace = OpenWorkspace(
     files: platform.workspaceFiles,
     codec: workspaceCodec,
@@ -206,6 +211,15 @@ Future<void> main() async {
     mutations: mutations,
     autosave: workspaceAutosave,
   );
+  final recoveredWorkspace = await RecoverWorkspace(
+    recovery: platform.workspaceRecoveryStore,
+    open: openWorkspace,
+  ).execute();
+  final workspaceSession =
+      recoveredWorkspace?.session ??
+      await createWorkspace.execute(
+        _workspaceTheme(themeChoice ?? themes.systemPair),
+      );
   final saveWorkspace = SaveWorkspace(
     sessions: sessions,
     files: platform.workspaceFiles,
@@ -265,6 +279,9 @@ Future<void> main() async {
     sourceChanges: sourceChanges,
     savePreference: platform.writePreference,
   );
+  if (recoveredWorkspace != null) {
+    await controller.restoreOpenedWorkspace(recoveredWorkspace);
+  }
   final openReaderSources = switch (platform.readerSourcePicker) {
     final picker? => ReaderSourceOpener(picker, controller),
     null => null,

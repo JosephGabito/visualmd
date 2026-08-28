@@ -390,38 +390,45 @@ final class ReaderController extends ChangeNotifier {
     try {
       final result = await open.execute();
       if (result == null) return;
-      workspaceSession = result.session;
-      library = result.session.workspace.isEmpty ? null : result.library;
-      _readDocument.clear();
-      _searchDocuments.clear();
-      _sourceChanges?.replace(
-        folders: result.folderRefs,
-        markdowns: result.markdownRefs,
-      );
-      _folderTitleRevisions.clear();
-      for (final deferred in result.deferredTitles) {
-        final rootId = LibraryRootId(deferred.ref.id);
-        final revision = ++_nextFolderTitleRevision;
-        _folderTitleRevisions[rootId] = revision;
-        _scheduleTitleEnrichment(rootId, revision, deferred);
-      }
-      notifyListeners();
-      final document = result.activeDocument;
-      reading = document == null
-          ? null
-          : await _readDocument.execute(document.id);
-      themeChoice = _themeChoice(result.session.workspace.theme);
-      if (document != null) _requestExpand(document.id);
-      final unavailable = result.session.unavailableSources.length;
-      error = unavailable == 0
-          ? null
-          : '$unavailable ${unavailable == 1 ? 'source needs' : 'sources need'} to be reconnected.';
+      await restoreOpenedWorkspace(result);
     } on Object catch (failure) {
       error = "Couldn't open workspace: $failure";
     } finally {
       opening = false;
       notifyListeners();
     }
+  }
+
+  /// Adopts a fully restored projection. Startup recovery and an explicit
+  /// Open command share this path so watches, deferred titles, selection, and
+  /// theme cannot drift between the two entrances.
+  Future<void> restoreOpenedWorkspace(OpenedWorkspace result) async {
+    workspaceSession = result.session;
+    library = result.session.workspace.isEmpty ? null : result.library;
+    _readDocument.clear();
+    _searchDocuments.clear();
+    _sourceChanges?.replace(
+      folders: result.folderRefs,
+      markdowns: result.markdownRefs,
+    );
+    _folderTitleRevisions.clear();
+    for (final deferred in result.deferredTitles) {
+      final rootId = LibraryRootId(deferred.ref.id);
+      final revision = ++_nextFolderTitleRevision;
+      _folderTitleRevisions[rootId] = revision;
+      _scheduleTitleEnrichment(rootId, revision, deferred);
+    }
+    notifyListeners();
+    final document = result.activeDocument;
+    reading = document == null
+        ? null
+        : await _readDocument.execute(document.id);
+    themeChoice = _themeChoice(result.session.workspace.theme);
+    if (document != null) _requestExpand(document.id);
+    final unavailable = result.session.unavailableSources.length;
+    error = unavailable == 0
+        ? null
+        : '$unavailable ${unavailable == 1 ? 'source needs' : 'sources need'} to be reconnected.';
   }
 
   Future<void> saveWorkspace() async {
