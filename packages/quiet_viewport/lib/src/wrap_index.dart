@@ -4,6 +4,9 @@
 /// represents the empty line after a final hard break.
 typedef VisualLineStarts = List<int> Function(String text);
 
+/// Resolves local visual-line starts with the window's absolute source start.
+typedef VisualLineStartsAt = List<int> Function(String text, int sourceOffset);
+
 /// One visual line's half-open source range.
 final class VisualLineRange {
   final int start;
@@ -15,7 +18,7 @@ final class VisualLineRange {
 /// An append-only index from soft-wrapped lines to source offsets.
 ///
 /// Line breaking itself belongs to the host text engine and enters through
-/// [resolve]. This class owns only the persistent geometry: it feeds bounded
+/// a resolver callback. This class owns only the persistent geometry: it feeds bounded
 /// source windows to that engine, commits every complete line, and retains the
 /// final unfinished line as the only overlap for a later append.
 ///
@@ -23,7 +26,7 @@ final class VisualLineRange {
 /// retained prefix. Its work is therefore proportional to the new suffix plus
 /// the one visual line which the suffix is still allowed to extend.
 final class AppendWrapIndex {
-  final VisualLineStarts resolve;
+  final VisualLineStartsAt resolveAt;
   final int windowCodeUnits;
 
   final List<int> _starts = [0];
@@ -34,7 +37,17 @@ final class AppendWrapIndex {
 
   AppendWrapIndex({
     required String source,
-    required this.resolve,
+    required VisualLineStarts resolve,
+    this.windowCodeUnits = 4096,
+  }) : resolveAt = ((text, _) => resolve(text)) {
+    _validateWindowSize();
+    replace(source);
+  }
+
+  /// Creates an eager index whose resolver needs absolute source context.
+  AppendWrapIndex.withContext({
+    required String source,
+    required this.resolveAt,
     this.windowCodeUnits = 4096,
   }) {
     _validateWindowSize();
@@ -48,7 +61,17 @@ final class AppendWrapIndex {
   /// publish the index atomically once [isComplete] becomes true.
   AppendWrapIndex.progressive({
     required String source,
-    required this.resolve,
+    required VisualLineStarts resolve,
+    this.windowCodeUnits = 4096,
+  }) : resolveAt = ((text, _) => resolve(text)) {
+    _validateWindowSize();
+    _source = source;
+  }
+
+  /// Creates a progressive index whose resolver needs absolute context.
+  AppendWrapIndex.progressiveWithContext({
+    required String source,
+    required this.resolveAt,
     this.windowCodeUnits = 4096,
   }) {
     _validateWindowSize();
@@ -187,7 +210,7 @@ final class AppendWrapIndex {
         _largestWindowCodeUnits = window.length;
       }
 
-      final localStarts = resolve(window);
+      final localStarts = resolveAt(window, tailStart);
       _validateStarts(localStarts, window.length);
       for (final local in localStarts.skip(1)) {
         final absolute = tailStart + local;

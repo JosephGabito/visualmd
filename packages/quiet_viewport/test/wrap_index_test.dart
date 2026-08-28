@@ -183,6 +183,21 @@ void main() {
       expect(_ranges(index, 'aaaaabbbbbccccc'), ['aaaaa', 'bbbbb', 'ccccc']);
     },
   );
+
+  test('a contextual resolver receives each retained window start', () {
+    final offsets = <int>[];
+    final index = AppendWrapIndex.withContext(
+      source: 'aaaaabbbbbccccc',
+      windowCodeUnits: 7,
+      resolveAt: (text, sourceOffset) {
+        offsets.add(sourceOffset);
+        return _fiveColumns(text);
+      },
+    );
+
+    expect(offsets, [0, 5, 10]);
+    expect(_ranges(index, 'aaaaabbbbbccccc'), ['aaaaa', 'bbbbb', 'ccccc']);
+  });
 }
 
 List<int> _fiveColumns(String text) => [
