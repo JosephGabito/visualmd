@@ -182,6 +182,13 @@ void main() {
       expect(tester.takeException(), isNull);
     }
 
+    final tailReplacementRuns = <Map<String, Object?>>[];
+    for (final characters in const [100000, 1000000]) {
+      tailReplacementRuns.add(
+        await _benchmarkRenderedTailReplacement(tester, timings, characters),
+      );
+    }
+
     binding.reportData = {
       'benchmark': 'atomic_rich_paragraph_scaling',
       'mode': 'profile',
@@ -195,6 +202,7 @@ void main() {
         for (final characters in const [10000, 100000, 1000000])
           _benchmarkUnstableRichParser(characters),
       ],
+      'tail_replacement_runs': tailReplacementRuns,
     };
   });
 }
@@ -265,6 +273,79 @@ Map<String, Object> _benchmarkUnstableRichParser(int minimumCharacters) {
   };
 }
 
+Future<Map<String, Object?>> _benchmarkRenderedTailReplacement(
+  WidgetTester tester,
+  List<FrameTiming> timings,
+  int minimumCharacters,
+) async {
+  final session = const MarkdownDocumentParser().startSession();
+  final source = _richMarkdown(minimumCharacters);
+  session.append(source);
+  final opened = session.append('An **unfinished');
+  var indexedCharacters = 0;
+
+  await tester.pumpWidget(
+    _app(
+      _readingContent(opened),
+      onSourceIndexed: (value) => indexedCharacters = value,
+    ),
+  );
+  await tester.pumpAndSettle();
+  var indexingPumps = 0;
+  while (indexedCharacters < opened.entries.single.textMetrics.codeUnits) {
+    await tester.pump(const Duration(milliseconds: 1));
+    indexingPumps++;
+    expect(indexingPumps, lessThan(400));
+  }
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  );
+  final position = tester.state<ScrollableState>(scrollable.first).position;
+  position.jumpTo(position.maxScrollExtent * 0.5);
+  await tester.pumpAndSettle();
+  final pixels = position.pixels;
+  final retained = find.byType(WindowedRichParagraph).evaluate().single;
+
+  final closed = session.append(' thought**.');
+  final beforeFrames = timings.length;
+  final clock = Stopwatch()..start();
+  indexedCharacters = 0;
+  await tester.pumpWidget(
+    _app(
+      _readingContent(closed),
+      onSourceIndexed: (value) => indexedCharacters = value,
+    ),
+  );
+  await tester.pumpAndSettle();
+  clock.stop();
+  await Future<void>.delayed(const Duration(milliseconds: 180));
+  await tester.pump();
+  final nextPosition = tester.state<ScrollableState>(scrollable.first).position;
+
+  expect(
+    identical(find.byType(WindowedRichParagraph).evaluate().single, retained),
+    isTrue,
+  );
+  expect(nextPosition.pixels, pixels);
+  expect(indexedCharacters, lessThan(256));
+  expect(_mountedCharacters(), lessThan(5000));
+  expect(find.byKey(const ValueKey('rich-paragraph-indexing')), findsNothing);
+  expect(tester.takeException(), isNull);
+
+  return {
+    'source_characters': source.length,
+    'prior_inline_runs':
+        (opened.entries.single.block as ParagraphBlock).content.length,
+    'replacement_characters': ' thought**.'.length,
+    'indexed_characters': indexedCharacters,
+    'wall_us': clock.elapsedMicroseconds,
+    'frames': _frameSummary(timings.skip(beforeFrames).toList(growable: false)),
+    'mounted_characters': _mountedCharacters(),
+    'scroll_delta': nextPosition.pixels - pixels,
+  };
+}
+
 int _mountedCharacters() => find
     .descendant(
       of: find.byType(Paragraph).evaluate().isNotEmpty
@@ -322,6 +403,20 @@ DocumentReading _reading(
         inlineAppend: inlineAppend,
       ),
     ]),
+  );
+}
+
+DocumentReading _readingContent(DocumentContent content) {
+  final source = content.blocks.map((block) => block.text).join('\n\n');
+  final id = DocumentId(
+    const LibraryRootId('atomic-rich-paragraph-benchmark'),
+    'paragraph.md',
+  );
+  return DocumentReading(
+    document: Document(id: id, content: source, title: 'Atomic rich paragraph'),
+    source: source,
+    outline: DocumentOutline.parse(''),
+    content: content,
   );
 }
 

@@ -84,6 +84,38 @@ void main() {
     expect(() => index.append(const [MathRun('x')]), throwsArgumentError);
   });
 
+  test('a proven tail replacement retains every earlier inline range', () {
+    final index = InlineRangeIndex(content);
+    const prefix = 'zero ';
+    final replaced = index.replaceTail(
+      prefixLength: prefix.length,
+      runs: const [
+        TextRun('changed '),
+        MarkedRun(InlineMark.emphasis, [TextRun('tail')]),
+      ],
+    );
+
+    expect(replaced.source, 'zero changed tail');
+    expect(replaced.slice(0, prefix.length), const [TextRun(prefix)]);
+    final tail = replaced.slice(prefix.length, replaced.length);
+    expect(tail.first, const TextRun('changed '));
+    final marked = tail.last as MarkedRun;
+    expect(marked.mark, InlineMark.emphasis);
+    expect(marked.children, const [TextRun('tail')]);
+  });
+
+  test('a tail replacement cannot split a retained inline leaf', () {
+    final index = InlineRangeIndex(content);
+
+    expect(
+      () => index.replaceTail(
+        prefixLength: 2,
+        runs: const [TextRun('replacement')],
+      ),
+      throwsStateError,
+    );
+  });
+
   test('progressive indexing publishes only one complete immutable result', () {
     final builder = ProgressiveInlineRangeIndex.fromSupported(content);
 

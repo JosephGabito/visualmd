@@ -342,3 +342,24 @@ grow by two orders of magnitude. This proves parser and block-metric work is
 bounded by the unresolved tail. The renderer does not consume the new proof in
 this slice, so delimiter closure still schedules a complete rich range and line
 replacement there; that is the next measured consumer boundary.
+
+## Viewport-owned inline-tail result
+
+`InlineRangeIndex.replaceTail` binary-seeks the parser's retained-prefix
+boundary, shares every earlier persistent leaf, and indexes only replacement
+runs. The existing `AppendWrapIndex.replaceTail` then reshapes the visual line
+which owns that boundary and the small suffix. No partial range or geometry is
+published between them.
+
+| Existing Markdown | Prior inline runs | Replacement indexed | Worst build | Mounted after | Scroll delta |
+|---:|---:|---:|---:|---:|---:|
+| 100,035 | 6,320 | 88 | 4.152 ms | 1,650 | 0 px |
+| 1,000,065 | 63,164 | 88 | 10.756 ms | 1,650 | 0 px |
+
+The same `WindowedRichParagraph` element survives delimiter closure. Indexed
+source and mounted styled text are constant, and the parked reader remains
+bit-for-bit fixed. The 6.6 ms build difference is now outside range and line
+indexing: both `InlineRangeIndex` and Flutter paragraph/semantics boundaries
+still receive one accumulated `String`, so replacing the tail copies the flat
+prefix. This slice solves retained rendering physics without calling that final
+allocation O(1); chunk-addressable source is the next boundary.

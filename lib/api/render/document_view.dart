@@ -321,6 +321,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             sourceRevision: entry.revision,
             textAppend: entry.textAppend,
             inlineAppend: entry.inlineAppend,
+            inlineTailReplace: entry.inlineTailReplace,
             debugOnCodeUnitsIndexed: widget.debugOnCodeUnitsIndexed,
             debugOnParagraphCodeUnitsIndexed:
                 widget.debugOnParagraphCodeUnitsIndexed,
@@ -772,6 +773,7 @@ final class _VisibleBlock {
     this.commitment,
     this.textAppend,
     this.inlineAppend,
+    this.inlineTailReplace,
     this.textMetrics,
     this.rangeSafe,
   );
@@ -784,6 +786,7 @@ final class _VisibleBlock {
   final BlockCommitment commitment;
   final BlockTextAppend? textAppend;
   final BlockInlineAppend? inlineAppend;
+  final BlockInlineTailReplace? inlineTailReplace;
   final BlockTextMetrics textMetrics;
   final bool rangeSafe;
 }
@@ -824,6 +827,7 @@ _IndexedBlocks _indexBlocks(
         commitment: BlockCommitment.committed,
         textAppend: null,
         inlineAppend: null,
+        inlineTailReplace: null,
         textMetrics: BlockTextMetrics.fromBlock(block),
       ),
   ], separatorLength: separatorLength);
@@ -842,6 +846,7 @@ _IndexedBlocks _indexDocumentBlocks(
       commitment: entry.commitment,
       textAppend: entry.textAppend,
       inlineAppend: entry.inlineAppend,
+      inlineTailReplace: entry.inlineTailReplace,
       textMetrics: entry.textMetrics,
     ),
 ], separatorLength: separatorLength);
@@ -859,6 +864,7 @@ _IndexedBlocks _appendDocumentBlocks(
       commitment: entry.commitment,
       textAppend: entry.textAppend,
       inlineAppend: entry.inlineAppend,
+      inlineTailReplace: entry.inlineTailReplace,
       textMetrics: entry.textMetrics,
     ),
 ], separatorLength: separatorLength);
@@ -884,6 +890,7 @@ _IndexedBlocks _extendIndex(
       BlockCommitment commitment,
       BlockTextAppend? textAppend,
       BlockInlineAppend? inlineAppend,
+      BlockInlineTailReplace? inlineTailReplace,
       BlockTextMetrics textMetrics,
     })
   >
@@ -912,6 +919,11 @@ _IndexedBlocks _extendIndex(
           when priorSafety != null &&
               entry.inlineAppend?.baseRevision == priorSafety.revision =>
         priorSafety.safe && InlineRangeIndex.supports(entry.inlineAppend!.runs),
+      ParagraphBlock()
+          when priorSafety != null &&
+              entry.inlineTailReplace?.baseRevision == priorSafety.revision =>
+        priorSafety.safe &&
+            InlineRangeIndex.supports(entry.inlineTailReplace!.runs),
       ParagraphBlock(:final content) => InlineRangeIndex.supports(content),
       _ => false,
     };
@@ -928,6 +940,7 @@ _IndexedBlocks _extendIndex(
         entry.commitment,
         entry.textAppend,
         entry.inlineAppend,
+        entry.inlineTailReplace,
         entry.textMetrics,
         rangeSafe,
       ),
@@ -992,6 +1005,7 @@ class _BlockView extends StatelessWidget {
   final int sourceRevision;
   final BlockTextAppend? textAppend;
   final BlockInlineAppend? inlineAppend;
+  final BlockInlineTailReplace? inlineTailReplace;
   final ValueChanged<int>? debugOnCodeUnitsIndexed;
   final ValueChanged<int>? debugOnParagraphCodeUnitsIndexed;
   final ParagraphIndexStepObserver? debugOnParagraphInitialIndexStep;
@@ -1019,6 +1033,7 @@ class _BlockView extends StatelessWidget {
     this.sourceRevision = 0,
     this.textAppend,
     this.inlineAppend,
+    this.inlineTailReplace,
     this.debugOnCodeUnitsIndexed,
     this.debugOnParagraphCodeUnitsIndexed,
     this.debugOnParagraphInitialIndexStep,
@@ -1083,6 +1098,7 @@ class _BlockView extends StatelessWidget {
                   content: content,
                   sourceRevision: sourceRevision,
                   inlineAppend: inlineAppend,
+                  inlineTailReplace: inlineTailReplace,
                   composer: composer,
                   documentOffset: offset,
                   style: theme.body,

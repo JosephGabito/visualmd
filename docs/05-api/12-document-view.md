@@ -342,8 +342,18 @@ Rich streaming now consumes the parser's `BlockInlineAppend` proof. The range
 index stores leaves in a persistent sequence, shares its complete prior tree,
 and indexes only the new runs. The retained line model then reshapes only its
 old final visual line and the suffix. Its projector and widow locator advance
-to the same immutable range-index revision before either can be observed. An
-unproven delimiter closure still takes the atomic replacement path.
+to the same immutable range-index revision before either can be observed.
+
+Delimiter closure now uses the parser's `BlockInlineTailReplace` proof. Its
+retained visible-prefix length binary-seeks the first discarded range leaf;
+the persistent sequence shares every earlier leaf and indexes only replacement
+runs. `AppendWrapIndex.replaceTail` then reshapes the one visual line owning the
+boundary and the small replacement suffix. A widget proof holds the same rich
+paragraph element and exact parked scroll position while an unfinished strong
+run becomes a real `MarkedRun`
+(`lib/api/render/inline_range_index.dart`,
+`lib/api/widgets/windowed_rich_paragraph.dart`,
+`lib/api/widgets/windowed_paragraph.dart`).
 
 In the native fixture, adding 51 styled characters to a 1,000,032-character
 provisional paragraph now needs zero indexing pumps instead of 119, keeps only
@@ -357,5 +367,9 @@ range eligibility means a proven suffix checks only its new runs. This lowers
 the million-character append build from 25.0 ms to 8.7 ms; the 100,056-
 character fixture takes 3.5 ms. The remaining size-dependent allocation is the
 flat paragraph source still consumed by Flutter's text and semantics APIs.
-Replacing that value with a chunk-addressable source is the next rendering
-boundary; parser-tail reconstruction is a separate upstream boundary.
+The native delimiter-closure journey indexes exactly 88 characters at both
+100,035 and 1,000,065 source characters, keeps 1,650 mounted, and moves the
+reader 0 px. Its worst build is 4.15 ms and 10.76 ms respectively. Replacing
+the accumulated flat value with a chunk-addressable source is therefore the
+next rendering boundary; range, line, parser and block-metric work are already
+suffix-bounded.
