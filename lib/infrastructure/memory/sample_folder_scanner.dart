@@ -120,10 +120,10 @@ in the page and the outline.
 
 ## Automatic links
 
-Angle brackets make a CommonMark URI or email explicit:
-<https://visualmd.dev/guide> and <reader@visualmd.dev>. GFM also recognises
-https://visualmd.dev/notes, www.visualmd.dev/help, and reader@visualmd.dev in
-ordinary prose. Sentence punctuation stays outside each interaction.
+Angle brackets make a CommonMark URI explicit:
+<https://visualmd.gabi.to/support/>. GFM also recognises
+https://visualmd.gabi.to/privacy/ in ordinary prose. Sentence punctuation
+stays outside each interaction.
 
 ## Local navigation
 
@@ -265,9 +265,7 @@ A theme is a small JSON file — nine colours and three typefaces, no code. Drop
 one in the app's themes folder, named in the theme menu, and it appears
 alongside the rest. Give it the same `id` as a built-in and it replaces it.
 
-*Built with Flutter, shaped with a hexagonal architecture: domain at the
-center, use cases around it, adapters at the edge, and a presentation ring in
-between holding the contracts a theme is written against.*
+*Built for quiet, local reading. Visual MD never uploads your Markdown files.*
 '''),
   ];
 }
