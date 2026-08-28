@@ -206,3 +206,15 @@ flutter drive --profile \
 
 The eager baseline and windowed result are retained together in
 `benchmark/results/2026-08-28-atomic-paragraph.md`.
+
+The rich atomic-paragraph benchmark holds the same geometry while one
+paragraph contains ordinary emphasis, inline code and links. It records the
+remaining eager span and shaping cost before that path is windowed:
+
+```sh
+flutter drive --profile \
+  --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
+  --driver=test_driver/performance_test_driver.dart \
+  --target=integration_test/atomic_rich_paragraph_performance_test.dart \
+  -d macos
+```
