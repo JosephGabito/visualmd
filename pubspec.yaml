@@ -50,6 +50,9 @@ flutter:
     - assets/fonts/LICENSE-Inter.txt
     - assets/fonts/LICENSE-GeistMono.txt
     - assets/fonts/LICENSE-Alegreya.txt
+    # Exact upstream notices for grammars and themes embedded in the pinned
+    # Shiki worker. Registered with Flutter's licence page at startup.
+    - assets/licenses/shiki_flutter-1.1.0-THIRD_PARTY_NOTICES.md
 
   # Bundled rather than fetched: a reader should draw text with no network,
   # with no flash of a fallback face, and with metrics we can measure in a

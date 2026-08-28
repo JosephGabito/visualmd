@@ -22,6 +22,22 @@ void registerFontLicences() {
   });
 }
 
+/// Adds notices for source bundled inside generated third-party assets.
+///
+/// Flutter registers package licences automatically, but Shiki's generated
+/// worker also contains TextMate grammars and themes whose notices belong to
+/// their upstream projects rather than to the Dart package itself.
+void registerGeneratedAssetLicences() {
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      const ['Shiki bundled grammars, themes, and supporting libraries'],
+      await rootBundle.loadString(
+        'assets/licenses/shiki_flutter-1.1.0-THIRD_PARTY_NOTICES.md',
+      ),
+    );
+  });
+}
+
 /// The optical-size axis of each bundled face, where it has one.
 ///
 /// A face with an `opsz` axis is really several designs: at reading sizes the

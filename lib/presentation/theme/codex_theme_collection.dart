@@ -4,8 +4,8 @@ import 'reader_theme.dart';
 import 'theme_family.dart';
 import 'theme_palette.dart';
 
-/// The theme families offered by Codex's Copy theme control, adapted from
-/// editor surfaces to Visual MD's reader semantics.
+/// Familiar light and dark palette families adapted from editor and product
+/// surfaces to Visual MD's reader semantics.
 ///
 /// Source backgrounds, ink, and characteristic hues keep each palette's
 /// identity. Muted and accent colours move only as far as needed to remain

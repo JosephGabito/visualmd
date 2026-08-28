@@ -71,7 +71,11 @@ The composition root creates one `ShikiCodeHighlighter` and injects it through
 the app, screen, pane and document renderer (`lib/main.dart`,
 `lib/api/app.dart`). The adapter yields once so plain source can paint before a
 cold grammar is decoded. Shiki caches loaded languages and themes; its web
-worker is installed at `web/shiki_tokenize_worker.js`.
+worker is installed at `web/shiki_tokenize_worker.js`. When `shiki_flutter` is
+upgraded, refresh that generated file with `dart run shiki_flutter:install` and
+copy the package's matching `THIRD_PARTY_NOTICES.md` into `assets/licenses/`.
+The notice is a bundled asset registered with Flutter's licence page
+(`lib/api/theme/font_licences.dart`).
 
 Each code block guards its own asynchronous request, so adapter reuse does not
 allow a late token result to cross into another source

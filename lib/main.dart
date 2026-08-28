@@ -60,6 +60,7 @@ import 'infrastructure/workspace/workspace_json_codec.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerFontLicences();
+  registerGeneratedAssetLicences();
 
   // Infrastructure
   final platform = await createPlatformAdapters();

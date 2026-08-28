@@ -55,6 +55,12 @@ four OFL files ship as assets (`pubspec.yaml`) and
 (`lib/api/theme/font_licences.dart`), called once at startup
 (`lib/main.dart`).
 
+The same startup registry includes the exact third-party notice shipped with
+the pinned Shiki worker. Flutter registers the Dart package licence itself, but
+the worker also embeds TextMate grammars and themes owned by their upstream
+projects (`assets/licenses/shiki_flutter-1.1.0-THIRD_PARTY_NOTICES.md`,
+`lib/api/theme/font_licences.dart`).
+
 The app never fetches fonts at runtime. A bundled, licensed family is used
 directly; a family a theme names that we do not ship falls back to the
 library's own face (`lib/api/theme/library_theme.dart`). A typo in a theme file

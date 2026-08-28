@@ -71,20 +71,18 @@ The house themes remain the reference values for a custom palette:
 | `accentSoft` | `#F1E2D3` | `#3A2D22` |
 | `selection` | `#A65A2E` at 25% | `#DFA273` at 30% |
 
-### Adapting an editor palette to a reader
+### Adapting a palette to a reader
 
-The collection follows the names and light/dark definitions in Codex's Copy
-theme control. Visual MD maps each definition into nine semantic reader tokens
-rather than importing editor syntax rules. Source backgrounds, foregrounds,
-and characteristic hues preserve each palette's identity. Muted text and
-accent values move only where the untouched hue would fall below the reader's
-4.5:1 text-contrast floor on paper or panel
+Visual MD maps familiar light and dark palette identities into nine semantic
+reader tokens rather than importing a product stylesheet or editor syntax
+rules. Backgrounds, foregrounds, and characteristic hues establish each
+identity. Muted text and accent values move where the reference hue would fall
+below the reader's 4.5:1 text-contrast floor on paper or panel
 (`lib/presentation/theme/codex_theme_collection.dart`).
 
-Colour is the only copied concern. Every member keeps Visual MD's existing
-serif, sans, and mono families, x-height normalization, measure, leading, and
-vertical rhythm. A theme changes the atmosphere around a document, not the
-typographic rules that make it readable.
+Every member keeps Visual MD's serif, sans, and mono families, x-height
+normalization, measure, leading, and vertical rhythm. A theme changes the
+atmosphere around a document, not the typographic rules that make it readable.
 
 Nord and several family identities come from published theme systems. The
 mapping into Visual MD's semantic tokens is project-specific:
@@ -97,6 +95,13 @@ mapping into Visual MD's semantic tokens is project-specific:
 | Nord | `https://www.nordtheme.com` |
 | Rosé Pine | `https://github.com/rose-pine/rose-pine-theme` |
 | Solarized | `https://ethanschoonover.com/solarized/` |
+
+Their copyright notices and licence references are preserved in
+`THIRD_PARTY_NOTICES.md`.
+
+The remaining family names identify Visual MD's own reader-specific
+interpretations of familiar product or editor moods. They are not imported
+theme files and do not imply affiliation or endorsement.
 
 ## Events
 
