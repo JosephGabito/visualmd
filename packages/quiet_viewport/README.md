@@ -103,6 +103,9 @@ the revised tail. A host which cannot afford the initial O(source) pass in one
 frame can construct the index with `AppendWrapIndex.progressive`, grant a
 bounded number of windows through `indexNext`, and publish the geometry only
 after `isComplete`. Partial work never needs to become a partial scrollbar.
+`withContext` and `progressiveWithContext` additionally pass each bounded
+window's absolute source start to the host. This lets a projection retain
+language or typography state at line boundaries without rereading its prefix.
 
 ## Revision fencing
 
