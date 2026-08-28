@@ -2015,9 +2015,14 @@ class _TableState extends State<_Table> {
         final columnWidths = [
           for (final width in minimumWidths) width * expansion,
         ];
+        final radius = BorderRadius.circular(LibraryChromeScale.controlRadius);
+        final perimeter = BorderSide(color: widget.theme.palette.border);
+        final rowRule = BorderSide(
+          color: widget.theme.palette.border.withValues(alpha: 0.62),
+        );
 
         return ClipRRect(
-          borderRadius: BorderRadius.circular(LibraryChromeScale.controlRadius),
+          borderRadius: radius,
           child: Scrollbar(
             controller: _scroll,
             // A clipped column looks complete. The persistent thumb is the
@@ -2029,7 +2034,17 @@ class _TableState extends State<_Table> {
               child: SizedBox(
                 width: tableWidth,
                 child: Table(
-                  border: TableBorder.all(color: widget.theme.palette.border),
+                  // Alignment and the header ground already establish the
+                  // columns. Rules mark the perimeter and row relationships;
+                  // vertical boxes would repeat structure the type supplies.
+                  border: TableBorder(
+                    top: perimeter,
+                    right: perimeter,
+                    bottom: perimeter,
+                    left: perimeter,
+                    horizontalInside: rowRule,
+                    borderRadius: radius,
+                  ),
                   columnWidths: {
                     for (var column = 0; column < columns; column++)
                       column: FixedColumnWidth(columnWidths[column]),

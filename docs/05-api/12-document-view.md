@@ -144,8 +144,14 @@ Each block type is built by `_BlockView`
   visually and through semantics
   (`lib/api/render/document_view.dart`).
 - **Table** — `_Table`: alignment as the author asked, a panel-coloured head
-  row, ragged-row padding and locally scrolling overflow. Each cell resolves
-  direction independently, because adjacent languages need not share an edge
+  row, ragged-row padding and locally scrolling overflow. The clip and the
+  painted outer border share one radius, so the perimeter remains a continuous
+  curve rather than two square rules cut short at each corner. The perimeter
+  and quiet horizontal row rules are the only lines: alignment and the header
+  ground already establish columns, so vertical cell boxes would repeat the
+  same structure with more ink. Each cell
+  resolves direction independently, because adjacent languages need not share
+  an edge
   (`lib/api/render/document_view.dart`,
   `lib/api/render/reading_theme.dart`).
   Header-only and one-column tables remain tables; wide and extremely uneven
@@ -247,8 +253,9 @@ A short table row is padded rather than throwing
 words (`lib/api/render/document_view.dart`).
 
 `test/presentation/document_view_test.dart` covers degenerate and extreme table
-shapes, local overflow, numeric figures and table semantics; multiline geometry
-at all six heading levels, scaled mixed-script
+shapes, the shared rounded perimeter, restrained row rules, atomic path values,
+local overflow, numeric figures and table semantics; multiline geometry at all
+six heading levels, scaled mixed-script
 and unbreakable headings, heading-level semantics and authored direction for
 paragraphs, lists and table cells,
 thematic-break geometry and semantics, rhythm through rules and lists, tonal
