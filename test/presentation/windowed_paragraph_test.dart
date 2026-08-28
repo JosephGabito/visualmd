@@ -12,6 +12,7 @@ import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
+import 'package:visualmd/presentation/theme/typographic_punctuation.dart';
 import 'package:visualmd/presentation/theme/widow_binding.dart';
 
 void main() {
@@ -163,6 +164,45 @@ void main() {
     },
   );
 
+  testWidgets(
+    'bounded projection matches eager shaping for bidi text and emoji',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final source = List.filled(
+        1200,
+        'قال الكاتب "انتظر..." 😀 -- ואז אמר "כן". ',
+      ).join();
+
+      await tester.pumpWidget(_page(_content(source, revision: 1)));
+      await tester.pumpAndSettle();
+
+      final window = tester.widget<WindowedPlainParagraph>(
+        find.byType(WindowedPlainParagraph),
+      );
+      expect(window.textDirection, TextDirection.rtl);
+      final size = tester.getSize(find.byType(WindowedPlainParagraph));
+      final expected = TypographicProjection.of(source).text;
+      final complete = TextPainter(
+        text: TextSpan(text: expected, style: window.style),
+        textDirection: window.textDirection,
+        textScaler: window.textScaler,
+        strutStyle: window.strutStyle,
+      )..layout(maxWidth: size.width);
+      expect(size.height, closeTo(complete.height, 0.01));
+      complete.dispose();
+
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      position.jumpTo(position.maxScrollExtent * 0.5);
+      await tester.pumpAndSettle();
+      expect(expected, contains(_renderedWindow()));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('a proven append indexes only the old final line and suffix', (
     tester,
   ) async {
@@ -186,6 +226,61 @@ void main() {
     expect(indexed.last, lessThan(suffix.length + 256));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'an append may complete punctuation without revisiting its prefix',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final first = '${_prose(40000)} The author said "wait--';
+      const suffix = '- then..." before continuing.';
+      final indexed = <int>[];
+      final session = const MarkdownDocumentParser().startSession();
+
+      await tester.pumpWidget(
+        _page(session.append(first), onSourceIndexed: indexed.add),
+      );
+      await tester.pumpAndSettle();
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      position.jumpTo(position.maxScrollExtent * 0.5);
+      await tester.pumpAndSettle();
+      final pixels = position.pixels;
+
+      await tester.pumpWidget(
+        _page(session.append(suffix), onSourceIndexed: indexed.add),
+      );
+      await tester.pumpAndSettle();
+
+      final nextPosition = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      expect(nextPosition.pixels, pixels);
+      expect(indexed.last, lessThan(suffix.length + 256));
+      nextPosition.jumpTo(nextPosition.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(
+        _renderedWindow(),
+        endsWith('The author said “wait— then…” before continuing.'),
+      );
+
+      final window = tester.widget<WindowedPlainParagraph>(
+        find.byType(WindowedPlainParagraph),
+      );
+      final size = tester.getSize(find.byType(WindowedPlainParagraph));
+      final expected = TypographicProjection.of('$first$suffix').text;
+      final complete = TextPainter(
+        text: TextSpan(text: expected, style: window.style),
+        textDirection: window.textDirection,
+        textScaler: window.textScaler,
+        strutStyle: window.strutStyle,
+      )..layout(maxWidth: size.width);
+      expect(size.height, closeTo(complete.height, 0.01));
+      complete.dispose();
+    },
+  );
 
   testWidgets(
     'safe finalization retains the window and reflows only its widow tail',
@@ -240,30 +335,58 @@ void main() {
     },
   );
 
-  testWidgets(
-    'final punctuation which changes shaping returns to exact composition',
-    (tester) async {
-      tester.view.physicalSize = const Size(1000, 700);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      final source = List.filled(
-        1800,
-        'The author said "wait..." before the next generated sentence. ',
-      ).join();
-      final session = const MarkdownDocumentParser().startSession();
+  testWidgets('punctuation stays windowed and exact through finalization', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final source = List.filled(
+      1800,
+      'The author said "wait..." before the next generated sentence. ',
+    ).join();
+    final session = const MarkdownDocumentParser().startSession();
 
-      await tester.pumpWidget(_page(session.append(source)));
-      await tester.pumpAndSettle();
-      expect(find.byType(WindowedPlainParagraph), findsOneWidget);
+    await tester.pumpWidget(_page(session.append(source)));
+    await tester.pumpAndSettle();
+    expect(find.byType(WindowedPlainParagraph), findsOneWidget);
+    expect(_renderedWindow(), contains('“wait…”'));
+    final retained = find.byType(WindowedPlainParagraph).evaluate().single;
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position;
+    position.jumpTo(position.maxScrollExtent * 0.5);
+    await tester.pumpAndSettle();
+    final pixels = position.pixels;
 
-      await tester.pumpWidget(_page(session.finish()));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_page(session.finish()));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(WindowedPlainParagraph), findsNothing);
-      expect(find.byType(Paragraph), findsOneWidget);
-      expect(_renderedEagerText(), contains('“wait…”'));
-    },
-  );
+    expect(find.byType(WindowedPlainParagraph), findsOneWidget);
+    expect(
+      identical(
+        find.byType(WindowedPlainParagraph).evaluate().single,
+        retained,
+      ),
+      isTrue,
+    );
+    expect(position.pixels, pixels);
+    expect(_renderedWindow(), contains('“wait…”'));
+
+    final window = tester.widget<WindowedPlainParagraph>(
+      find.byType(WindowedPlainParagraph),
+    );
+    final size = tester.getSize(find.byType(WindowedPlainParagraph));
+    final expected = TypographicProjection.of(WidowBinding.bind(source)).text;
+    final complete = TextPainter(
+      text: TextSpan(text: expected, style: window.style),
+      textDirection: window.textDirection,
+      textScaler: window.textScaler,
+      strutStyle: window.strutStyle,
+    )..layout(maxWidth: size.width);
+    expect(size.height, closeTo(complete.height, 0.01));
+    complete.dispose();
+  });
 }
 
 Widget _page(
@@ -321,15 +444,6 @@ String _renderedWindow() => find
       of: find.byKey(const ValueKey('paragraph-window')),
       matching: find.byType(RichText),
     )
-    .evaluate()
-    .map(
-      (element) =>
-          (element.renderObject! as RenderParagraph).text.toPlainText(),
-    )
-    .single;
-
-String _renderedEagerText() => find
-    .descendant(of: find.byType(Paragraph), matching: find.byType(RichText))
     .evaluate()
     .map(
       (element) =>

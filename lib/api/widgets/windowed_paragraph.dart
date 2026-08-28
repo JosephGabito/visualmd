@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:quiet_viewport/quiet_viewport.dart';
 
+import '../../presentation/theme/typographic_punctuation.dart';
 import '../../presentation/theme/widow_binding.dart';
 import 'model_backed_selection_area.dart';
 
@@ -80,8 +81,8 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
   var _lastLine = 1;
   var _lineHeight = 0.0;
   var _indexedFinalized = false;
-  var _displaySource = '';
   var _modelSource = '';
+  _ParagraphProjection? _projection;
   _PendingParagraphIndex? _pending;
   var _indexEpoch = 0;
   int? _scheduledIndexEpoch;
@@ -130,8 +131,12 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
       final start = lines.startAt(first);
       final end = last < lines.length
           ? lines.startAt(last)
-          : _displaySource.length;
-      final visible = _displaySource.substring(start, end);
+          : _modelSource.length;
+      final visible = _projectRange(
+        _modelSource.substring(start, end),
+        sourceOffset: start,
+        projection: _projection!,
+      );
 
       return Semantics(
         container: true,
@@ -152,8 +157,10 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
                     order: widget.selectionOrder,
                     text: _modelSource,
                     rangeOffset: start,
+                    sourceOffsetAt: (displayOffset) =>
+                        start + visible.sourceOffsetAt(displayOffset),
                     child: Text(
-                      visible,
+                      visible.text,
                       key: const ValueKey('paragraph-window'),
                       style: widget.style,
                       strutStyle: widget.strutStyle,
@@ -206,12 +213,12 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
               widget.source.length;
       if (directAppend) {
         pending
-          ..displaySource = widget.source
           ..modelSource = widget.source
           ..revision = widget.sourceRevision;
+        pending.projection.update(widget.source, finalized: widget.finalized);
         pending.lines.stageAppend(
           baseLength: pending.lines.sourceLength,
-          source: pending.displaySource,
+          source: pending.modelSource,
         );
         pending.finalized = widget.finalized;
         _scheduleInitialIndex(pending.epoch, pending.lines);
@@ -235,10 +242,10 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
           widget.sourceRevision > _indexedRevision &&
           _indexedSourceLength + append.text.length == widget.source.length;
       if (directAppend) {
-        _displaySource = widget.source;
+        _projection!.update(widget.source, finalized: widget.finalized);
         _lines!.stageAppend(
           baseLength: _indexedSourceLength,
-          source: _displaySource,
+          source: widget.source,
         );
         _indexedRevision = widget.sourceRevision;
         _indexedSourceLength = widget.source.length;
@@ -259,14 +266,13 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     if (!_indexedFinalized &&
         widget.finalized &&
         _indexedSourceLength == widget.source.length) {
-      final projected = _projectedSource();
+      _projection!.update(widget.source, finalized: true);
       var indexedCodeUnits = 0;
-      if (!identical(projected, widget.source)) {
-        final changedAt = _changedOffset(_displaySource, projected);
-        _displaySource = projected;
+      final widowOffset = _projection!.widowOffset;
+      if (widowOffset != null) {
         _lines!.replaceTail(
-          line: _lines!.lineAtOffset(changedAt),
-          source: projected,
+          line: _lines!.lineAtOffset(widowOffset),
+          source: widget.source,
         );
         indexedCodeUnits = _lines!.lastIndexedCodeUnits;
       }
@@ -280,14 +286,15 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
 
     final append = widget.sourceAppend;
     final directAppend =
+        !widget.finalized &&
         append != null &&
         append.baseRevision == _indexedRevision &&
         widget.sourceRevision > _indexedRevision &&
         _indexedSourceLength + append.text.length == widget.source.length;
     if (directAppend) {
-      _displaySource = widget.source;
       _modelSource = widget.source;
-      _lines!.append(baseLength: _indexedSourceLength, source: _displaySource);
+      _projection!.update(widget.source, finalized: false);
+      _lines!.append(baseLength: _indexedSourceLength, source: widget.source);
     } else {
       _beginReplacementIndex(width);
       return;
@@ -334,12 +341,20 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     final epoch = ++_indexEpoch;
     _layoutSignature = signature;
     _lineHeight = _measureLineHeight(width);
-    _displaySource = _projectedSource();
     _modelSource = widget.source;
+    _projection = _ParagraphProjection(
+      widget.source,
+      finalized: widget.finalized,
+    );
     _pending = null;
-    _lines = AppendWrapIndex.progressive(
-      source: _displaySource,
-      resolve: (text) => _resolveLineStarts(text, width),
+    _lines = AppendWrapIndex.progressiveWithContext(
+      source: _modelSource,
+      resolveAt: (text, sourceOffset) => _resolveLineStarts(
+        text,
+        sourceOffset: sourceOffset,
+        width: width,
+        projection: _projection!,
+      ),
     );
     _indexedRevision = widget.sourceRevision;
     _indexedSourceLength = widget.source.length;
@@ -351,14 +366,22 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
 
   void _beginReplacementIndex(double width) {
     final epoch = ++_indexEpoch;
-    final displaySource = _projectedSource();
-    final lines = AppendWrapIndex.progressive(
-      source: displaySource,
-      resolve: (text) => _resolveLineStarts(text, width),
+    final projection = _ParagraphProjection(
+      widget.source,
+      finalized: widget.finalized,
+    );
+    final lines = AppendWrapIndex.progressiveWithContext(
+      source: widget.source,
+      resolveAt: (text, sourceOffset) => _resolveLineStarts(
+        text,
+        sourceOffset: sourceOffset,
+        width: width,
+        projection: projection,
+      ),
     );
     _pending = _PendingParagraphIndex(
       lines: lines,
-      displaySource: displaySource,
+      projection: projection,
       modelSource: widget.source,
       revision: widget.sourceRevision,
       finalized: widget.finalized,
@@ -403,8 +426,8 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
         setState(() {
           if (pending != null && identical(pending.lines, lines)) {
             _lines = pending.lines;
-            _displaySource = pending.displaySource;
             _modelSource = pending.modelSource;
+            _projection = pending.projection;
             _indexedRevision = pending.revision;
             _indexedSourceLength = pending.modelSource.length;
             _indexedFinalized = pending.finalized;
@@ -427,21 +450,20 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     }
   }
 
-  String _projectedSource() =>
-      widget.finalized ? WidowBinding.bind(widget.source) : widget.source;
-
-  static int _changedOffset(String before, String after) {
-    final limit = math.min(before.length, after.length);
-    for (var offset = limit - 1; offset >= 0; offset--) {
-      if (before.codeUnitAt(offset) != after.codeUnitAt(offset)) return offset;
-    }
-    return limit;
-  }
-
-  List<int> _resolveLineStarts(String text, double width) {
+  List<int> _resolveLineStarts(
+    String text, {
+    required int sourceOffset,
+    required double width,
+    required _ParagraphProjection projection,
+  }) {
     if (text.isEmpty) return const [0];
+    final projected = _projectRange(
+      text,
+      sourceOffset: sourceOffset,
+      projection: projection,
+    );
     final painter = TextPainter(
-      text: TextSpan(text: text, style: widget.style),
+      text: TextSpan(text: projected.text, style: widget.style),
       textAlign: TextAlign.start,
       textDirection: widget.textDirection,
       textScaler: widget.textScaler,
@@ -450,15 +472,23 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     )..layout(maxWidth: width);
     final starts = <int>[0];
     var offset = 0;
-    while (offset < text.length) {
+    while (offset < projected.text.length) {
       final range = painter.getLineBoundary(TextPosition(offset: offset));
       var next = range.end;
-      if (next < text.length && text.codeUnitAt(next) == 10) next++;
+      if (next < projected.text.length &&
+          projected.text.codeUnitAt(next) == 10) {
+        next++;
+      }
       if (next <= offset) {
         painter.dispose();
         throw StateError('Text layout did not advance from offset $offset.');
       }
-      starts.add(next);
+      final sourceStart = projected.sourceOffsetAt(next);
+      if (sourceStart > starts.last) {
+        starts.add(sourceStart);
+        projection.previousBySourceOffset[sourceOffset + sourceStart] =
+            projected.previousDisplayAt(next);
+      }
       offset = next;
     }
     if (starts.last == text.length && !text.endsWith('\n')) {
@@ -466,6 +496,32 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     }
     painter.dispose();
     return starts;
+  }
+
+  TypographicProjection _projectRange(
+    String source, {
+    required int sourceOffset,
+    required _ParagraphProjection projection,
+  }) {
+    if (!projection.previousBySourceOffset.containsKey(sourceOffset)) {
+      throw StateError(
+        'No typographic context exists at source offset $sourceOffset.',
+      );
+    }
+    final widowOffset = projection.widowOffset;
+    var displaySource = source;
+    if (widowOffset != null &&
+        widowOffset >= sourceOffset &&
+        widowOffset < sourceOffset + source.length) {
+      final local = widowOffset - sourceOffset;
+      displaySource =
+          '${source.substring(0, local)}${WidowBinding.nonBreakingSpace}'
+          '${source.substring(local + 1)}';
+    }
+    return TypographicProjection.of(
+      displaySource,
+      previous: projection.previousBySourceOffset[sourceOffset],
+    );
   }
 
   double _measureLineHeight(double width) {
@@ -522,7 +578,7 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
 
 final class _PendingParagraphIndex {
   final AppendWrapIndex lines;
-  String displaySource;
+  final _ParagraphProjection projection;
   String modelSource;
   int revision;
   bool finalized;
@@ -530,10 +586,26 @@ final class _PendingParagraphIndex {
 
   _PendingParagraphIndex({
     required this.lines,
-    required this.displaySource,
+    required this.projection,
     required this.modelSource,
     required this.revision,
     required this.finalized,
     required this.epoch,
   });
+}
+
+final class _ParagraphProjection {
+  String source;
+  bool finalized;
+  int? widowOffset;
+  final Map<int, String?> previousBySourceOffset = {0: null};
+
+  _ParagraphProjection(this.source, {required this.finalized})
+    : widowOffset = finalized ? WidowBinding.bindingOffset(source) : null;
+
+  void update(String next, {required bool finalized}) {
+    source = next;
+    this.finalized = finalized;
+    widowOffset = finalized ? WidowBinding.bindingOffset(next) : null;
+  }
 }

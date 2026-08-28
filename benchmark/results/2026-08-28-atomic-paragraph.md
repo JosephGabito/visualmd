@@ -37,9 +37,9 @@ document, and mounts only the lines near that viewport:
 
 | Source characters | Characters mounted | Index step worst | Initial frame worst | Middle-seek worst | Append worst | Finalize worst | Movement | RSS added |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 10,000 | 10,000 | — | 7.7 ms | 2.8 ms | 7.3 ms | 4.6 ms | 0 px | 4.8 MiB |
-| 100,000 | 1,994 | 2.8 ms | 3.2 ms | 3.3 ms | 2.4 ms | 1.9 ms | 0 px | 15.9 MiB |
-| 1,000,000 | 2,477 | 1.1 ms | 4.6 ms | 3.3 ms | 4.1 ms | 7.8 ms | 0 px | 66.4 MiB |
+| 10,000 | 10,000 | — | 7.2 ms | 2.6 ms | 8.7 ms | 3.3 ms | 0 px | 5.0 MiB |
+| 100,000 | 1,994 | 2.8 ms | 3.0 ms | 2.8 ms | 2.3 ms | 1.4 ms | 0 px | 14.9 MiB |
+| 1,000,000 | 2,477 | 1.9 ms | 5.1 ms | 3.3 ms | 4.8 ms | 4.8 ms | 0 px | 65.4 MiB |
 
 Ten thousand characters deliberately remains on the ordinary eager path. At
 the two pathological sizes, mounted text is constant; initial reveal, a deep
@@ -50,7 +50,7 @@ the middle.
 Initial construction still performs O(source) work: a pre-existing
 million-character paragraph needs 245 bounded `TextPainter` operations to
 discover all line boundaries. No operation receives more than 4,161 code units
-or takes more than 1.1 ms in that run. Work starts after the placeholder frame,
+or takes more than 1.9 ms in that run. Work starts after the placeholder frame,
 yields between batches, and publishes no partial height; a replacement retains
 its previous exact geometry until the new index is complete. The old 237 ms
 synchronous frame is therefore gone without making a false O(1) construction
@@ -70,18 +70,17 @@ claim. The 66 MiB process delta is not yet a memory plateau proof.
 - Safe finalization binds the widow by re-resolving only its owning line;
   counting eligibility stops after four words instead of allocating a complete
   word list.
-- Total first-load work, punctuation that changes shaping, and rich-inline
-  paragraphs remain distinct costs rather than hidden claims.
+- Quotes, dash runs and ellipses are projected inside each bounded range while
+  streaming. A suffix may complete one of those runs by revisiting only the
+  previous unfinished line, and finalization does not revisit that punctuation.
+- Total first-load work and rich-inline paragraphs remain distinct costs rather
+  than hidden claims.
 
 ## Acceptance boundary
 
 The current fast path is deliberately for one large plain-text run with no
 active search decoration and no first-line indent. It preserves authored
-source, Flutter line breaking, model-backed selection offsets, complete
-semantics, reading direction, exact height, widow binding, scrollbar geometry
-and outer-page scrolling through a safe finish event.
-
-Straight quotes, dash runs and ellipses still use the eager final composer
-because their glyph advances or visible length can change throughout the
-paragraph. The next slice must carry exact source-to-glyph offsets through a
-range projection before those paragraphs can retain the window safely.
+source, projected prose punctuation, Flutter line breaking, model-backed
+selection offsets, complete semantics, reading direction, exact height, widow
+binding, scrollbar geometry and outer-page scrolling through a safe finish
+event. Rich inline runs remain on the eager path.

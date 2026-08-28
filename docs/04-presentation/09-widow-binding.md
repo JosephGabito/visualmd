@@ -21,13 +21,14 @@ composed spans is [Paragraph](../05-api/15-paragraph.md)'s job, one ring out.
 
 `WidowBinding` is a namespace, never instantiated
 (`lib/presentation/theme/widow_binding.dart`). It holds two constants and
-two functions:
+three functions:
 
 | Name | Value | Meaning |
 |------|-------|---------|
 | `nonBreakingSpace` | `U+00A0` | A space no line may break at (`lib/presentation/theme/widow_binding.dart`) |
 | `leastWords` | 4 | Below this the paragraph is left alone (`lib/presentation/theme/widow_binding.dart`) |
 | `bind` | `String → String` | The text with its final space bound, when binding is worth it (`lib/presentation/theme/widow_binding.dart`) |
+| `bindingOffset` | `String → int?` | The one authored boundary to bind, without creating a changed copy (`lib/presentation/theme/widow_binding.dart`) |
 | `bindLastSpace` | `String → String` | Binds an already-approved final leaf after its caller counts a styled paragraph (`lib/presentation/theme/widow_binding.dart`) |
 
 `bind` declines in three cases before it changes anything
@@ -62,10 +63,11 @@ downstream needs to know it ran.
 
 ## Lifecycle
 
-Stateless and synchronous; the constants are compile-time. `bind` is called
-during a build, once per paragraph. It stops counting as soon as the fourth
-word proves the paragraph eligible, then searches backward for the final
-breakable space; it does not allocate a complete word list for a long text.
+Stateless and synchronous; the constants are compile-time. `bindingOffset`
+stops counting as soon as the fourth word proves the paragraph eligible, then
+searches backward for the final breakable space without allocating a changed
+copy. `bind` applies that one boundary for an eager paragraph. A range renderer
+can instead change it only inside the final bounded window.
 
 ## Failure and recovery
 
