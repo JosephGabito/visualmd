@@ -126,6 +126,24 @@ void main() {
     );
     expect(snapshot.selectedText, 'ning block\n\nending');
   });
+
+  test(
+    'a virtual text window records ranges in complete-block coordinates',
+    () {
+      final snapshot = ModelSelectionSnapshot();
+
+      snapshot.update(
+        identity: 'paragraph',
+        order: 0,
+        text: 'opening middle ending',
+        rangeOffset: 8,
+        range: const SelectedContentRange(startOffset: 0, endOffset: 6),
+        status: SelectionStatus.uncollapsed,
+      );
+
+      expect(snapshot.selectedText, 'middle');
+    },
+  );
 }
 
 String _wholeText() => 'opening\n\nunmounted middle\n\nending';

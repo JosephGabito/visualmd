@@ -17,7 +17,23 @@ void main() {
     expect(second.entries.single.revision, 2);
     expect(second.entries.single.commitment, BlockCommitment.provisional);
     expect(second.blocks.single.text, 'A paragraph still arriving');
+    expect(second.entries.single.textAppend?.baseRevision, 1);
+    expect(second.entries.single.textAppend?.text, ' still arriving');
   });
+
+  test(
+    'prose which closes Markdown syntax is not misreported as an append',
+    () {
+      final session = parser.startSession();
+
+      final first = session.append('An *unfinished');
+      final second = session.append(' emphasis*');
+
+      expect(first.blocks.single.text, 'An *unfinished');
+      expect(second.blocks.single.text, 'An unfinished emphasis');
+      expect(second.entries.single.textAppend, isNull);
+    },
+  );
 
   test('a blank line commits prose and later work visits only the tail', () {
     final session = parser.startSession();

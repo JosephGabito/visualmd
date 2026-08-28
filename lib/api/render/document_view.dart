@@ -22,6 +22,7 @@ import '../widgets/code_block.dart';
 import '../widgets/math_expression.dart';
 import '../widgets/mermaid_diagram.dart';
 import '../widgets/model_backed_selection_area.dart';
+import '../widgets/windowed_paragraph.dart';
 import 'inline_composer.dart';
 import 'geometry_sliver_list.dart';
 import 'reading_direction.dart';
@@ -39,6 +40,22 @@ abstract final class ParagraphRules {
   static bool indents(Block? previous, ParagraphMarking marking) =>
       marking == ParagraphMarking.indented && previous is ParagraphBlock;
 }
+
+const _windowedParagraphThreshold = 32768;
+
+bool _usesWindowedPlainParagraph({
+  required Block block,
+  required BlockCommitment commitment,
+  required double indent,
+  required bool hasMatches,
+}) =>
+    commitment == BlockCommitment.provisional &&
+    indent == 0 &&
+    !hasMatches &&
+    block is ParagraphBlock &&
+    block.content.length == 1 &&
+    block.content.single is TextRun &&
+    block.content.single.text.length >= _windowedParagraphThreshold;
 
 /// Sets a document on the page.
 ///
@@ -166,6 +183,9 @@ class SliverDocumentView extends StatefulWidget {
   /// Reports how many source code units a large fence line-index pass visited.
   final ValueChanged<int>? debugOnCodeUnitsIndexed;
 
+  /// Reports how many source code units a large prose wrap-index pass visited.
+  final ValueChanged<int>? debugOnParagraphCodeUnitsIndexed;
+
   SliverDocumentView({
     super.key,
     this.document,
@@ -186,6 +206,7 @@ class SliverDocumentView extends StatefulWidget {
     this.viewportAnchor,
     this.debugOnBlocksIndexed,
     this.debugOnCodeUnitsIndexed,
+    this.debugOnParagraphCodeUnitsIndexed,
   }) : customAnchorKeys = customAnchorKeys ?? <String, GlobalKey>{},
        matchKeys = matchKeys ?? <int, GlobalKey>{};
 
@@ -272,11 +293,24 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
               ? _index.visible[index + 1].block
               : null;
           final followingSpace = widget.theme.spaceAfter(block, next);
+          final indent =
+              ParagraphRules.indents(previous, widget.theme.scale.marking)
+              ? widget.theme.indent
+              : 0.0;
+          final windowedParagraph = _usesWindowedPlainParagraph(
+            block: block,
+            commitment: entry.commitment,
+            indent: indent,
+            hasMatches: widget.matches.isNotEmpty,
+          );
           final view = _BlockView(
             block: block,
+            commitment: entry.commitment,
             sourceRevision: entry.revision,
             textAppend: entry.textAppend,
             debugOnCodeUnitsIndexed: widget.debugOnCodeUnitsIndexed,
+            debugOnParagraphCodeUnitsIndexed:
+                widget.debugOnParagraphCodeUnitsIndexed,
             theme: widget.theme,
             composer: composer,
             codeHighlighter: widget.codeHighlighter,
@@ -285,11 +319,11 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             customKeys: widget.customAnchorKeys,
             matchKeys: widget.matchKeys,
             offset: entry.offset,
-            indent: ParagraphRules.indents(previous, widget.theme.scale.marking)
-                ? widget.theme.indent
-                : 0,
+            indent: indent,
             followingSpace: followingSpace,
             reconcileContainer: true,
+            selectionIdentity: entry.id,
+            selectionOrder: index,
           );
           final width = DocumentView._widthFor(block, prose, wide);
           final positioned = Align(
@@ -303,23 +337,26 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
                   child: positioned,
                 )
               : positioned;
+          final contents = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _withAnchorTargets(observed, [
+                ...entry.anchors,
+                ..._footnoteReferenceAnchors(block),
+              ], widget.customAnchorKeys),
+              if (followingSpace > 0) SizedBox(height: followingSpace),
+            ],
+          );
           return KeyedSubtree(
             key: _DocumentBlockKey(widget.document, entry.id!),
-            child: ModelSelectionBlock(
-              identity: entry.id!,
-              order: index,
-              text: block.text,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _withAnchorTargets(observed, [
-                    ...entry.anchors,
-                    ..._footnoteReferenceAnchors(block),
-                  ], widget.customAnchorKeys),
-                  if (followingSpace > 0) SizedBox(height: followingSpace),
-                ],
-              ),
-            ),
+            child: windowedParagraph
+                ? contents
+                : ModelSelectionBlock(
+                    identity: entry.id!,
+                    order: index,
+                    text: block.text,
+                    child: contents,
+                  ),
           );
         }
 
@@ -687,6 +724,7 @@ final class _VisibleBlock {
     this.offset,
     this.id,
     this.revision,
+    this.commitment,
     this.textAppend,
   );
 
@@ -695,6 +733,7 @@ final class _VisibleBlock {
   final int offset;
   final DocumentBlockId? id;
   final int revision;
+  final BlockCommitment commitment;
   final BlockTextAppend? textAppend;
 }
 
@@ -725,7 +764,13 @@ _IndexedBlocks _indexBlocks(
 }) {
   return _extendIndex(_emptyIndex(startOffset), [
     for (final block in blocks)
-      (block: block, id: null, revision: 0, textAppend: null),
+      (
+        block: block,
+        id: null,
+        revision: 0,
+        commitment: BlockCommitment.committed,
+        textAppend: null,
+      ),
   ], separatorLength: separatorLength);
 }
 
@@ -739,6 +784,7 @@ _IndexedBlocks _indexDocumentBlocks(
       block: entry.block,
       id: entry.id,
       revision: entry.revision,
+      commitment: entry.commitment,
       textAppend: entry.textAppend,
     ),
 ], separatorLength: separatorLength);
@@ -753,6 +799,7 @@ _IndexedBlocks _appendDocumentBlocks(
       block: entry.block,
       id: entry.id,
       revision: entry.revision,
+      commitment: entry.commitment,
       textAppend: entry.textAppend,
     ),
 ], separatorLength: separatorLength);
@@ -774,6 +821,7 @@ _IndexedBlocks _extendIndex(
       Block block,
       DocumentBlockId? id,
       int revision,
+      BlockCommitment commitment,
       BlockTextAppend? textAppend,
     })
   >
@@ -803,6 +851,7 @@ _IndexedBlocks _extendIndex(
         offset,
         id,
         entry.revision,
+        entry.commitment,
         entry.textAppend,
       ),
     );
@@ -862,9 +911,11 @@ Widget _withAnchorTargets(
 
 class _BlockView extends StatelessWidget {
   final Block block;
+  final BlockCommitment commitment;
   final int sourceRevision;
   final BlockTextAppend? textAppend;
   final ValueChanged<int>? debugOnCodeUnitsIndexed;
+  final ValueChanged<int>? debugOnParagraphCodeUnitsIndexed;
   final ReadingTheme theme;
   final InlineComposer composer;
   final CodeHighlighter codeHighlighter;
@@ -875,6 +926,8 @@ class _BlockView extends StatelessWidget {
   final int offset;
   final double followingSpace;
   final bool reconcileContainer;
+  final DocumentBlockId? selectionIdentity;
+  final int selectionOrder;
 
   /// The first-line indent this paragraph is set with; 0 for every other kind
   /// of block, and for a paragraph that opens a document or a section.
@@ -882,9 +935,11 @@ class _BlockView extends StatelessWidget {
 
   const _BlockView({
     required this.block,
+    this.commitment = BlockCommitment.committed,
     this.sourceRevision = 0,
     this.textAppend,
     this.debugOnCodeUnitsIndexed,
+    this.debugOnParagraphCodeUnitsIndexed,
     required this.theme,
     required this.composer,
     required this.codeHighlighter,
@@ -895,6 +950,8 @@ class _BlockView extends StatelessWidget {
     required this.offset,
     required this.followingSpace,
     required this.reconcileContainer,
+    this.selectionIdentity,
+    this.selectionOrder = 0,
     this.indent = 0,
   });
 
@@ -904,13 +961,49 @@ class _BlockView extends StatelessWidget {
       case ParagraphBlock(:final content):
         // The style comes from the theme in hand, which inside a quotation is
         // the quoting one.
-        final paragraph = Paragraph(
-          spans: composer.compose(content, style: theme.body, offset: offset),
-          style: theme.body,
-          textScaler: theme.textScaler,
-          strut: theme.strutFor(theme.body),
-          indent: indent,
-        );
+        final identity = selectionIdentity;
+        final paragraph =
+            _usesWindowedPlainParagraph(
+                  block: block,
+                  commitment: commitment,
+                  indent: indent,
+                  hasMatches: composer.matches.isNotEmpty,
+                ) &&
+                identity != null
+            ? WindowedProvisionalParagraph(
+                source: content.single.text,
+                sourceRevision: sourceRevision,
+                sourceAppend: switch (textAppend) {
+                  BlockTextAppend(:final baseRevision, :final text) =>
+                    ParagraphSourceAppend(
+                      baseRevision: baseRevision,
+                      text: text,
+                    ),
+                  null => null,
+                },
+                style: theme.body,
+                textScaler: theme.textScaler,
+                strutStyle: theme.strutFor(theme.body),
+                textDirection: ReadingDirection.of(
+                  content.single.text,
+                  fallback: Directionality.of(context),
+                ),
+                selectionColor: theme.palette.selection,
+                selectionIdentity: identity,
+                selectionOrder: selectionOrder,
+                debugOnSourceIndexed: debugOnParagraphCodeUnitsIndexed,
+              )
+            : Paragraph(
+                spans: composer.compose(
+                  content,
+                  style: theme.body,
+                  offset: offset,
+                ),
+                style: theme.body,
+                textScaler: theme.textScaler,
+                strut: theme.strutFor(theme.body),
+                indent: indent,
+              );
         return _matchTarget(
           reconcileContainer && content.any(_containsMath)
               ? _RhythmicContainer(
