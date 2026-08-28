@@ -20,7 +20,9 @@ from replacing a newer query (`lib/api/screens/reader_screen.dart`). The control
 
 Current-document results appear in a quiet bar over the page with an active
 count and previous, next and close controls
-(`lib/api/widgets/search_view.dart`). Enter and Shift-Enter navigate;
+(`lib/api/widgets/search_view.dart`). Its opaque theme surface is painted after
+the surrounding shadow, so elevation never muddies the control's own colour.
+Enter and Shift-Enter navigate;
 Escape closes (`lib/api/widgets/search_view.dart`). The page highlights every match and gives the
 active one a stronger ground while preserving typography
 (`lib/api/render/inline_composer.dart`).

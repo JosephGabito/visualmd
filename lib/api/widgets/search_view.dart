@@ -36,13 +36,17 @@ final class DocumentFindBar extends StatelessWidget {
     final chrome = context.chrome;
     return Material(
       elevation: 0,
-      color: chrome.elevated,
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(LibraryChromeScale.floatingRadius),
       child: Container(
         width: 390,
         height: 42,
         padding: const EdgeInsets.only(left: 10, right: 4),
         decoration: BoxDecoration(
+          // Paint the opaque material after its shadows. A transparent
+          // decoration would let the filled shadow darken the entire control
+          // instead of describing elevation around its edge.
+          color: chrome.elevated,
           borderRadius: BorderRadius.circular(
             LibraryChromeScale.floatingRadius,
           ),
