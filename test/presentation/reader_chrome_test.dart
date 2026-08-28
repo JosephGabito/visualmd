@@ -793,4 +793,22 @@ void main() {
       expect(find.byType(OutlinePanel), findsOneWidget);
     },
   );
+
+  testWidgets('Command-Period cancels search instead of toggling the outline', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    expect(find.byType(OutlinePanel), findsOneWidget);
+
+    await pressFind(tester);
+    expect(find.byKey(const ValueKey('document-search-field')), findsOneWidget);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.period);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('document-search-field')), findsNothing);
+    expect(find.byType(OutlinePanel), findsOneWidget);
+  });
 }

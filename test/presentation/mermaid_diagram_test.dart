@@ -104,7 +104,7 @@ void main() {
   });
 
   testWidgets(
-    'full screen opens an independent explorer and Escape closes it',
+    'full screen explorer accepts both standard cancellation commands',
     (tester) async {
       await pumpDiagram(tester, _FakeRenderer());
 
@@ -117,6 +117,14 @@ void main() {
       );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('mermaid-surface')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('mermaid-fullscreen')));
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.period);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('mermaid-surface')), findsOneWidget);
     },

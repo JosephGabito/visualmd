@@ -294,9 +294,12 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
           final viewport = _viewport;
           if (viewport != null) _fit(viewport);
         },
-        if (widget.fullScreen)
+        if (widget.fullScreen) ...{
           const SingleActivator(LogicalKeyboardKey.escape): () =>
               Navigator.of(context).pop(),
+          const SingleActivator(LogicalKeyboardKey.period, meta: true): () =>
+              Navigator.of(context).pop(),
+        },
       },
       child: Focus(
         autofocus: widget.fullScreen,
