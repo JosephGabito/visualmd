@@ -1114,6 +1114,45 @@ A supported claim.[^source]
     expect(table.border!.verticalInside, BorderSide.none);
   });
 
+  testWidgets('copy table writes tab-and-newline structured text', (
+    tester,
+  ) async {
+    String? copied;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied =
+                (call.arguments as Map<Object?, Object?>)['text'] as String;
+          }
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    await pumpDocument(tester, [
+      const TableBlock(
+        head: [
+          TableCell([TextRun('Property')]),
+          TableCell([TextRun('Value')]),
+        ],
+        rows: [
+          [
+            TableCell([TextRun('Radius')]),
+            TableCell([TextRun('Continuous')]),
+          ],
+        ],
+      ),
+    ]);
+
+    await tester.tap(find.byTooltip('Copy table'));
+    await tester.pump();
+
+    expect(copied, 'Property\tValue\nRadius\tContinuous');
+    expect(find.byTooltip('Table copied'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1400));
+  });
+
   testWidgets('a path-like table value stays on one line', (tester) async {
     await pumpDocument(tester, [
       const TableBlock(

@@ -158,11 +158,11 @@ Each block type is built by `_BlockView`
   shapes keep their own horizontal scroller rather than widening the page.
   Numeric cells use lining tabular figures. Flutter contributes table, row and
   cell semantics, and Visual MD marks the authored head as column headers. The
-  surrounding reading pane keeps every cell selectable. `TableBlock.text`
-  separately preserves rows as newlines and cell boundaries as tabs for search
-  and source offsets; structured cross-cell clipboard output remains open
+  surrounding reading pane keeps every cell selectable. A quiet Copy table
+  action writes `TableBlock.text`, which preserves rows as newlines and cell
+  boundaries as tabs, so the clipboard retains structure for a spreadsheet
   (`lib/domain/reading/content/block.dart`,
-  `lib/api/widgets/reading_pane.dart`).
+  `lib/api/render/document_view.dart`).
   Rows keep their content-driven height, then the completed surface and its
   forward-owned gap reconcile together so following prose returns to the body
   grid without padding every row (`lib/api/render/document_view.dart`).
