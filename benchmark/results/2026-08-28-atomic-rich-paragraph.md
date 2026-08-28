@@ -188,3 +188,26 @@ document offsets and geometry estimates request `block.text`, and paragraph
 eligibility walks the complete inline tree again. The next slice must retain
 those facts alongside the revision. This pass therefore proves suffix-bounded
 rich indexes, not yet an end-to-end constant-cost document revision.
+
+## Retained block facts
+
+`DocumentBlock` now carries exact visible code-unit and authored-line-break
+counts. The parser extends them from a proven suffix; the page consumes them
+for navigation offsets and geometry seeds. The sliver index also retains the
+prior paragraph's range eligibility, so a proven inline append checks only its
+new runs.
+
+| Existing characters | Appended | Append wall | Indexing pumps | Append frame worst | Mounted after | Scroll delta |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10,032 | 51 | 691 ms | 0 | 18.1 ms | 10,083 | 0 px |
+| 100,056 | 51 | 657 ms | 0 | 3.5 ms | 1,650 | 0 px |
+| 1,000,032 | 51 | 663 ms | 0 | 8.7 ms | 1,650 | 0 px |
+
+The former presentation-level whole-prefix walks accounted for roughly two
+thirds of the million-character append frame: removing them lowers 25.0 ms to
+8.7 ms. The 5.2 ms difference between the 100k and 1M windowed fixtures is now
+the narrower flat-source boundary. `InlineRangeIndex.append` must still create
+one accumulated `String`, because the retained paragraph and semantics APIs
+currently accept a flat string. The parser benchmark must separately include
+provisional-tail parsing before the complete AI-streaming path can be called
+constant-cost.

@@ -49,9 +49,14 @@ bool _usesWindowedTextParagraph({
   required Block block,
   required double indent,
   required bool hasMatches,
+  int? textLength,
+  bool? rangeSafe,
 }) {
   if (indent != 0 || hasMatches || block is! ParagraphBlock) {
     return false;
+  }
+  if (textLength != null && rangeSafe != null) {
+    return rangeSafe && textLength >= _windowedParagraphThreshold;
   }
   return InlineRangeIndex.supportsAtLeast(
     block.content,
@@ -307,6 +312,8 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             block: block,
             indent: indent,
             hasMatches: widget.matches.isNotEmpty,
+            textLength: entry.textMetrics.codeUnits,
+            rangeSafe: entry.rangeSafe,
           );
           final view = _BlockView(
             block: block,
@@ -527,12 +534,22 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
       id: entry.id!,
       revision: entry.revision,
       estimatedExtent:
-          _estimatedBlockExtent(block, width, context.theme) +
+          _estimatedBlockExtent(
+            block,
+            entry.textMetrics,
+            width,
+            context.theme,
+          ) +
           context.theme.spaceAfter(block, next),
     );
   }
 
-  double _estimatedBlockExtent(Block block, double width, ReadingTheme theme) {
+  double _estimatedBlockExtent(
+    Block block,
+    BlockTextMetrics metrics,
+    double width,
+    ReadingTheme theme,
+  ) {
     final averageAdvance = math.max(theme.renderedBase * 0.52, 1.0);
     final charactersPerLine = math.max((width / averageAdvance).floor(), 12);
     int wrappedLines(String text) => text
@@ -544,14 +561,23 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
         );
 
     return switch (block) {
+      ParagraphBlock() => math.max(
+        theme.line,
+        (metrics.lineBreaks +
+                math.max(
+                  1,
+                  ((metrics.codeUnits - metrics.lineBreaks) / charactersPerLine)
+                      .ceil(),
+                )) *
+            theme.line,
+      ),
       HeadingBlock(:final level, :final text) => math.max(
         theme.line,
         wrappedLines(text) *
             (theme.heading(level).fontSize ?? theme.renderedBase) *
             (theme.heading(level).height ?? 1.2),
       ),
-      CodeBlock(:final code) =>
-        math.max(2, code.split('\n').length + 1) * theme.line,
+      CodeBlock() => math.max(2, metrics.lineBreaks + 2) * theme.line,
       MathBlock() => theme.line * 4,
       MermaidBlock() => theme.line * 8,
       _ => math.max(theme.line, wrappedLines(block.text) * theme.line),
@@ -662,6 +688,9 @@ class _BlockSequence extends StatelessWidget {
       final next = i + 1 < visible.length ? visible[i + 1].block : null;
       final followingSpace =
           spaceAfter?.call(block, next) ?? theme.spaceAfter(block, next);
+      final indent = ParagraphRules.indents(previous, marking)
+          ? theme.indent
+          : 0.0;
 
       final view = _BlockView(
         block: block,
@@ -673,9 +702,16 @@ class _BlockSequence extends StatelessWidget {
         customKeys: customKeys,
         matchKeys: matchKeys,
         offset: entry.offset,
-        indent: ParagraphRules.indents(previous, marking) ? theme.indent : 0,
+        indent: indent,
         followingSpace: followingSpace,
         reconcileContainer: reconcileContainers,
+        useWindowedParagraph: _usesWindowedTextParagraph(
+          block: block,
+          indent: indent,
+          hasMatches: composer.matches.isNotEmpty,
+          textLength: entry.textMetrics.codeUnits,
+          rangeSafe: entry.rangeSafe,
+        ),
       );
       final width = widthFor?.call(block);
       final positioned = width == null
@@ -736,6 +772,8 @@ final class _VisibleBlock {
     this.commitment,
     this.textAppend,
     this.inlineAppend,
+    this.textMetrics,
+    this.rangeSafe,
   );
 
   final Block block;
@@ -746,6 +784,8 @@ final class _VisibleBlock {
   final BlockCommitment commitment;
   final BlockTextAppend? textAppend;
   final BlockInlineAppend? inlineAppend;
+  final BlockTextMetrics textMetrics;
+  final bool rangeSafe;
 }
 
 final class _IndexedBlocks {
@@ -757,6 +797,7 @@ final class _IndexedBlocks {
     required this.visibleIndexes,
     required this.visibleLengths,
     required this.offsets,
+    required this.rangeSafety,
   });
 
   final List<_VisibleBlock> visible;
@@ -766,6 +807,7 @@ final class _IndexedBlocks {
   final Map<DocumentBlockId, int> visibleIndexes;
   final List<int> visibleLengths;
   final List<int> offsets;
+  final Map<DocumentBlockId, ({int revision, bool safe})> rangeSafety;
 }
 
 _IndexedBlocks _indexBlocks(
@@ -782,6 +824,7 @@ _IndexedBlocks _indexBlocks(
         commitment: BlockCommitment.committed,
         textAppend: null,
         inlineAppend: null,
+        textMetrics: BlockTextMetrics.fromBlock(block),
       ),
   ], separatorLength: separatorLength);
 }
@@ -799,6 +842,7 @@ _IndexedBlocks _indexDocumentBlocks(
       commitment: entry.commitment,
       textAppend: entry.textAppend,
       inlineAppend: entry.inlineAppend,
+      textMetrics: entry.textMetrics,
     ),
 ], separatorLength: separatorLength);
 
@@ -815,6 +859,7 @@ _IndexedBlocks _appendDocumentBlocks(
       commitment: entry.commitment,
       textAppend: entry.textAppend,
       inlineAppend: entry.inlineAppend,
+      textMetrics: entry.textMetrics,
     ),
 ], separatorLength: separatorLength);
 
@@ -826,6 +871,7 @@ _IndexedBlocks _emptyIndex(int startOffset) => _IndexedBlocks(
   visibleIndexes: {},
   visibleLengths: [0],
   offsets: [startOffset],
+  rangeSafety: {},
 );
 
 _IndexedBlocks _extendIndex(
@@ -838,6 +884,7 @@ _IndexedBlocks _extendIndex(
       BlockCommitment commitment,
       BlockTextAppend? textAppend,
       BlockInlineAppend? inlineAppend,
+      BlockTextMetrics textMetrics,
     })
   >
   appended, {
@@ -859,6 +906,18 @@ _IndexedBlocks _extendIndex(
     final visibleIndex = visible.length;
     final id = entry.id;
     if (id != null) visibleIndexes[id] = visibleIndex;
+    final priorSafety = id == null ? null : current.rangeSafety[id];
+    final rangeSafe = switch (block) {
+      ParagraphBlock()
+          when priorSafety != null &&
+              entry.inlineAppend?.baseRevision == priorSafety.revision =>
+        priorSafety.safe && InlineRangeIndex.supports(entry.inlineAppend!.runs),
+      ParagraphBlock(:final content) => InlineRangeIndex.supports(content),
+      _ => false,
+    };
+    if (id != null) {
+      current.rangeSafety[id] = (revision: entry.revision, safe: rangeSafe);
+    }
     visible.add(
       _VisibleBlock(
         block,
@@ -869,10 +928,12 @@ _IndexedBlocks _extendIndex(
         entry.commitment,
         entry.textAppend,
         entry.inlineAppend,
+        entry.textMetrics,
+        rangeSafe,
       ),
     );
     pendingAnchors.clear();
-    offset += block.text.length + separatorLength;
+    offset += entry.textMetrics.codeUnits + separatorLength;
     current.visibleLengths.add(visible.length);
     current.offsets.add(offset);
   }

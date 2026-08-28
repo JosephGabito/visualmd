@@ -24,6 +24,13 @@ facts, not something a renderer rediscovers with a full-prefix comparison. A
 consumer applies either only when its retained block revision matches the named
 base (`lib/domain/reading/content/document_content.dart`).
 
+Each revision also carries `BlockTextMetrics`: the exact visible UTF-16 length
+and authored line-break count, derived from the block tree without flattening
+it (`lib/domain/reading/content/block.dart`). A proven suffix extends those two
+facts from its own runs. Navigation offsets and initial geometry can therefore
+advance with the revision instead of joining the complete provisional block on
+every token.
+
 The model's one rule is that it carries the author's **reading text** exactly.
 Markdown delimiters and escape backslashes have already served their grammar,
 so `\*literal\*` arrives as `*literal*`; the punctuation itself is not changed.
@@ -210,9 +217,10 @@ they create. A revised entry may also carry one `BlockTextAppend` or
 `BlockInlineAppend` for consumers which own an appendable text or style index
 (`lib/domain/reading/content/document_content.dart`).
 
-Out: `entries` with stable identity, `blocks` and `headings` in source order,
-`revision`, `isEmpty`, and `text` — every word without decoration, for anything
-that needs words rather than shapes. `tailChangeSince` identifies a direct
+Out: `entries` with stable identity, visible-text metrics, `blocks` and
+`headings` in source order, `revision`, `isEmpty`, and `text` — every word
+without decoration, for anything that needs words rather than shapes.
+`tailChangeSince` identifies a direct
 suffix insertion, replacement, or removal and reports only its start, removed
 count, and replacement records. `appendedSince` is its stricter append-only
 view. A non-tail edit deliberately returns no bounded delta

@@ -8,6 +8,66 @@ sealed class Block {
   String get text;
 }
 
+/// Compact visible-text facts carried beside a revisioned block.
+///
+/// Rendering offsets and geometry estimates need length and authored-line
+/// count, not a newly flattened copy of every inline run. Keeping those facts
+/// in the reading model lets an append extend them from its suffix while the
+/// original semantic tree remains intact.
+final class BlockTextMetrics {
+  final int codeUnits;
+  final int lineBreaks;
+
+  const BlockTextMetrics({required this.codeUnits, required this.lineBreaks})
+    : assert(codeUnits >= 0),
+      assert(lineBreaks >= 0),
+      assert(lineBreaks <= codeUnits);
+
+  factory BlockTextMetrics.fromText(String text) =>
+      BlockTextMetrics(codeUnits: text.length, lineBreaks: _lineBreaksIn(text));
+
+  factory BlockTextMetrics.fromInlines(Iterable<Inline> content) {
+    var codeUnits = 0;
+    var lineBreaks = 0;
+
+    void addText(String text) {
+      codeUnits += text.length;
+      lineBreaks += _lineBreaksIn(text);
+    }
+
+    void visit(Inline inline) {
+      switch (inline) {
+        case TextRun(:final text) ||
+            CodeRun(:final text) ||
+            MathRun(source: final text) ||
+            FootnoteReferenceRun(:final text) ||
+            FootnoteBackReferenceRun(:final text) ||
+            ImageRun(:final text):
+          addText(text);
+        case LineBreakRun():
+          codeUnits++;
+          lineBreaks++;
+        case MarkedRun(:final children) || LinkRun(:final children):
+          for (final child in children) {
+            visit(child);
+          }
+      }
+    }
+
+    for (final inline in content) {
+      visit(inline);
+    }
+    return BlockTextMetrics(codeUnits: codeUnits, lineBreaks: lineBreaks);
+  }
+
+  factory BlockTextMetrics.fromBlock(Block block) => _metricsForBlock(block);
+
+  BlockTextMetrics append(BlockTextMetrics suffix) => BlockTextMetrics(
+    codeUnits: codeUnits + suffix.codeUnits,
+    lineBreaks: lineBreaks + suffix.lineBreaks,
+  );
+}
+
 /// Joins visible block text without letting navigation-only blocks invent a
 /// separator. Containers and the top-level document use the same rule so
 /// search offsets remain identical to the page at every nesting depth.
@@ -208,4 +268,73 @@ final class RawBlock extends Block {
   final String text;
 
   const RawBlock(this.text);
+}
+
+BlockTextMetrics _metricsForBlock(Block block) => switch (block) {
+  ParagraphBlock(:final content) ||
+  HeadingBlock(:final content) => BlockTextMetrics.fromInlines(content),
+  AnchorBlock() ||
+  RuleBlock() => const BlockTextMetrics(codeUnits: 0, lineBreaks: 0),
+  CodeBlock(:final code) => BlockTextMetrics.fromText(code),
+  MathBlock(:final source) ||
+  MermaidBlock(:final source) => BlockTextMetrics.fromText(source),
+  QuoteBlock(:final blocks) => _metricsSeparated(
+    blocks.where((child) => child is! AnchorBlock).map(_metricsForBlock),
+    separator: '\n',
+  ),
+  ListBlock(:final items) => _metricsSeparated(
+    items.map(
+      (item) => _metricsSeparated(
+        item.blocks
+            .where((child) => child is! AnchorBlock)
+            .map(_metricsForBlock),
+        separator: '\n',
+      ),
+    ),
+    separator: '\n',
+  ),
+  FootnoteSectionBlock(:final definitions) => _metricsSeparated(
+    definitions.map(
+      (definition) => _metricsSeparated(
+        definition.blocks
+            .where((child) => child is! AnchorBlock)
+            .map(_metricsForBlock),
+        separator: '\n',
+      ),
+    ),
+    separator: '\n',
+  ),
+  TableBlock(:final head, :final rows) => _metricsSeparated(
+    [head, ...rows].map(
+      (row) => _metricsSeparated(
+        row.map((cell) => BlockTextMetrics.fromInlines(cell.content)),
+        separator: '\t',
+      ),
+    ),
+    separator: '\n',
+  ),
+  RawBlock(:final text) => BlockTextMetrics.fromText(text),
+};
+
+BlockTextMetrics _metricsSeparated(
+  Iterable<BlockTextMetrics> values, {
+  required String separator,
+}) {
+  final separatorMetrics = BlockTextMetrics.fromText(separator);
+  var result = const BlockTextMetrics(codeUnits: 0, lineBreaks: 0);
+  var first = true;
+  for (final value in values) {
+    if (!first) result = result.append(separatorMetrics);
+    result = result.append(value);
+    first = false;
+  }
+  return result;
+}
+
+int _lineBreaksIn(String text) {
+  var count = 0;
+  for (var index = 0; index < text.length; index++) {
+    if (text.codeUnitAt(index) == 10) count++;
+  }
+  return count;
 }

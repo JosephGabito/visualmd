@@ -313,7 +313,7 @@ class ReadingPaneState extends State<ReadingPane> {
       }
       _blockOffsets.add(_nextBlockOffset);
       _visibleBlockIds.add(entry.id);
-      _nextBlockOffset += block.text.length + 2;
+      _nextBlockOffset += entry.textMetrics.codeUnits + 2;
       _visibleBlockCount++;
     }
     for (final anchor in pendingAnchors) {
@@ -361,15 +361,16 @@ class ReadingPaneState extends State<ReadingPane> {
     if (visibleStart == 0) {
       _nextBlockOffset = 0;
     } else {
-      Block? preceding;
+      DocumentBlock? preceding;
       for (var index = change.index - 1; index >= 0; index--) {
-        final block = previous.entries[index].block;
-        if (block is AnchorBlock) continue;
-        preceding = block;
+        final entry = previous.entries[index];
+        if (entry.block is AnchorBlock) continue;
+        preceding = entry;
         break;
       }
       if (preceding == null) return false;
-      _nextBlockOffset = _blockOffsets.last + preceding.text.length + 2;
+      _nextBlockOffset =
+          _blockOffsets.last + preceding.textMetrics.codeUnits + 2;
     }
     _appendNavigation(change.blocks);
     return true;
