@@ -19,6 +19,9 @@ void main() {
           ),
         ),
       );
+      expect(source, isNot(contains('visualmd.dev')));
+      expect(source, contains('https://visualmd.gabi.to/support/'));
+      expect(source, contains('https://visualmd.gabi.to/privacy/'));
     },
   );
 }
