@@ -6,7 +6,13 @@
 readonly TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_ROOT="$(cd "$TOOLS_DIR/../.." && pwd)"
 
-readonly DART_PATHS=(lib test)
+readonly QUIET_VIEWPORT_ROOT="$PROJECT_ROOT/packages/quiet_viewport"
+readonly DART_PATHS=(
+  lib
+  test
+  packages/quiet_viewport/lib
+  packages/quiet_viewport/test
+)
 readonly SWIFT_PATHS=(
   macos/Runner/AppDelegate.swift
   macos/Runner/MainFlutterWindow.swift
@@ -38,4 +44,13 @@ prepare_project() {
   require_tool dart
   require_tool flutter
   require_tool python3
+}
+
+resolve_dependencies() {
+  section "Resolve project dependencies"
+  flutter pub get
+  (
+    cd "$QUIET_VIEWPORT_ROOT"
+    dart pub get
+  )
 }
