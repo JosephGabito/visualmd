@@ -57,6 +57,12 @@ Both side panels are wrapped in a
 the page as it leaves. A compact panel overlays the page and closes the panel
 on the opposite side.
 
+Wide shelf and outline visibility are independent, restored reader preferences.
+Compact overlays deliberately do not change them: opening, selecting from, or
+dismissing a compact panel lasts only for that transient interaction
+(`lib/api/reader_controller.dart`,
+`lib/api/screens/reader_screen.dart`).
+
 On wide windows, a [Panel Resize Handle](19-panel-resize-handle.md) sits at each
 inner edge. The shell asks [Panel Widths](18-panel-widths.md) to fit both
 preferences around the measured prose width plus its gutters, so side

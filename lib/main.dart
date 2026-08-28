@@ -177,6 +177,12 @@ Future<void> main() async {
     await platform.readPreference(shelfWidthPreference),
     await platform.readPreference(outlineWidthPreference),
   );
+  final shelfVisible = storedPanelVisibility(
+    await platform.readPreference(shelfVisiblePreference),
+  );
+  final outlineVisible = storedPanelVisibility(
+    await platform.readPreference(outlineVisiblePreference),
+  );
   final shelfLabelMode = ShelfLabelMode.fromStored(
     await platform.readPreference(shelfLabelModePreference),
   );
@@ -253,6 +259,8 @@ Future<void> main() async {
     readingMode: readingMode,
     readingScale: readingScale,
     panelWidths: panelWidths,
+    shelfVisible: shelfVisible,
+    outlineVisible: outlineVisible,
     shelfLabelMode: shelfLabelMode,
     sourceChanges: sourceChanges,
     savePreference: platform.writePreference,
@@ -380,6 +388,15 @@ Future<void> _whenReaderIsReady(ReaderController controller) async {
     controller.removeListener(observe);
   }
 }
+
+/// Restores a panel preference without letting loosely formatted values hide
+/// navigation. Only the exact persisted false value closes a panel; an absent,
+/// corrupt, or future value preserves the established visible default.
+bool storedPanelVisibility(String? value) => switch (value) {
+  'false' => false,
+  'true' || null => true,
+  _ => true,
+};
 
 WorkspaceTheme _workspaceTheme(ThemeChoice choice) => switch (choice) {
   FixedTheme(:final id) => FixedWorkspaceTheme(id),
