@@ -11,7 +11,6 @@ dependencies:
   flutter:
     sdk: flutter
   web: ^1.1.0
-  google_fonts: ^6.2.1
   desktop_drop: ^0.8.0
   file_selector: ^1.1.0
   window_manager: ^0.5.2

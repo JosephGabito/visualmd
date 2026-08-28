@@ -194,12 +194,10 @@ that built-in — that is how you tweak one of the shipped themes.
 | `palette.codeBackground` | Fenced-code header; the body derives a second tone. |
 | `palette.accentSoft` | Optional. Selected and hovered rows. Derived from the accent over the paper when absent. |
 | `palette.selection` | Optional. Text selection. Derived from the accent when absent. |
-| `typefaces` | Optional. Any Google Fonts family name; an unknown name falls back to the library's own. |
+| `typefaces` | Optional. Bundled family names; an unsupported name falls back locally to the library's own. |
 
 Scientific `sub` and `sup` text uses each face's OpenType `subs` and `sups`
-features. The bundled faces provide both. When choosing a custom serif or mono
-family, choose one that provides those features too; a face without them leaves
-the affected glyphs on the ordinary baseline.
+features. Every bundled face provides both.
 
 Colours accept `#rgb`, `#rrggbb` or `#rrggbbaa`, with or without the `#`.
 

@@ -29,7 +29,7 @@ long extenders and the movement of a book rather than the even texture of a
 screen serif. Geist Mono was drawn for code editors, diagrams and terminals,
 so the functional voice is meant for dense source rather than borrowed from a
 prose face. Literata is still bundled and still selectable — a theme may name
-it, and `?serif=<family>` swaps the reading face for one run. It serves three
+it, and `?serif=Literata` swaps the reading face for one run. It serves three
 purposes at once: the default when a theme omits `typefaces` entirely
 (`lib/presentation/theme/reader_theme.dart`), the per-field default when a
 theme names only some of them
@@ -49,10 +49,12 @@ Out: three family names, or a `ThemeFormatException`. `toJson` always writes
 all three (`lib/presentation/theme/theme_typefaces.dart`), so a
 round-tripped theme is explicit about what it inherited.
 
-The four shipped families are bundled and resolved without a network request.
-Other names are requested through Google Fonts by the API ring; if a name
-cannot be resolved, the matching library family is used instead
-(`lib/api/theme/library_theme.dart`).
+The four shipped families are bundled, licensed, measured and resolved without
+a network request. Other names fall back to the matching library family rather
+than being fetched at runtime (`lib/api/theme/library_theme.dart`). Serif
+reading accepts Alegreya or Literata; Sans reading is always Inter. This keeps
+the x-height, leading and measure contract true even when a custom palette
+contains an old or unsupported family name.
 
 ## Events
 
@@ -71,9 +73,9 @@ One failure at parse time: a key present but not a non-empty string
 (`lib/presentation/theme/theme_typefaces.dart`), reported as
 `typefaces."<key>" must be a non-empty string`, which skips the whole theme.
 
-A *valid* name that names no real font is not a parse failure — it cannot be
-detected here, because this ring has no font layer. It surfaces later as a
-silent fallback to the library family
+A *valid* name that is not one of the bundled, measured families is not a parse
+failure — it cannot be detected here, because this ring has no font layer. It
+surfaces later as a silent local fallback to the library family
 (`lib/api/theme/library_theme.dart`). The reader sees a different
 face than the author intended; nothing breaks.
 

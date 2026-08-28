@@ -55,11 +55,10 @@ four OFL files ship as assets (`pubspec.yaml`) and
 (`lib/api/theme/font_licences.dart`), called once at startup
 (`lib/main.dart`).
 
-`GoogleFonts` is now only a fallback. A bundled family is used directly; a
-family a theme names that we do not ship is fetched at runtime, and if that
-fails the library's own face stands in
-(`lib/api/theme/library_theme.dart`). A typo in a theme file costs a
-font, not the app.
+The app never fetches fonts at runtime. A bundled, licensed family is used
+directly; a family a theme names that we do not ship falls back to the
+library's own face (`lib/api/theme/library_theme.dart`). A typo in a theme file
+costs a font choice, not an offline reading session.
 
 The bundled faces cover Latin writing, not every script a markdown document
 may contain. Every style therefore carries the same ordered native fallback
@@ -76,10 +75,12 @@ draws a grapheme the preferred face does not own.
 long-form text — with Inter for the furniture and Geist Mono for code
 (`lib/presentation/theme/theme_typefaces.dart`). Geist Mono was drawn
 specifically for code editors, diagrams and terminals. Literata stays bundled
-and selectable: a theme may name it, and `?serif=<family>` overrides the reading
+and selectable: a theme may name it, and `?serif=Literata` overrides the reading
 face for one run (`lib/main.dart`, applied by `VisualMdApp._wearing` at
 `lib/api/app.dart`), which is for judging a face on a real document and so
-is not persisted.
+is not persisted. Other serif names fall back to Alegreya, and Sans reading is
+always Inter regardless of a theme's furniture settings. Every reading face is
+therefore backed by measured x-height, cap-height and descender values.
 
 A bundled family is not set at the size asked for: that size is a size of
 *letters*, and [Font Metrics](16-font-metrics.md) works out the font size

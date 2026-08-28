@@ -6,6 +6,7 @@ import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/theme/library_chrome.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reader_theme.dart';
+import 'package:visualmd/presentation/theme/reading_mode.dart';
 import 'package:visualmd/presentation/theme/theme_format_exception.dart';
 import 'package:visualmd/presentation/theme/theme_palette.dart';
 import 'package:visualmd/presentation/theme/theme_typefaces.dart';
@@ -349,6 +350,46 @@ void main() {
         expect(style.fontFamilyFallback, contains('Noto Sans CJK SC'));
         expect(style.fontFamilyFallback, contains('Noto Sans Devanagari'));
       }
+    });
+
+    test('reading modes cannot escape the measured bundled faces', () {
+      const themed = LibraryTypefaces(
+        ThemeTypefaces(
+          serif: 'Unmeasured Serif',
+          sans: 'Unmeasured Sans',
+          mono: 'Unmeasured Mono',
+        ),
+      );
+      const literata = LibraryTypefaces(
+        ThemeTypefaces(
+          serif: 'Literata',
+          sans: 'Unmeasured Sans',
+          mono: 'Geist Mono',
+        ),
+      );
+
+      expect(
+        themed
+            .reading(ReadingMode.serif, color: const Color(0xFF111111))
+            .fontFamily,
+        'Alegreya',
+      );
+      expect(
+        themed
+            .reading(ReadingMode.sans, color: const Color(0xFF111111))
+            .fontFamily,
+        'Inter',
+      );
+      expect(
+        themed.mono(color: const Color(0xFF111111)).fontFamily,
+        'Geist Mono',
+      );
+      expect(
+        literata
+            .reading(ReadingMode.serif, color: const Color(0xFF111111))
+            .fontFamily,
+        'Literata',
+      );
     });
   });
 

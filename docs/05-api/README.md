@@ -54,7 +54,7 @@ The API ring brings together three inward-facing parts of the application:
   (`lib/api/theme/library_theme.dart`,
   `lib/api/reader_controller.dart`).
 
-Flutter and `google_fonts` provide the rendering tools
+Flutter provides the rendering tools
 (`lib/api/theme/library_theme.dart`). Markdown is not handed to a generic
 widget: `lib/api/render/` renders the domain's content model directly
 (`lib/api/render/document_view.dart`).

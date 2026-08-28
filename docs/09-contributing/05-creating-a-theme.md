@@ -62,7 +62,7 @@ once at startup, so add a file and restart.
 | `palette.codeBackground` | yes | Fenced-code header; the body derives a lighter or darker tone. |
 | `palette.accentSoft` | no | Selected and hovered rows. Derived from the accent over the paper when absent. |
 | `palette.selection` | no | Text selection. Derived from the accent at 30 % alpha when absent. |
-| `typefaces.serif` / `.sans` / `.mono` | no | Bundled or Google Fonts family names. Serif and sans are the two reading-mode roles; sans also sets interface furniture, while mono sets code. Each falls back independently (`lib/presentation/theme/theme_typefaces.dart`). |
+| `typefaces.serif` / `.sans` / `.mono` | no | Bundled family names only. Alegreya or Literata may set Serif reading; Sans reading remains Inter. Unsupported names fall back locally (`lib/api/theme/library_theme.dart`). |
 
 `schema` is not read today; write `1` so a future loader can tell what it is
 looking at (`lib/presentation/theme/reader_theme.dart`).

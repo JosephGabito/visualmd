@@ -184,10 +184,9 @@ selection, semantics, nested Markdown roles, and the prose baseline grid stay
 unchanged (`lib/api/render/inline_composer.dart`).
 
 The bundled-font contract is checked from each font's own GSUB table
-(`test/presentation/bundled_scientific_feature_test.dart`). A custom theme may
-name any Google Fonts family, so its author must choose a serif and mono face
-that also provides `subs` and `sups`; a face without those substitutions keeps
-the affected glyph on the ordinary baseline.
+(`test/presentation/bundled_scientific_feature_test.dart`). Custom themes may
+name only bundled faces at render time, so every accepted serif and mono face
+has already been checked for `subs` and `sups`.
 
 `InlineMark.insertion` adds one inherited-ink underline. GitHub documents
 `ins` as underline, while a link retains the stronger interaction pair of an
