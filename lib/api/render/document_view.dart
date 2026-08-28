@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide TableCell;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import '../../application/ports/document_image_loader.dart';
 import '../../application/ports/document_viewport_geometry.dart';
@@ -1919,11 +1921,24 @@ class _Table extends StatefulWidget {
 
 class _TableState extends State<_Table> {
   final _scroll = ScrollController();
+  Timer? _copiedReset;
+  var _copied = false;
 
   @override
   void dispose() {
+    _copiedReset?.cancel();
     _scroll.dispose();
     super.dispose();
+  }
+
+  Future<void> _copyTable() async {
+    await Clipboard.setData(ClipboardData(text: widget.table.text));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    _copiedReset?.cancel();
+    _copiedReset = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _copied = false);
+    });
   }
 
   @override
@@ -2021,48 +2036,75 @@ class _TableState extends State<_Table> {
           color: widget.theme.palette.border.withValues(alpha: 0.62),
         );
 
-        return ClipRRect(
-          borderRadius: radius,
-          child: Scrollbar(
-            controller: _scroll,
-            // A clipped column looks complete. The persistent thumb is the
-            // sign that the table continues beyond the reading band.
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              controller: _scroll,
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: tableWidth,
-                child: Table(
-                  // Alignment and the header ground already establish the
-                  // columns. Rules mark the perimeter and row relationships;
-                  // vertical boxes would repeat structure the type supplies.
-                  border: TableBorder(
-                    top: perimeter,
-                    right: perimeter,
-                    bottom: perimeter,
-                    left: perimeter,
-                    horizontalInside: rowRule,
-                    borderRadius: radius,
-                  ),
-                  columnWidths: {
-                    for (var column = 0; column < columns; column++)
-                      column: FixedColumnWidth(columnWidths[column]),
-                  },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    TableRow(
-                      decoration: BoxDecoration(
-                        color: widget.theme.palette.panel,
+        return Stack(
+          children: [
+            ClipRRect(
+              borderRadius: radius,
+              child: Scrollbar(
+                controller: _scroll,
+                // A clipped column looks complete. The persistent thumb is the
+                // sign that the table continues beyond the reading band.
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _scroll,
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Table(
+                      // Alignment and the header ground already establish the
+                      // columns. Rules mark the perimeter and row relationships;
+                      // vertical boxes would repeat structure the type supplies.
+                      border: TableBorder(
+                        top: perimeter,
+                        right: perimeter,
+                        bottom: perimeter,
+                        left: perimeter,
+                        horizontalInside: rowRule,
+                        borderRadius: radius,
                       ),
-                      children: head,
+                      columnWidths: {
+                        for (var column = 0; column < columns; column++)
+                          column: FixedColumnWidth(columnWidths[column]),
+                      },
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
+                      children: [
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: widget.theme.palette.panel,
+                          ),
+                          children: head,
+                        ),
+                        for (final row in rows) TableRow(children: row),
+                      ],
                     ),
-                    for (final row in rows) TableRow(children: row),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+            PositionedDirectional(
+              top: 4,
+              end: 4,
+              child: Material(
+                color: widget.theme.palette.panel,
+                borderRadius: BorderRadius.circular(
+                  LibraryChromeScale.controlRadius,
+                ),
+                child: IconButton(
+                  tooltip: _copied ? 'Table copied' : 'Copy table',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _copyTable,
+                  icon: Icon(
+                    _copied ? Icons.check : Icons.content_copy_outlined,
+                    size: 16,
+                    color: _copied
+                        ? widget.theme.palette.accent
+                        : widget.theme.palette.muted,
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
