@@ -40,6 +40,19 @@ final class ParagraphSourceAppend {
   const ParagraphSourceAppend({required this.baseRevision, required this.text});
 }
 
+/// An upstream-proven replacement after one retained source boundary.
+final class ParagraphSourceTailReplace {
+  final int baseRevision;
+  final int prefixLength;
+  final String text;
+
+  const ParagraphSourceTailReplace({
+    required this.baseRevision,
+    required this.prefixLength,
+    required this.text,
+  }) : assert(prefixLength >= 0);
+}
+
 /// A large plain paragraph whose render cost is bounded by its viewport.
 ///
 /// The complete source remains one semantic and selectable paragraph, while
@@ -51,6 +64,7 @@ final class WindowedPlainParagraph extends StatefulWidget {
   final String source;
   final int sourceRevision;
   final ParagraphSourceAppend? sourceAppend;
+  final ParagraphSourceTailReplace? sourceTailReplace;
   final TextStyle style;
   final TextScaler textScaler;
   final StrutStyle? strutStyle;
@@ -75,6 +89,7 @@ final class WindowedPlainParagraph extends StatefulWidget {
     required this.source,
     required this.sourceRevision,
     this.sourceAppend,
+    this.sourceTailReplace,
     required this.style,
     this.textScaler = TextScaler.noScaling,
     this.strutStyle,
@@ -321,6 +336,34 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
       _indexedFinalized = true;
       _modelSource = widget.source;
       widget.debugOnSourceIndexed?.call(indexedCodeUnits);
+      _scheduleSync();
+      return;
+    }
+
+    final tail = widget.sourceTailReplace;
+    final directTailReplace =
+        !widget.finalized &&
+        tail != null &&
+        tail.baseRevision == _indexedRevision &&
+        widget.sourceRevision > _indexedRevision &&
+        tail.prefixLength <= _indexedSourceLength &&
+        tail.prefixLength + tail.text.length == widget.source.length;
+    if (directTailReplace) {
+      _modelSource = widget.source;
+      _projection!.update(
+        widget.source,
+        finalized: false,
+        widowOffsetFor: widget.widowOffsetFor,
+        rangeProjector: widget.rangeProjector,
+      );
+      _lines!.replaceTail(
+        line: _lines!.lineAtOffset(tail.prefixLength),
+        source: widget.source,
+      );
+      _indexedRevision = widget.sourceRevision;
+      _indexedSourceLength = widget.source.length;
+      _indexedFinalized = false;
+      widget.debugOnSourceIndexed?.call(_lines!.lastIndexedCodeUnits);
       _scheduleSync();
       return;
     }

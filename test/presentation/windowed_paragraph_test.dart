@@ -396,6 +396,55 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a proven rich tail replacement retains indexes and the parked viewport',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final prefix = List.filled(3000, 'A **bold** thought. ').join();
+      final session = const MarkdownDocumentParser().startSession();
+      session.append(prefix);
+      final opened = session.append('An **unfinished');
+      final closed = session.append(' thought**.');
+      final indexed = <int>[];
+
+      await tester.pumpWidget(_page(opened, onSourceIndexed: indexed.add));
+      await tester.pumpAndSettle();
+      final retained = find.byType(WindowedRichParagraph).evaluate().single;
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      position.jumpTo(position.maxScrollExtent * 0.5);
+      await tester.pumpAndSettle();
+      final pixels = position.pixels;
+
+      await tester.pumpWidget(_page(closed, onSourceIndexed: indexed.add));
+      await tester.pumpAndSettle();
+
+      expect(
+        identical(
+          find.byType(WindowedRichParagraph).evaluate().single,
+          retained,
+        ),
+        isTrue,
+      );
+      final nextPosition = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      expect(nextPosition.pixels, pixels);
+      expect(indexed.last, lessThan(256));
+      expect(
+        find.byKey(const ValueKey('rich-paragraph-indexing')),
+        findsNothing,
+      );
+      nextPosition.jumpTo(nextPosition.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(_renderedWindow(), endsWith('An unfinished thought.'));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('a proven append indexes only the old final line and suffix', (
     tester,
   ) async {

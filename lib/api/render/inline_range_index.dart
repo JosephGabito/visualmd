@@ -56,6 +56,61 @@ final class InlineRangeIndex {
     return InlineRangeIndex._indexed(leaves, '$source${appended.source}');
   }
 
+  /// Replaces a parser-proven inline suffix without visiting retained leaves.
+  ///
+  /// [prefixLength] must end at a leaf boundary because the parser's stable
+  /// prefix is expressed in complete inline runs. The persistent leaf rope
+  /// shares everything before that boundary; only the replacement is indexed.
+  InlineRangeIndex replaceTail({
+    required int prefixLength,
+    required List<Inline> runs,
+  }) {
+    RangeError.checkValueInInterval(
+      prefixLength,
+      0,
+      source.length,
+      'prefixLength',
+    );
+    if (!supports(runs)) {
+      throw ArgumentError.value(
+        runs,
+        'runs',
+        'Inline widgets and control runs cannot be range indexed',
+      );
+    }
+
+    var low = 0;
+    var high = _leaves.length;
+    while (low < high) {
+      final middle = low + ((high - low) >> 1);
+      if (_leaves[middle].start < prefixLength) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    if (low > 0 && _leaves[low - 1].end != prefixLength) {
+      throw StateError(
+        'Inline tail boundary $prefixLength splits a retained leaf.',
+      );
+    }
+
+    final replacement = _build(
+      runs,
+      validate: false,
+      startOffset: prefixLength,
+    );
+    final leaves = _leaves.replace(
+      index: low,
+      removeCount: _leaves.length - low,
+      values: replacement.leaves,
+    );
+    final nextSource =
+        '${source.substring(0, prefixLength)}'
+        '${replacement.source}';
+    return InlineRangeIndex._indexed(leaves, nextSource);
+  }
+
   /// Whether [content] can be represented entirely as styled text ranges.
   ///
   /// Widgets, mathematics and footnote controls own geometry or semantics

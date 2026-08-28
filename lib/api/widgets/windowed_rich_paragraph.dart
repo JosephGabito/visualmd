@@ -19,6 +19,7 @@ final class WindowedRichParagraph extends StatefulWidget {
   final List<Inline> content;
   final int sourceRevision;
   final BlockInlineAppend? inlineAppend;
+  final BlockInlineTailReplace? inlineTailReplace;
   final InlineComposer composer;
   final int documentOffset;
   final TextStyle style;
@@ -36,6 +37,7 @@ final class WindowedRichParagraph extends StatefulWidget {
     required this.content,
     required this.sourceRevision,
     this.inlineAppend,
+    this.inlineTailReplace,
     required this.composer,
     required this.documentOffset,
     required this.style,
@@ -68,6 +70,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
   var _indexRevision = -1;
   var _indexFinalized = false;
   ParagraphSourceAppend? _sourceAppend;
+  ParagraphSourceTailReplace? _sourceTailReplace;
   var _epoch = 0;
   int? _scheduledEpoch;
 
@@ -83,6 +86,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
     if (oldWidget.sourceRevision != widget.sourceRevision ||
         !identical(oldWidget.content, widget.content)) {
       if (_applyInlineAppend()) return;
+      if (_applyInlineTailReplace()) return;
       _beginIndex();
     }
   }
@@ -115,6 +119,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
       source: index.source,
       sourceRevision: replacing ? _indexRevision : widget.sourceRevision,
       sourceAppend: replacing ? null : _sourceAppend,
+      sourceTailReplace: replacing ? null : _sourceTailReplace,
       style: widget.style,
       textScaler: widget.textScaler,
       strutStyle: widget.strutStyle,
@@ -149,6 +154,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
   void _beginIndex() {
     final epoch = ++_epoch;
     _sourceAppend = null;
+    _sourceTailReplace = null;
     _pending = ProgressiveInlineRangeIndex.fromSupported(widget.content);
     _scheduleIndex(epoch);
   }
@@ -173,6 +179,38 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
     _indexFinalized = false;
     _sourceAppend = ParagraphSourceAppend(
       baseRevision: proof.baseRevision,
+      text: proof.runs.map((run) => run.text).join(),
+    );
+    _sourceTailReplace = null;
+    return true;
+  }
+
+  bool _applyInlineTailReplace() {
+    final proof = widget.inlineTailReplace;
+    final index = _index;
+    if (_pending != null ||
+        proof == null ||
+        index == null ||
+        _indexFinalized ||
+        widget.finalized ||
+        proof.baseRevision != _indexRevision ||
+        widget.sourceRevision <= _indexRevision ||
+        proof.retainedPrefix.codeUnits > index.length ||
+        !InlineRangeIndex.supports(proof.runs)) {
+      return false;
+    }
+
+    final replaced = index.replaceTail(
+      prefixLength: proof.retainedPrefix.codeUnits,
+      runs: proof.runs,
+    );
+    _index = replaced;
+    _indexRevision = widget.sourceRevision;
+    _indexFinalized = false;
+    _sourceAppend = null;
+    _sourceTailReplace = ParagraphSourceTailReplace(
+      baseRevision: proof.baseRevision,
+      prefixLength: proof.retainedPrefix.codeUnits,
       text: proof.runs.map((run) => run.text).join(),
     );
     return true;
@@ -211,6 +249,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
           _indexRevision = widget.sourceRevision;
           _indexFinalized = widget.finalized;
           _sourceAppend = null;
+          _sourceTailReplace = null;
           _pending = null;
         });
       } else {
