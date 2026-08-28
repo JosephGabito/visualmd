@@ -961,6 +961,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ShelfPanel), findsNothing);
       expect(find.byType(OutlinePanel), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(OutlinePanel), findsNothing);
+
+      await tester.tap(barButton(tester, 'Show shelf'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.period);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pumpAndSettle();
+      expect(find.byType(ShelfPanel), findsNothing);
       expect(controller.shelfVisible, isTrue);
       expect(controller.outlineVisible, isTrue);
       expect(saved, isEmpty);

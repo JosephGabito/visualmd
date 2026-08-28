@@ -48,7 +48,9 @@ The in-document viewport fits the complete viewBox and stays between eight and
 eighteen body beats. `InteractiveViewer` owns drag, wheel or pinch zoom, and a
 transformation controller shared by toolbar and keyboard actions. Reset
 recomputes fit from the current viewport. Full screen creates a fresh explorer
-over the page, preserving the quiet state beneath it
+over the page, preserving the quiet state beneath it. Escape and Command-Period
+close that explorer and return keyboard focus to the full-screen action that
+opened it
 (`lib/api/widgets/mermaid_diagram.dart`).
 
 The explorer header uses [Library Chrome](28-library-chrome.md)'s elevated

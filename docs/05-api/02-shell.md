@@ -59,7 +59,9 @@ on the opposite side.
 
 Wide shelf and outline visibility are independent, restored reader preferences.
 Compact overlays deliberately do not change them: opening, selecting from, or
-dismissing a compact panel lasts only for that transient interaction
+dismissing a compact panel lasts only for that transient interaction. A page
+press, `Escape`, or Command-Period dismisses the open overlay; selecting a
+document or outline heading does the same after completing the navigation
 (`lib/api/reader_controller.dart`,
 `lib/api/screens/reader_screen.dart`).
 

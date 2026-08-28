@@ -1395,11 +1395,12 @@ final class _ShelfContextMenu extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      for (final entry in entries)
+                      for (var index = 0; index < entries.length; index++)
                         _ShelfContextMenuItem(
-                          command: entry.$1,
-                          icon: entry.$2,
-                          label: entry.$3,
+                          command: entries[index].$1,
+                          icon: entries[index].$2,
+                          label: entries[index].$3,
+                          autofocus: index == 0,
                         ),
                     ],
                   ),
@@ -1417,11 +1418,13 @@ final class _ShelfContextMenuItem extends StatelessWidget {
   final _ShelfContextCommand command;
   final IconData icon;
   final String label;
+  final bool autofocus;
 
   const _ShelfContextMenuItem({
     required this.command,
     required this.icon,
     required this.label,
+    required this.autofocus,
   });
 
   @override
@@ -1433,6 +1436,7 @@ final class _ShelfContextMenuItem extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          autofocus: autofocus,
           onTap: () => Navigator.of(context).pop(command),
           borderRadius: BorderRadius.circular(LibraryChromeScale.controlRadius),
           hoverColor: context.chrome.selected,

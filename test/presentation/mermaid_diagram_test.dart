@@ -136,6 +136,30 @@ void main() {
     },
   );
 
+  testWidgets('closing full screen returns focus to its opening action', (
+    tester,
+  ) async {
+    await pumpDiagram(tester, _FakeRenderer());
+
+    final trigger = find.byKey(const ValueKey('mermaid-fullscreen'));
+    final triggerButton = tester.widget<IconButton>(
+      find.descendant(of: trigger, matching: find.byType(IconButton)),
+    );
+    triggerButton.focusNode!.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('mermaid-close-fullscreen')),
+      findsOneWidget,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(triggerButton.focusNode!.hasFocus, isTrue);
+  });
+
   testWidgets('Reduce Motion opens the full-screen explorer without a fade', (
     tester,
   ) async {

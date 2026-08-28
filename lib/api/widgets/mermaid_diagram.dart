@@ -133,6 +133,9 @@ final class _MermaidExplorer extends StatefulWidget {
 }
 
 final class _MermaidExplorerState extends State<_MermaidExplorer> {
+  final _fullScreenTriggerFocus = FocusNode(
+    debugLabel: 'Mermaid full-screen trigger',
+  );
   final _transformation = TransformationController();
   Timer? _copyFeedback;
   Size? _viewport;
@@ -149,6 +152,7 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
   @override
   void dispose() {
     _copyFeedback?.cancel();
+    _fullScreenTriggerFocus.dispose();
     _transformation.removeListener(_keepReachable);
     _transformation.dispose();
     super.dispose();
@@ -271,6 +275,7 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
         ),
       ),
     );
+    if (mounted) _fullScreenTriggerFocus.requestFocus();
   }
 
   @override
@@ -444,6 +449,7 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
                   label: 'View diagram full screen',
                   icon: Icons.fullscreen_rounded,
                   extent: extent,
+                  focusNode: _fullScreenTriggerFocus,
                   onPressed: _openFullScreen,
                 )
               else
@@ -573,6 +579,7 @@ final class _DiagramAction extends StatelessWidget {
   final String label;
   final IconData icon;
   final double extent;
+  final FocusNode? focusNode;
   final VoidCallback onPressed;
 
   const _DiagramAction({
@@ -580,6 +587,7 @@ final class _DiagramAction extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.extent,
+    this.focusNode,
     required this.onPressed,
   });
 
@@ -592,6 +600,7 @@ final class _DiagramAction extends StatelessWidget {
       splashRadius: extent * 0.42,
       iconSize: math.min(18, extent * 0.52),
       color: context.palette.muted,
+      focusNode: focusNode,
       onPressed: onPressed,
       tooltip: null,
       icon: Icon(icon, semanticLabel: label),
