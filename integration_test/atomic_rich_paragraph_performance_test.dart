@@ -191,6 +191,10 @@ void main() {
         for (final characters in const [10000, 100000, 1000000])
           _benchmarkRichParser(characters),
       ],
+      'unstable_parser_runs': [
+        for (final characters in const [10000, 100000, 1000000])
+          _benchmarkUnstableRichParser(characters),
+      ],
     };
   });
 }
@@ -217,6 +221,44 @@ Map<String, Object> _benchmarkRichParser(int minimumCharacters) {
     'parsed_source_characters': session.lastParsedSourceLength,
     'inline_runs_after': (entry.block as ParagraphBlock).content.length,
     'proved_suffix_runs': entry.inlineAppend!.runs.length,
+  };
+}
+
+Map<String, Object> _benchmarkUnstableRichParser(int minimumCharacters) {
+  final session = const MarkdownDocumentParser().startSession();
+  final source = _richMarkdown(minimumCharacters);
+  session.append(source);
+  const opening = 'An **unfinished';
+  session.append(opening);
+  final beforeGrowth = session.content.entries.single;
+
+  const growth = ' rich tail';
+  final growthClock = Stopwatch()..start();
+  final grown = session.append(growth);
+  growthClock.stop();
+  final grownEntry = grown.entries.single;
+  final growthParsed = session.lastParsedSourceLength;
+
+  const closure = ' closes** now.';
+  final closureClock = Stopwatch()..start();
+  final closed = session.append(closure);
+  closureClock.stop();
+  final closedEntry = closed.entries.single;
+
+  expect(grownEntry.inlineAppend, isNotNull);
+  expect(closedEntry.inlineAppend, isNull);
+
+  return {
+    'source_characters': source.length,
+    'inline_runs_before': (beforeGrowth.block as ParagraphBlock).content.length,
+    'growth_characters': growth.length,
+    'growth_wall_us': growthClock.elapsedMicroseconds,
+    'growth_parsed_source_characters': growthParsed,
+    'growth_proved_suffix_runs': grownEntry.inlineAppend!.runs.length,
+    'closure_characters': closure.length,
+    'closure_wall_us': closureClock.elapsedMicroseconds,
+    'closure_parsed_source_characters': session.lastParsedSourceLength,
+    'closure_proved_suffix': closedEntry.inlineAppend != null,
   };
 }
 
