@@ -146,7 +146,10 @@ void main() {
     final proof = closed.entries.single.inlineTailReplace!;
 
     expect(proof.baseRevision, opened.entries.single.revision);
-    expect(proof.retainedPrefix, stable.entries.single.textMetrics);
+    expect(
+      proof.retainedPrefix.codeUnits,
+      greaterThan(stable.entries.single.textMetrics.codeUnits),
+    );
     expect(
       '${opened.blocks.single.text.substring(0, proof.retainedPrefix.codeUnits)}'
       '${proof.runs.map((run) => run.text).join()}',
@@ -157,6 +160,37 @@ void main() {
       closed.blocks.single.text.length,
     );
     expect(closed.entries.single.inlineAppend, isNull);
+  });
+
+  test('a settled delimiter advances before the next unresolved delimiter', () {
+    final session = parser.startSession();
+    var source = 'Settled **strong** prose. ';
+    session.append(source);
+    source += 'An **unfinished';
+    session.append('An **unfinished');
+    var retainedPrefix = 0;
+
+    for (var cycle = 0; cycle < 20; cycle++) {
+      for (final piece in [' token$cycle', ' closes**', ' then **opens']) {
+        source += piece;
+        final incremental = session.append(piece);
+        final canonical = parser.parse(source);
+        final proof = incremental.entries.single.inlineTailReplace;
+
+        expect(_shape(incremental.blocks), _shape(canonical.blocks));
+        expect(session.lastParsedSourceLength, lessThan(80));
+        if (proof != null) {
+          expect(
+            proof.retainedPrefix.codeUnits,
+            greaterThanOrEqualTo(retainedPrefix),
+          );
+          retainedPrefix = proof.retainedPrefix.codeUnits;
+        }
+      }
+    }
+
+    expect(retainedPrefix, greaterThan(400));
+    expect(session.content.blocks.single.text, endsWith(' then **opens'));
   });
 
   test('ambiguous inline boundaries retain the complete parser fallback', () {

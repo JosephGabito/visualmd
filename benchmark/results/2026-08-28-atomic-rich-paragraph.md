@@ -351,10 +351,10 @@ runs. The existing `AppendWrapIndex.replaceTail` then reshapes the visual line
 which owns that boundary and the small suffix. No partial range or geometry is
 published between them.
 
-| Existing Markdown | Prior inline runs | Replacement indexed | First retained build | Structural-query build | Mounted after | Scroll delta |
+| Existing Markdown | Prior inline runs | First retained build | Final indexed | Final build | Mounted after | Scroll delta |
 |---:|---:|---:|---:|---:|---:|---:|
-| 100,035 | 6,320 | 88 | 4.152 ms | 2.167 ms | 1,650 | 0 px |
-| 1,000,065 | 63,164 | 88 | 10.756 ms | 1.411 ms | 1,650 | 0 px |
+| 100,035 | 6,321 | 4.152 ms | 22 | 1.842 ms | 1,650 | 0 px |
+| 1,000,065 | 63,165 | 10.756 ms | 22 | 1.584 ms | 1,650 | 0 px |
 
 The same `WindowedRichParagraph` element survives delimiter closure. Indexed
 source and mounted styled text are constant, and the parked reader remains
@@ -373,9 +373,56 @@ intuition:
 
 | Visible characters | Range-tail replacement | Flat-source hash | Direction |
 |---:|---:|---:|---:|
-| 69,513 | 0.019 ms | 0.077 ms | <0.001 ms |
-| 694,797 | 0.132 ms | 0.795 ms | <0.001 ms |
+| 69,513 | 0.019 ms | 0.075 ms | <0.001 ms |
+| 694,797 | 0.218 ms | 0.806 ms | <0.001 ms |
 
 The flat source still has a linear allocation and first-hash cost, but neither
 accounts for the former 10.756 ms build. Chunk-addressable source remains a
 real total-allocation improvement; it is no longer the next frame-time alarm.
+
+## Sustained million-character stream result
+
+**Problem.** One bounded delimiter replacement does not prove a live answer can
+stay bounded. The parser originally retained its old uncertain-tail checkpoint
+when one batch closed a delimiter and a later batch opened the next one. The
+work stayed independent of the million-character prefix, but grew from 263 to
+513 indexed characters over successive cycles. A long answer would therefore
+accumulate a second, smaller linear tail.
+
+**Solution.** The checkpoint scanner now promotes the last internally settled
+whitespace boundary even when later source remains unresolved. It parses and
+publishes that unresolved remainder separately, so live text never disappears,
+and checks every incremental result against the canonical full Markdown parse.
+Resolved inline structure becomes retained prefix before the next delimiter can
+extend the uncertainty window.
+
+The native harness starts with one 1,000,000-character style-dense paragraph,
+parks the reader in its middle, opens a real scrollbar interaction epoch, and
+publishes 60 revisions. Each of 20 cycles grows an unfinished strong run,
+closes it, then opens the next. The visible source grows by 510 characters.
+
+| Measurement | Result |
+|---|---:|
+| Published revisions | 60 |
+| Tail replacements | 60 |
+| Parsed source worst | 42 characters |
+| Range/wrap indexed worst | 90 characters |
+| Build p50 / p90 / p99 / worst | 1.468 / 1.727 / 1.857 / 1.902 ms |
+| Total frame p90 / p99 / worst | 3.477 / 4.715 / 4.792 ms |
+| Mounted text after stream | 1,716 characters |
+| Reader scroll delta | 0 px |
+| Scrollbar thumb top delta | 0 px |
+| Scrollbar thumb height delta | 0 px |
+
+The roughly 25 ms per-revision harness wall includes two deliberately pumped
+frames and an 8 ms simulated-time step; it is not application latency. Native
+`FrameTiming` is the rendering distribution. The process RSS snapshot fell by
+12.3 MiB during this run, which proves no leak by itself; allocator timing can
+move either direction. A long-running heap and GC plateau is the next memory
+proof.
+
+This is the stopping point for paragraph frame work. Parser, block facts,
+range/style indexing, line geometry, presentation queries, mounted text,
+reader position, and visible scrollbar geometry are all bounded by the local
+revision in the sustained fixture. Further work here needs a new measured
+failure, not a desire to make already sub-5 ms frames look cleverer.

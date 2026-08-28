@@ -192,6 +192,10 @@ void main() {
       );
       presentationTailCostRuns.add(_benchmarkPresentationTailCost(characters));
     }
+    final sustainedRichStream = await _benchmarkSustainedRichStream(
+      tester,
+      timings,
+    );
 
     binding.reportData = {
       'benchmark': 'atomic_rich_paragraph_scaling',
@@ -208,8 +212,138 @@ void main() {
       ],
       'tail_replacement_runs': tailReplacementRuns,
       'presentation_tail_cost_runs': presentationTailCostRuns,
+      'sustained_rich_stream': sustainedRichStream,
     };
   });
+}
+
+Future<Map<String, Object?>> _benchmarkSustainedRichStream(
+  WidgetTester tester,
+  List<FrameTiming> timings,
+) async {
+  final session = const MarkdownDocumentParser().startSession();
+  session.append(_richMarkdown(1000000));
+  var revision = session.append('An **unfinished');
+  var indexedCharacters = 0;
+
+  await tester.pumpWidget(
+    _app(
+      _readingContent(revision),
+      onSourceIndexed: (value) => indexedCharacters = value,
+    ),
+  );
+  await tester.pumpAndSettle();
+  var indexingPumps = 0;
+  while (indexedCharacters < revision.entries.single.textMetrics.codeUnits) {
+    await tester.pump(const Duration(milliseconds: 1));
+    indexingPumps++;
+    expect(indexingPumps, lessThan(400));
+  }
+
+  final scrollable = find.descendant(
+    of: find.byType(CustomScrollView),
+    matching: find.byType(Scrollable),
+  );
+  final position = tester.state<ScrollableState>(scrollable.first).position;
+  position.jumpTo(position.maxScrollExtent * 0.5);
+  await tester.pump();
+  final gesture = await tester.startGesture(const Offset(1275, 410));
+  await gesture.moveBy(const Offset(0, -80));
+  await tester.pump();
+
+  const thumbKey = ValueKey('quiet-scrollbar-thumb');
+  expect(find.byKey(thumbKey), findsOneWidget);
+  final thumbBefore = tester.getRect(find.byKey(thumbKey));
+  final pixelsBefore = position.pixels;
+  final extentBefore = position.maxScrollExtent;
+  final sourceCharactersBefore = revision.entries.single.textMetrics.codeUnits;
+  final retained = find.byType(WindowedRichParagraph).evaluate().single;
+  final rssBefore = ProcessInfo.currentRss;
+  final framesBefore = timings.length;
+  final updateWall = <int>[];
+  final parsedCharacters = <int>[];
+  final indexedPerRevision = <int>[];
+  var inlineAppends = 0;
+  var inlineTailReplacements = 0;
+
+  for (var cycle = 0; cycle < 20; cycle++) {
+    for (final piece in [' token$cycle', ' closes**', ' then **opens']) {
+      final clock = Stopwatch()..start();
+      revision = session.append(piece);
+      final entry = revision.entries.single;
+      if (entry.inlineAppend != null) inlineAppends++;
+      if (entry.inlineTailReplace != null) inlineTailReplacements++;
+      parsedCharacters.add(session.lastParsedSourceLength);
+      indexedCharacters = 0;
+      await tester.pumpWidget(
+        _app(
+          _readingContent(revision),
+          onSourceIndexed: (value) => indexedCharacters = value,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 8));
+      clock.stop();
+      updateWall.add(clock.elapsedMicroseconds);
+      indexedPerRevision.add(indexedCharacters);
+
+      expect(
+        identical(
+          find.byType(WindowedRichParagraph).evaluate().single,
+          retained,
+        ),
+        isTrue,
+      );
+      expect(indexedCharacters, inInclusiveRange(1, 512));
+      expect(position.pixels, pixelsBefore);
+      final thumb = tester.getRect(find.byKey(thumbKey));
+      expect(thumb.top, closeTo(thumbBefore.top, 0.01));
+      expect(thumb.height, closeTo(thumbBefore.height, 0.01));
+      expect(
+        find.byKey(const ValueKey('rich-paragraph-indexing')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  }
+
+  await Future<void>.delayed(const Duration(milliseconds: 180));
+  await tester.pump();
+  final frames = timings.skip(framesBefore).toList(growable: false);
+  final thumbAfter = tester.getRect(find.byKey(thumbKey));
+  final extentAfter = position.maxScrollExtent;
+  await gesture.up();
+
+  expect(parsedCharacters.reduce(math.max), lessThan(512));
+  expect(_mountedCharacters(), lessThan(5000));
+  expect(position.pixels, pixelsBefore);
+  expect(thumbAfter.top, closeTo(thumbBefore.top, 0.01));
+  expect(thumbAfter.height, closeTo(thumbBefore.height, 0.01));
+  expect(
+    revision.entries.single.textMetrics.codeUnits,
+    greaterThan(sourceCharactersBefore),
+  );
+
+  return {
+    'initial_source_characters': 1000000,
+    'published_revisions': updateWall.length,
+    'inline_appends': inlineAppends,
+    'inline_tail_replacements': inlineTailReplacements,
+    'parsed_characters_worst': parsedCharacters.reduce(math.max),
+    'indexed_characters_worst': indexedPerRevision.reduce(math.max),
+    'revision_wall_p50_us': _percentile(updateWall, 0.50),
+    'revision_wall_p90_us': _percentile(updateWall, 0.90),
+    'revision_wall_p99_us': _percentile(updateWall, 0.99),
+    'revision_wall_worst_us': updateWall.reduce(math.max),
+    'frames': _frameSummary(frames),
+    'mounted_characters': _mountedCharacters(),
+    'visible_source_growth':
+        revision.entries.single.textMetrics.codeUnits - sourceCharactersBefore,
+    'content_extent_delta': extentAfter - extentBefore,
+    'scroll_delta': position.pixels - pixelsBefore,
+    'thumb_top_delta': thumbAfter.top - thumbBefore.top,
+    'thumb_height_delta': thumbAfter.height - thumbBefore.height,
+    'rss_delta_bytes': ProcessInfo.currentRss - rssBefore,
+  };
 }
 
 Map<String, Object?> _benchmarkPresentationTailCost(int minimumCharacters) {

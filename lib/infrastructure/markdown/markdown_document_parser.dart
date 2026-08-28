@@ -198,24 +198,47 @@ final class _IncrementalMarkdownParserSession
     );
     if (pendingSource.isEmpty) return null;
 
-    final checkpoint = _stableParagraphCheckpoint(pendingSource);
-    final parseSource = checkpoint == null
-        ? pendingSource
+    final checkpoint = _stableParagraphCheckpoint(
+      pendingSource,
+      includeInternal: true,
+    );
+
+    List<Inline> parseInline(String source) {
+      if (source.isEmpty) return const [];
+      final document = MarkdownDocumentParser._newMarkdownDocument();
+      _context.seed(document);
+      return _Mapper().inlines(document.parseInline(source));
+    }
+
+    final acceptedSource = checkpoint == null
+        ? ''
         : pendingSource.substring(0, checkpoint);
-    if (parseSource.isEmpty) {
+    final unresolvedSource = checkpoint == null
+        ? pendingSource
+        : pendingSource.substring(checkpoint);
+    final acceptedRuns = parseInline(acceptedSource);
+    final unresolvedRuns =
+        unresolvedSource.codeUnits.every(
+          (codeUnit) => codeUnit == 32 || codeUnit == 9,
+        )
+        ? const <Inline>[]
+        : parseInline(unresolvedSource);
+    final pendingRuns = [...acceptedRuns, ...unresolvedRuns];
+    if (pendingRuns.isEmpty) {
       _lastParsedSourceLength = 0;
       return _content;
     }
-    final document = MarkdownDocumentParser._newMarkdownDocument();
-    _context.seed(document);
-    final pendingRuns = _Mapper().inlines(document.parseInline(parseSource));
-    if (pendingRuns.isEmpty) return null;
-    final combined = stableRuns.replace(
+    final accepted = stableRuns.replace(
       index: stableRuns.length,
       removeCount: 0,
-      values: pendingRuns,
+      values: acceptedRuns,
     );
-    _lastParsedSourceLength = parseSource.length;
+    final combined = accepted.replace(
+      index: accepted.length,
+      removeCount: 0,
+      values: unresolvedRuns,
+    );
+    _lastParsedSourceLength = pendingSource.length;
     final previousRuns = (_provisional.single.block as ParagraphBlock).content;
     final directAppend = previousRuns.length == stableRuns.length;
     final content = _publish(
@@ -234,8 +257,10 @@ final class _IncrementalMarkdownParserSession
 
     if (checkpoint != null) {
       _stableParagraphSourceLength = stableLength + checkpoint;
-      _stableParagraphRuns = combined;
-      _stableParagraphMetrics = content.entries.single.textMetrics;
+      _stableParagraphRuns = accepted;
+      _stableParagraphMetrics = stableMetrics.append(
+        BlockTextMetrics.fromInlines(acceptedRuns),
+      );
     }
     return content;
   }
@@ -606,11 +631,14 @@ final class _IncrementalMarkdownParserSession
   /// single-line generated-prose path only when every construct with authority
   /// over later characters is visibly closed and the next parser starts after
   /// whitespace. Anything ambiguous falls back to the package parser over the
-  /// complete provisional tail.
-  static int? _stableParagraphCheckpoint(String source) {
+  /// complete provisional tail. During a longer unresolved fragment, the last
+  /// internally settled whitespace boundary may advance independently while
+  /// the still-uncertain remainder is parsed and published beside it.
+  static int? _stableParagraphCheckpoint(
+    String source, {
+    bool includeInternal = false,
+  }) {
     if (source.isEmpty ||
-        (source.codeUnitAt(source.length - 1) != 32 &&
-            source.codeUnitAt(source.length - 1) != 9) ||
         source.contains('\n') ||
         source.contains('\r') ||
         source.contains('<') ||
@@ -622,8 +650,19 @@ final class _IncrementalMarkdownParserSession
     var brackets = 0;
     var parentheses = 0;
     int? codeTicks;
+    int? internalCheckpoint;
     for (var index = 0; index < source.length; index++) {
       final codeUnit = source.codeUnitAt(index);
+      if ((codeUnit == 32 || codeUnit == 9) &&
+          codeTicks == null &&
+          brackets == 0 &&
+          parentheses == 0 &&
+          delimiters.isEmpty &&
+          (index == 0 ||
+              (source.codeUnitAt(index - 1) != 32 &&
+                  source.codeUnitAt(index - 1) != 9))) {
+        internalCheckpoint = index;
+      }
       if (codeUnit == 92) {
         if (index + 1 == source.length) return null;
         index++;
@@ -680,10 +719,20 @@ final class _IncrementalMarkdownParserSession
         delimiters.add(delimiter);
       }
     }
-    if (codeTicks != null ||
+    final unsettled =
+        codeTicks != null ||
         brackets != 0 ||
         parentheses != 0 ||
-        delimiters.isNotEmpty) {
+        delimiters.isNotEmpty;
+    if (unsettled) {
+      if (!includeInternal) return null;
+      return switch (internalCheckpoint) {
+        final checkpoint? when checkpoint > 0 => checkpoint,
+        _ => null,
+      };
+    }
+    if (source.codeUnitAt(source.length - 1) != 32 &&
+        source.codeUnitAt(source.length - 1) != 9) {
       return null;
     }
     var checkpoint = source.length;
