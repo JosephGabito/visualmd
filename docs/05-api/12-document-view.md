@@ -365,11 +365,15 @@ their exact visible length and authored line-break count. Document offsets and
 geometry seeds extend those facts without flattening the block, while retained
 range eligibility means a proven suffix checks only its new runs. This lowers
 the million-character append build from 25.0 ms to 8.7 ms; the 100,056-
-character fixture takes 3.5 ms. The remaining size-dependent allocation is the
-flat paragraph source still consumed by Flutter's text and semantics APIs.
+character fixture takes 3.5 ms. A flat paragraph source is still consumed by
+Flutter's text and semantics APIs, but an isolated native measurement puts its
+one-million-character tail replacement at 0.132 ms and first hash at 0.795 ms;
+first-strong direction resolves below microsecond resolution.
 The native delimiter-closure journey indexes exactly 88 characters at both
 100,035 and 1,000,065 source characters, keeps 1,650 mounted, and moves the
-reader 0 px. Its worst build is 4.15 ms and 10.76 ms respectively. Replacing
-the accumulated flat value with a chunk-addressable source is therefore the
-next rendering boundary; range, line, parser and block-metric work are already
-suffix-bounded.
+reader 0 px. The first retained build measured 4.15 ms and 10.76 ms because the
+block builder still walked all inline runs to look for mathematics and footnote
+controls. A range-safe paragraph already proves that neither can exist. Reusing
+that fact removes both prefix scans and lowers the same builds to 2.17 ms and
+1.41 ms respectively. Parser, block metrics, range indexing, line geometry and
+the presentation queries are now all suffix-bounded.

@@ -7,6 +7,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:visualmd/api/render/document_view.dart';
+import 'package:visualmd/api/render/inline_range_index.dart';
+import 'package:visualmd/api/render/reading_direction.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/reading_pane.dart';
 import 'package:visualmd/api/widgets/windowed_paragraph.dart';
@@ -183,10 +185,12 @@ void main() {
     }
 
     final tailReplacementRuns = <Map<String, Object?>>[];
+    final presentationTailCostRuns = <Map<String, Object?>>[];
     for (final characters in const [100000, 1000000]) {
       tailReplacementRuns.add(
         await _benchmarkRenderedTailReplacement(tester, timings, characters),
       );
+      presentationTailCostRuns.add(_benchmarkPresentationTailCost(characters));
     }
 
     binding.reportData = {
@@ -203,8 +207,74 @@ void main() {
           _benchmarkUnstableRichParser(characters),
       ],
       'tail_replacement_runs': tailReplacementRuns,
+      'presentation_tail_cost_runs': presentationTailCostRuns,
     };
   });
+}
+
+Map<String, Object?> _benchmarkPresentationTailCost(int minimumCharacters) {
+  final session = const MarkdownDocumentParser().startSession();
+  session.append(_richMarkdown(minimumCharacters));
+  final opened = session.append('An **unfinished');
+  final closed = session.append(' thought**.');
+  final beforeEntry = opened.entries.single;
+  final afterEntry = closed.entries.single;
+  final beforeRuns = (beforeEntry.block as ParagraphBlock).content;
+  final proof = afterEntry.inlineTailReplace!;
+  final index = InlineRangeIndex.fromSupported(beforeRuns);
+
+  InlineRangeIndex replace() => index.replaceTail(
+    prefixLength: proof.retainedPrefix.codeUnits,
+    runs: proof.runs,
+  );
+
+  // Prime optimized code and allocation paths before recording the median.
+  var replaced = replace();
+  ReadingDirection.of(replaced.source, fallback: TextDirection.ltr);
+  final replaceSamples = <int>[];
+  final directionSamples = <int>[];
+  final equalitySamples = <int>[];
+  final hashSamples = <int>[];
+  var observedHash = 0;
+  for (var iteration = 0; iteration < 7; iteration++) {
+    final replaceClock = Stopwatch()..start();
+    replaced = replace();
+    replaceClock.stop();
+    replaceSamples.add(replaceClock.elapsedMicroseconds);
+
+    final equalityClock = Stopwatch()..start();
+    final equal = index.source == replaced.source;
+    equalityClock.stop();
+    expect(equal, isFalse);
+    equalitySamples.add(equalityClock.elapsedMicroseconds);
+
+    final hashClock = Stopwatch()..start();
+    observedHash ^= replaced.source.hashCode;
+    hashClock.stop();
+    hashSamples.add(hashClock.elapsedMicroseconds);
+
+    final directionClock = Stopwatch()..start();
+    ReadingDirection.of(replaced.source, fallback: TextDirection.ltr);
+    directionClock.stop();
+    directionSamples.add(directionClock.elapsedMicroseconds);
+  }
+  replaceSamples.sort();
+  directionSamples.sort();
+  equalitySamples.sort();
+  hashSamples.sort();
+  expect(observedHash, isNot(0));
+
+  return {
+    'source_characters': index.length,
+    'retained_prefix_characters': proof.retainedPrefix.codeUnits,
+    'replacement_characters': InlineRangeIndex.textLength(proof.runs),
+    'range_index_replace_median_us': replaceSamples[replaceSamples.length ~/ 2],
+    'flat_source_equality_median_us':
+        equalitySamples[equalitySamples.length ~/ 2],
+    'flat_source_hash_median_us': hashSamples[hashSamples.length ~/ 2],
+    'direction_resolve_median_us':
+        directionSamples[directionSamples.length ~/ 2],
+  };
 }
 
 Map<String, Object> _benchmarkRichParser(int minimumCharacters) {

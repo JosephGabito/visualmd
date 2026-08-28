@@ -351,15 +351,31 @@ runs. The existing `AppendWrapIndex.replaceTail` then reshapes the visual line
 which owns that boundary and the small suffix. No partial range or geometry is
 published between them.
 
-| Existing Markdown | Prior inline runs | Replacement indexed | Worst build | Mounted after | Scroll delta |
-|---:|---:|---:|---:|---:|---:|
-| 100,035 | 6,320 | 88 | 4.152 ms | 1,650 | 0 px |
-| 1,000,065 | 63,164 | 88 | 10.756 ms | 1,650 | 0 px |
+| Existing Markdown | Prior inline runs | Replacement indexed | First retained build | Structural-query build | Mounted after | Scroll delta |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100,035 | 6,320 | 88 | 4.152 ms | 2.167 ms | 1,650 | 0 px |
+| 1,000,065 | 63,164 | 88 | 10.756 ms | 1.411 ms | 1,650 | 0 px |
 
 The same `WindowedRichParagraph` element survives delimiter closure. Indexed
 source and mounted styled text are constant, and the parked reader remains
-bit-for-bit fixed. The 6.6 ms build difference is now outside range and line
-indexing: both `InlineRangeIndex` and Flutter paragraph/semantics boundaries
-still receive one accumulated `String`, so replacing the tail copies the flat
-prefix. This slice solves retained rendering physics without calling that final
-allocation O(1); chunk-addressable source is the next boundary.
+bit-for-bit fixed.
+
+The first retained result still had a size slope, but its cause was not the
+flat `String`. The block builder reread all retained inline runs twice: once to
+ask whether the paragraph contained inline mathematics and once to recover
+footnote controls. The range-safety fact had already proved that neither can
+exist. Reusing that fact removes both prefix walks. The one-million-character
+build is now below the 100,000-character build, so the remaining difference is
+measurement noise rather than positive retained-prefix slope.
+
+An isolated cost ledger prevents the next optimization from being chosen by
+intuition:
+
+| Visible characters | Range-tail replacement | Flat-source hash | Direction |
+|---:|---:|---:|---:|
+| 69,513 | 0.019 ms | 0.077 ms | <0.001 ms |
+| 694,797 | 0.132 ms | 0.795 ms | <0.001 ms |
+
+The flat source still has a linear allocation and first-hash cost, but neither
+accounts for the former 10.756 ms build. Chunk-addressable source remains a
+real total-allocation improvement; it is no longer the next frame-time alarm.
