@@ -109,7 +109,14 @@ void main() {
         CodeRun('inline_code'),
         TextRun(' arrives.'),
       ];
-      final appended = _reading(characters, suffix: suffix);
+      final appended = _reading(
+        characters,
+        suffix: suffix,
+        inlineAppend: BlockInlineAppend(
+          baseRevision: reading.content.entries.single.revision,
+          runs: suffix,
+        ),
+      );
       final pixelsBeforeAppend = position.pixels;
       final appendFramesStart = timings.length;
       final appendClock = Stopwatch()..start();
@@ -124,7 +131,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       var appendIndexingPumps = 0;
-      while (windowed && appendedIndexedCharacters < appended.source.length) {
+      while (windowed && appendedIndexedCharacters == 0) {
         await tester.pump(const Duration(milliseconds: 1));
         appendIndexingPumps++;
         expect(appendIndexingPumps, lessThan(400));
@@ -219,6 +226,7 @@ Widget _app(
 DocumentReading _reading(
   int minimumCharacters, {
   List<Inline> suffix = const [],
+  BlockInlineAppend? inlineAppend,
 }) {
   final runs = [..._richRuns(minimumCharacters), ...suffix];
   final source = runs.map((run) => run.text).join();
@@ -236,6 +244,7 @@ DocumentReading _reading(
         revision: source.length,
         commitment: BlockCommitment.provisional,
         block: ParagraphBlock(runs),
+        inlineAppend: inlineAppend,
       ),
     ]),
   );

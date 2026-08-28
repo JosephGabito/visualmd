@@ -160,3 +160,31 @@ source-range index and complete line index before atomic publication. Repeating
 that work for token-sized AI deltas is quadratic in the generated paragraph.
 The next intervention needs a parser-owned inline append proof and retained
 range/line indexes; lowering another widget constant cannot solve this slope.
+
+## Retained rich-index append
+
+The incremental parser now advertises `BlockInlineAppend` only when the prior
+top-level inline tree remains exact. `InlineRangeIndex` appends the proven
+leaves through a persistent sequence, and `WindowedPlainParagraph` rewraps the
+old final visual line plus the new suffix. Both retained indexes advance to the
+same revision before the viewport observes them.
+
+| Existing characters | Appended | Append wall | Indexing pumps | Append frame worst | Mounted after | Scroll delta |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10,032 | 51 | 683 ms | 0 | 21.2 ms | 10,083 | 0 px |
+| 100,056 | 51 | 657 ms | 0 | 5.4 ms | 1,650 | 0 px |
+| 1,000,032 | 51 | 691 ms | 0 | 25.0 ms | 1,650 | 0 px |
+
+The small fixture deliberately remains below the 32,768-character windowing
+threshold. For windowed rich paragraphs, the million-character revision no
+longer takes 119 scheduled index pumps: retained range and line work completes
+in the update frame, and the exact parked scroll position remains unchanged.
+The wall measurement has a roughly 650 ms harness floor from settlement and
+timing collection, so frame time is the useful remaining slope.
+
+That frame still grows from 5.4 ms at 100,056 characters to 25.0 ms at
+1,000,032. Inspection locates whole-block work outside the retained indexes:
+document offsets and geometry estimates request `block.text`, and paragraph
+eligibility walks the complete inline tree again. The next slice must retain
+those facts alongside the revision. This pass therefore proves suffix-bounded
+rich indexes, not yet an end-to-end constant-cost document revision.

@@ -313,6 +313,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             commitment: entry.commitment,
             sourceRevision: entry.revision,
             textAppend: entry.textAppend,
+            inlineAppend: entry.inlineAppend,
             debugOnCodeUnitsIndexed: widget.debugOnCodeUnitsIndexed,
             debugOnParagraphCodeUnitsIndexed:
                 widget.debugOnParagraphCodeUnitsIndexed,
@@ -734,6 +735,7 @@ final class _VisibleBlock {
     this.revision,
     this.commitment,
     this.textAppend,
+    this.inlineAppend,
   );
 
   final Block block;
@@ -743,6 +745,7 @@ final class _VisibleBlock {
   final int revision;
   final BlockCommitment commitment;
   final BlockTextAppend? textAppend;
+  final BlockInlineAppend? inlineAppend;
 }
 
 final class _IndexedBlocks {
@@ -778,6 +781,7 @@ _IndexedBlocks _indexBlocks(
         revision: 0,
         commitment: BlockCommitment.committed,
         textAppend: null,
+        inlineAppend: null,
       ),
   ], separatorLength: separatorLength);
 }
@@ -794,6 +798,7 @@ _IndexedBlocks _indexDocumentBlocks(
       revision: entry.revision,
       commitment: entry.commitment,
       textAppend: entry.textAppend,
+      inlineAppend: entry.inlineAppend,
     ),
 ], separatorLength: separatorLength);
 
@@ -809,6 +814,7 @@ _IndexedBlocks _appendDocumentBlocks(
       revision: entry.revision,
       commitment: entry.commitment,
       textAppend: entry.textAppend,
+      inlineAppend: entry.inlineAppend,
     ),
 ], separatorLength: separatorLength);
 
@@ -831,6 +837,7 @@ _IndexedBlocks _extendIndex(
       int revision,
       BlockCommitment commitment,
       BlockTextAppend? textAppend,
+      BlockInlineAppend? inlineAppend,
     })
   >
   appended, {
@@ -861,6 +868,7 @@ _IndexedBlocks _extendIndex(
         entry.revision,
         entry.commitment,
         entry.textAppend,
+        entry.inlineAppend,
       ),
     );
     pendingAnchors.clear();
@@ -922,6 +930,7 @@ class _BlockView extends StatelessWidget {
   final BlockCommitment commitment;
   final int sourceRevision;
   final BlockTextAppend? textAppend;
+  final BlockInlineAppend? inlineAppend;
   final ValueChanged<int>? debugOnCodeUnitsIndexed;
   final ValueChanged<int>? debugOnParagraphCodeUnitsIndexed;
   final ParagraphIndexStepObserver? debugOnParagraphInitialIndexStep;
@@ -948,6 +957,7 @@ class _BlockView extends StatelessWidget {
     this.commitment = BlockCommitment.committed,
     this.sourceRevision = 0,
     this.textAppend,
+    this.inlineAppend,
     this.debugOnCodeUnitsIndexed,
     this.debugOnParagraphCodeUnitsIndexed,
     this.debugOnParagraphInitialIndexStep,
@@ -1011,6 +1021,7 @@ class _BlockView extends StatelessWidget {
                 _ => WindowedRichParagraph(
                   content: content,
                   sourceRevision: sourceRevision,
+                  inlineAppend: inlineAppend,
                   composer: composer,
                   documentOffset: offset,
                   style: theme.body,

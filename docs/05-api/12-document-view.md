@@ -338,11 +338,20 @@ rich-atomic benchmark records the current boundary
 (`integration_test/atomic_rich_paragraph_performance_test.dart`,
 `benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
 
-Rich rendering is bounded, but rich streaming is not yet append-bounded. In
-the native fixture, adding 51 styled characters to a 1,000,032-character
-provisional paragraph keeps only 1,650 characters mounted and moves the parked
-reader by exactly zero pixels, yet takes 1.96 seconds and 119 indexing pumps.
-The parser currently advertises `BlockTextAppend` only for one plain `TextRun`
-or an open code block, so an ordinary rich suffix is an unproven replacement
-and both retained indexes must be reconstructed. This is recorded as the next
-streaming contract boundary, not described as solved.
+Rich streaming now consumes the parser's `BlockInlineAppend` proof. The range
+index stores leaves in a persistent sequence, shares its complete prior tree,
+and indexes only the new runs. The retained line model then reshapes only its
+old final visual line and the suffix. Its projector and widow locator advance
+to the same immutable range-index revision before either can be observed. An
+unproven delimiter closure still takes the atomic replacement path.
+
+In the native fixture, adding 51 styled characters to a 1,000,032-character
+provisional paragraph now needs zero indexing pumps instead of 119, keeps only
+1,650 characters mounted, and moves the parked reader by exactly zero pixels.
+Append wall falls from 1.96 seconds to 691 ms; most of that wall is fixed
+harness settling, while the worst append frame falls from 37.9 ms to 25.0 ms.
+The remaining frame slope is not range or line indexing: document entry
+offsets, geometry estimates and window eligibility still derive values by
+walking the complete replacement block. Those upstream presentation walks are
+the next measured boundary. The retained rich indexes themselves are now
+append-bounded.

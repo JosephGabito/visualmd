@@ -1,5 +1,4 @@
-import 'dart:collection';
-
+import '../../domain/collection/persistent_sequence.dart';
 import '../../domain/reading/content/inline.dart';
 import '../../presentation/theme/widow_binding.dart';
 
@@ -11,7 +10,7 @@ import '../../presentation/theme/widow_binding.dart';
 /// built once per block revision and reconstructs only the intersecting
 /// structure, preserving container boundaries and authored text.
 final class InlineRangeIndex {
-  final List<_InlineLeaf> _leaves;
+  final PersistentSequence<_InlineLeaf> _leaves;
   final String source;
 
   InlineRangeIndex(List<Inline> content) : this._(_build(content));
@@ -24,13 +23,38 @@ final class InlineRangeIndex {
   InlineRangeIndex.fromSupported(List<Inline> content)
     : this._(_build(content, validate: false));
 
-  InlineRangeIndex._(_InlineIndexBuild build, {bool copyLeaves = true})
-    : _leaves = copyLeaves
-          ? List.unmodifiable(build.leaves)
-          : UnmodifiableListView(build.leaves),
+  InlineRangeIndex._(_InlineIndexBuild build)
+    : _leaves = build.leaves is PersistentSequence<_InlineLeaf>
+          ? build.leaves as PersistentSequence<_InlineLeaf>
+          : PersistentSequence<_InlineLeaf>.from(build.leaves),
       source = build.source;
 
+  InlineRangeIndex._indexed(this._leaves, this.source);
+
   int get length => source.length;
+
+  /// Extends a parser-proven inline suffix without visiting indexed leaves.
+  ///
+  /// The leaf rope shares every previous subtree. The flat source allocation
+  /// remains visible here because Flutter's paragraph and semantics APIs still
+  /// consume `String`; line and style indexing themselves are suffix-bounded.
+  InlineRangeIndex append(List<Inline> runs) {
+    if (!supports(runs)) {
+      throw ArgumentError.value(
+        runs,
+        'runs',
+        'Inline widgets and control runs cannot be range indexed',
+      );
+    }
+    final appended = _build(runs, validate: false, startOffset: source.length);
+    if (appended.source.isEmpty) return this;
+    final leaves = _leaves.replace(
+      index: _leaves.length,
+      removeCount: 0,
+      values: appended.leaves,
+    );
+    return InlineRangeIndex._indexed(leaves, '$source${appended.source}');
+  }
 
   /// Whether [content] can be represented entirely as styled text ranges.
   ///
@@ -150,6 +174,7 @@ final class InlineRangeIndex {
   static _InlineIndexBuild _build(
     List<Inline> content, {
     bool validate = true,
+    int startOffset = 0,
   }) {
     assert(validate || supports(content));
     if (validate && !supports(content)) {
@@ -161,7 +186,7 @@ final class InlineRangeIndex {
     }
     final leaves = <_InlineLeaf>[];
     final source = StringBuffer();
-    var offset = 0;
+    var offset = startOffset;
 
     void visit(Inline run, List<_InlineContainer> path) {
       switch (run) {
@@ -283,7 +308,8 @@ final class InlineRangeIndex {
 /// or geometry.
 final class ProgressiveInlineRangeIndex {
   final List<_PendingInline> _pending;
-  final List<_InlineLeaf> _leaves = [];
+  PersistentSequence<_InlineLeaf> _leaves =
+      PersistentSequence<_InlineLeaf>.from(const <_InlineLeaf>[]);
   final StringBuffer _source = StringBuffer();
 
   var _offset = 0;
@@ -324,13 +350,14 @@ final class ProgressiveInlineRangeIndex {
     }
 
     var indexed = 0;
+    final appendedLeaves = <_InlineLeaf>[];
     while (_pending.isNotEmpty && indexed < maxNodes) {
       final pending = _pending.removeLast();
       indexed++;
       switch (pending.run) {
         case TextRun(:final text):
           if (text.isEmpty) break;
-          _leaves.add(
+          appendedLeaves.add(
             _InlineLeaf(
               start: _offset,
               text: text,
@@ -343,7 +370,7 @@ final class ProgressiveInlineRangeIndex {
 
         case CodeRun(:final text):
           if (text.isEmpty) break;
-          _leaves.add(
+          appendedLeaves.add(
             _InlineLeaf(
               start: _offset,
               text: text,
@@ -355,7 +382,7 @@ final class ProgressiveInlineRangeIndex {
           _offset += text.length;
 
         case LineBreakRun():
-          _leaves.add(
+          appendedLeaves.add(
             _InlineLeaf(
               start: _offset,
               text: '\n',
@@ -392,11 +419,17 @@ final class ProgressiveInlineRangeIndex {
       }
     }
     _lastIndexedNodes = indexed;
+    if (appendedLeaves.isNotEmpty) {
+      _leaves = _leaves.replace(
+        index: _leaves.length,
+        removeCount: 0,
+        values: appendedLeaves,
+      );
+    }
 
     if (_pending.isEmpty) {
       _result = InlineRangeIndex._(
         _InlineIndexBuild(_leaves, _source.toString()),
-        copyLeaves: false,
       );
     }
     return _result != null;
