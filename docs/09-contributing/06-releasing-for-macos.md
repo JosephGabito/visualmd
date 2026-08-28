@@ -15,7 +15,7 @@ There are two Apple distribution routes:
 - **Developer ID** is for a download from the Visual MD website or GitHub. The
   app is signed with a Developer ID Application certificate, submitted to
   Apple's notary service, and shipped with the accepted ticket stapled to it.
-- **Mac App Store** is signed with Mac App Distribution credentials and sent
+- **Mac App Store** uses Apple Distribution credentials and is sent
   through App Store Connect. App Review replaces the separate notarization
   submission.
 
@@ -42,12 +42,19 @@ Merman library, and valid nested signatures. `--distribution` additionally
 requires Developer ID, a signing team, a secure timestamp, a stapled ticket,
 and Gatekeeper acceptance.
 
+`bin/tools/validate-macos-archive.sh` checks the archive as well as the app. It
+requires an Apple team and signing identity, then requires the embedded Merman
+dylib to have a companion dSYM with the same UUID for every architecture. This
+catches both Organizer's **No Team Found in Archive** failure and App Store
+Connect's Merman symbol warning before upload.
+
 ## Prepare this Mac
 
 1. Add the Apple ID enrolled in the paid Developer Program under Xcode Settings
-   > Accounts.
-2. Use Manage Certificates to create or download a **Developer ID
-   Application** certificate for direct distribution. The certificate and its
+   > Apple Accounts.
+2. Use Manage Certificates to create or download an **Apple Distribution**
+   certificate for the Mac App Store. Create a **Developer ID Application**
+   certificate only when preparing a direct download. Each certificate and its
    private key must both appear in Keychain Access.
 3. Open the Runner workspace under the macOS project in Xcode, select the
    Runner target, and select the registered team under Signing & Capabilities.
@@ -73,6 +80,27 @@ The release app is written to
 proves its repository-owned contract even before a distribution certificate is
 installed.
 
+After Product > Archive, validate the exact archive before opening the
+distribution workflow:
+
+```sh
+bin/tools/validate-macos-archive.sh \
+  "/path/to/Visual MD.xcarchive"
+```
+
+## Upload to the Mac App Store
+
+In Xcode, select the Runner target and confirm that Signing & Capabilities uses
+the registered team with automatic signing. Choose **Any Mac** as the run
+destination, then Product > Archive. Run the archive validator above before
+continuing.
+
+Open Organizer, select that exact archive, and choose Distribute App > App
+Store Connect > Upload. Xcode resolves the App Store distribution profile and
+re-signs the upload as needed. After App Store Connect finishes processing the
+build, select it on the macOS version page before adding the version for
+review.
+
 ## Sign and notarize a direct download
 
 Create an archive from the Runner workspace with Product > Archive. In
@@ -93,10 +121,13 @@ Only package the exact app that passes this command. A ZIP created with
 
 ## Failure and recovery
 
-An ad-hoc signature means the membership exists but this Mac lacks a usable
-distribution identity. `get-task-allow` means a debugger entitlement leaked
+An archive without a team was built before the Runner target had a development
+team. Assign the team, leave automatic signing enabled for the App Store route,
+and create a new archive; changing an existing archive does not repair its
+metadata. An ad-hoc signature means the membership exists but this Mac lacks a
+usable Apple identity. `get-task-allow` means a debugger entitlement leaked
 into the release. A missing `runtime` flag means hardened runtime was disabled.
-A failed `stapler` or `spctl` check means the exported artifact is not yet the
+A failed `stapler` or `spctl` check means a Developer ID export is not yet the
 notarized file users should download.
 
 Do not bypass any of those failures with a locally trusted or self-signed

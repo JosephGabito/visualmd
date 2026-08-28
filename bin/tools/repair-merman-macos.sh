@@ -10,6 +10,25 @@ readonly MERMAN_DYLIB="$APP_BUNDLE/Contents/Frameworks/libmerman_ffi.dylib"
 readonly MERMAN_FRAMEWORK="$APP_BUNDLE/Contents/Frameworks/merman.framework"
 readonly PORTABLE_NAME='@rpath/libmerman_ffi.dylib'
 
+generate_merman_dsym() {
+  [[ "${ACTION:-}" == 'install' ]] || return 0
+  [[ "${DEBUG_INFORMATION_FORMAT:-}" == *'dwarf-with-dsym'* ]] || return 0
+  [[ -n "${DWARF_DSYM_FOLDER_PATH:-}" ]] || return 0
+
+  # Merman publishes this dylib without a companion dSYM. App Store Connect
+  # requires a matching DWARF object for every Mach-O UUID even when the
+  # upstream binary contains only its public symbol table. Generate that
+  # companion from the repaired universal binary while Xcode is archiving;
+  # Xcode then collects it beside the target's other dSYMs.
+  local output="$DWARF_DSYM_FOLDER_PATH/libmerman_ffi.dylib.dSYM"
+  local diagnostics
+  if ! diagnostics="$(dsymutil "$MERMAN_DYLIB" -o "$output" 2>&1)"; then
+    printf '%s\n' "$diagnostics" >&2
+    return 1
+  fi
+  [[ -f "$output/Contents/Resources/DWARF/libmerman_ffi.dylib" ]]
+}
+
 rewrite_merman_references() {
   local binary="$1"
   [[ -f "$binary" ]] || return 0
@@ -44,6 +63,7 @@ rewrite_merman_references "$MERMAN_FRAMEWORK/Versions/A/merman"
 if [[ -f "$MERMAN_DYLIB" ]]; then
   codesign --remove-signature "$MERMAN_DYLIB" 2>/dev/null || true
   install_name_tool -id "$PORTABLE_NAME" "$MERMAN_DYLIB"
+  generate_merman_dsym
 fi
 
 # CocoaPods signed the two embedded products before this phase. Repairing their
