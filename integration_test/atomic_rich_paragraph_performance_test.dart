@@ -20,6 +20,7 @@ import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/reading/document_outline.dart';
 import 'package:visualmd/infrastructure/viewport/quiet_document_viewport_geometry.dart';
+import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 
@@ -186,8 +187,37 @@ void main() {
       'mode': 'profile',
       'viewport_logical_pixels': {'width': 1280, 'height': 820},
       'runs': runs,
+      'parser_runs': [
+        for (final characters in const [10000, 100000, 1000000])
+          _benchmarkRichParser(characters),
+      ],
     };
   });
+}
+
+Map<String, Object> _benchmarkRichParser(int minimumCharacters) {
+  final session = const MarkdownDocumentParser().startSession();
+  final source = _richMarkdown(minimumCharacters);
+  final openClock = Stopwatch()..start();
+  session.append(source);
+  openClock.stop();
+
+  const suffix = ' A streamed **styled** suffix with `inline_code` arrives.';
+  final appendClock = Stopwatch()..start();
+  final appended = session.append(suffix);
+  appendClock.stop();
+  final entry = appended.entries.single;
+  expect(entry.inlineAppend, isNotNull);
+
+  return {
+    'source_characters': source.length,
+    'open_wall_us': openClock.elapsedMicroseconds,
+    'append_characters': suffix.length,
+    'append_wall_us': appendClock.elapsedMicroseconds,
+    'parsed_source_characters': session.lastParsedSourceLength,
+    'inline_runs_after': (entry.block as ParagraphBlock).content.length,
+    'proved_suffix_runs': entry.inlineAppend!.runs.length,
+  };
 }
 
 int _mountedCharacters() => find
@@ -267,6 +297,17 @@ List<Inline> _richRuns(int minimumCharacters) {
     characters += unit.fold(0, (total, run) => total + run.text.length);
   }
   return runs;
+}
+
+String _richMarkdown(int minimumCharacters) {
+  const unit =
+      'Generated **bold** prose with `inline_code` and '
+      '[a link](https://example.com) keeps extending. ';
+  final source = StringBuffer();
+  while (source.length < minimumCharacters) {
+    source.write(unit);
+  }
+  return source.toString();
 }
 
 Map<String, Object> _frameSummary(List<FrameTiming> frames) {
