@@ -12,6 +12,7 @@ import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_recovery_store.dart';
 import '../../application/ports/workspace_source_access.dart';
 import 'platform_command.dart';
+import 'native_reader_state.dart';
 
 /// Everything the composition root needs from "wherever we are running".
 /// One implementation per platform family; `platform.dart` picks it.
@@ -40,6 +41,10 @@ abstract interface class PlatformAdapters {
 
   /// Commands selected from native application menus, where the host has one.
   Stream<PlatformCommand> get commands;
+
+  /// Projects reader capabilities into native window chrome. Platforms whose
+  /// chrome lives entirely outside the app treat this as a no-op.
+  Future<void> syncNativeReaderState(NativeReaderState state);
 
   void openExternal(String url);
 

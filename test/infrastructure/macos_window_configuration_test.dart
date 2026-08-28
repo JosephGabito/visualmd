@@ -26,12 +26,13 @@ void main() {
     expect(source.indexOf(minimum), lessThan(source.indexOf(autosave)));
   });
 
-  test('macOS removes native menus that have no reader actions', () {
+  test('macOS keeps native Edit and Help menus limited to reader actions', () {
     final source = File('macos/Runner/MainFlutterWindow.swift')
         .readAsStringSync();
 
-    expect(source, contains('["Edit", "Help"]'));
-    expect(source, contains('mainMenu.removeItem(unusedMenu)'));
+    expect(source, contains('installEditMenu(in: mainMenu'));
+    expect(source, contains('installHelpMenu(in: mainMenu'));
+    expect(source, isNot(contains('mainMenu.removeItem(unusedMenu)')));
   });
 
   test('macOS does not carry the traffic-light toolbar into fullscreen', () {

@@ -24,7 +24,7 @@ reader's private files before returning
 | workspace persistence | browser file handles or upload/download, IndexedDB authority (`lib/infrastructure/platform/platform_web.dart`) | native panels, atomic files, local paths/bookmarks (`lib/infrastructure/platform/platform_io.dart`) |
 | pickers | browser folder and Markdown pickers (`lib/infrastructure/platform/platform_web.dart`) | native pickers (`lib/infrastructure/platform/platform_io.dart`) |
 | drops and drag | document streams (`lib/infrastructure/platform/platform_web.dart`) | desktop drop wrapper (`lib/infrastructure/platform/platform_io.dart`) |
-| File commands | empty; Flutter shortcuts remain (`lib/infrastructure/platform/platform_web.dart`) | native menu command stream (`lib/infrastructure/platform/platform_io.dart`) |
+| native reader commands and state | empty command stream and no-op state projection; Flutter shortcuts remain (`lib/infrastructure/platform/platform_web.dart`) | native menu command stream plus title, capability, and panel-state projection on macOS (`lib/infrastructure/platform/platform_io.dart`) |
 | external open | empty; the browser owns file associations (`lib/infrastructure/platform/platform_web.dart`) | Finder double-click/Open With stream (`lib/infrastructure/platform/platform_io.dart`) |
 | chrome | browser-owned (`lib/infrastructure/platform/platform_web.dart`) | draggable custom macOS top bar; native elsewhere (`lib/infrastructure/platform/platform_io.dart`) |
 | preferences and themes | localStorage, built-ins only; no folder action (`lib/infrastructure/platform/platform_web.dart`) | `ReaderFiles`, plus a callback that reveals its theme directory (`lib/infrastructure/platform/platform_io.dart`) |
@@ -45,6 +45,7 @@ into the controller, and chrome callbacks into `VisualMdApp`.
 | out | `Stream<ExternalOpenItem>` | ordered Finder dispatch (`lib/main.dart`) |
 | out | preference strings and theme documents | startup and controller (`lib/main.dart`) |
 | out | links, chrome, theme-folder action, and shelf source actions | `VisualMdApp` (`lib/main.dart`) |
+| in | `NativeReaderState` | native macOS title, menu validation, and panel checkmarks (`lib/main.dart`, `macos/Runner/MainFlutterWindow.swift`) |
 
 Opaque refs flow back into scanners and source-access ports. Concrete paths,
 DOM files, bookmarks, and IndexedDB handles do not cross inward.

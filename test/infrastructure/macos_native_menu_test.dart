@@ -13,8 +13,8 @@ void main() {
       'Close Window',
       'Find in Document…',
       'Search Library…',
-      'Show or Hide Shelf',
-      'Show or Hide Outline',
+      'Shelf',
+      'Outline',
       'Increase Text Size',
       'Decrease Text Size',
       'Actual Size',
@@ -39,4 +39,45 @@ void main() {
       expect(xib, isNot(contains('title="$editorOnly"')));
     }
   });
+
+  test('native reader items validate and check against Flutter state', () {
+    final runner = source('macos/Runner/MainFlutterWindow.swift');
+
+    expect(runner, contains('NSObject, NSMenuItemValidation'));
+    expect(runner, contains('return state.hasLibrary'));
+    expect(runner, contains('return state.hasDocument'));
+    expect(
+      runner,
+      contains('shelfItem?.state = state.shelfVisible ? .on : .off'),
+    );
+    expect(
+      runner,
+      contains('outlineItem?.state = state.outlineVisible ? .on : .off'),
+    );
+    expect(runner, contains('self.nativeMenuController?.update(state)'));
+  });
+
+  test(
+    'the hidden native title follows the document with a product fallback',
+    () {
+      final runner = source('macos/Runner/MainFlutterWindow.swift');
+      final composition = source('lib/main.dart');
+
+      expect(runner, contains('call.method == "updateReaderState"'));
+      expect(runner, contains('self.title ='));
+      expect(runner, contains('self.title = "Visual MD"'));
+      expect(
+        composition,
+        contains('controller.addListener(syncNativeReaderState)'),
+      );
+      expect(
+        composition,
+        contains('documentTitle: controller.reading?.document.title'),
+      );
+      expect(
+        composition,
+        contains('WidgetsBinding.instance.addPostFrameCallback'),
+      );
+    },
+  );
 }

@@ -2,8 +2,56 @@ import Cocoa
 import FlutterMacOS
 import UniformTypeIdentifiers
 
-private final class NativeMenuController: NSObject {
+private struct NativeReaderState {
+  let documentTitle: String?
+  let hasLibrary: Bool
+  let hasDocument: Bool
+  let shelfVisible: Bool
+  let outlineVisible: Bool
+
+  static let empty = NativeReaderState(
+    documentTitle: nil,
+    hasLibrary: false,
+    hasDocument: false,
+    shelfVisible: true,
+    outlineVisible: true
+  )
+
+  init?(arguments: Any?) {
+    guard
+      let values = arguments as? [String: Any],
+      let hasLibrary = values["hasLibrary"] as? Bool,
+      let hasDocument = values["hasDocument"] as? Bool,
+      let shelfVisible = values["shelfVisible"] as? Bool,
+      let outlineVisible = values["outlineVisible"] as? Bool
+    else { return nil }
+    self.documentTitle = values["documentTitle"] as? String
+    self.hasLibrary = hasLibrary
+    self.hasDocument = hasDocument
+    self.shelfVisible = shelfVisible
+    self.outlineVisible = outlineVisible
+  }
+
+  private init(
+    documentTitle: String?,
+    hasLibrary: Bool,
+    hasDocument: Bool,
+    shelfVisible: Bool,
+    outlineVisible: Bool
+  ) {
+    self.documentTitle = documentTitle
+    self.hasLibrary = hasLibrary
+    self.hasDocument = hasDocument
+    self.shelfVisible = shelfVisible
+    self.outlineVisible = outlineVisible
+  }
+}
+
+private final class NativeMenuController: NSObject, NSMenuItemValidation {
   private let channel: FlutterMethodChannel
+  private var state = NativeReaderState.empty
+  weak var shelfItem: NSMenuItem?
+  weak var outlineItem: NSMenuItem?
 
   init(channel: FlutterMethodChannel) {
     self.channel = channel
@@ -33,12 +81,32 @@ private final class NativeMenuController: NSObject {
   @objc func showLicenses() { channel.invokeMethod("showLicenses", arguments: nil) }
 
   @objc func closeWindow() { NSApp.keyWindow?.performClose(nil) }
+
+  func update(_ state: NativeReaderState) {
+    self.state = state
+    shelfItem?.state = state.shelfVisible ? .on : .off
+    outlineItem?.state = state.outlineVisible ? .on : .off
+  }
+
+  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    switch menuItem.action {
+    case #selector(saveWorkspace), #selector(saveWorkspaceAs),
+      #selector(searchLibrary), #selector(toggleShelf):
+      return state.hasLibrary
+    case #selector(findDocument), #selector(toggleOutline),
+      #selector(enlargeText), #selector(shrinkText), #selector(resetText):
+      return state.hasDocument
+    default:
+      return true
+    }
+  }
 }
 
 class MainFlutterWindow: NSWindow {
   private var nativeMenuController: NativeMenuController?
   private var externalOpenItems: FlutterMethodChannel?
   private var externalOpenItemsReady = false
+  private var nativeReaderState = NativeReaderState.empty
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -84,6 +152,26 @@ class MainFlutterWindow: NSWindow {
       name: "com.visualmd.visualmd/commands",
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
+    commands.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "updateReaderState" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let state = NativeReaderState(arguments: call.arguments), let self else {
+        result(
+          FlutterError(
+            code: "argument", message: "Complete reader state is required.", details: nil))
+        return
+      }
+      self.nativeReaderState = state
+      if let documentTitle = state.documentTitle, !documentTitle.isEmpty {
+        self.title = documentTitle
+      } else {
+        self.title = "Visual MD"
+      }
+      self.nativeMenuController?.update(state)
+      result(nil)
+    }
 
     let externalOpenItems = FlutterMethodChannel(
       name: "com.visualmd.visualmd/external-open-items",
@@ -328,6 +416,7 @@ class MainFlutterWindow: NSWindow {
     installEditMenu(in: mainMenu, controller: controller)
     installViewMenu(in: mainMenu, controller: controller)
     installHelpMenu(in: mainMenu, controller: controller)
+    controller.update(nativeReaderState)
   }
 
   private func installApplicationMenu(
@@ -420,14 +509,16 @@ class MainFlutterWindow: NSWindow {
   ) {
     let submenu = ensureMenu(named: "View", in: mainMenu, at: 3)
     submenu.removeAllItems()
-    submenu.addItem(
-      item(
-        "Show or Hide Shelf", key: "b", action: #selector(NativeMenuController.toggleShelf),
-        target: controller))
-    submenu.addItem(
-      item(
-        "Show or Hide Outline", key: "b", modifiers: [.command, .shift],
-        action: #selector(NativeMenuController.toggleOutline), target: controller))
+    let shelfItem = item(
+      "Shelf", key: "b", action: #selector(NativeMenuController.toggleShelf),
+      target: controller)
+    controller.shelfItem = shelfItem
+    submenu.addItem(shelfItem)
+    let outlineItem = item(
+      "Outline", key: "b", modifiers: [.command, .shift],
+      action: #selector(NativeMenuController.toggleOutline), target: controller)
+    controller.outlineItem = outlineItem
+    submenu.addItem(outlineItem)
     submenu.addItem(.separator())
     submenu.addItem(
       item(
