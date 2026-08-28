@@ -213,6 +213,10 @@ void main() {
     final rich = _richParagraph(800);
 
     await tester.pumpWidget(_page(_richContent(rich, revision: 1)));
+    expect(
+      find.byKey(const ValueKey('rich-paragraph-indexing')),
+      findsOneWidget,
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(WindowedRichParagraph), findsOneWidget);
@@ -251,6 +255,72 @@ void main() {
     expect(_renderedWindow().length, lessThan(5000));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'a rich replacement cannot walk the scrollbar through partial geometry',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final indexed = <int>[];
+      final initial = _richParagraph(800);
+      final replacement = _richParagraph(4000);
+
+      await tester.pumpWidget(
+        _page(_richContent(initial, revision: 1), onSourceIndexed: indexed.add),
+      );
+      await tester.pumpAndSettle();
+      ScrollPosition position() =>
+          tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+      final oldExtent = position().maxScrollExtent;
+      final oldHeight = tester
+          .getSize(find.byType(WindowedPlainParagraph))
+          .height;
+      final oldWindow = _renderedWindow();
+      final retained = find.byType(WindowedPlainParagraph).evaluate().single;
+      expect(indexed, hasLength(1));
+
+      await tester.pumpWidget(
+        _page(
+          _richContent(replacement, revision: 2),
+          onSourceIndexed: indexed.add,
+        ),
+      );
+      expect(
+        find.byKey(const ValueKey('rich-paragraph-indexing')),
+        findsNothing,
+      );
+      expect(
+        identical(
+          find.byType(WindowedPlainParagraph).evaluate().single,
+          retained,
+        ),
+        isTrue,
+      );
+
+      var frames = 0;
+      while (indexed.length == 1) {
+        expect(
+          tester.getSize(find.byType(WindowedPlainParagraph)).height,
+          oldHeight,
+        );
+        expect(position().maxScrollExtent, oldExtent);
+        expect(_renderedWindow(), oldWindow);
+        await tester.pump(const Duration(milliseconds: 1));
+        frames++;
+        expect(frames, lessThan(400));
+      }
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byType(WindowedPlainParagraph)).height,
+        greaterThan(oldHeight),
+      );
+      expect(position().maxScrollExtent, greaterThan(oldExtent));
+      expect(indexed, [initial.text.length, replacement.text.length]);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('a proven append indexes only the old final line and suffix', (
     tester,

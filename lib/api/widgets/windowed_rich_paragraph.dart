@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/reading/content/inline.dart';
@@ -49,12 +51,20 @@ final class WindowedRichParagraph extends StatefulWidget {
 }
 
 final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
-  late InlineRangeIndex _index;
+  static const _maximumBatchesPerTurn = 4;
+  static const _buildBudget = Duration(milliseconds: 4);
+
+  InlineRangeIndex? _index;
+  ProgressiveInlineRangeIndex? _pending;
+  var _indexRevision = -1;
+  var _indexFinalized = false;
+  var _epoch = 0;
+  int? _scheduledEpoch;
 
   @override
   void initState() {
     super.initState();
-    _index = InlineRangeIndex(widget.content);
+    _beginIndex();
   }
 
   @override
@@ -62,32 +72,115 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sourceRevision != widget.sourceRevision ||
         !identical(oldWidget.content, widget.content)) {
-      _index = InlineRangeIndex(widget.content);
+      _beginIndex();
     }
   }
 
   @override
-  Widget build(BuildContext context) => WindowedPlainParagraph(
-    source: _index.source,
-    sourceRevision: widget.sourceRevision,
-    style: widget.style,
-    textScaler: widget.textScaler,
-    strutStyle: widget.strutStyle,
-    textDirection: ReadingDirection.of(
-      _index.source,
-      fallback: Directionality.of(context),
-    ),
-    finalized: widget.finalized,
-    selectionColor: widget.selectionColor,
-    rangeProjector: _projectRange,
-    widowOffsetFor: (_) => _index.widowOffset,
-    selectionIdentity: widget.selectionIdentity,
-    selectionOrder: widget.selectionOrder,
-    debugOnSourceIndexed: widget.debugOnSourceIndexed,
-    debugOnInitialIndexStep: widget.debugOnInitialIndexStep,
-  );
+  void dispose() {
+    _epoch++;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final index = _index;
+    if (index == null) {
+      final nominalSize = widget.style.fontSize ?? 14;
+      final lineHeight =
+          widget.textScaler.scale(nominalSize) * (widget.style.height ?? 1);
+      return Semantics(
+        key: const ValueKey('rich-paragraph-indexing'),
+        label: 'Preparing styled document text',
+        child: SizedBox(height: lineHeight),
+      );
+    }
+
+    // A replacement keeps the last complete source and geometry visible. The
+    // new revision enters the paragraph scheduler only after its range index
+    // can be published as one immutable value.
+    final replacing = _pending != null;
+    return WindowedPlainParagraph(
+      source: index.source,
+      sourceRevision: replacing ? _indexRevision : widget.sourceRevision,
+      style: widget.style,
+      textScaler: widget.textScaler,
+      strutStyle: widget.strutStyle,
+      textDirection: ReadingDirection.of(
+        index.source,
+        fallback: Directionality.of(context),
+      ),
+      finalized: replacing ? _indexFinalized : widget.finalized,
+      selectionColor: widget.selectionColor,
+      rangeProjector:
+          ({
+            required start,
+            required end,
+            required previous,
+            required widowOffset,
+          }) => _projectRange(
+            index: index,
+            start: start,
+            end: end,
+            previous: previous,
+            widowOffset: widowOffset,
+          ),
+      widowOffsetFor: (_) => index.widowOffset,
+      selectionIdentity: widget.selectionIdentity,
+      selectionOrder: widget.selectionOrder,
+      debugOnSourceIndexed: widget.debugOnSourceIndexed,
+      debugOnInitialIndexStep: widget.debugOnInitialIndexStep,
+    );
+  }
+
+  void _beginIndex() {
+    final epoch = ++_epoch;
+    _pending = ProgressiveInlineRangeIndex.fromSupported(widget.content);
+    _scheduleIndex(epoch);
+  }
+
+  void _scheduleIndex(int epoch) {
+    if (_scheduledEpoch == epoch) return;
+    _scheduledEpoch = epoch;
+    Timer(const Duration(milliseconds: 1), () {
+      if (!mounted || epoch != _epoch) return;
+      _scheduledEpoch = null;
+      final pending = _pending;
+      if (pending == null) return;
+
+      final stopwatch = Stopwatch()..start();
+      var batches = 0;
+      while (!pending.isComplete &&
+          batches < _maximumBatchesPerTurn &&
+          stopwatch.elapsed < _buildBudget) {
+        final stepClock = Stopwatch()..start();
+        pending.indexNext();
+        stepClock.stop();
+        widget.debugOnInitialIndexStep?.call(
+          pending.lastIndexedNodes,
+          stepClock.elapsed,
+        );
+        batches++;
+      }
+
+      if (!mounted || epoch != _epoch || !identical(pending, _pending)) {
+        return;
+      }
+      if (pending.isComplete) {
+        setState(() {
+          _index = pending.result;
+          _indexRevision = widget.sourceRevision;
+          _indexFinalized = widget.finalized;
+          _pending = null;
+        });
+      } else {
+        _scheduleIndex(epoch);
+      }
+    });
+  }
 
   WindowedParagraphProjection _projectRange({
+    required InlineRangeIndex index,
     required int start,
     required int end,
     required String? previous,
@@ -95,7 +188,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
   }) {
     final cursor = _RichProjectionCursor(previous);
     final projected = [
-      for (final run in _index.slice(start, end))
+      for (final run in index.slice(start, end))
         _projectRun(
           run,
           rangeStart: start,

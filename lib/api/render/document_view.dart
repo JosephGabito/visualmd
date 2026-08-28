@@ -53,8 +53,10 @@ bool _usesWindowedTextParagraph({
   if (indent != 0 || hasMatches || block is! ParagraphBlock) {
     return false;
   }
-  return InlineRangeIndex.supports(block.content) &&
-      InlineRangeIndex.textLength(block.content) >= _windowedParagraphThreshold;
+  return InlineRangeIndex.supportsAtLeast(
+    block.content,
+    _windowedParagraphThreshold,
+  );
 }
 
 /// Sets a document on the page.
