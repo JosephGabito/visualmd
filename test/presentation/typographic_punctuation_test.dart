@@ -29,6 +29,17 @@ void main() {
     expect(projection.text, '😀… “yes”');
     expect(projection.sourceOffsetAt(2), 2);
     expect(projection.sourceOffsetAt(projection.text.length), 11);
+    expect(projection.previousDisplayAt(2), '😀');
+  });
+
+  test('bounded projections inherit quote context from their left edge', () {
+    final closing = TypographicProjection.of('"word"', previous: 'x');
+    final opening = TypographicProjection.of('"word"', previous: ' ');
+
+    expect(closing.text, '”word”');
+    expect(opening.text, '“word”');
+    expect(closing.previousDisplayAt(0), 'x');
+    expect(opening.previousDisplayAt(opening.text.length), '”');
   });
 
   test('invalid display boundaries cannot escape the projection', () {
@@ -36,5 +47,7 @@ void main() {
 
     expect(() => projection.sourceOffsetAt(-1), throwsRangeError);
     expect(() => projection.sourceOffsetAt(5), throwsRangeError);
+    expect(() => projection.previousDisplayAt(-1), throwsRangeError);
+    expect(() => projection.previousDisplayAt(5), throwsRangeError);
   });
 }
