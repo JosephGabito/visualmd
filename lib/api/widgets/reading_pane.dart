@@ -89,6 +89,7 @@ class ReadingPaneState extends State<ReadingPane> {
   final _mountedHeadings = <String>{};
   String? _activeAnchor;
   var _tailIntent = false;
+  var _tailSettlementGeneration = 0;
 
   @override
   void initState() {
@@ -446,6 +447,7 @@ class ReadingPaneState extends State<ReadingPane> {
     switch (notification) {
       case ScrollStartNotification():
         _tailIntent = false;
+        _tailSettlementGeneration++;
       case ScrollUpdateNotification(:final dragDetails)
           when dragDetails != null &&
               notification.metrics.pixels >=
@@ -467,16 +469,24 @@ class ReadingPaneState extends State<ReadingPane> {
   /// A sliver can refine its maximum after materialising the newly appended
   /// child, so one extra frame is allowed to converge. Readers above the tail
   /// never enter this path and retain their exact physical offset.
-  void _settleAtTail([int remainingPasses = 8]) {
+  void _settleAtTail([int remainingPasses = 8, int? settlementGeneration]) {
+    final activeGeneration =
+        settlementGeneration ?? ++_tailSettlementGeneration;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scroll.hasClients) return;
+      if (!mounted ||
+          !_scroll.hasClients ||
+          activeGeneration != _tailSettlementGeneration) {
+        return;
+      }
       final position = _scroll.position;
       final delta = position.maxScrollExtent - position.pixels;
       if (delta.abs() > 0.01) position.jumpTo(position.maxScrollExtent);
       // A geometry correction may land after this frame reports equality.
       // Keep the tail relationship alive through the bounded convergence
       // window rather than mistaking an intermediate maximum for the final one.
-      if (remainingPasses > 0) _settleAtTail(remainingPasses - 1);
+      if (remainingPasses > 0) {
+        _settleAtTail(remainingPasses - 1, activeGeneration);
+      }
     });
   }
 

@@ -732,6 +732,46 @@ $body
     expect(position.pixels, closeTo(position.maxScrollExtent, 0.01));
   });
 
+  testWidgets('an upward gesture cancels pending tail settlement', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pump(tester, reading('# Opening\n\n$body\n\n$body'));
+    await tester.pumpAndSettle();
+
+    final scrollView = find.byType(CustomScrollView);
+    final scrollable = find.descendant(
+      of: scrollView,
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pump();
+
+    final notificationContext = tester.element(scrollView);
+    OverscrollNotification(
+      metrics: position,
+      context: notificationContext,
+      overscroll: 1,
+    ).dispatch(notificationContext);
+    ScrollEndNotification(
+      metrics: position,
+      context: notificationContext,
+    ).dispatch(notificationContext);
+    await tester.pump();
+
+    position.pointerScroll(-300);
+    final escapedTail = position.pixels;
+    expect(escapedTail, lessThan(position.maxScrollExtent - 100));
+
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump();
+    }
+    expect(position.pixels, closeTo(escapedTail, 0.01));
+  });
+
   testWidgets('a distant heading materializes before its exact alignment', (
     tester,
   ) async {
