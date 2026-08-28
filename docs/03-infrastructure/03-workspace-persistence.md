@@ -37,6 +37,12 @@ same local registry shape remains available. Browser implementations prefer
 File System Access handles stored in IndexedDB; upload/download fallback refs
 explicitly disable automatic writes.
 
+Desktop restoration resolves a bookmark first and keeps the machine-local
+stored path as its fallback when no resolved URL is available. The adapter
+opens the resulting security scope before checking that the directory or file
+still exists, so sandbox visibility is tested under the same authority later
+used by the scanner (`lib/infrastructure/io/desktop_workspace_source_access.dart`).
+
 ## Inputs and outputs
 
 | Port | Desktop adapter | Web adapter |

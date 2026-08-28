@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals — public seams hide private fields.
+
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -10,21 +12,32 @@ import '../../domain/workspace/workspace_source.dart';
 import 'desktop_bookmarks.dart';
 import 'desktop_folder_picker.dart';
 import 'desktop_markdown_picker.dart';
+import 'desktop_security_scope.dart';
 import 'local_folder.dart';
 import 'local_markdown.dart';
 import 'reader_files.dart';
+import 'scoped_access.dart';
+
+typedef DesktopBookmarkResolver = Future<BookmarkResolution?> Function(
+  Uint8List bookmark,
+);
 
 /// Restores workspace paths and their machine-local macOS access grants.
 final class DesktopWorkspaceSourceAccess implements WorkspaceSourceAccess {
   final LocalFolderRegistry _folders;
   final LocalMarkdownRegistry _markdowns;
   final ReaderFiles _files;
+  final ScopedAccess _access;
+  final DesktopBookmarkResolver _resolveBookmark;
 
-  const DesktopWorkspaceSourceAccess(
+  DesktopWorkspaceSourceAccess(
     this._folders,
     this._markdowns,
-    this._files,
-  );
+    this._files, {
+    ScopedAccess access = const DesktopSecurityScope(),
+    DesktopBookmarkResolver? resolveBookmark,
+  }) : _access = access,
+       _resolveBookmark = resolveBookmark ?? DesktopBookmarks.resolve;
 
   @override
   Future<WorkspaceSourceLocation> locateFolder(FolderRef ref) async {
@@ -107,7 +120,11 @@ final class DesktopWorkspaceSourceAccess implements WorkspaceSourceAccess {
     );
     final restored = await _resolveStored(workspace, source, stored);
     final path = restored.path;
-    if (!await Directory(path).exists()) {
+    final exists = await _access.within(
+      restored.bookmark,
+      () => Directory(path).exists(),
+    );
+    if (!exists) {
       throw WorkspaceSourceUnavailable(source);
     }
     final folder = LocalDirectory(path, bookmark: restored.bookmark);
@@ -130,7 +147,11 @@ final class DesktopWorkspaceSourceAccess implements WorkspaceSourceAccess {
     );
     final restored = await _resolveStored(workspace, source, stored);
     final path = restored.path;
-    if (!await File(path).exists()) throw WorkspaceSourceUnavailable(source);
+    final exists = await _access.within(
+      restored.bookmark,
+      () => File(path).exists(),
+    );
+    if (!exists) throw WorkspaceSourceUnavailable(source);
     final markdown = LocalMarkdown(path, bookmark: restored.bookmark);
     return _markdowns.register(
       source.displayName,
@@ -186,8 +207,8 @@ final class DesktopWorkspaceSourceAccess implements WorkspaceSourceAccess {
     ({String path, Uint8List? bookmark})? stored,
   ) async {
     final bookmark = stored?.bookmark;
-    if (bookmark != null && Platform.isMacOS) {
-      final resolution = await DesktopBookmarks.resolve(bookmark);
+    if (bookmark != null) {
+      final resolution = await _resolveBookmark(bookmark);
       if (resolution != null) {
         if (resolution.refreshed || resolution.path != stored!.path) {
           await _files.writeWorkspaceAccess(
@@ -200,7 +221,10 @@ final class DesktopWorkspaceSourceAccess implements WorkspaceSourceAccess {
         return (path: resolution.path, bookmark: resolution.bookmark);
       }
     }
-    return (path: _resolve(workspace, source), bookmark: bookmark);
+    return (
+      path: stored?.path ?? _resolve(workspace, source),
+      bookmark: bookmark,
+    );
   }
 }
 
