@@ -62,3 +62,42 @@ noise: source size, span count, mounted text, frame time and memory rise
 together across two orders of magnitude. No optimization has been claimed yet.
 The next slice should first separate text-only inline marks from widget-bearing
 runs, then prove range composition against the current eager output.
+
+## Windowed result
+
+`InlineRangeIndex` now records source boundaries over text-only nested inline
+meaning, and `WindowedRichParagraph` projects only the range requested by the
+retained visual-line index or current viewport. The eager composer still owns
+the actual styles and link behavior inside that bounded range.
+
+| Visible characters | Mounted characters | Open wall | Open frame worst | Open frame p99 | Middle-seek frame worst | RSS added |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10,032 | 10,032 | 466 ms | 18.0 ms | 18.0 ms | 5.5 ms | 9.1 MiB |
+| 100,056 | 2,706 | 673 ms | 11.7 ms | 11.7 ms | 7.2 ms | 5.2 MiB |
+| 1,000,032 | 2,706 | 1.86 s | 55.2 ms | 9.2 ms | 13.2 ms | 0.4 MiB |
+
+The million-character opening frame fell from 5,280.5 ms to 55.2 ms, a 95×
+reduction. Mounted Flutter text is now constant, the retained 660 MiB process
+jump disappears, and the complete paragraph extent is 514,739.8 logical
+pixels—the same geometry as the eager baseline. Initial line discovery used
+153 harness pumps and publishes no partial scrollbar geometry.
+
+The range contract preserves nested marks and one link container, smart
+punctuation outside code, literal punctuation inside code, exact authored-
+source offsets, bidi direction, emoji, widow policy and complete semantics.
+Inline widgets, mathematics and footnote controls remain deliberately eager
+because they own geometry or control semantics beyond their reading text.
+
+## Remaining cost
+
+This intervention removes the multiplicative render-object and retained-span
+cost, but it exposes two smaller boundaries:
+
+- constructing the 106,064-leaf source-range index is still synchronous and
+  contributes the one 55 ms opening outlier;
+- a middle seek composes roughly 2,700 visible characters across hundreds of
+  tiny authored runs and reaches 13.2 ms in this deliberately dense fixture.
+
+Those are now bounded architectural problems rather than million-character
+text shaping. They should be scheduled or compacted only with another measured
+pass; the present result does not call them solved.

@@ -305,6 +305,20 @@ Plain final typography retains the line window: widow eligibility stops after
 four words, and only the visual line owning the final breakable space is
 re-resolved (`lib/presentation/theme/widow_binding.dart`). Straight quotes,
 dash runs and ellipses are already projected while a paragraph streams, so
-finalization never reflows their committed prefix. Rich inline content, active
-search, indented prose, tables, lists and quotations still take their exact
-eager paths; those boundaries are recorded rather than called solved.
+finalization never reflows their committed prefix. Active search, indented
+prose, tables, lists and quotations still take their exact eager paths; those
+boundaries are recorded rather than called solved.
+
+Text-shaped inline meaning no longer makes an atomic paragraph eager. An
+`InlineRangeIndex` binary-seeks the source leaves intersecting one bounded
+range and reconstructs their original mark and link containers
+(`lib/api/render/inline_range_index.dart`). `WindowedRichParagraph` feeds that
+range through the ordinary `InlineComposer`, so emphasis, strong text, inline
+code, links and line breaks preserve their appearance and behavior while the
+outer paragraph retains the same line and scrollbar physics
+(`lib/api/widgets/windowed_rich_paragraph.dart`). Inline images, mathematics,
+footnote controls, active search and first-line indents still use the eager
+paragraph because each needs a separate geometry, semantics or navigation
+contract. The native rich-atomic benchmark records the current boundary
+(`integration_test/atomic_rich_paragraph_performance_test.dart`,
+`benchmark/results/2026-08-28-atomic-rich-paragraph.md`).

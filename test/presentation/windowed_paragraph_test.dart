@@ -6,6 +6,7 @@ import 'package:visualmd/api/render/reading_theme.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/model_backed_selection_area.dart';
 import 'package:visualmd/api/widgets/windowed_paragraph.dart';
+import 'package:visualmd/api/widgets/windowed_rich_paragraph.dart';
 import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
@@ -202,6 +203,54 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('a rich atomic paragraph mounts only its styled viewport range', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final rich = _richParagraph(800);
+
+    await tester.pumpWidget(_page(_richContent(rich, revision: 1)));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WindowedRichParagraph), findsOneWidget);
+    expect(find.byType(WindowedPlainParagraph), findsOneWidget);
+    expect(find.byType(Paragraph), findsNothing);
+    final rendered = _renderedWindow();
+    expect(rendered.length, lessThan(5000));
+    expect(rendered, contains('“quoted…”'));
+    expect(rendered, contains('"HEAD"...'));
+
+    final window = tester.widget<WindowedRichParagraph>(
+      find.byType(WindowedRichParagraph),
+    );
+    final inner = tester.widget<WindowedPlainParagraph>(
+      find.byType(WindowedPlainParagraph),
+    );
+    final size = tester.getSize(find.byType(WindowedRichParagraph));
+    final complete = TextPainter(
+      text: TextSpan(
+        style: window.style,
+        children: window.composer.compose(rich.content, style: window.style),
+      ),
+      textDirection: inner.textDirection,
+      textScaler: window.textScaler,
+      strutStyle: window.strutStyle,
+    )..layout(maxWidth: size.width);
+    expect(size.height, closeTo(complete.height, 0.01));
+    complete.dispose();
+
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position;
+    position.jumpTo(position.maxScrollExtent * 0.5);
+    await tester.pumpAndSettle();
+    expect(_renderedWindow(), isNot(rendered));
+    expect(_renderedWindow().length, lessThan(5000));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('a proven append indexes only the old final line and suffix', (
     tester,
@@ -429,6 +478,33 @@ DocumentContent _content(
     textAppend: append,
   ),
 ], revision: revision);
+
+DocumentContent _richContent(
+  ParagraphBlock paragraph, {
+  required int revision,
+}) => DocumentContent.revisioned([
+  DocumentBlock(
+    id: const DocumentBlockId('provisional-rich-paragraph'),
+    revision: revision,
+    commitment: BlockCommitment.provisional,
+    block: paragraph,
+  ),
+], revision: revision);
+
+ParagraphBlock _richParagraph(int repetitions) {
+  const unit = <Inline>[
+    TextRun('Generated '),
+    MarkedRun(InlineMark.strong, [TextRun('bold')]),
+    TextRun(' prose said "quoted..." with '),
+    CodeRun('"HEAD"...'),
+    TextRun(' and '),
+    LinkRun(href: '/guide', children: [TextRun('a link')]),
+    TextRun(' before continuing. '),
+  ];
+  return ParagraphBlock([
+    for (var index = 0; index < repetitions; index++) ...unit,
+  ]);
+}
 
 String _prose(int characters) {
   const unit =
