@@ -8,6 +8,11 @@ whole figure within a bounded part of the reading page. Its exploratory state
 lets a reader drag to pan, zoom, reset to fit, copy the source, or open the
 same figure full screen (`lib/api/widgets/mermaid_diagram.dart`).
 
+Full screen ordinarily enters through a 180 ms fade. Reduce Motion removes
+that automatic transition while leaving direct drag, wheel, pinch, zoom, and
+fit actions unchanged (`lib/api/widgets/mermaid_diagram.dart`,
+`test/presentation/mermaid_diagram_test.dart`).
+
 The domain owns exact Mermaid source. The application ring defines a renderer
 port and plain colour values. Infrastructure owns graph parsing, layout, SVG
 generation and target adapters. The API ring owns Flutter painting and

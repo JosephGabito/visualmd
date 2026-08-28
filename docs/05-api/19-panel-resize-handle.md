@@ -18,6 +18,10 @@ ordinary panel border. Hover or focus thickens it to 2 px and changes it to the
 theme accent over 100 ms (`lib/api/widgets/panel_resize_handle.dart`,
 `lib/api/widgets/panel_resize_handle.dart`). The mouse cursor becomes a
 column-resize cursor (`lib/api/widgets/panel_resize_handle.dart`).
+Reduce Motion makes that highlight change immediate without altering pointer,
+keyboard, or accessibility resizing
+(`lib/api/widgets/panel_resize_handle.dart`,
+`test/presentation/reader_chrome_test.dart`).
 
 Physical movement is translated by side: moving the shelf's right edge right
 makes the shelf wider; moving the outline's left edge right makes the outline

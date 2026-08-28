@@ -245,11 +245,14 @@ final class _MermaidExplorerState extends State<_MermaidExplorer> {
 
   Future<void> _openFullScreen() async {
     final p = context.palette;
+    final transitionDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
     await showGeneralDialog<void>(
       context: context,
       barrierDismissible: false,
       barrierColor: p.paper,
-      transitionDuration: const Duration(milliseconds: 180),
+      transitionDuration: transitionDuration,
       transitionBuilder: (context, animation, secondary, child) =>
           FadeTransition(
             opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),

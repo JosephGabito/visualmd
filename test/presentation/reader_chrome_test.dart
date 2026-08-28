@@ -765,6 +765,34 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final titleSwitcher = tester.widget<AnimatedSwitcher>(
+      find
+          .ancestor(
+            of: find.byKey(const ValueKey('top-bar-document-title')),
+            matching: find.byType(AnimatedSwitcher),
+          )
+          .first,
+    );
+    final shelfIconSwitcher = tester.widget<AnimatedSwitcher>(
+      find
+          .descendant(
+            of: barButton(tester, 'Hide shelf'),
+            matching: find.byType(AnimatedSwitcher),
+          )
+          .first,
+    );
+    final resizeHighlight = tester.widget<AnimatedContainer>(
+      find
+          .descendant(
+            of: find.byKey(const ValueKey('shelf-resize-handle')),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first,
+    );
+    expect(titleSwitcher.duration, Duration.zero);
+    expect(shelfIconSwitcher.duration, Duration.zero);
+    expect(resizeHighlight.duration, Duration.zero);
+
     await tester.tap(barButton(tester, 'Hide shelf'));
     await tester.pump();
     expect(find.byType(ShelfPanel), findsNothing);

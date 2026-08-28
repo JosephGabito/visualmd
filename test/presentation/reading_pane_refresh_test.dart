@@ -12,6 +12,7 @@ import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/document_content.dart';
 import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/domain/reading/document_outline.dart';
+import 'package:visualmd/domain/search/search_result.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/infrastructure/viewport/quiet_document_viewport_geometry.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
@@ -35,22 +36,121 @@ void main() {
     );
   }
 
-  Future<void> pump(WidgetTester tester, DocumentReading current, {Key? key}) =>
-      tester.pumpWidget(
-        MaterialApp(
-          theme: libraryTheme(BuiltInThemes.paper),
-          home: Scaffold(
-            body: ReadingPane(
-              key: key,
-              reading: current,
-              scale: ReadingScale.comfortable,
-              viewportGeometry: const QuietDocumentViewportGeometryFactory(),
-              onLink: (_) {},
-              onActiveHeadingChanged: (_) {},
-            ),
-          ),
+  Future<void> pump(
+    WidgetTester tester,
+    DocumentReading current, {
+    Key? key,
+    bool reduceMotion = false,
+    List<TextMatch> matches = const [],
+    int activeMatch = -1,
+  }) => tester.pumpWidget(
+    MaterialApp(
+      theme: libraryTheme(BuiltInThemes.paper),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+        child: child!,
+      ),
+      home: Scaffold(
+        body: ReadingPane(
+          key: key,
+          reading: current,
+          scale: ReadingScale.comfortable,
+          viewportGeometry: const QuietDocumentViewportGeometryFactory(),
+          onLink: (_) {},
+          onActiveHeadingChanged: (_) {},
+          matches: matches,
+          activeMatch: activeMatch,
         ),
-      );
+      ),
+    ),
+  );
+
+  testWidgets('Reduce Motion reaches a mounted anchor without scrolling', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey<ReadingPaneState>();
+    final lead = List.generate(
+      4,
+      (index) =>
+          'Lead paragraph $index has enough words to occupy two quiet lines.',
+    ).join('\n\n');
+    final current = reading(
+      '# Opening\n\n$lead\n\n## Immediate target\n\nArrived.\n\n$body',
+    );
+    await pump(tester, current, key: key, reduceMotion: true);
+    await tester.pumpAndSettle();
+    expect(find.text('Immediate target'), findsOneWidget);
+
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+    expect(position.pixels, 0);
+
+    key.currentState!.scrollToAnchor('immediate-target');
+
+    expect(position.pixels, greaterThan(0));
+  });
+
+  testWidgets('Reduce Motion reaches an active search result without a tween', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final current = reading(
+      '# Opening\n\nNeedle is the active result.\n\n$body',
+    );
+    final target = current.content.entries.indexWhere((entry) {
+      final block = entry.block;
+      return block is ParagraphBlock && block.text.contains('Needle');
+    });
+    var start = 0;
+    for (var index = 0; index < target; index++) {
+      if (current.content.entries[index].block is AnchorBlock) continue;
+      start += current.content.entries[index].textMetrics.codeUnits + 2;
+    }
+    final match = TextMatch(
+      start: start,
+      end: start + 'Needle'.length,
+      excerpt: 'Needle is the active result.',
+    );
+
+    await pump(tester, current, reduceMotion: true, matches: [match]);
+    await tester.pumpAndSettle();
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+    position.jumpTo(200);
+    await tester.pump();
+    final before = position.pixels;
+    expect(before, 200);
+
+    await pump(
+      tester,
+      current,
+      reduceMotion: true,
+      matches: [match],
+      activeMatch: 0,
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(position.pixels, lessThan(before));
+    expect(position.isScrollingNotifier.value, isFalse);
+  });
 
   testWidgets(
     'refreshing the same document rebuilds its anchors without moving the reader',

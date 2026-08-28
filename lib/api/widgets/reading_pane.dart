@@ -209,7 +209,9 @@ class ReadingPaneState extends State<ReadingPane> {
   }) {
     Scrollable.ensureVisible(
       context,
-      duration: duration,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : duration,
       curve: Curves.easeOutCubic,
       alignment: alignment,
     );
