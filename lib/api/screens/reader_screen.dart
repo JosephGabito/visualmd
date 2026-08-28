@@ -81,6 +81,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _compactOutlineVisible = false;
   final _searchText = TextEditingController();
   final _searchFocus = FocusNode();
+  final _readerFocus = FocusNode();
+  FocusNode? _searchReturnFocus;
   final _appearanceMenu = AnchoredMenuController();
   StreamSubscription<ReaderUiCommand>? _uiCommandSubscription;
   Timer? _searchDebounce;
@@ -190,6 +192,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _activeAnchor.dispose();
     _searchText.dispose();
     _searchFocus.dispose();
+    _readerFocus.dispose();
     _appearanceMenu.dispose();
     _uiCommandSubscription?.cancel();
     super.dispose();
@@ -199,6 +202,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
     if (c.library == null ||
         (mode == _SearchMode.document && c.reading == null)) {
       return;
+    }
+    if (_searchMode == _SearchMode.closed) {
+      _searchReturnFocus = FocusManager.instance.primaryFocus;
     }
     setState(() {
       _searchMode = mode;
@@ -219,11 +225,22 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void _closeSearch() {
     _searchDebounce?.cancel();
     _searchRequest++;
+    if (c.canRetrySearch) c.clearError();
     setState(() {
       _searchMode = _SearchMode.closed;
       _searchResults = const [];
       _activeMatch = 0;
       _searching = false;
+    });
+    final returnFocus = _searchReturnFocus;
+    _searchReturnFocus = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (returnFocus?.context != null && returnFocus!.canRequestFocus) {
+        returnFocus.requestFocus();
+      } else {
+        _readerFocus.requestFocus();
+      }
     });
   }
 
@@ -231,6 +248,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _searchDebounce?.cancel();
     if (value.isEmpty) {
       _searchRequest++;
+      if (c.canRetrySearch) c.clearError();
       setState(() {
         _searchResults = const [];
         _activeMatch = 0;
@@ -259,6 +277,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
     });
   }
 
+  Future<void> _retrySearch() async {
+    if (_searchMode == _SearchMode.closed || _searchText.text.isEmpty) return;
+    setState(() => _searching = true);
+    await _searchNow();
+  }
+
   DocumentSearchResult? _resultForCurrentDocument() {
     final id = c.reading?.document.id;
     if (id == null) return null;
@@ -279,6 +303,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _searchRequest++;
     await c.openDocument(result.document.id);
     if (!mounted) return;
+    if (c.reading?.document.id != result.document.id) return;
     setState(() {
       _searchMode = _SearchMode.document;
       _searchResults = [result];
@@ -294,6 +319,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
         _pane.currentState?.scrollToAnchor(anchor);
       case DocumentLink(:final id, :final anchor):
         await c.openDocument(id);
+        if (c.reading?.document.id != id) return;
         if (_searchMode == _SearchMode.document) await _searchNow();
         if (anchor != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -438,6 +464,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
         ): c.saveWorkspaceAs,
       },
       child: Focus(
+        key: const ValueKey('reader-command-focus'),
+        focusNode: _readerFocus,
         autofocus: true,
         child: ListenableBuilder(
           listenable: c,
@@ -769,6 +797,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
                         child: ErrorNotice(
                           message: c.error!,
                           onDismiss: c.clearError,
+                          onRetry: c.canRetrySearch
+                              ? () => unawaited(_retrySearch())
+                              : c.canRetryDocumentOpen
+                              ? () => unawaited(c.retryDocumentOpen())
+                              : null,
                         ),
                       ),
                     ),

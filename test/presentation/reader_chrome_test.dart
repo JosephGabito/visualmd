@@ -19,6 +19,7 @@ import 'package:visualmd/api/widgets/shelf_panel.dart';
 import 'package:visualmd/api/screens/reader_screen.dart';
 import 'package:visualmd/application/ports/folder_scanner.dart';
 import 'package:visualmd/application/ports/markdown_scanner.dart';
+import 'package:visualmd/application/ports/document_search.dart';
 import 'package:visualmd/application/ports/workspace_files.dart';
 import 'package:visualmd/application/ports/workspace_source_access.dart';
 import 'package:visualmd/application/library_mutation_queue.dart';
@@ -28,9 +29,11 @@ import 'package:visualmd/application/use_cases/add_markdown.dart';
 import 'package:visualmd/application/use_cases/move_folder.dart';
 import 'package:visualmd/application/use_cases/open_workspace.dart';
 import 'package:visualmd/domain/library/document_id.dart';
+import 'package:visualmd/domain/library/document.dart';
 import 'package:visualmd/domain/library/library_builder.dart';
 import 'package:visualmd/domain/library/library_root_id.dart';
 import 'package:visualmd/domain/reading/heading.dart';
+import 'package:visualmd/domain/search/search_result.dart';
 import 'package:visualmd/domain/workspace/workspace.dart';
 import 'package:visualmd/domain/workspace/workspace_id.dart';
 import 'package:visualmd/domain/workspace/workspace_source.dart';
@@ -107,6 +110,22 @@ final class _MarkdownScanner implements MarkdownScanner {
   @override
   Future<ScannedMarkdown> scan(MarkdownRef ref) =>
       throw MarkdownUnavailable(ref);
+}
+
+final class _RecoveringSearch implements DocumentSearch {
+  final DocumentSearch delegate;
+  bool failing = true;
+
+  _RecoveringSearch(this.delegate);
+
+  @override
+  Future<List<DocumentSearchResult>> find(
+    SearchQuery query,
+    Iterable<Document> documents,
+  ) {
+    if (failing) throw StateError('private search failure');
+    return delegate.find(query, documents);
+  }
 }
 
 final class _WorkspaceFiles implements WorkspaceFiles {
@@ -217,6 +236,7 @@ void main() {
     void Function(String url)? openExternal,
     bool withLibrary = true,
     Stream<ReaderUiCommand>? uiCommands,
+    DocumentSearch? documentSearch,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -245,7 +265,7 @@ void main() {
       readDocument: ReadDocument(repository: repository, parser: parser),
       searchDocuments: SearchDocuments(
         repository: repository,
-        search: LiteralDocumentSearch(parser: parser),
+        search: documentSearch ?? LiteralDocumentSearch(parser: parser),
       ),
       pickFolder: () async => null,
       openWorkspace: openWorkspace,
@@ -613,6 +633,59 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('1 of 1'), findsOneWidget);
+  });
+
+  testWidgets('a failed library search settles with recoverable copy', (
+    tester,
+  ) async {
+    final search = _RecoveringSearch(
+      LiteralDocumentSearch(parser: const MarkdownDocumentParser()),
+    );
+    await pumpReader(tester, documentSearch: search);
+    await pressFind(tester, library: true);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('library-search-field')),
+      'Other',
+    );
+    await tester.pump(const Duration(milliseconds: 130));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(
+      find.text('Couldn\'t search the library. Try again.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('private search failure'), findsNothing);
+
+    search.failing = false;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 match in 1 document'), findsOneWidget);
+    expect(find.byType(ErrorNotice), findsNothing);
+  });
+
+  testWidgets('closing search returns keyboard focus to the reader', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    final reader = tester.widget<Focus>(
+      find.byKey(const ValueKey('reader-command-focus')),
+    );
+    reader.focusNode!.requestFocus();
+    await tester.pump();
+    expect(reader.focusNode!.hasFocus, isTrue);
+
+    await pressFind(tester);
+    final field = tester.widget<EditableText>(find.byType(EditableText));
+    expect(field.focusNode.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DocumentFindBar), findsNothing);
+    expect(reader.focusNode!.hasFocus, isTrue);
   });
 
   testWidgets('a fragment reaches the numbered anchor of a duplicate heading', (

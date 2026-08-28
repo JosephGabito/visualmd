@@ -184,6 +184,10 @@ final class ReaderController extends ChangeNotifier {
   bool dragging = false;
   String? error;
   String? _sourceSyncError;
+  String? _searchError;
+  String? _documentOpenError;
+  DocumentId? _failedDocumentOpen;
+  var _searchAttempt = 0;
   int contentRevision = 0;
   bool shelfVisible = true;
   bool outlineVisible = true;
@@ -532,18 +536,64 @@ final class ReaderController extends ChangeNotifier {
 
   Future<void> openDocument(DocumentId id) async {
     if (reading?.document.id == id) return;
-    final next = await _readDocument.execute(id);
     final open = library;
-    if (open != null) await _updateWorkspace?.rememberActive(open, id);
-    reading = next;
-    await _refreshWorkspaceSession();
+    final label = open?.find(id)?.title ?? id.fileName;
+    try {
+      final next = await _readDocument.execute(id);
+      if (open != null) await _updateWorkspace?.rememberActive(open, id);
+      await _refreshWorkspaceSession();
+      reading = next;
+      error = null;
+      _documentOpenError = null;
+      _failedDocumentOpen = null;
+    } on Object {
+      // Reading is committed only after every opening step succeeds. A failed
+      // source read therefore leaves a useful page on screen and the same id
+      // can be selected again after the source becomes available.
+      final message = "Couldn't open “$label”. Try again.";
+      _documentOpenError = message;
+      _failedDocumentOpen = id;
+      error = message;
+    }
     notifyListeners();
   }
+
+  bool get canRetryDocumentOpen =>
+      error != null &&
+      error == _documentOpenError &&
+      _failedDocumentOpen != null;
+
+  Future<void> retryDocumentOpen() async {
+    final id = canRetryDocumentOpen ? _failedDocumentOpen : null;
+    if (id != null) await openDocument(id);
+  }
+
+  bool get canRetrySearch => error != null && error == _searchError;
 
   Future<List<DocumentSearchResult>> search(
     String text, {
     DocumentId? within,
-  }) => _searchDocuments.execute(text, within: within);
+  }) async {
+    final attempt = ++_searchAttempt;
+    try {
+      final results = await _searchDocuments.execute(text, within: within);
+      if (attempt != _searchAttempt) return const [];
+      final clearedVisibleError = error == _searchError && error != null;
+      if (clearedVisibleError) error = null;
+      _searchError = null;
+      if (clearedVisibleError) notifyListeners();
+      return results;
+    } on Object {
+      if (attempt != _searchAttempt) return const [];
+      final message = within == null
+          ? "Couldn't search the library. Try again."
+          : "Couldn't search this document. Try again.";
+      _searchError = message;
+      error = message;
+      notifyListeners();
+      return const [];
+    }
+  }
 
   /// Decides what a clicked link means in the context of the open document.
   LinkTarget? resolveLink(String href) {
@@ -602,6 +652,9 @@ final class ReaderController extends ChangeNotifier {
   void clearError() {
     if (error == null) return;
     error = null;
+    _searchError = null;
+    _documentOpenError = null;
+    _failedDocumentOpen = null;
     notifyListeners();
   }
 

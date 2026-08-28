@@ -7,11 +7,13 @@ import '../theme/library_theme.dart';
 final class ErrorNotice extends StatelessWidget {
   final String message;
   final VoidCallback onDismiss;
+  final VoidCallback? onRetry;
 
   const ErrorNotice({
     super.key,
     required this.message,
     required this.onDismiss,
+    this.onRetry,
   });
 
   @override
@@ -56,6 +58,13 @@ final class ErrorNotice extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
+                      if (onRetry != null) ...[
+                        TextButton(
+                          onPressed: onRetry,
+                          child: const Text('Retry'),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
                       Tooltip(
                         message: 'Dismiss',
                         child: IconButton(
