@@ -99,7 +99,10 @@ scale, locale, direction, or feature change is a new layout epoch and must use
 `replace`, because each can legitimately change every line boundary.
 When a host can prove that a completed projection changes only a known visual
 suffix, `replaceTail` retains every line before that boundary and resolves only
-the revised tail.
+the revised tail. A host which cannot afford the initial O(source) pass in one
+frame can construct the index with `AppendWrapIndex.progressive`, grant a
+bounded number of windows through `indexNext`, and publish the geometry only
+after `isComplete`. Partial work never needs to become a partial scrollbar.
 
 ## Revision fencing
 

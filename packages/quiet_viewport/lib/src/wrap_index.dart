@@ -37,18 +37,29 @@ final class AppendWrapIndex {
     required this.resolve,
     this.windowCodeUnits = 4096,
   }) {
-    if (windowCodeUnits < 2) {
-      throw RangeError.value(
-        windowCodeUnits,
-        'windowCodeUnits',
-        'Must leave room to avoid splitting a surrogate pair',
-      );
-    }
+    _validateWindowSize();
     replace(source);
+  }
+
+  /// Creates an empty index which advances only when [indexNext] is called.
+  ///
+  /// Partial line starts are deliberately not complete document geometry.
+  /// A host can therefore distribute text layout across frame budgets, then
+  /// publish the index atomically once [isComplete] becomes true.
+  AppendWrapIndex.progressive({
+    required String source,
+    required this.resolve,
+    this.windowCodeUnits = 4096,
+  }) {
+    _validateWindowSize();
+    _source = source;
   }
 
   int get length => _starts.length;
   int get sourceLength => _source.length;
+
+  /// Whether every visual line in [sourceLength] has been discovered.
+  bool get isComplete => _indexedLength == _source.length;
 
   /// Code units passed to [resolve] by the most recent operation.
   ///
@@ -66,6 +77,18 @@ final class AppendWrapIndex {
       ..add(0);
     _indexedLength = 0;
     _indexToEnd();
+  }
+
+  /// Resolves at most [maxWindows] bounded source windows.
+  ///
+  /// Returns whether the complete index is now ready to publish. Each call is
+  /// independent work: [lastIndexedCodeUnits] describes this call only.
+  bool indexNext({int maxWindows = 1}) {
+    if (maxWindows < 1) {
+      throw RangeError.value(maxWindows, 'maxWindows', 'Must be positive');
+    }
+    _indexWindows(maxWindows);
+    return isComplete;
   }
 
   /// Indexes a source revision whose prefix is already represented here.
@@ -142,10 +165,16 @@ final class AppendWrapIndex {
   }
 
   void _indexToEnd() {
+    _indexWindows(null);
+  }
+
+  void _indexWindows(int? maximum) {
     _lastIndexedCodeUnits = 0;
     _largestWindowCodeUnits = 0;
     var measuredEnd = _indexedLength;
-    while (measuredEnd < _source.length) {
+    var windows = 0;
+    while (measuredEnd < _source.length &&
+        (maximum == null || windows < maximum)) {
       final requestedEnd = (measuredEnd + windowCodeUnits).clamp(
         0,
         _source.length,
@@ -165,8 +194,19 @@ final class AppendWrapIndex {
         if (absolute > _starts.last) _starts.add(absolute);
       }
       measuredEnd = end;
+      windows++;
     }
-    _indexedLength = _source.length;
+    _indexedLength = measuredEnd;
+  }
+
+  void _validateWindowSize() {
+    if (windowCodeUnits < 2) {
+      throw RangeError.value(
+        windowCodeUnits,
+        'windowCodeUnits',
+        'Must leave room to avoid splitting a surrogate pair',
+      );
+    }
   }
 
   int _surrogateSafeEnd(int requested) {
