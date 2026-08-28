@@ -233,6 +233,7 @@ void main() {
     final inner = tester.widget<WindowedPlainParagraph>(
       find.byType(WindowedPlainParagraph),
     );
+    expect(inner.overscanLines, 0);
     final size = tester.getSize(find.byType(WindowedRichParagraph));
     final complete = TextPainter(
       text: TextSpan(
@@ -253,6 +254,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(_renderedWindow(), isNot(rendered));
     expect(_renderedWindow().length, lessThan(5000));
+    final viewportRect = tester.getRect(find.byType(CustomScrollView));
+    final windowRect = tester.getRect(
+      find.byKey(const ValueKey('paragraph-window')),
+    );
+    expect(windowRect.top, lessThanOrEqualTo(viewportRect.top));
+    expect(windowRect.bottom, greaterThanOrEqualTo(viewportRect.bottom));
     expect(tester.takeException(), isNull);
   });
 

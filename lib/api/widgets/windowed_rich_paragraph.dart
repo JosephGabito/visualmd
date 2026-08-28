@@ -54,6 +54,12 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
   static const _maximumBatchesPerTurn = 4;
   static const _buildBudget = Duration(milliseconds: 4);
 
+  // Styled windows allocate span and recognizer state per authored run. The
+  // scroll listener updates before paint and floor/ceil retain every visible
+  // line, so rich text needs no speculative lines beyond the viewport. Plain
+  // paragraphs keep their wider, inexpensive margin.
+  static const _richOverscanLines = 0;
+
   InlineRangeIndex? _index;
   ProgressiveInlineRangeIndex? _pending;
   var _indexRevision = -1;
@@ -128,6 +134,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
       widowOffsetFor: (_) => index.widowOffset,
       selectionIdentity: widget.selectionIdentity,
       selectionOrder: widget.selectionOrder,
+      overscanLines: _richOverscanLines,
       debugOnSourceIndexed: widget.debugOnSourceIndexed,
       debugOnInitialIndexStep: widget.debugOnInitialIndexStep,
     );

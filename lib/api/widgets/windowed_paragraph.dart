@@ -61,6 +61,12 @@ final class WindowedPlainParagraph extends StatefulWidget {
   final ParagraphWidowOffset widowOffsetFor;
   final Object selectionIdentity;
   final int selectionOrder;
+
+  /// Complete visual lines retained beyond each edge of the viewport.
+  ///
+  /// Plain text can keep a generous inexpensive margin. Dense styled text may
+  /// choose zero because floor/ceil still mount every line paint can expose.
+  final int overscanLines;
   final ValueChanged<int>? debugOnSourceIndexed;
   final ParagraphIndexStepObserver? debugOnInitialIndexStep;
 
@@ -79,16 +85,16 @@ final class WindowedPlainParagraph extends StatefulWidget {
     this.widowOffsetFor = WidowBinding.bindingOffset,
     required this.selectionIdentity,
     required this.selectionOrder,
+    this.overscanLines = 8,
     this.debugOnSourceIndexed,
     this.debugOnInitialIndexStep,
-  });
+  }) : assert(overscanLines >= 0);
 
   @override
   State<WindowedPlainParagraph> createState() => _WindowedPlainParagraphState();
 }
 
 final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
-  static const _overscanLines = 8;
   static const _maximumInitialWindowsPerFrame = 4;
   static const _initialIndexBudget = Duration(milliseconds: 4);
 
@@ -598,10 +604,14 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     final local = (page.pixels - blockStart)
         .clamp(0.0, math.max(0.0, _contentHeight - page.viewportDimension))
         .toDouble();
-    final first = math.max(0, (local / _lineHeight).floor() - _overscanLines);
+    final first = math.max(
+      0,
+      (local / _lineHeight).floor() - widget.overscanLines,
+    );
     final last = math.min(
       lines.length,
-      ((local + page.viewportDimension) / _lineHeight).ceil() + _overscanLines,
+      ((local + page.viewportDimension) / _lineHeight).ceil() +
+          widget.overscanLines,
     );
     if (first == _firstLine && last == _lastLine) return;
     setState(() {
