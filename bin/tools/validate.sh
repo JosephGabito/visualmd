@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_shared.sh"
 prepare_project
+resolve_dependencies
 
 section "Check Dart formatting"
 dart format --output=none --set-exit-if-changed "${DART_PATHS[@]}"
@@ -25,8 +26,20 @@ section "Prepare pinned web assets"
 section "Analyze Dart and Flutter"
 flutter analyze
 
+section "Analyze quiet_viewport package"
+(
+  cd "$QUIET_VIEWPORT_ROOT"
+  dart analyze
+)
+
 section "Run all tests"
 flutter test
+
+section "Run quiet_viewport package tests"
+(
+  cd "$QUIET_VIEWPORT_ROOT"
+  dart test
+)
 
 section "Build web release"
 flutter build web --release
