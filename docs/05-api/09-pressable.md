@@ -2,8 +2,8 @@
 
 ## Purpose and boundary
 
-`Pressable` is the interaction contract every control in the chrome shares: it
-acts the moment the pointer goes down, activates from Enter or Space, and gives
+`Pressable` is the interaction contract every control in the chrome shares: an
+ordinary button acts on release inside, activates from Enter or Space, and gives
 assistive technology one named button. It owns hover, press and focus feedback
 but not the control's icon or visible label. The caller supplies the child,
 accessible name and callback.
@@ -14,19 +14,12 @@ shelf and outline buttons are its callers.
 
 ## Present wiring
 
-The control is a raw `Listener`, not a `GestureDetector`
-(`lib/api/widgets/pressable.dart`). That is the whole point:
-
-- **It does not wait for the release.** `onPointerDown` fires the callback
-  immediately (`lib/api/widgets/pressable.dart`). A control that acts on
-  the way back up puts the interface a beat behind the hand.
-- **It cannot be deferred.** Pointer events are not subject to the gesture
-  arena, so nothing upstream can hold the callback back while it decides
-  whether it wanted the gesture. That matters here because the macOS top bar is
-  wrapped in a window-drag handler (see
-  [Window Chrome](../03-infrastructure/desktop/03-window-chrome.md)); a tap
-  recognizer competing with a pan recognizer can have its callback delayed
-  until the arena resolves.
+Ordinary controls use Flutter's tap gesture, acting only when the pointer is
+released inside. A reader can press, notice the wrong target, slide away and
+cancel. The [Anchored Menu](08-anchored-menu.md) trigger explicitly opts into
+pointer-down opening so its surface appears beneath the still-held pointer;
+that exception uses a raw `Listener` and is documented at the call site
+(`lib/api/widgets/pressable.dart`, `lib/api/widgets/anchored_menu.dart`).
 
 Around that sits the response. Hover, active, and press move through the shared
 opaque chrome surfaces over 120 ms of `Curves.easeOut`; icon geometry remains
@@ -50,7 +43,8 @@ tooltip remains visual help rather than a second competing name
 
 | In | Type | Meaning |
 |---|---|---|
-| `onPress` | `VoidCallback?` | Called on pointer down. `null` disables the control |
+| `onPress` | `VoidCallback?` | Called on release inside, unless the explicit menu behavior is enabled. `null` disables the control |
+| `activateOnPointerDown` | `bool` | Menu-only exception; defaults to `false` |
 | `semanticLabel` | `String` | Stable accessible name, independent of icon and tooltip |
 | `active` | `bool` | Holds it raised while what it opened is still on screen |
 | `expanded` | `bool?` | Exposes whether a controlled surface is open |
@@ -86,9 +80,8 @@ it.
 - A press that ends elsewhere, or is cancelled by the system, still releases
   the pressed state (`lib/api/widgets/pressable.dart`), so a control
   cannot be left stuck looking pressed.
-- Acting on the way down means there is no "slide off to cancel". That is the
-  trade: for toggles and menus the immediacy is worth more than the escape
-  hatch, and both callers are cheap to undo.
+- Menu triggers cannot slide off to cancel after opening on pointer down. That
+  is a deliberate, explicit exception; ordinary buttons retain cancellation.
 
 ## Transition
 

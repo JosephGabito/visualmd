@@ -4,12 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/library_chrome.dart';
 import '../theme/library_theme.dart';
 
-/// A control that acts the moment the pointer goes down.
-///
-/// Waiting for the release puts the interface a beat behind the hand, and a
-/// raw [Listener] rather than a tap gesture keeps it that way even inside the
-/// window-drag handler that wraps the top bar on macOS: pointer events are not
-/// subject to the gesture arena, so nothing can defer the callback.
+/// A chrome control with ordinary release-inside button behavior.
 ///
 /// Its surface, rather than its geometry, answers hover and press. Stable icon
 /// geometry keeps a compact macOS toolbar from twitching under the pointer.
@@ -31,6 +26,10 @@ class Pressable extends StatefulWidget {
   /// An optional caller-owned node for restoring or directing keyboard focus.
   final FocusNode? focusNode;
 
+  /// Menus alone may opt into native-feeling pointer-down opening. Ordinary
+  /// buttons retain the ability to slide away before release to cancel.
+  final bool activateOnPointerDown;
+
   final String? tooltip;
   final Widget child;
 
@@ -42,6 +41,7 @@ class Pressable extends StatefulWidget {
     this.active = false,
     this.expanded,
     this.focusNode,
+    this.activateOnPointerDown = false,
     this.tooltip,
   });
 
@@ -63,6 +63,52 @@ class _PressableState extends State<Pressable> {
     final chrome = context.chrome;
 
     final duration = still ? Duration.zero : const Duration(milliseconds: 120);
+    final surface = AnimatedContainer(
+      duration: duration,
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: !enabled
+            ? Colors.transparent
+            : _pressed
+            ? chrome.pressed
+            : (_hovered || widget.active)
+            ? chrome.hover
+            : Colors.transparent,
+        border: Border.all(
+          color: _focused ? chrome.focus : Colors.transparent,
+          width: 2,
+        ),
+        borderRadius: BorderRadius.circular(LibraryChromeScale.controlRadius),
+      ),
+      child: Opacity(opacity: enabled ? 1 : 0.38, child: widget.child),
+    );
+    final pointerControl = widget.activateOnPointerDown
+        ? Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: enabled
+                ? (_) {
+                    setState(() => _pressed = true);
+                    _activate();
+                  }
+                : null,
+            onPointerUp: (_) => setState(() => _pressed = false),
+            onPointerCancel: (_) => setState(() => _pressed = false),
+            child: surface,
+          )
+        : GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+            onTapUp: enabled
+                ? (_) {
+                    setState(() => _pressed = false);
+                    _activate();
+                  }
+                : null,
+            onTapCancel: enabled
+                ? () => setState(() => _pressed = false)
+                : null,
+            child: surface,
+          );
     final control = Semantics(
       button: true,
       enabled: enabled,
@@ -93,38 +139,7 @@ class _PressableState extends State<Pressable> {
           cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
           onEnter: (_) => setState(() => _hovered = true),
           onExit: (_) => setState(() => _hovered = false),
-          child: Listener(
-            behavior: HitTestBehavior.opaque,
-            onPointerDown: enabled
-                ? (_) {
-                    setState(() => _pressed = true);
-                    _activate();
-                  }
-                : null,
-            onPointerUp: (_) => setState(() => _pressed = false),
-            onPointerCancel: (_) => setState(() => _pressed = false),
-            child: AnimatedContainer(
-              duration: duration,
-              curve: Curves.easeOut,
-              decoration: BoxDecoration(
-                color: !enabled
-                    ? Colors.transparent
-                    : _pressed
-                    ? chrome.pressed
-                    : (_hovered || widget.active)
-                    ? chrome.hover
-                    : Colors.transparent,
-                border: Border.all(
-                  color: _focused ? chrome.focus : Colors.transparent,
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(
-                  LibraryChromeScale.controlRadius,
-                ),
-              ),
-              child: Opacity(opacity: enabled ? 1 : 0.38, child: widget.child),
-            ),
-          ),
+          child: pointerControl,
         ),
       ),
     );
