@@ -25,6 +25,11 @@ void main() {
     expect(index.length, index.source.length);
     expect(InlineRangeIndex.textLength(content), index.source.length);
     expect(InlineRangeIndex.supports(content), isTrue);
+    expect(InlineRangeIndex.supportsAtLeast(content, index.length), isTrue);
+    expect(
+      InlineRangeIndex.supportsAtLeast(content, index.length + 1),
+      isFalse,
+    );
   });
 
   test('a bounded slice preserves nested marks and one link container', () {
@@ -50,6 +55,25 @@ void main() {
     ]);
   });
 
+  test('progressive indexing publishes only one complete immutable result', () {
+    final builder = ProgressiveInlineRangeIndex.fromSupported(content);
+
+    expect(builder.isComplete, isFalse);
+    expect(() => builder.result, throwsStateError);
+    while (!builder.indexNext(maxNodes: 2)) {
+      expect(builder.lastIndexedNodes, lessThanOrEqualTo(2));
+      expect(() => builder.result, throwsStateError);
+    }
+
+    expect(builder.result.source, 'zero one two() three\nfour');
+    expect(
+      builder.result.slice(7, 17).map((run) => run.text).join(),
+      'e two() th',
+    );
+    expect(builder.indexNext(maxNodes: 2), isTrue);
+    expect(builder.lastIndexedNodes, 0);
+  });
+
   test('widow binding follows the eager paragraph ending rule', () {
     final marked = InlineRangeIndex(const [
       TextRun('one two three '),
@@ -67,6 +91,7 @@ void main() {
 
   test('widget and control runs stay on their deliberate eager path', () {
     expect(InlineRangeIndex.supports(const [MathRun('x')]), isFalse);
+    expect(InlineRangeIndex.supportsAtLeast(const [MathRun('x')], 0), isFalse);
     expect(
       InlineRangeIndex.supports(const [
         ImageRun(source: 'image.png', alt: 'image'),
@@ -82,5 +107,15 @@ void main() {
     expect(() => index.slice(-1, 1), throwsRangeError);
     expect(() => index.slice(0, index.length + 1), throwsRangeError);
     expect(() => index.slice(3, 2), throwsRangeError);
+    expect(
+      () => InlineRangeIndex.supportsAtLeast(content, -1),
+      throwsRangeError,
+    );
+    expect(
+      () =>
+          ProgressiveInlineRangeIndex.fromSupported(content)
+              .indexNext(maxNodes: 0),
+      throwsRangeError,
+    );
   });
 }

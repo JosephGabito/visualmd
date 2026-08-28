@@ -10,11 +10,8 @@ import '../../presentation/theme/typographic_punctuation.dart';
 import '../../presentation/theme/widow_binding.dart';
 import 'model_backed_selection_area.dart';
 
-/// One bounded initial line-index operation observed by a profile harness.
-typedef ParagraphIndexStepObserver = void Function(
-  int codeUnits,
-  Duration elapsed,
-);
+/// One bounded initial paragraph-index operation observed by a profile harness.
+typedef ParagraphIndexStepObserver = void Function(int units, Duration elapsed);
 
 /// One displayed source range with exact authored-boundary recovery.
 abstract interface class WindowedParagraphProjection {
@@ -369,6 +366,7 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
       widget.source,
       finalized: widget.finalized,
       widowOffsetFor: widget.widowOffsetFor,
+      rangeProjector: widget.rangeProjector,
     );
     _pending = null;
     _lines = AppendWrapIndex.progressiveWithContext(
@@ -394,6 +392,7 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
       widget.source,
       finalized: widget.finalized,
       widowOffsetFor: widget.widowOffsetFor,
+      rangeProjector: widget.rangeProjector,
     );
     final lines = AppendWrapIndex.progressiveWithContext(
       source: widget.source,
@@ -534,7 +533,7 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
       );
     }
     final widowOffset = projection.widowOffset;
-    final rangeProjector = widget.rangeProjector;
+    final rangeProjector = projection.rangeProjector;
     if (rangeProjector != null) {
       return rangeProjector(
         start: sourceOffset,
@@ -635,12 +634,14 @@ final class _ParagraphProjection {
   bool finalized;
   int? widowOffset;
   final ParagraphWidowOffset widowOffsetFor;
+  final WindowedParagraphProjector? rangeProjector;
   final Map<int, String?> previousBySourceOffset = {0: null};
 
   _ParagraphProjection(
     this.source, {
     required this.finalized,
     required this.widowOffsetFor,
+    required this.rangeProjector,
   }) : widowOffset = finalized ? widowOffsetFor(source) : null;
 
   void update(String next, {required bool finalized}) {

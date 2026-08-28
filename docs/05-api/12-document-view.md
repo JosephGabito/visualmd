@@ -316,9 +316,21 @@ range and reconstructs their original mark and link containers
 range through the ordinary `InlineComposer`, so emphasis, strong text, inline
 code, links and line breaks preserve their appearance and behavior while the
 outer paragraph retains the same line and scrollbar physics
-(`lib/api/widgets/windowed_rich_paragraph.dart`). Inline images, mathematics,
-footnote controls, active search and first-line indents still use the eager
-paragraph because each needs a separate geometry, semantics or navigation
-contract. The native rich-atomic benchmark records the current boundary
+(`lib/api/widgets/windowed_rich_paragraph.dart`). The range index itself is
+built by a bounded depth-first scheduler after the first placeholder frame.
+It publishes as one immutable value; when rich content changes, the old exact
+height and scroll extent remain live until the new range and line indexes are
+both complete. A widget contract checks the extent on every intermediate pump,
+so partial rich geometry cannot twitch the scrollbar.
+
+At one million characters and 106,064 authored inline runs, range-index steps
+stay below 7.6 ms, mounted text remains 2,706 characters, and the exact extent
+remains 514,739.8 logical pixels. The worst open frame is 43.1 ms, down from
+55.2 ms before scheduling and 5,280.5 ms on the eager path. The remaining
+17.5 ms middle-seek boundary is viewport-sized rich-span composition, not work
+over the complete paragraph. Inline images, mathematics, footnote controls,
+active search and first-line indents still use the eager paragraph because each
+needs a separate geometry, semantics or navigation contract. The native
+rich-atomic benchmark records the current boundary
 (`integration_test/atomic_rich_paragraph_performance_test.dart`,
 `benchmark/results/2026-08-28-atomic-rich-paragraph.md`).

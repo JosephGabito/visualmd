@@ -58,9 +58,14 @@ void main() {
       final beforeRss = ProcessInfo.currentRss;
       final clock = Stopwatch()..start();
       var indexedCharacters = 0;
+      final indexSteps = <Duration>[];
 
       await tester.pumpWidget(
-        _app(reading, onSourceIndexed: (value) => indexedCharacters = value),
+        _app(
+          reading,
+          onSourceIndexed: (value) => indexedCharacters = value,
+          onIndexStep: (_, elapsed) => indexSteps.add(elapsed),
+        ),
       );
       await tester.pumpAndSettle();
       var indexingPumps = 0;
@@ -102,6 +107,9 @@ void main() {
         'mounted_characters': mountedCharacters,
         'windowed': windowed,
         'indexing_pumps': indexingPumps,
+        'index_step_worst_us': indexSteps.isEmpty
+            ? 0
+            : indexSteps.map((step) => step.inMicroseconds).reduce(math.max),
         'open_wall_us': clock.elapsedMicroseconds,
         'open_frames': openFrames,
         'middle_seek_wall_us': seekClock.elapsedMicroseconds,
@@ -141,20 +149,24 @@ int _mountedCharacters() => find
     )
     .fold(0, (total, length) => total + length);
 
-Widget _app(DocumentReading reading, {ValueChanged<int>? onSourceIndexed}) =>
-    MaterialApp(
-      theme: libraryTheme(BuiltInThemes.paper),
-      home: Scaffold(
-        body: ReadingPane(
-          reading: reading,
-          scale: ReadingScale.comfortable,
-          viewportGeometry: const QuietDocumentViewportGeometryFactory(),
-          onLink: (_) {},
-          onActiveHeadingChanged: (_) {},
-          debugOnParagraphCodeUnitsIndexed: onSourceIndexed,
-        ),
-      ),
-    );
+Widget _app(
+  DocumentReading reading, {
+  ValueChanged<int>? onSourceIndexed,
+  ParagraphIndexStepObserver? onIndexStep,
+}) => MaterialApp(
+  theme: libraryTheme(BuiltInThemes.paper),
+  home: Scaffold(
+    body: ReadingPane(
+      reading: reading,
+      scale: ReadingScale.comfortable,
+      viewportGeometry: const QuietDocumentViewportGeometryFactory(),
+      onLink: (_) {},
+      onActiveHeadingChanged: (_) {},
+      debugOnParagraphCodeUnitsIndexed: onSourceIndexed,
+      debugOnParagraphInitialIndexStep: onIndexStep,
+    ),
+  ),
+);
 
 DocumentReading _reading(int minimumCharacters) {
   final runs = _richRuns(minimumCharacters);

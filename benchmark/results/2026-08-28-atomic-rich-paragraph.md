@@ -90,14 +90,33 @@ because they own geometry or control semantics beyond their reading text.
 
 ## Remaining cost
 
-This intervention removes the multiplicative render-object and retained-span
-cost, but it exposes two smaller boundaries:
+The range index now uses the same publication rule as the visual-line index.
+An explicit depth-first builder consumes bounded node batches after the first
+placeholder frame, then publishes one complete immutable source index. A rich
+replacement keeps the previous exact paragraph height and scroll extent until
+both its range and line indexes are complete; partial geometry never reaches
+the scrollbar.
 
-- constructing the 106,064-leaf source-range index is still synchronous and
-  contributes the one 55 ms opening outlier;
+The native profile after scheduling records this million-character result:
+
+| Mounted characters | Open wall | Worst index step | Open frame worst | Open frame p99 | Middle-seek frame worst | Exact extent |
+|---:|---:|---:|---:|---:|---:|---:|
+| 2,706 | 1.95 s | 7.5 ms | 43.1 ms | 11.6 ms | 17.5 ms | 514,739.8 px |
+
+The former synchronous range-index frame no longer exists. The worst opening
+frame fell another 22% from 55.2 ms while the million-character geometry and
+constant mounted span count remained exact. Step timing is now emitted by the
+profile harness so a future change cannot hide work by moving it out of a
+Flutter frame.
+
+This removes the multiplicative render-object and synchronous source-index
+cost, but exposes one smaller shared boundary:
+
 - a middle seek composes roughly 2,700 visible characters across hundreds of
-  tiny authored runs and reaches 13.2 ms in this deliberately dense fixture.
+  tiny authored runs and reaches 17.5 ms in this deliberately dense fixture;
+  the first published viewport pays the same span-composition cost and remains
+  the 43.1 ms opening outlier.
 
-Those are now bounded architectural problems rather than million-character
-text shaping. They should be scheduled or compacted only with another measured
-pass; the present result does not call them solved.
+This is now a viewport-sized composition problem rather than million-character
+text shaping. It should be compacted only with another measured pass; the
+present result does not call it solved.
