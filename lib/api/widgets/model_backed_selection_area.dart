@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
+/// Maps one displayed text boundary back to its authored source boundary.
+typedef SourceOffsetAt = int Function(int displayOffset);
+
 /// Extends Flutter selection with model-owned text for unmounted blocks.
 ///
 /// A lazy viewport cannot register unmounted text with [SelectionArea]. Select
@@ -115,6 +118,7 @@ final class ModelSelectionSnapshot {
     required int order,
     required String text,
     int rangeOffset = 0,
+    SourceOffsetAt? sourceOffsetAt,
     required SelectedContentRange? range,
     required SelectionStatus status,
   }) {
@@ -123,10 +127,15 @@ final class ModelSelectionSnapshot {
       _ranges.remove(identity);
       return;
     }
-    final start = (range.startOffset + rangeOffset)
-        .clamp(0, text.length)
-        .toInt();
-    final end = (range.endOffset + rangeOffset).clamp(0, text.length).toInt();
+    final start =
+        (sourceOffsetAt?.call(range.startOffset) ??
+                range.startOffset + rangeOffset)
+            .clamp(0, text.length)
+            .toInt();
+    final end =
+        (sourceOffsetAt?.call(range.endOffset) ?? range.endOffset + rangeOffset)
+            .clamp(0, text.length)
+            .toInt();
     if (start == end) {
       _ranges.remove(identity);
       return;
@@ -174,6 +183,7 @@ final class ModelSelectionBlock extends StatefulWidget {
   final int order;
   final String text;
   final int rangeOffset;
+  final SourceOffsetAt? sourceOffsetAt;
   final Widget child;
 
   const ModelSelectionBlock({
@@ -182,6 +192,7 @@ final class ModelSelectionBlock extends StatefulWidget {
     required this.order,
     required this.text,
     this.rangeOffset = 0,
+    this.sourceOffsetAt,
     required this.child,
   }) : assert(rangeOffset >= 0);
 
@@ -228,6 +239,7 @@ final class _ModelSelectionBlockState extends State<ModelSelectionBlock> {
       order: widget.order,
       text: widget.text,
       rangeOffset: widget.rangeOffset,
+      sourceOffsetAt: widget.sourceOffsetAt,
       range: selection.range,
       status: selection.status,
     );

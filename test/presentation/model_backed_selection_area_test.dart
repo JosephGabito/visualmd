@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/widgets/model_backed_selection_area.dart';
+import 'package:visualmd/presentation/theme/typographic_punctuation.dart';
 
 void main() {
   testWidgets('select all copies text which was never mounted', (tester) async {
@@ -144,6 +145,22 @@ void main() {
       expect(snapshot.selectedText, 'middle');
     },
   );
+
+  test('a display contraction copies its exact authored source range', () {
+    final snapshot = ModelSelectionSnapshot();
+    final projection = TypographicProjection.of('a--b...c');
+
+    snapshot.update(
+      identity: 'paragraph',
+      order: 0,
+      text: projection.source,
+      sourceOffsetAt: projection.sourceOffsetAt,
+      range: const SelectedContentRange(startOffset: 1, endOffset: 4),
+      status: SelectionStatus.uncollapsed,
+    );
+
+    expect(snapshot.selectedText, '--b...');
+  });
 }
 
 String _wholeText() => 'opening\n\nunmounted middle\n\nending';

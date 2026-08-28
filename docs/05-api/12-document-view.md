@@ -283,7 +283,10 @@ boundaries across a proven suffix. The outer block reports the same complete
 height as one eager paragraph, while only nearby lines own render objects. Its
 semantic label remains the complete source after indexing, and the mounted
 selection range is rebased into complete-block coordinates by
-`lib/api/widgets/model_backed_selection_area.dart`.
+`lib/api/widgets/model_backed_selection_area.dart`. The ordinary path adds a
+window offset. A typographic projection may instead supply a sparse
+display-to-source mapper, so selecting one displayed ellipsis still copies the
+three authored dots.
 
 The native result holds mounted text near 2,475 characters at both 100,000 and
 1,000,000 source characters. At one million characters, an initial indexing
