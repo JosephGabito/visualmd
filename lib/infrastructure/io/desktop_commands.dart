@@ -21,6 +21,18 @@ final class DesktopCommands {
         'saveWorkspaceAs' => PlatformCommand.saveWorkspaceAs,
         'addFolder' => PlatformCommand.addFolder,
         'addMarkdown' => PlatformCommand.addMarkdown,
+        'openAppearance' => PlatformCommand.openAppearance,
+        'findDocument' => PlatformCommand.findDocument,
+        'searchLibrary' => PlatformCommand.searchLibrary,
+        'toggleShelf' => PlatformCommand.toggleShelf,
+        'toggleOutline' => PlatformCommand.toggleOutline,
+        'enlargeText' => PlatformCommand.enlargeText,
+        'shrinkText' => PlatformCommand.shrinkText,
+        'resetText' => PlatformCommand.resetText,
+        'showKeyboardShortcuts' => PlatformCommand.showKeyboardShortcuts,
+        'openSupport' => PlatformCommand.openSupport,
+        'openPrivacy' => PlatformCommand.openPrivacy,
+        'showLicenses' => PlatformCommand.showLicenses,
         _ => null,
       };
       if (command != null) _controller.add(command);

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/app.dart';
 import 'package:visualmd/api/reader_controller.dart';
+import 'package:visualmd/api/reader_ui_command.dart';
 import 'package:visualmd/api/layout/panel_widths.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/collapsible_panel.dart';
@@ -213,6 +216,7 @@ void main() {
     Future<void> Function()? openReaderSources,
     void Function(String url)? openExternal,
     bool withLibrary = true,
+    Stream<ReaderUiCommand>? uiCommands,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -259,11 +263,33 @@ void main() {
           controller: controller,
           openExternal: openExternal ?? (_) {},
           openReaderSources: openReaderSources,
+          uiCommands: uiCommands,
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('native UI commands reuse the reader surfaces', (tester) async {
+    final commands = StreamController<ReaderUiCommand>.broadcast();
+    addTearDown(commands.close);
+    await pumpReader(tester, uiCommands: commands.stream);
+
+    commands.add(ReaderUiCommand.openAppearance);
+    await tester.pumpAndSettle();
+    expect(find.text('Follow system'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    commands.add(ReaderUiCommand.findDocument);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('document-search-field')), findsOneWidget);
+
+    commands.add(ReaderUiCommand.showKeyboardShortcuts);
+    await tester.pumpAndSettle();
+    expect(find.text('Keyboard Shortcuts'), findsOneWidget);
+    expect(find.text('Search Library'), findsOneWidget);
+  });
 
   /// The width the panel wrapping [panel] currently occupies.
   double panelWidth(WidgetTester tester, Type panel) {

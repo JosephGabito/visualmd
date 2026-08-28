@@ -38,8 +38,10 @@ keeps the full window and one side panel may overlay it at a time
 One autofocus shortcut scope provides Command bindings on macOS and Control
 bindings elsewhere. It covers shelf and outline visibility, document and
 library search, match navigation, text size, workspace actions, source Open,
-and the sample library (`lib/api/screens/reader_screen.dart`). Native File-menu commands reach
-the same controller methods through the composition root; see
+and the sample library (`lib/api/screens/reader_screen.dart`). Native menu
+commands reach the same controller methods and transient search, Appearance,
+shortcut, and licence surfaces through the composition root
+(`lib/api/reader_ui_command.dart`); see
 [Workspace Actions](21-workspace-actions.md).
 
 Current-document search places [Search](17-search.md)'s find bar over the page.

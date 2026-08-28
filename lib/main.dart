@@ -1,4 +1,5 @@
 // Composition root: the only place that knows every ring at once.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'presentation/theme/reading_scale.dart';
 import 'presentation/theme/reading_mode.dart';
 import 'api/reader_controller.dart';
 import 'api/reader_source_opener.dart';
+import 'api/reader_ui_command.dart';
 import 'presentation/theme/theme_choice.dart';
 import 'presentation/theme/theme_registry.dart';
 import 'presentation/shelf/shelf_label_mode.dart';
@@ -261,6 +263,7 @@ Future<void> main() async {
   platform.folderDrops.listen(controller.addFolder);
   platform.markdownDrops.listen(controller.addMarkdown);
   platform.dragging.listen(controller.setDragging);
+  final readerUiCommands = StreamController<ReaderUiCommand>.broadcast();
   platform.commands.listen((command) {
     switch (command) {
       case PlatformCommand.newWorkspace:
@@ -279,6 +282,30 @@ Future<void> main() async {
         controller.pickAndAddFolder();
       case PlatformCommand.addMarkdown:
         controller.pickAndAddMarkdown();
+      case PlatformCommand.openAppearance:
+        readerUiCommands.add(ReaderUiCommand.openAppearance);
+      case PlatformCommand.findDocument:
+        readerUiCommands.add(ReaderUiCommand.findDocument);
+      case PlatformCommand.searchLibrary:
+        readerUiCommands.add(ReaderUiCommand.searchLibrary);
+      case PlatformCommand.toggleShelf:
+        controller.toggleShelf();
+      case PlatformCommand.toggleOutline:
+        controller.toggleOutline();
+      case PlatformCommand.enlargeText:
+        controller.enlargeText();
+      case PlatformCommand.shrinkText:
+        controller.shrinkText();
+      case PlatformCommand.resetText:
+        controller.resetText();
+      case PlatformCommand.showKeyboardShortcuts:
+        readerUiCommands.add(ReaderUiCommand.showKeyboardShortcuts);
+      case PlatformCommand.openSupport:
+        platform.openExternal('https://visualmd.gabi.to/support/');
+      case PlatformCommand.openPrivacy:
+        platform.openExternal('https://visualmd.gabi.to/privacy/');
+      case PlatformCommand.showLicenses:
+        readerUiCommands.add(ReaderUiCommand.showLicenses);
     }
   });
   workspaceAutosave.failures.listen(controller.reportWorkspaceAutosaveFailure);
@@ -322,6 +349,7 @@ Future<void> main() async {
       topBar: platform.topBar,
       windowDragRegion: platform.windowDragRegion,
       openThemesFolder: platform.openThemesFolder,
+      uiCommands: readerUiCommands.stream,
     ),
   );
 }

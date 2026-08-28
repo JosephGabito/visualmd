@@ -14,9 +14,11 @@ import '../../application/ports/mermaid_renderer.dart';
 import '../layout/panel_widths.dart';
 import '../render/reading_theme.dart';
 import '../reader_controller.dart';
+import '../reader_ui_command.dart';
 import '../theme/library_theme.dart';
 import '../theme/library_chrome.dart';
 import '../widgets/brand_mark.dart';
+import '../widgets/anchored_menu.dart';
 import '../widgets/collapsible_panel.dart';
 import '../widgets/drop_overlay.dart';
 import '../widgets/error_notice.dart';
@@ -43,6 +45,7 @@ class ReaderScreen extends StatefulWidget {
   final ShelfSourceActions? shelfSourceActions;
   final ({double height, double leadingInset}) topBar;
   final Widget Function(Widget child) windowDragRegion;
+  final Stream<ReaderUiCommand>? uiCommands;
 
   /// Reveals the custom-theme directory; null where custom files are absent.
   final Future<void> Function()? openThemesFolder;
@@ -60,6 +63,7 @@ class ReaderScreen extends StatefulWidget {
     this.topBar = (height: 52, leadingInset: 8),
     this.windowDragRegion = _identity,
     this.openThemesFolder,
+    this.uiCommands,
   });
 
   static Widget _identity(Widget child) => child;
@@ -77,6 +81,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _compactOutlineVisible = false;
   final _searchText = TextEditingController();
   final _searchFocus = FocusNode();
+  final _appearanceMenu = AnchoredMenuController();
+  StreamSubscription<ReaderUiCommand>? _uiCommandSubscription;
   Timer? _searchDebounce;
   _SearchMode _searchMode = _SearchMode.closed;
   List<DocumentSearchResult> _searchResults = const [];
@@ -92,15 +98,81 @@ class _ReaderScreenState extends State<ReaderScreen> {
     super.initState();
     _seenContentRevision = c.contentRevision;
     c.addListener(_handleControllerChange);
+    _listenForUiCommands();
   }
 
   @override
   void didUpdateWidget(ReaderScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller == widget.controller) return;
-    oldWidget.controller.removeListener(_handleControllerChange);
-    _seenContentRevision = c.contentRevision;
-    c.addListener(_handleControllerChange);
+    if (oldWidget.uiCommands != widget.uiCommands) _listenForUiCommands();
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleControllerChange);
+      _seenContentRevision = c.contentRevision;
+      c.addListener(_handleControllerChange);
+    }
+  }
+
+  void _listenForUiCommands() {
+    _uiCommandSubscription?.cancel();
+    _uiCommandSubscription = widget.uiCommands?.listen(_handleUiCommand);
+  }
+
+  void _handleUiCommand(ReaderUiCommand command) {
+    if (!mounted) return;
+    switch (command) {
+      case ReaderUiCommand.openAppearance:
+        _appearanceMenu.open();
+      case ReaderUiCommand.findDocument:
+        _openSearch(_SearchMode.document);
+      case ReaderUiCommand.searchLibrary:
+        _openLibrarySearch();
+      case ReaderUiCommand.showKeyboardShortcuts:
+        _showKeyboardShortcuts();
+      case ReaderUiCommand.showLicenses:
+        showLicensePage(context: context, applicationName: 'Visual MD');
+    }
+  }
+
+  void _openLibrarySearch() {
+    _openSearch(_SearchMode.library);
+    if (MediaQuery.sizeOf(context).width < _compactBreakpoint) {
+      setState(() {
+        _compactShelfVisible = true;
+        _compactOutlineVisible = false;
+      });
+    } else if (!c.shelfVisible) {
+      c.toggleShelf();
+    }
+  }
+
+  void _showKeyboardShortcuts() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Keyboard Shortcuts'),
+        content: const SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ShortcutRow('Find in Document', '⌘F'),
+              _ShortcutRow('Search Library', '⇧⌘F'),
+              _ShortcutRow('Show or Hide Shelf', '⌘B'),
+              _ShortcutRow('Show or Hide Outline', '⇧⌘B'),
+              _ShortcutRow('Increase Text Size', '⌘+'),
+              _ShortcutRow('Decrease Text Size', '⌘−'),
+              _ShortcutRow('Actual Size', '⌘0'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleControllerChange() {
@@ -118,6 +190,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _activeAnchor.dispose();
     _searchText.dispose();
     _searchFocus.dispose();
+    _appearanceMenu.dispose();
+    _uiCommandSubscription?.cancel();
     super.dispose();
   }
 
@@ -253,18 +327,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
       });
     }
 
-    void openLibrarySearch() {
-      _openSearch(_SearchMode.library);
-      if (compact) {
-        setState(() {
-          _compactShelfVisible = true;
-          _compactOutlineVisible = false;
-        });
-      } else if (!c.shelfVisible) {
-        c.toggleShelf();
-      }
-    }
-
     void dismissTransient() {
       if (_searchMode != _SearchMode.closed) {
         _closeSearch();
@@ -290,12 +352,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
             _openSearch(_SearchMode.document),
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true, shift: true):
-            openLibrarySearch,
+            _openLibrarySearch,
         const SingleActivator(
           LogicalKeyboardKey.keyF,
           control: true,
           shift: true,
-        ): openLibrarySearch,
+        ): _openLibrarySearch,
         const SingleActivator(LogicalKeyboardKey.keyG, meta: true): () =>
             _moveMatch(1),
         const SingleActivator(LogicalKeyboardKey.keyG, control: true): () =>
@@ -626,6 +688,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                               ? null
                               : () => _openSearch(_SearchMode.document),
                           themePicker: ThemePicker(
+                            menuController: _appearanceMenu,
                             registry: c.themes,
                             choice: c.themeChoice,
                             onChoose: c.chooseTheme,
@@ -718,6 +781,26 @@ class _ReaderScreenState extends State<ReaderScreen> {
       ),
     );
   }
+}
+
+class _ShortcutRow extends StatelessWidget {
+  final String label;
+  final String shortcut;
+
+  const _ShortcutRow(this.label, this.shortcut);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Expanded(child: Text(label)),
+        const SizedBox(width: 32),
+        Text(shortcut, style: Theme.of(context).textTheme.labelLarge),
+      ],
+    ),
+  );
 }
 
 class _TopBar extends StatelessWidget {

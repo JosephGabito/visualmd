@@ -2,7 +2,7 @@ import Cocoa
 import FlutterMacOS
 import UniformTypeIdentifiers
 
-private final class NativeFileMenuController: NSObject {
+private final class NativeMenuController: NSObject {
   private let channel: FlutterMethodChannel
 
   init(channel: FlutterMethodChannel) {
@@ -17,10 +17,26 @@ private final class NativeFileMenuController: NSObject {
   @objc func saveWorkspaceAs() { channel.invokeMethod("saveWorkspaceAs", arguments: nil) }
   @objc func addFolder() { channel.invokeMethod("addFolder", arguments: nil) }
   @objc func addMarkdown() { channel.invokeMethod("addMarkdown", arguments: nil) }
+  @objc func openAppearance() { channel.invokeMethod("openAppearance", arguments: nil) }
+  @objc func findDocument() { channel.invokeMethod("findDocument", arguments: nil) }
+  @objc func searchLibrary() { channel.invokeMethod("searchLibrary", arguments: nil) }
+  @objc func toggleShelf() { channel.invokeMethod("toggleShelf", arguments: nil) }
+  @objc func toggleOutline() { channel.invokeMethod("toggleOutline", arguments: nil) }
+  @objc func enlargeText() { channel.invokeMethod("enlargeText", arguments: nil) }
+  @objc func shrinkText() { channel.invokeMethod("shrinkText", arguments: nil) }
+  @objc func resetText() { channel.invokeMethod("resetText", arguments: nil) }
+  @objc func showKeyboardShortcuts() {
+    channel.invokeMethod("showKeyboardShortcuts", arguments: nil)
+  }
+  @objc func openSupport() { channel.invokeMethod("openSupport", arguments: nil) }
+  @objc func openPrivacy() { channel.invokeMethod("openPrivacy", arguments: nil) }
+  @objc func showLicenses() { channel.invokeMethod("showLicenses", arguments: nil) }
+
+  @objc func closeWindow() { NSApp.keyWindow?.performClose(nil) }
 }
 
 class MainFlutterWindow: NSWindow {
-  private var fileMenuController: NativeFileMenuController?
+  private var nativeMenuController: NativeMenuController?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -237,7 +253,7 @@ class MainFlutterWindow: NSWindow {
 
     super.awakeFromNib()
     DispatchQueue.main.async { [weak self] in
-      self?.installFileMenu(channel: commands)
+      self?.installNativeMenus(channel: commands)
     }
   }
 
@@ -256,55 +272,167 @@ class MainFlutterWindow: NSWindow {
     toolbar?.isVisible = true
   }
 
-  private func installFileMenu(channel: FlutterMethodChannel) {
+  private func installNativeMenus(channel: FlutterMethodChannel) {
     guard let mainMenu = NSApp.mainMenu else { return }
-    for title in ["Edit", "Help"] {
-      if let unusedMenu = mainMenu.items.first(where: { $0.title == title }) {
-        mainMenu.removeItem(unusedMenu)
-      }
-    }
-    if mainMenu.items.contains(where: { $0.title == "File" }) { return }
+    let controller = NativeMenuController(channel: channel)
+    nativeMenuController = controller
 
-    let controller = NativeFileMenuController(channel: channel)
-    fileMenuController = controller
+    installApplicationMenu(in: mainMenu, controller: controller)
+    installFileMenu(in: mainMenu, controller: controller)
+    installEditMenu(in: mainMenu, controller: controller)
+    installViewMenu(in: mainMenu, controller: controller)
+    installHelpMenu(in: mainMenu, controller: controller)
+  }
+
+  private func installApplicationMenu(
+    in mainMenu: NSMenu,
+    controller: NativeMenuController
+  ) {
+    guard let submenu = mainMenu.items.first?.submenu else { return }
+    let oldSettings = submenu.items.first {
+      $0.title == "Preferences…" || $0.title == "Settings…"
+    }
+    oldSettings?.title = "Settings…"
+    oldSettings?.target = controller
+    oldSettings?.action = #selector(NativeMenuController.openAppearance)
+  }
+
+  private func installFileMenu(
+    in mainMenu: NSMenu,
+    controller: NativeMenuController
+  ) {
+    if mainMenu.items.contains(where: { $0.title == "File" }) { return }
     let submenu = NSMenu(title: "File")
     submenu.addItem(
       item(
-        "New Workspace", key: "n", action: #selector(NativeFileMenuController.newWorkspace),
+        "New Workspace", key: "n", action: #selector(NativeMenuController.newWorkspace),
         target: controller))
     submenu.addItem(
       item(
-        "Open…", key: "o", action: #selector(NativeFileMenuController.openReaderSources),
+        "Open…", key: "o", action: #selector(NativeMenuController.openReaderSources),
         target: controller))
     submenu.addItem(
       item(
         "Open Workspace…", key: "o", modifiers: [.command, .shift],
-        action: #selector(NativeFileMenuController.openWorkspace), target: controller))
+        action: #selector(NativeMenuController.openWorkspace), target: controller))
     submenu.addItem(
       item(
         "Open Sample Library", key: "o", modifiers: [.command, .option],
-        action: #selector(NativeFileMenuController.openSampleLibrary), target: controller))
+        action: #selector(NativeMenuController.openSampleLibrary), target: controller))
     submenu.addItem(.separator())
     submenu.addItem(
       item(
-        "Save Workspace", key: "s", action: #selector(NativeFileMenuController.saveWorkspace),
+        "Save Workspace", key: "s", action: #selector(NativeMenuController.saveWorkspace),
         target: controller))
     submenu.addItem(
       item(
         "Save Workspace As…", key: "s", modifiers: [.command, .shift],
-        action: #selector(NativeFileMenuController.saveWorkspaceAs), target: controller))
+        action: #selector(NativeMenuController.saveWorkspaceAs), target: controller))
     submenu.addItem(.separator())
     submenu.addItem(
-      item("Add Folder…", action: #selector(NativeFileMenuController.addFolder), target: controller)
+      item("Add Folder…", action: #selector(NativeMenuController.addFolder), target: controller)
     )
     submenu.addItem(
       item(
-        "Add Markdown…", action: #selector(NativeFileMenuController.addMarkdown), target: controller
+        "Add Markdown…", action: #selector(NativeMenuController.addMarkdown), target: controller
       ))
+    submenu.addItem(.separator())
+    submenu.addItem(
+      item(
+        "Close Window", key: "w", action: #selector(NativeMenuController.closeWindow),
+        target: controller))
 
     let file = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
     file.submenu = submenu
     mainMenu.insertItem(file, at: min(1, mainMenu.items.count))
+  }
+
+  private func installEditMenu(
+    in mainMenu: NSMenu,
+    controller: NativeMenuController
+  ) {
+    let submenu = ensureMenu(named: "Edit", in: mainMenu, at: 2)
+    submenu.removeAllItems()
+    submenu.addItem(
+      item("Copy", key: "c", action: #selector(NSText.copy(_:)), target: nil))
+    submenu.addItem(
+      item("Select All", key: "a", action: #selector(NSText.selectAll(_:)), target: nil))
+    submenu.addItem(.separator())
+    submenu.addItem(
+      item(
+        "Find in Document…", key: "f", action: #selector(NativeMenuController.findDocument),
+        target: controller))
+    submenu.addItem(
+      item(
+        "Search Library…", key: "f", modifiers: [.command, .shift],
+        action: #selector(NativeMenuController.searchLibrary), target: controller))
+  }
+
+  private func installViewMenu(
+    in mainMenu: NSMenu,
+    controller: NativeMenuController
+  ) {
+    let submenu = ensureMenu(named: "View", in: mainMenu, at: 3)
+    submenu.removeAllItems()
+    submenu.addItem(
+      item(
+        "Show or Hide Shelf", key: "b", action: #selector(NativeMenuController.toggleShelf),
+        target: controller))
+    submenu.addItem(
+      item(
+        "Show or Hide Outline", key: "b", modifiers: [.command, .shift],
+        action: #selector(NativeMenuController.toggleOutline), target: controller))
+    submenu.addItem(.separator())
+    submenu.addItem(
+      item(
+        "Increase Text Size", key: "+", action: #selector(NativeMenuController.enlargeText),
+        target: controller))
+    submenu.addItem(
+      item(
+        "Decrease Text Size", key: "-", action: #selector(NativeMenuController.shrinkText),
+        target: controller))
+    submenu.addItem(
+      item(
+        "Actual Size", key: "0", action: #selector(NativeMenuController.resetText),
+        target: controller))
+    submenu.addItem(.separator())
+    submenu.addItem(
+      item(
+        "Enter Full Screen", key: "f", modifiers: [.command, .control],
+        action: #selector(NSWindow.toggleFullScreen(_:)), target: nil))
+  }
+
+  private func installHelpMenu(
+    in mainMenu: NSMenu,
+    controller: NativeMenuController
+  ) {
+    let submenu = ensureMenu(named: "Help", in: mainMenu, at: mainMenu.items.count)
+    NSApp.helpMenu = submenu
+    submenu.removeAllItems()
+    submenu.addItem(
+      item(
+        "Keyboard Shortcuts", action: #selector(NativeMenuController.showKeyboardShortcuts),
+        target: controller))
+    submenu.addItem(.separator())
+    submenu.addItem(
+      item("Support", action: #selector(NativeMenuController.openSupport), target: controller))
+    submenu.addItem(
+      item("Privacy", action: #selector(NativeMenuController.openPrivacy), target: controller))
+    submenu.addItem(
+      item(
+        "Open-Source Licenses", action: #selector(NativeMenuController.showLicenses),
+        target: controller))
+  }
+
+  private func ensureMenu(named title: String, in mainMenu: NSMenu, at index: Int) -> NSMenu {
+    if let existing = mainMenu.items.first(where: { $0.title == title })?.submenu {
+      return existing
+    }
+    let submenu = NSMenu(title: title)
+    let menuItem = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+    menuItem.submenu = submenu
+    mainMenu.insertItem(menuItem, at: min(index, mainMenu.items.count))
+    return submenu
   }
 
   private func item(
@@ -312,7 +440,7 @@ class MainFlutterWindow: NSWindow {
     key: String = "",
     modifiers: NSEvent.ModifierFlags = [.command],
     action: Selector,
-    target: AnyObject
+    target: AnyObject?
   ) -> NSMenuItem {
     let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
     item.keyEquivalentModifierMask = key.isEmpty ? [] : modifiers

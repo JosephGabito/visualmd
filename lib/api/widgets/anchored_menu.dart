@@ -5,6 +5,11 @@ import '../theme/library_theme.dart';
 import '../theme/library_chrome.dart';
 import 'pressable.dart';
 
+/// Opens an [AnchoredMenu] from an action outside its widget subtree.
+final class AnchoredMenuController extends ChangeNotifier {
+  void open() => notifyListeners();
+}
+
 /// A menu that opens from the thing you clicked.
 ///
 /// The motion follows a few well-worn principles rather than the framework
@@ -39,12 +44,14 @@ class AnchoredMenu extends StatefulWidget {
 
   final double width;
   final String tooltip;
+  final AnchoredMenuController? controller;
 
   const AnchoredMenu({
     super.key,
     required this.trigger,
     required this.items,
     required this.tooltip,
+    this.controller,
     this.width = 260,
   });
 
@@ -73,6 +80,7 @@ class _AnchoredMenuState extends State<AnchoredMenu>
   @override
   void initState() {
     super.initState();
+    widget.controller?.addListener(_open);
     _motion.addStatusListener((status) {
       if (status == AnimationStatus.dismissed && _portal.isShowing) {
         _portal.hide();
@@ -88,7 +96,16 @@ class _AnchoredMenuState extends State<AnchoredMenu>
   }
 
   @override
+  void didUpdateWidget(AnchoredMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+    oldWidget.controller?.removeListener(_open);
+    widget.controller?.addListener(_open);
+  }
+
+  @override
   void dispose() {
+    widget.controller?.removeListener(_open);
     _motion.dispose();
     _triggerFocus.dispose();
     _menuScope.dispose();
