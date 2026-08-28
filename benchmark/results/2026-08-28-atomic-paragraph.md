@@ -35,25 +35,26 @@ line boundaries in bounded source windows. It retains those boundaries across
 an upstream-proven append, reports the complete paragraph height to the outer
 document, and mounts only the lines near that viewport:
 
-| Source characters | Characters mounted | Initial worst frame | Middle-seek worst | Append worst | Finalize worst | Movement | RSS added |
-|---:|---:|---:|---:|---:|---:|---:|---:|
-| 10,000 | 10,000 | 8.8 ms | 3.1 ms | 6.8 ms | 16.6 ms | 0 px | 33.5 MiB |
-| 100,000 | 2,474 | 42.1 ms | 2.2 ms | 1.7 ms | 2.2 ms | 0 px | 17.6 MiB |
-| 1,000,000 | 2,477 | 236.8 ms | 3.7 ms | 4.4 ms | 6.8 ms | 0 px | 62.2 MiB |
+| Source characters | Characters mounted | Index step worst | Initial frame worst | Middle-seek worst | Append worst | Finalize worst | Movement | RSS added |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10,000 | 10,000 | — | 7.7 ms | 2.8 ms | 7.3 ms | 4.6 ms | 0 px | 4.8 MiB |
+| 100,000 | 1,994 | 2.8 ms | 3.2 ms | 3.3 ms | 2.4 ms | 1.9 ms | 0 px | 15.9 MiB |
+| 1,000,000 | 2,477 | 1.1 ms | 4.6 ms | 3.3 ms | 4.1 ms | 7.8 ms | 0 px | 66.4 MiB |
 
 Ten thousand characters deliberately remains on the ordinary eager path. At
-the two pathological sizes, mounted text is constant; a deep seek, adjacent
-stream append and safe finalization all remain below the 8.3 ms frame budget of
-a 120 Hz display. The million-character append is about 53 times cheaper than
-the initial full indexing frame and does not move the reader parked in the
-middle.
+the two pathological sizes, mounted text is constant; initial reveal, a deep
+seek, adjacent stream append and safe finalization all remain below the 8.3 ms
+frame budget of a 120 Hz display. The append does not move a reader parked in
+the middle.
 
-Initial construction is still O(source): a pre-existing million-character
-paragraph must discover its line boundaries once, and that synchronous pass is
-still a 237 ms frame. Its peak process delta is substantially lower than the
-eager paragraph's 292 MiB, but 62 MiB is not a memory plateau proof. This slice
-solves repeated stream updates and interactive access; it does not claim that
-opening a pathological completed blob is constant-time.
+Initial construction still performs O(source) work: a pre-existing
+million-character paragraph needs 245 bounded `TextPainter` operations to
+discover all line boundaries. No operation receives more than 4,161 code units
+or takes more than 1.1 ms in that run. Work starts after the placeholder frame,
+yields between batches, and publishes no partial height; a replacement retains
+its previous exact geometry until the new index is complete. The old 237 ms
+synchronous frame is therefore gone without making a false O(1) construction
+claim. The 66 MiB process delta is not yet a memory plateau proof.
 
 ## What this proves
 
@@ -63,11 +64,14 @@ opening a pathological completed blob is constant-time.
   suffix; the million-character prefix contributes no text-layout work.
 - The paragraph's complete height remains exact, and a tail append moves a
   reader above it by exactly zero pixels.
+- First-load discovery is cooperatively scheduled in bounded operations, while
+  scrollbar geometry changes once from unpublished to exact rather than
+  walking through partial estimates.
 - Safe finalization binds the widow by re-resolving only its owning line;
   counting eligibility stops after four words instead of allocating a complete
   word list.
-- Initial full-source indexing, punctuation that changes shaping, and
-  rich-inline paragraphs remain distinct costs rather than hidden claims.
+- Total first-load work, punctuation that changes shaping, and rich-inline
+  paragraphs remain distinct costs rather than hidden claims.
 
 ## Acceptance boundary
 

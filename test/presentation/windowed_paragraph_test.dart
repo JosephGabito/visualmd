@@ -16,6 +16,104 @@ import 'package:visualmd/presentation/theme/widow_binding.dart';
 
 void main() {
   testWidgets(
+    'initial wrap work stays bounded and publishes complete geometry once',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final source = _prose(1000000);
+      final steps = <int>[];
+
+      await tester.pumpWidget(
+        _page(
+          _content(source, revision: 1),
+          onInitialIndexStep: (codeUnits, _) => steps.add(codeUnits),
+        ),
+      );
+
+      expect(find.byKey(const ValueKey('paragraph-indexing')), findsOneWidget);
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      final unpublishedExtent = position.maxScrollExtent;
+      var frames = 0;
+      while (find
+          .byKey(const ValueKey('paragraph-indexing'))
+          .evaluate()
+          .isNotEmpty) {
+        expect(position.maxScrollExtent, unpublishedExtent);
+        await tester.pump(const Duration(milliseconds: 1));
+        frames++;
+        expect(frames, lessThan(400));
+      }
+
+      expect(frames, isPositive);
+      expect(steps.length, greaterThan(1));
+      expect(steps, everyElement(lessThan(5000)));
+      expect(position.maxScrollExtent, greaterThan(unpublishedExtent));
+      expect(find.byKey(const ValueKey('paragraph-window')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'an unproven replacement retains old geometry until the new index is exact',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final indexed = <int>[];
+      final initial = _prose(100000);
+      final replacement = _prose(1000000);
+
+      await tester.pumpWidget(
+        _page(_content(initial, revision: 1), onSourceIndexed: indexed.add),
+      );
+      await tester.pumpAndSettle();
+      ScrollPosition position() =>
+          tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+      final oldExtent = position().maxScrollExtent;
+      final oldHeight = tester
+          .getSize(find.byType(WindowedPlainParagraph))
+          .height;
+      final retained = find.byType(WindowedPlainParagraph).evaluate().single;
+      expect(indexed, hasLength(1));
+
+      await tester.pumpWidget(
+        _page(_content(replacement, revision: 2), onSourceIndexed: indexed.add),
+      );
+      expect(find.byKey(const ValueKey('paragraph-indexing')), findsNothing);
+      expect(
+        identical(
+          find.byType(WindowedPlainParagraph).evaluate().single,
+          retained,
+        ),
+        isTrue,
+      );
+
+      var frames = 0;
+      while (indexed.length == 1) {
+        expect(
+          tester.getSize(find.byType(WindowedPlainParagraph)).height,
+          oldHeight,
+        );
+        await tester.pump(const Duration(milliseconds: 1));
+        frames++;
+        expect(frames, lessThan(400));
+      }
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byType(WindowedPlainParagraph)).height,
+        greaterThan(oldHeight),
+      );
+      expect(position().maxScrollExtent, greaterThan(oldExtent));
+      expect(indexed, [initial.length, replacement.length]);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'an enormous provisional paragraph mounts one exact viewport window',
     (tester) async {
       tester.view.physicalSize = const Size(1000, 700);
@@ -168,28 +266,32 @@ void main() {
   );
 }
 
-Widget _page(DocumentContent content, {ValueChanged<int>? onSourceIndexed}) =>
-    MaterialApp(
-      theme: libraryTheme(BuiltInThemes.paper),
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => ModelBackedSelectionArea(
-            selectionIdentity: 'document',
-            wholeText: () => readingTextOfBlocks(content.blocks, '\n\n'),
-            child: CustomScrollView(
-              slivers: [
-                SliverDocumentView(
-                  content: content,
-                  theme: ReadingTheme.of(context, ReadingScale.comfortable),
-                  anchorKeys: <String, GlobalKey>{},
-                  debugOnParagraphCodeUnitsIndexed: onSourceIndexed,
-                ),
-              ],
+Widget _page(
+  DocumentContent content, {
+  ValueChanged<int>? onSourceIndexed,
+  ParagraphIndexStepObserver? onInitialIndexStep,
+}) => MaterialApp(
+  theme: libraryTheme(BuiltInThemes.paper),
+  home: Scaffold(
+    body: Builder(
+      builder: (context) => ModelBackedSelectionArea(
+        selectionIdentity: 'document',
+        wholeText: () => readingTextOfBlocks(content.blocks, '\n\n'),
+        child: CustomScrollView(
+          slivers: [
+            SliverDocumentView(
+              content: content,
+              theme: ReadingTheme.of(context, ReadingScale.comfortable),
+              anchorKeys: <String, GlobalKey>{},
+              debugOnParagraphCodeUnitsIndexed: onSourceIndexed,
+              debugOnParagraphInitialIndexStep: onInitialIndexStep,
             ),
-          ),
+          ],
         ),
       ),
-    );
+    ),
+  ),
+);
 
 DocumentContent _content(
   String source, {

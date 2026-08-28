@@ -16,6 +16,7 @@ import '../render/reading_theme.dart';
 import '../theme/library_theme.dart';
 import 'quiet_scrollbar.dart';
 import 'model_backed_selection_area.dart';
+import 'windowed_paragraph.dart';
 
 /// The page: one document, set by [DocumentView] and watched so the outline
 /// knows where the reader is.
@@ -35,6 +36,7 @@ class ReadingPane extends StatefulWidget {
   /// by one navigation or render indexing pass.
   final ValueChanged<int>? debugOnNavigationBlocksIndexed;
   final ValueChanged<int>? debugOnRenderBlocksIndexed;
+  final ParagraphIndexStepObserver? debugOnParagraphInitialIndexStep;
 
   const ReadingPane({
     super.key,
@@ -50,6 +52,7 @@ class ReadingPane extends StatefulWidget {
     this.activeMatch = -1,
     this.debugOnNavigationBlocksIndexed,
     this.debugOnRenderBlocksIndexed,
+    this.debugOnParagraphInitialIndexStep,
   });
 
   @override
@@ -556,6 +559,8 @@ class ReadingPaneState extends State<ReadingPane> {
                     matchKeys: _matchKeys,
                     onHeadingMount: _headingMountChanged,
                     debugOnBlocksIndexed: widget.debugOnRenderBlocksIndexed,
+                    debugOnParagraphInitialIndexStep:
+                        widget.debugOnParagraphInitialIndexStep,
                     viewportGeometry: _geometry,
                     viewportAnchor: _viewportAnchor(),
                     onExtentCorrection: _quietScrollbar.absorb,

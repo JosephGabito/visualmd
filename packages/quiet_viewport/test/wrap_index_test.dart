@@ -156,6 +156,33 @@ void main() {
     );
     expect(work, everyElement(lessThanOrEqualTo(11)));
   });
+
+  test(
+    'a staged append joins progressive work without restarting its prefix',
+    () {
+      final visited = <String>[];
+      final index = AppendWrapIndex.progressive(
+        source: 'aaaaabbbbb',
+        windowCodeUnits: 5,
+        resolve: (text) {
+          visited.add(text);
+          return _fiveColumns(text);
+        },
+      );
+
+      expect(index.indexNext(), isFalse);
+      index.stageAppend(baseLength: 10, source: 'aaaaabbbbbccccc');
+      while (!index.indexNext()) {}
+
+      expect(visited.first, 'aaaaa');
+      expect(visited[1], 'aaaaabbbbb');
+      expect(
+        visited.skip(2).where((window) => window.startsWith('aaaaa')),
+        isEmpty,
+      );
+      expect(_ranges(index, 'aaaaabbbbbccccc'), ['aaaaa', 'bbbbb', 'ccccc']);
+    },
+  );
 }
 
 List<int> _fiveColumns(String text) => [
