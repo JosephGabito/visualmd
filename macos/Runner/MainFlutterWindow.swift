@@ -381,10 +381,10 @@ class MainFlutterWindow: NSWindow {
       let url = URL(fileURLWithPath: path)
       var record: [String: Any] = ["path": path]
       if let bookmark = try? url.bookmarkData(
-          options: [.withSecurityScope],
-          includingResourceValuesForKeys: nil,
-          relativeTo: nil
-        ) {
+        options: [.withSecurityScope],
+        includingResourceValuesForKeys: nil,
+        relativeTo: nil
+      ) {
         record["bookmark"] = FlutterStandardTypedData(bytes: bookmark)
       }
       return record
