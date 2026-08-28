@@ -62,14 +62,26 @@ abstract final class TypographicPunctuation {
 final class TypographicProjection {
   final String source;
   final String text;
+  final String? _previous;
   final List<_ProjectionBoundary> _boundaries;
 
-  const TypographicProjection._(this.source, this.text, this._boundaries);
+  const TypographicProjection._(
+    this.source,
+    this.text,
+    this._previous,
+    this._boundaries,
+  );
 
-  factory TypographicProjection.of(String source) {
+  /// Projects one source range with the displayed character to its left.
+  ///
+  /// [previous] makes independently projected ranges compose exactly like one
+  /// continuous paragraph. A viewport can therefore project only its bounded
+  /// source window without guessing whether an opening quote at the edge is
+  /// really an apostrophe or closing quote in the complete document.
+  factory TypographicProjection.of(String source, {String? previous}) {
     final output = StringBuffer();
     final boundaries = <_ProjectionBoundary>[];
-    String? previous;
+    var before = previous;
     var sourceOffset = 0;
     var displayOffset = 0;
 
@@ -79,7 +91,7 @@ final class TypographicProjection {
       var value = String.fromCharCode(unit);
 
       if (unit == 34 || unit == 39) {
-        value = TypographicPunctuation.quote(value, previous);
+        value = TypographicPunctuation.quote(value, before);
       } else if (unit == 45) {
         final run = _runOf(source, sourceOffset, 45);
         if (run >= 2) {
@@ -108,14 +120,38 @@ final class TypographicProjection {
           ),
         );
       }
-      previous = value;
+      before = value;
     }
 
     return TypographicProjection._(
       source,
       output.toString(),
+      previous,
       List.unmodifiable(boundaries),
     );
+  }
+
+  /// The complete displayed character immediately before [displayOffset].
+  ///
+  /// Offset zero returns the context supplied to [TypographicProjection.of].
+  /// Later offsets preserve a surrogate pair as one character so the returned
+  /// value can safely seed the next bounded projection.
+  String? previousDisplayAt(int displayOffset) {
+    RangeError.checkValueInInterval(
+      displayOffset,
+      0,
+      text.length,
+      'displayOffset',
+    );
+    if (displayOffset == 0) return _previous;
+    final last = text.codeUnitAt(displayOffset - 1);
+    if (_isLowSurrogate(last) && displayOffset >= 2) {
+      final first = text.codeUnitAt(displayOffset - 2);
+      if (_isHighSurrogate(first)) {
+        return text.substring(displayOffset - 2, displayOffset);
+      }
+    }
+    return text.substring(displayOffset - 1, displayOffset);
   }
 
   /// The source boundary represented by [displayOffset].
