@@ -310,7 +310,7 @@ remains a paragraph instead of swallowing the remainder of the document
 
 | | Type | Notes |
 |---|------|-------|
-| In | `String markdown` or exact appended source | Completed source is parsed once; a session reparses only its unfinished suffix (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
+| In | `String markdown` or exact appended source | Completed source is parsed once; a session reparses its unfinished block tail, or only the unresolved inline tail after a stable paragraph checkpoint (`lib/infrastructure/markdown/markdown_document_parser.dart`) |
 | Out | `DocumentContent` | Blocks in source order; sessions add stable identity, revision, and commitment |
 
 May import: `package:markdown`, the inert `package:html` fragment parser, the
@@ -345,17 +345,38 @@ scanning the code it already indexed
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 When a paragraph already contains closed emphasis, code or links, the session
-compares the inline structure it has just reparsed and emits a
-`BlockInlineAppend` only if every prior run remains exact. A growing final plain
-leaf becomes a new suffix `TextRun`; new top-level runs follow it. Closing an
-unfinished delimiter changes the prior tree and therefore withholds the proof.
-This first contract removes renderer-side prefix discovery; the fragment parser
-still reparses the provisional source tail. The native profile makes that cost
-explicit: appending 57 rich Markdown characters takes 8.5 ms after 10,070
-characters, 105 ms after 100,035, and 7.10 seconds after 1,000,065. The final
-case reparses 1,000,122 characters and walks 63,167 inline runs to prove five
-new runs. This is the dominant quadratic streaming boundary
-(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+publishes a `BlockInlineAppend` only when every prior run is known to remain
+exact. A growing final plain leaf becomes a new suffix `TextRun`; new top-level
+runs follow it. Closing an unfinished delimiter changes the prior tree and
+therefore withholds the proof.
+
+The first version of that contract removed renderer-side prefix discovery but
+still reparsed the complete provisional source tail. The native profile exposed
+the resulting cliff: appending 57 rich Markdown characters took 8.5 ms after
+10,070 characters, 105 ms after 100,035, and 7.10 seconds after 1,000,065. The
+final case reparsed 1,000,122 characters and walked 63,167 inline runs to prove
+five new runs.
+
+The session now retains the parsed prefix in a `PersistentSequence` at a
+conservative **stable inline checkpoint**. A checkpoint is accepted only on a
+single line, before paragraph-final whitespace, after exact backtick,
+emphasis, strong, strikethrough, bracket and parenthesis runs have closed. Raw
+HTML, character references, line breaks or any ambiguous delimiter state keep
+the complete-tail fallback. This is intentionally a sufficient rule rather
+than a second Markdown grammar: `package:markdown` still parses every accepted
+suffix, and `finish()` still performs one canonical complete parse.
+
+On the accepted path, the retained boundary whitespace and newly appended
+source are the only materialised and parsed range. Paragraph-final whitespace
+is withheld from the visible run tree until later source makes it internal, so
+successive checkpoints remain exactly equivalent to the canonical parser. The
+parser also supplies the proven inline suffix directly to the mutation instead
+of comparing the retained prefix again. In the same native profile, the
+million-character append parses 58 characters and falls from 7.10 seconds to
+0.133 ms; the 10k, 100k and 1M append measurements have no positive prefix
+slope (`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`test/infrastructure/incremental_markdown_parser_test.dart`,
+`benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
 
 ## Failure and recovery
 
@@ -377,10 +398,12 @@ least self-consistent about it.
 
 Late chunks after `finish()` throw `StateError`. A newly committed link or
 footnote definition may change an earlier inline, so that uncommon operation
-performs a full semantic rebase. Ordinary appends visit only the new chunk plus
-the provisional tail. The measured work is exposed as
-`lastParsedSourceLength`; the performance test fixes a five-thousand-paragraph
-prefix and proves the next append parses only its new tail
+performs a full semantic rebase. Ordinary block appends visit only the new
+chunk plus the provisional block tail; stable single-line paragraph appends
+visit only unresolved inline source after their checkpoint. The measured work
+is exposed as `lastParsedSourceLength`; the performance tests fix both a
+five-thousand-paragraph prefix and a million-character rich paragraph and prove
+that the next eligible append parses only its new tail
 (`test/infrastructure/incremental_markdown_parser_test.dart`).
 The same suite proves an open fence's published suffix reconstructs the next
 code block exactly from the preceding revision.

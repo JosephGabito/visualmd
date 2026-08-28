@@ -1,6 +1,7 @@
 import 'package:markdown/markdown.dart' as md;
 
 import '../../application/ports/document_parser.dart';
+import '../../domain/collection/persistent_sequence.dart';
 import '../../domain/reading/character_references.dart';
 import '../../domain/reading/content/block.dart';
 import '../../domain/reading/content/document_content.dart';
@@ -96,6 +97,8 @@ final class _IncrementalMarkdownParserSession
   int _committedSourceLength = 0;
   int _lastParsedSourceLength = 0;
   int _nextBlockId = 0;
+  int? _stableParagraphSourceLength;
+  PersistentSequence<Inline>? _stableParagraphRuns;
   bool _finished = false;
 
   _IncrementalMarkdownParserSession(this._parser);
@@ -120,6 +123,13 @@ final class _IncrementalMarkdownParserSession
     if (_finished) throw StateError('The Markdown stream has finished.');
     if (source.isEmpty) return _content;
     _source.append(source);
+
+    if (!source.contains('\n') && !source.contains('\r')) {
+      final fastRevision = _reviseStableParagraph(
+        appendedLength: source.length,
+      );
+      if (fastRevision != null) return fastRevision;
+    }
 
     final tail = _source.tailFrom(_committedSourceLength);
     final boundary = _lastBlankBoundary(tail);
@@ -163,7 +173,62 @@ final class _IncrementalMarkdownParserSession
     _committedSourceLength = 0;
     _context.clear();
     _anchors.clear();
+    _clearStableParagraph();
     return _reviseTail(rebase: true);
+  }
+
+  DocumentContent? _reviseStableParagraph({required int appendedLength}) {
+    final stableLength = _stableParagraphSourceLength;
+    final stableRuns = _stableParagraphRuns;
+    if (stableLength == null ||
+        stableRuns == null ||
+        _provisional.length != 1 ||
+        _provisional.single.block is! ParagraphBlock) {
+      return null;
+    }
+
+    final tailLength = _source.length - _committedSourceLength;
+    final previousLength = tailLength - appendedLength;
+    if (stableLength > previousLength) return null;
+    final priorPending = _source.range(
+      _committedSourceLength + stableLength,
+      _committedSourceLength + previousLength,
+    );
+    final pendingSource = _source.tailFrom(
+      _committedSourceLength + stableLength,
+    );
+    if (pendingSource.isEmpty) return null;
+
+    final checkpoint = _stableParagraphCheckpoint(pendingSource);
+    final parseSource = checkpoint == null
+        ? pendingSource
+        : pendingSource.substring(0, checkpoint);
+    if (parseSource.isEmpty) {
+      _lastParsedSourceLength = 0;
+      return _content;
+    }
+    final document = MarkdownDocumentParser._newMarkdownDocument();
+    _context.seed(document);
+    final pendingRuns = _Mapper().inlines(document.parseInline(parseSource));
+    if (pendingRuns.isEmpty) return null;
+    final combined = stableRuns.replace(
+      index: stableRuns.length,
+      removeCount: 0,
+      values: pendingRuns,
+    );
+    _lastParsedSourceLength = parseSource.length;
+    final content = _publish(
+      committedBlocks: const [],
+      provisionalBlocks: [ParagraphBlock(combined)],
+      rebase: false,
+      provenInlineSuffix: priorPending.trim().isEmpty ? pendingRuns : null,
+    );
+
+    if (checkpoint != null) {
+      _stableParagraphSourceLength = stableLength + checkpoint;
+      _stableParagraphRuns = combined;
+    }
+    return content;
   }
 
   DocumentContent _reviseTail({bool rebase = false}) {
@@ -195,13 +260,16 @@ final class _IncrementalMarkdownParserSession
       );
       _lastParsedSourceLength += tail.length;
       final provisionalBlocks = _anchors.apply(parsed.blocks);
-      return _publish(
+      final content = _publish(
         committedBlocks: const [],
         provisionalBlocks: provisionalBlocks,
         rebase: rebase,
       );
+      _rememberStableParagraph(tail, provisionalBlocks);
+      return content;
     }
 
+    _clearStableParagraph();
     _anchors.restoreCommitted();
     final anchoredCommitted = _anchors.apply(committedBlocks);
     _anchors.commit();
@@ -235,6 +303,7 @@ final class _IncrementalMarkdownParserSession
     required List<Block> committedBlocks,
     required List<Block> provisionalBlocks,
     required bool rebase,
+    List<Inline>? provenInlineSuffix,
   }) {
     final revision = _content.revision + 1;
     final previousTail = rebase
@@ -260,6 +329,9 @@ final class _IncrementalMarkdownParserSession
               !rebase &&
               commitments[index] == BlockCommitment.provisional &&
               index == blocks.length - 1,
+          provenInlineSuffix: index == blocks.length - 1
+              ? provenInlineSuffix
+              : null,
         ),
       );
     }
@@ -293,6 +365,24 @@ final class _IncrementalMarkdownParserSession
     }
     _provisional = records.skip(committedBlocks.length).toList();
     return _content;
+  }
+
+  void _rememberStableParagraph(String source, List<Block> blocks) {
+    final checkpoint = _stableParagraphCheckpoint(source);
+    if (checkpoint != null) {
+      switch (blocks) {
+        case [ParagraphBlock(:final content)]:
+          _stableParagraphSourceLength = checkpoint;
+          _stableParagraphRuns = PersistentSequence<Inline>.from(content);
+          return;
+      }
+    }
+    _clearStableParagraph();
+  }
+
+  void _clearStableParagraph() {
+    _stableParagraphSourceLength = null;
+    _stableParagraphRuns = null;
   }
 
   void _replaceAll(List<DocumentBlock> entries, int revision) {
@@ -331,6 +421,7 @@ final class _IncrementalMarkdownParserSession
     DocumentBlock? previous,
     int revision, {
     bool allowAppend = false,
+    List<Inline>? provenInlineSuffix,
   }) {
     final sameShape =
         previous != null && previous.block.runtimeType == block.runtimeType;
@@ -338,7 +429,12 @@ final class _IncrementalMarkdownParserSession
         ? _textAppend(previous, block)
         : null;
     final inlineAppend = sameShape && allowAppend && textAppend == null
-        ? _inlineAppend(previous, block)
+        ? provenInlineSuffix != null
+              ? BlockInlineAppend(
+                  baseRevision: previous.revision,
+                  runs: provenInlineSuffix,
+                )
+              : _inlineAppend(previous, block)
         : null;
     final suffixMetrics = switch ((textAppend, inlineAppend)) {
       (BlockTextAppend(:final text), null) => BlockTextMetrics.fromText(text),
@@ -476,6 +572,101 @@ final class _IncrementalMarkdownParserSession
       if (!_sameTextInline(before[index], after[index])) return false;
     }
     return true;
+  }
+
+  /// Whether later source can begin from the end of this inline fragment.
+  ///
+  /// This is deliberately narrower than CommonMark. It accepts the ordinary
+  /// single-line generated-prose path only when every construct with authority
+  /// over later characters is visibly closed and the next parser starts after
+  /// whitespace. Anything ambiguous falls back to the package parser over the
+  /// complete provisional tail.
+  static int? _stableParagraphCheckpoint(String source) {
+    if (source.isEmpty ||
+        (source.codeUnitAt(source.length - 1) != 32 &&
+            source.codeUnitAt(source.length - 1) != 9) ||
+        source.contains('\n') ||
+        source.contains('\r') ||
+        source.contains('<') ||
+        source.contains('&')) {
+      return null;
+    }
+
+    final delimiters = <({int codeUnit, int length})>[];
+    var brackets = 0;
+    var parentheses = 0;
+    int? codeTicks;
+    for (var index = 0; index < source.length; index++) {
+      final codeUnit = source.codeUnitAt(index);
+      if (codeUnit == 92) {
+        if (index + 1 == source.length) return null;
+        index++;
+        continue;
+      }
+
+      if (codeUnit == 96) {
+        var length = 1;
+        while (index + length < source.length &&
+            source.codeUnitAt(index + length) == codeUnit) {
+          length++;
+        }
+        if (codeTicks == null) {
+          codeTicks = length;
+        } else if (codeTicks == length) {
+          codeTicks = null;
+        }
+        index += length - 1;
+        continue;
+      }
+      if (codeTicks != null) continue;
+
+      if (codeUnit == 91) {
+        brackets++;
+        continue;
+      }
+      if (codeUnit == 93) {
+        if (brackets == 0) return null;
+        brackets--;
+        continue;
+      }
+      if (codeUnit == 40) {
+        parentheses++;
+        continue;
+      }
+      if (codeUnit == 41) {
+        if (parentheses == 0) return null;
+        parentheses--;
+        continue;
+      }
+      if (codeUnit != 42 && codeUnit != 95 && codeUnit != 126) continue;
+
+      var length = 1;
+      while (index + length < source.length &&
+          source.codeUnitAt(index + length) == codeUnit) {
+        length++;
+      }
+      index += length - 1;
+      if (codeUnit == 126 && length < 2) continue;
+      final delimiter = (codeUnit: codeUnit, length: length);
+      if (delimiters.isNotEmpty && delimiters.last == delimiter) {
+        delimiters.removeLast();
+      } else {
+        delimiters.add(delimiter);
+      }
+    }
+    if (codeTicks != null ||
+        brackets != 0 ||
+        parentheses != 0 ||
+        delimiters.isNotEmpty) {
+      return null;
+    }
+    var checkpoint = source.length;
+    while (checkpoint > 0) {
+      final codeUnit = source.codeUnitAt(checkpoint - 1);
+      if (codeUnit != 32 && codeUnit != 9) break;
+      checkpoint--;
+    }
+    return checkpoint;
   }
 
   static int _lastBlankBoundary(String source) {

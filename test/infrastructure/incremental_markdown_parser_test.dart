@@ -60,6 +60,106 @@ void main() {
     );
   });
 
+  test('a closed rich checkpoint parses only the newly arriving suffix', () {
+    final session = parser.startSession();
+    final prefix = List.filled(1000, 'A **bold** thought. ').join();
+    final first = session.append(prefix);
+    const suffix = 'keeps `streaming`.';
+
+    final second = session.append(suffix);
+
+    expect(session.lastParsedSourceLength, suffix.length + 1);
+    expect(
+      second.blocks.single.text,
+      '${first.blocks.single.text} keeps streaming.',
+    );
+    expect(second.entries.single.inlineAppend?.runs, const [
+      TextRun(' keeps '),
+      CodeRun('streaming'),
+      TextRun('.'),
+    ]);
+  });
+
+  test('accepted rich checkpoints match the canonical inline tree', () {
+    const cases = <(String, String)>[
+      ('Plain generated prose. ', 'More words.'),
+      ('A **strong** statement. ', '*Emphasis* follows.'),
+      ('Nested **strong and _emphasis_**. ', 'Then `code`.'),
+      ('A [link](https://example.com). ', 'Then ~~deleted~~ text.'),
+      ('An ![image](image.png). ', r'Then an escaped \* mark.'),
+      ('Balanced (parenthetical) prose. ', '**A final phrase.**'),
+    ];
+
+    for (final (prefix, suffix) in cases) {
+      final session = parser.startSession();
+      session.append(prefix);
+
+      final incremental = session.append(suffix);
+      final canonical = parser.parse('$prefix$suffix');
+
+      expect(session.lastParsedSourceLength, suffix.length + 1, reason: prefix);
+      expect(_shape(incremental.blocks), _shape(canonical.blocks));
+    }
+  });
+
+  test('successive rich checkpoints remain canonical', () {
+    final session = parser.startSession();
+    const chunks = <String>[
+      'A **first** phrase. ',
+      'A `second` phrase. ',
+      'A [third](https://example.com) phrase. ',
+      'The end.',
+    ];
+    var source = '';
+
+    for (final chunk in chunks) {
+      source += chunk;
+      final incremental = session.append(chunk);
+      final canonical = parser.parse(source);
+
+      expect(_shape(incremental.blocks), _shape(canonical.blocks));
+    }
+  });
+
+  test('checkpoint whitespace becomes visible only when prose follows it', () {
+    final session = parser.startSession();
+    final first = session.append('Complete. ');
+
+    final whitespace = session.append(' \t');
+
+    expect(whitespace.revision, first.revision);
+    expect(whitespace.blocks.single.text, 'Complete.');
+    expect(session.lastParsedSourceLength, 0);
+
+    final continued = session.append('Next.');
+    final canonical = parser.parse('Complete.  \tNext.');
+
+    expect(_shape(continued.blocks), _shape(canonical.blocks));
+  });
+
+  test('ambiguous inline boundaries retain the complete parser fallback', () {
+    const cases = <String>[
+      'An *unclosed delimiter ',
+      'An <sub>open HTML tag ',
+      'An &amp; entity ',
+      'A source line\n',
+    ];
+
+    for (final prefix in cases) {
+      final session = parser.startSession();
+      session.append(prefix);
+      const suffix = 'continues.';
+
+      session.append(suffix);
+
+      expect(
+        session.lastParsedSourceLength,
+        prefix.length + suffix.length,
+        reason: prefix,
+      );
+    }
+  });
+
   test('a blank line commits prose and later work visits only the tail', () {
     final session = parser.startSession();
     final first = session.append('Alpha.\n\n');
@@ -226,6 +326,7 @@ List<Object> _shape(List<Block> blocks) => [
 ];
 
 Object _blockShape(Block block) => switch (block) {
+  ParagraphBlock(:final content) => ['paragraph', _inlineShape(content)],
   HeadingBlock(:final level, :final anchor) => [
     'heading',
     level,
@@ -248,3 +349,43 @@ Object _blockShape(Block block) => switch (block) {
   ],
   _ => [block.runtimeType.toString(), block.text],
 };
+
+List<Object> _inlineShape(List<Inline> content) {
+  final result = <Object>[];
+  for (final inline in content) {
+    if (inline case TextRun(:final text)) {
+      if (result.lastOrNull case ['text', String previous]) {
+        result[result.length - 1] = ['text', '$previous$text'];
+      } else {
+        result.add(['text', text]);
+      }
+      continue;
+    }
+    result.add(switch (inline) {
+      CodeRun(:final text) => ['code', text],
+      LineBreakRun() => ['break'],
+      MarkedRun(:final mark, :final children) => [
+        'mark',
+        mark.name,
+        _inlineShape(children),
+      ],
+      LinkRun(:final href, :final title, :final children) => [
+        'link',
+        href,
+        title,
+        _inlineShape(children),
+      ],
+      MathRun(:final source) => ['math', source],
+      FootnoteReferenceRun(:final text) => ['footnote-reference', text],
+      FootnoteBackReferenceRun(:final text) => ['footnote-backref', text],
+      ImageRun(:final source, :final title, :final alt) => [
+        'image',
+        source,
+        title,
+        alt,
+      ],
+      TextRun() => throw StateError('Text was handled above.'),
+    });
+  }
+  return result;
+}
