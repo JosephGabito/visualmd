@@ -77,7 +77,10 @@ shelf toggle and product identity, its centre reports the active document title
 and file name, and its trailing group exposes document search, the theme picker,
 and the outline toggle. The picker arrives as a complete widget, so the bar owns
 its position without owning theme behavior
-(`lib/api/screens/reader_screen.dart`). Both toggles use
+(`lib/api/screens/reader_screen.dart`). A custom multi-child layout measures the
+unequal command clusters, reserves the larger width on both sides, and places
+the document identity on the geometric centre of the complete window rather
+than the leftover gap (`lib/api/screens/reader_screen.dart`). Both toggles use
 [Pressable](09-pressable.md), carry separate Show/Hide shelf and outline names
 for assistive technology, and remain disabled until a library exists.
 Document-title and toggle-icon replacements cross-fade for 140 ms during

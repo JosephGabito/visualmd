@@ -871,92 +871,151 @@ class _TopBar extends StatelessWidget {
         ? Duration.zero
         : const Duration(milliseconds: 140);
     return Container(
+      key: const ValueKey('reader-top-bar'),
       height: height,
-      padding: EdgeInsets.only(
-        left: leadingInset,
-        right: LibraryChromeScale.space2,
-      ),
       decoration: BoxDecoration(
         color: chrome.topBar,
         border: Border(bottom: BorderSide(color: chrome.separator)),
       ),
-      child: Row(
+      child: CustomMultiChildLayout(
+        delegate: _TopBarLayoutDelegate(),
         children: [
-          _BarButton(
-            tooltip: shelfVisible ? 'Hide shelf  (⌘B)' : 'Show shelf  (⌘B)',
-            icon: shelfVisible
-                ? Icons.vertical_split
-                : Icons.vertical_split_outlined,
-            active: shelfVisible,
-            onPressed: hasLibrary ? onToggleShelf : null,
-          ),
-          const SizedBox(width: LibraryChromeScale.space4),
-          const BrandMark(size: 18),
-          const SizedBox(width: LibraryChromeScale.space2),
-          Text(
-            'Visual MD',
-            style: context.type.serif(
-              color: p.ink,
-              size: 15,
-              weight: FontWeight.w600,
-              height: 1,
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: AnimatedSwitcher(
-                duration: motionDuration,
-                child: documentTitle == null
-                    ? const SizedBox.shrink()
-                    : Column(
-                        key: ValueKey(documentLocation),
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            documentTitle!,
-                            key: const ValueKey('top-bar-document-title'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.chromeRow(
-                              color: p.ink,
-                              weight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            documentLocation!,
-                            key: const ValueKey('top-bar-document-location'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.type.sans(
-                              color: p.muted,
-                              size: 10.5,
-                              height: 1,
-                            ),
-                          ),
-                        ],
-                      ),
+          LayoutId(
+            id: _TopBarSlot.leading,
+            child: Padding(
+              padding: EdgeInsets.only(left: leadingInset),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _BarButton(
+                    tooltip: shelfVisible
+                        ? 'Hide shelf  (⌘B)'
+                        : 'Show shelf  (⌘B)',
+                    icon: shelfVisible
+                        ? Icons.vertical_split
+                        : Icons.vertical_split_outlined,
+                    active: shelfVisible,
+                    onPressed: hasLibrary ? onToggleShelf : null,
+                  ),
+                  const SizedBox(width: LibraryChromeScale.space4),
+                  const BrandMark(size: 18),
+                  const SizedBox(width: LibraryChromeScale.space2),
+                  Text(
+                    'Visual MD',
+                    style: context.type.serif(
+                      color: p.ink,
+                      size: 15,
+                      weight: FontWeight.w600,
+                      height: 1,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          _BarButton(
-            tooltip: 'Find in document  (⌘F)',
-            icon: Icons.search,
-            onPressed: onFind,
+          LayoutId(
+            id: _TopBarSlot.title,
+            child: AnimatedSwitcher(
+              duration: motionDuration,
+              child: documentTitle == null
+                  ? const SizedBox.shrink()
+                  : Column(
+                      key: ValueKey(documentLocation),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          documentTitle!,
+                          key: const ValueKey('top-bar-document-title'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.chromeRow(
+                            color: p.ink,
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          documentLocation!,
+                          key: const ValueKey('top-bar-document-location'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.type.sans(
+                            color: p.muted,
+                            size: 10.5,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-          const SizedBox(width: LibraryChromeScale.space1),
-          themePicker,
-          const SizedBox(width: LibraryChromeScale.space1),
-          _BarButton(
-            tooltip: outlineVisible ? 'Hide outline' : 'Show outline',
-            icon: outlineVisible ? Icons.toc : Icons.toc_outlined,
-            active: outlineVisible,
-            onPressed: hasLibrary ? onToggleOutline : null,
+          LayoutId(
+            id: _TopBarSlot.trailing,
+            child: Padding(
+              padding: const EdgeInsets.only(right: LibraryChromeScale.space2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _BarButton(
+                    tooltip: 'Find in document  (⌘F)',
+                    icon: Icons.search,
+                    onPressed: onFind,
+                  ),
+                  const SizedBox(width: LibraryChromeScale.space1),
+                  themePicker,
+                  const SizedBox(width: LibraryChromeScale.space1),
+                  _BarButton(
+                    tooltip: outlineVisible ? 'Hide outline' : 'Show outline',
+                    icon: outlineVisible ? Icons.toc : Icons.toc_outlined,
+                    active: outlineVisible,
+                    onPressed: hasLibrary ? onToggleOutline : null,
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+enum _TopBarSlot { leading, title, trailing }
+
+/// Keeps the document identity on the window's geometric axis. Unequal button
+/// clusters reserve equal room on both sides rather than moving the title.
+final class _TopBarLayoutDelegate extends MultiChildLayoutDelegate {
+  @override
+  void performLayout(Size size) {
+    final loose = BoxConstraints.loose(size);
+    final leading = layoutChild(_TopBarSlot.leading, loose);
+    final trailing = layoutChild(_TopBarSlot.trailing, loose);
+    final side = leading.width > trailing.width
+        ? leading.width
+        : trailing.width;
+    final titleWidth = (size.width - 2 * side - 2 * LibraryChromeScale.space4)
+        .clamp(0.0, size.width);
+    final title = layoutChild(
+      _TopBarSlot.title,
+      BoxConstraints.loose(Size(titleWidth, size.height)),
+    );
+
+    positionChild(
+      _TopBarSlot.leading,
+      Offset(0, (size.height - leading.height) / 2),
+    );
+    positionChild(
+      _TopBarSlot.title,
+      Offset((size.width - title.width) / 2, (size.height - title.height) / 2),
+    );
+    positionChild(
+      _TopBarSlot.trailing,
+      Offset(size.width - trailing.width, (size.height - trailing.height) / 2),
+    );
+  }
+
+  @override
+  bool shouldRelayout(_TopBarLayoutDelegate oldDelegate) => false;
 }
 
 class _BarButton extends StatelessWidget {
