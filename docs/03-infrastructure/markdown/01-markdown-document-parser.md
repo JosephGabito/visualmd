@@ -378,16 +378,21 @@ slope (`lib/infrastructure/markdown/markdown_document_parser.dart`,
 `test/infrastructure/incremental_markdown_parser_test.dart`,
 `benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
 
-One boundary remains inside that retained paragraph. If a later publication
-grows or closes an unresolved delimiter after the checkpoint, source parsing
-still visits only the small unresolved tail, but the current append-only proof
-may compare the complete retained inline-run prefix. Delimiter closure also
-forces full visible-text metric reconstruction because the domain has no typed
-inline-tail replacement yet. The native 10k/100k/1M fixture holds parsed input
-at 26–40 characters while growth rises from 0.067 ms to 7.903 ms and closure
-rises from 0.089 ms to 9.008 ms. Those numbers isolate mutation discovery from
-Markdown parsing; they are a recorded next boundary, not a constant-work claim
-(`benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
+A later publication may grow or close an unresolved delimiter after the
+checkpoint. The baseline held parsed input at 26–40 characters while a
+full-prefix mutation comparison made growth rise from 0.067 ms to 7.903 ms and
+closure from 0.089 ms to 9.008 ms across the 10k/100k/1M fixtures.
+
+`BlockInlineTailReplace` now removes that second scan. The session publishes
+its already retained prefix metrics and only the reparsed tail runs; it neither
+compares prior runs nor recounts the revised block. In the same fixture, growth
+measures 0.013/0.013/0.015 ms and closure 0.022/0.023/0.026 ms, with no positive
+prefix slope. Presentation still needs to consume this proof to avoid treating
+delimiter closure as a complete rich replacement; these numbers prove the
+parser/domain boundary only
+(`lib/infrastructure/markdown/markdown_document_parser.dart`,
+`lib/domain/reading/content/document_content.dart`,
+`benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
 
 ## Failure and recovery
 

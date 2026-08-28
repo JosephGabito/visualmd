@@ -99,6 +99,7 @@ final class _IncrementalMarkdownParserSession
   int _nextBlockId = 0;
   int? _stableParagraphSourceLength;
   PersistentSequence<Inline>? _stableParagraphRuns;
+  BlockTextMetrics? _stableParagraphMetrics;
   bool _finished = false;
 
   _IncrementalMarkdownParserSession(this._parser);
@@ -180,8 +181,10 @@ final class _IncrementalMarkdownParserSession
   DocumentContent? _reviseStableParagraph({required int appendedLength}) {
     final stableLength = _stableParagraphSourceLength;
     final stableRuns = _stableParagraphRuns;
+    final stableMetrics = _stableParagraphMetrics;
     if (stableLength == null ||
         stableRuns == null ||
+        stableMetrics == null ||
         _provisional.length != 1 ||
         _provisional.single.block is! ParagraphBlock) {
       return null;
@@ -190,10 +193,6 @@ final class _IncrementalMarkdownParserSession
     final tailLength = _source.length - _committedSourceLength;
     final previousLength = tailLength - appendedLength;
     if (stableLength > previousLength) return null;
-    final priorPending = _source.range(
-      _committedSourceLength + stableLength,
-      _committedSourceLength + previousLength,
-    );
     final pendingSource = _source.tailFrom(
       _committedSourceLength + stableLength,
     );
@@ -217,16 +216,26 @@ final class _IncrementalMarkdownParserSession
       values: pendingRuns,
     );
     _lastParsedSourceLength = parseSource.length;
+    final previousRuns = (_provisional.single.block as ParagraphBlock).content;
+    final directAppend = previousRuns.length == stableRuns.length;
     final content = _publish(
       committedBlocks: const [],
       provisionalBlocks: [ParagraphBlock(combined)],
       rebase: false,
-      provenInlineSuffix: priorPending.trim().isEmpty ? pendingRuns : null,
+      provenInlineSuffix: directAppend ? pendingRuns : null,
+      provenInlineTail: directAppend
+          ? null
+          : BlockInlineTailReplace(
+              baseRevision: _provisional.single.revision,
+              retainedPrefix: stableMetrics,
+              runs: pendingRuns,
+            ),
     );
 
     if (checkpoint != null) {
       _stableParagraphSourceLength = stableLength + checkpoint;
       _stableParagraphRuns = combined;
+      _stableParagraphMetrics = content.entries.single.textMetrics;
     }
     return content;
   }
@@ -304,6 +313,7 @@ final class _IncrementalMarkdownParserSession
     required List<Block> provisionalBlocks,
     required bool rebase,
     List<Inline>? provenInlineSuffix,
+    BlockInlineTailReplace? provenInlineTail,
   }) {
     final revision = _content.revision + 1;
     final previousTail = rebase
@@ -331,6 +341,9 @@ final class _IncrementalMarkdownParserSession
               index == blocks.length - 1,
           provenInlineSuffix: index == blocks.length - 1
               ? provenInlineSuffix
+              : null,
+          provenInlineTail: index == blocks.length - 1
+              ? provenInlineTail
               : null,
         ),
       );
@@ -374,6 +387,7 @@ final class _IncrementalMarkdownParserSession
         case [ParagraphBlock(:final content)]:
           _stableParagraphSourceLength = checkpoint;
           _stableParagraphRuns = PersistentSequence<Inline>.from(content);
+          _stableParagraphMetrics = _provisional.single.textMetrics;
           return;
       }
     }
@@ -383,6 +397,7 @@ final class _IncrementalMarkdownParserSession
   void _clearStableParagraph() {
     _stableParagraphSourceLength = null;
     _stableParagraphRuns = null;
+    _stableParagraphMetrics = null;
   }
 
   void _replaceAll(List<DocumentBlock> entries, int revision) {
@@ -422,13 +437,19 @@ final class _IncrementalMarkdownParserSession
     int revision, {
     bool allowAppend = false,
     List<Inline>? provenInlineSuffix,
+    BlockInlineTailReplace? provenInlineTail,
   }) {
     final sameShape =
         previous != null && previous.block.runtimeType == block.runtimeType;
     final textAppend = sameShape && allowAppend
         ? _textAppend(previous, block)
         : null;
-    final inlineAppend = sameShape && allowAppend && textAppend == null
+    final inlineTailReplace = textAppend == null ? provenInlineTail : null;
+    final inlineAppend =
+        sameShape &&
+            allowAppend &&
+            textAppend == null &&
+            inlineTailReplace == null
         ? provenInlineSuffix != null
               ? BlockInlineAppend(
                   baseRevision: previous.revision,
@@ -443,16 +464,21 @@ final class _IncrementalMarkdownParserSession
       ),
       _ => null,
     };
+    final textMetrics = switch ((suffixMetrics, inlineTailReplace)) {
+      (final suffix?, null) => previous!.textMetrics.append(suffix),
+      (null, BlockInlineTailReplace(:final retainedPrefix, :final runs)) =>
+        retainedPrefix.append(BlockTextMetrics.fromInlines(runs)),
+      _ => null,
+    };
     return DocumentBlock(
       id: sameShape ? previous.id : DocumentBlockId('stream:${_nextBlockId++}'),
       revision: revision,
       commitment: commitment,
       block: block,
-      textMetrics: suffixMetrics == null
-          ? null
-          : previous!.textMetrics.append(suffixMetrics),
+      textMetrics: textMetrics,
       textAppend: textAppend,
       inlineAppend: inlineAppend,
+      inlineTailReplace: inlineTailReplace,
     );
   }
 

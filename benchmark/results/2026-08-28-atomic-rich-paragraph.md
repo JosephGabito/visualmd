@@ -322,3 +322,23 @@ tail replacement carrying both removed and replacement runs. Consumers can
 then replace only the range and visual lines owned by that uncertain tail.
 This section is the pre-change proof; it does not claim the closure path is
 constant yet.
+
+## Parser-owned inline-tail result
+
+`BlockInlineTailReplace` now carries the exact retained-prefix metrics and only
+the replacement runs. The incremental parser already owns both values at its
+stable checkpoint, so it no longer compares the accumulated inline tree or
+recounts visible text to construct the next `DocumentBlock`:
+
+| Existing Markdown | Prior inline runs | Growth parsed | Growth before | Growth after | Closure parsed | Closure before | Closure after |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10,070 | 638 | 26 | 0.067 ms | 0.013 ms | 40 | 0.089 ms | 0.022 ms |
+| 100,035 | 6,320 | 26 | 0.663 ms | 0.013 ms | 40 | 0.735 ms | 0.023 ms |
+| 1,000,065 | 63,164 | 26 | 7.903 ms | 0.015 ms | 40 | 9.008 ms | 0.026 ms |
+
+At one million characters, unresolved growth is about 527× faster and closure
+about 346× faster. More importantly, both curves are flat while retained runs
+grow by two orders of magnitude. This proves parser and block-metric work is
+bounded by the unresolved tail. The renderer does not consume the new proof in
+this slice, so delimiter closure still schedules a complete rich range and line
+replacement there; that is the next measured consumer boundary.

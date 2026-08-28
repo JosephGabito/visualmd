@@ -105,7 +105,7 @@ void main() {
     expect(finalized.entries.single.textAppend, isNull);
   });
 
-  test('one block revision cannot claim two incompatible append proofs', () {
+  test('one block revision cannot claim incompatible transition proofs', () {
     expect(
       () => DocumentBlock(
         id: const DocumentBlockId('tail'),
@@ -114,6 +114,14 @@ void main() {
         textAppend: const BlockTextAppend(baseRevision: 1, text: 'new'),
         inlineAppend: BlockInlineAppend(
           baseRevision: 1,
+          runs: const [TextRun('new')],
+        ),
+        inlineTailReplace: BlockInlineTailReplace(
+          baseRevision: 1,
+          retainedPrefix: const BlockTextMetrics(
+            codeUnits: 0,
+            lineBreaks: 0,
+          ),
           runs: const [TextRun('new')],
         ),
       ),

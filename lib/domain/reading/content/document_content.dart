@@ -63,6 +63,29 @@ final class BlockInlineAppend {
   }
 }
 
+/// A parser-proven replacement of one stable paragraph's uncertain inline tail.
+///
+/// [retainedPrefix] is the exact visible-text extent which survives from the
+/// prior revision. Everything after it may be discarded and replaced by
+/// [runs]. This is the delimiter-closure counterpart of [BlockInlineAppend]:
+/// consumers retain indexes before the boundary without rediscovering it by
+/// comparing the complete accumulated inline tree.
+final class BlockInlineTailReplace {
+  final int baseRevision;
+  final BlockTextMetrics retainedPrefix;
+  final List<Inline> runs;
+
+  BlockInlineTailReplace({
+    required this.baseRevision,
+    required this.retainedPrefix,
+    required List<Inline> runs,
+  }) : runs = List.unmodifiable(runs) {
+    if (baseRevision < 0) {
+      throw RangeError.value(baseRevision, 'baseRevision');
+    }
+  }
+}
+
 /// One revisioned block in the reading model.
 final class DocumentBlock {
   final DocumentBlockId id;
@@ -72,6 +95,7 @@ final class DocumentBlock {
   final BlockTextMetrics textMetrics;
   final BlockTextAppend? textAppend;
   final BlockInlineAppend? inlineAppend;
+  final BlockInlineTailReplace? inlineTailReplace;
 
   DocumentBlock({
     required this.id,
@@ -81,16 +105,24 @@ final class DocumentBlock {
     this.commitment = BlockCommitment.committed,
     this.textAppend,
     this.inlineAppend,
+    this.inlineTailReplace,
   }) : textMetrics = textMetrics ?? BlockTextMetrics.fromBlock(block) {
     if (revision < 0) throw RangeError.value(revision, 'revision');
-    if (textAppend != null && inlineAppend != null) {
-      throw StateError('Block $id cannot advertise two append proofs.');
+    final proofCount = [
+      textAppend,
+      inlineAppend,
+      inlineTailReplace,
+    ].where((proof) => proof != null).length;
+    if (proofCount > 1) {
+      throw StateError('Block $id cannot advertise two revision proofs.');
     }
-    final appendRevision =
-        textAppend?.baseRevision ?? inlineAppend?.baseRevision;
-    if (appendRevision != null && appendRevision >= revision) {
+    final proofRevision =
+        textAppend?.baseRevision ??
+        inlineAppend?.baseRevision ??
+        inlineTailReplace?.baseRevision;
+    if (proofRevision != null && proofRevision >= revision) {
       throw StateError(
-        'Block $id append starts at revision $appendRevision; '
+        'Block $id proof starts at revision $proofRevision; '
         'the resulting revision is $revision.',
       );
     }
