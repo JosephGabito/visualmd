@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../presentation/theme/built_in_themes.dart';
 import '../../presentation/theme/reader_theme.dart';
+import '../../presentation/theme/reading_mode.dart';
 import '../../presentation/theme/reading_scale.dart';
 import '../../presentation/theme/theme_choice.dart';
 import '../../presentation/theme/theme_registry.dart';
@@ -17,6 +18,10 @@ class ThemePicker extends StatelessWidget {
   final ThemeChoice choice;
   final ValueChanged<ThemeChoice> onChoose;
 
+  /// Which proportional voice sets the document, and how to change it.
+  final ReadingMode mode;
+  final ValueChanged<ReadingMode> onMode;
+
   /// How paragraphs are told apart, and how to change it.
   final ParagraphMarking marking;
   final ValueChanged<ParagraphMarking> onMark;
@@ -29,6 +34,8 @@ class ThemePicker extends StatelessWidget {
     required this.registry,
     required this.choice,
     required this.onChoose,
+    required this.mode,
+    required this.onMode,
     required this.marking,
     required this.onMark,
     this.onOpenThemesFolder,
@@ -48,16 +55,21 @@ class ThemePicker extends StatelessWidget {
     );
 
     return AnchoredMenu(
-      tooltip: 'Reading: ${current.name}',
+      tooltip: 'Appearance: ${current.name}, ${mode.label}',
       width: 268,
       trigger: (context, isOpen) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: _Swatch(theme: current, size: 22),
+        child: _Swatch(theme: current, mode: mode, size: 22),
       ),
       items: (context, close) {
         void pick(ThemeChoice next) {
           close();
           onChoose(next);
+        }
+
+        void readIn(ReadingMode next) {
+          close();
+          onMode(next);
         }
 
         return [
@@ -72,6 +84,15 @@ class ThemePicker extends StatelessWidget {
             onTap: () => pick(registry.systemPair),
           ),
           const _Rule(),
+          const _SectionLabel('Reading mode'),
+          for (final candidate in ReadingMode.values)
+            _Row(
+              label: candidate.label,
+              leading: _ReadingModeSample(mode: candidate),
+              selected: mode == candidate,
+              onTap: () => readIn(candidate),
+            ),
+          const _Rule(),
           const _SectionLabel('Themes'),
           for (final family in BuiltInThemes.families)
             if (family.supports(system))
@@ -79,6 +100,7 @@ class ThemePicker extends StatelessWidget {
                 label: family.name,
                 leading: _Swatch(
                   theme: registry.byId(family.idFor(system)!)!,
+                  mode: mode,
                   size: 24,
                 ),
                 selected: family.selects(choice, system),
@@ -89,7 +111,7 @@ class ThemePicker extends StatelessWidget {
           for (final theme in individualLight)
             _Row(
               label: theme.name,
-              leading: _Swatch(theme: theme, size: 24),
+              leading: _Swatch(theme: theme, mode: mode, size: 24),
               selected: choice is FixedTheme && theme.id == current.id,
               onTap: () => pick(FixedTheme(theme.id)),
             ),
@@ -97,7 +119,7 @@ class ThemePicker extends StatelessWidget {
           for (final theme in individualDark)
             _Row(
               label: theme.name,
-              leading: _Swatch(theme: theme, size: 24),
+              leading: _Swatch(theme: theme, mode: mode, size: 24),
               selected: choice is FixedTheme && theme.id == current.id,
               onTap: () => pick(FixedTheme(theme.id)),
             ),
@@ -279,6 +301,32 @@ class _Rule extends StatelessWidget {
   );
 }
 
+/// A small specimen in the active theme, so the choice can be judged before
+/// the menu closes and the document redraws.
+class _ReadingModeSample extends StatelessWidget {
+  final ReadingMode mode;
+
+  const _ReadingModeSample({required this.mode});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 18,
+    height: 18,
+    child: Center(
+      child: Text(
+        'Aa',
+        style: context.type.reading(
+          mode,
+          color: context.palette.muted,
+          size: 11,
+          height: 1,
+          weight: FontWeight.w600,
+        ),
+      ),
+    ),
+  );
+}
+
 class _ThemeError extends StatelessWidget {
   final ThemeLoadError error;
   const _ThemeError(this.error);
@@ -314,13 +362,15 @@ class _ThemeError extends StatelessWidget {
 /// "Aa" on the theme's own paper, in its own ink, framed by its accent.
 class _Swatch extends StatelessWidget {
   final ReaderTheme theme;
+  final ReadingMode mode;
   final double size;
 
-  const _Swatch({required this.theme, required this.size});
+  const _Swatch({required this.theme, required this.mode, required this.size});
 
   @override
   Widget build(BuildContext context) {
     final t = theme.palette;
+    final type = LibraryTypefaces(theme.typefaces);
     return Container(
       width: size,
       height: size,
@@ -332,7 +382,8 @@ class _Swatch extends StatelessWidget {
       ),
       child: Text(
         'Aa',
-        style: context.type.serif(
+        style: type.reading(
+          mode,
           color: t.accent,
           size: size * 0.46,
           height: 1,

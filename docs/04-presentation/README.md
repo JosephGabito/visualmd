@@ -24,6 +24,7 @@ the page a reader sees.
 | [Sources](10-sources.md) | Where these decisions came from, and what the research actually says |
 | [Vertical Rhythm](11-vertical-rhythm.md) | The beat every gap is spent in, and the rule that keeps text in phase |
 | [Code Highlighting](12-code-highlighting.md) | Framework-free syntax roles and exact source ranges |
+| [ReadingMode](13-reading-mode.md) | The reader's serif or sans proportional voice |
 
 ## How it fits
 
@@ -49,9 +50,9 @@ For the shortest tour, begin with [ReaderTheme](01-reader-theme.md), then
 theme contract, and [Built-in Themes](06-built-in-themes.md) provides complete
 examples.
 
-[Reading Scale](07-reading-scale.md) is the other half of the design: a theme
-chooses the voice, the scale gives the page its rhythm, and the reader chooses
-the size. [Hanging Punctuation](08-hanging-punctuation.md) and
+[ReadingMode](13-reading-mode.md) selects the serif or sans voice supplied by a
+theme. [Reading Scale](07-reading-scale.md) gives that voice its rhythm, and the
+reader chooses the size. [Hanging Punctuation](08-hanging-punctuation.md) and
 [Widow Binding](09-widow-binding.md) are focused examples of the split between
 meaning and rendering. They describe the typographic choice; the
 [Paragraph](../05-api/15-paragraph.md) widget applies it with Flutter's text

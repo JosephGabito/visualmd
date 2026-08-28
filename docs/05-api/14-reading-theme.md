@@ -20,8 +20,9 @@ its own; those come from the theme the reader picked, through
 
 ## Present wiring
 
-`ReadingTheme.of(context, scale)` reads the palette, the typefaces, the
-brightness and `MediaQuery.textScalerOf(context)`, then derives everything
+`ReadingTheme.of(context, scale, mode: mode)` reads the palette, the typefaces,
+the selected [ReadingMode](../04-presentation/13-reading-mode.md), the brightness
+and `MediaQuery.textScalerOf(context)`, then derives everything
 (`lib/api/render/reading_theme.dart`). Accessibility scaling is part of
 the page geometry, not an afterthought applied only when `Text` paints.
 
@@ -38,11 +39,12 @@ in a unit the page never uses
 
 **Two refinements that should never be noticed.** Light type on a dark ground
 optically thickens and closes up, so a dark theme is tracked a hair looser —
-0.008 of the body size (`lib/api/render/reading_theme.dart`). And prose
-is set with old-style figures, which have ascenders and descenders like
-lowercase letters, so a number in a sentence sits *in* the line rather than
-standing up out of it; tables want the opposite, lining and tabular, so their
-columns agree (`lib/api/render/reading_theme.dart`). Code is given a
+0.008 of the body size (`lib/api/render/reading_theme.dart`). Serif prose uses
+Alegreya's old-style figures, which have ascenders and descenders like lowercase
+letters, so a number in a sentence sits *in* the line rather than standing up
+out of it. Inter 4.001 has no old-style set, so Sans mode explicitly uses
+proportional lining figures instead. Tables in both modes use tabular lining
+figures so their columns agree (`lib/api/render/reading_theme.dart`). Code is given a
 slashed zero, because zero and capital O are the pair a reader of technical
 documents most often has to tell apart. Standard, contextual and discretionary
 ligatures are disabled: source such as `===`, `---` and repeated Markdown marks

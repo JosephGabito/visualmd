@@ -71,8 +71,8 @@ than becoming accidental navigation (`lib/api/reader_controller.dart`).
 ## Preferences
 
 The same controller owns transient panel, typography and theme choices. Theme,
-text size, paragraph marking, shelf width and outline width each have a named
-storage key (`lib/api/reader_controller.dart`,
+reading mode, text size, paragraph marking, shelf width and outline width each
+have a named storage key (`lib/api/reader_controller.dart`,
 `lib/api/reader_controller.dart`). Previewing a panel resize notifies
 continuously; persistence happens only on commit or reset.
 

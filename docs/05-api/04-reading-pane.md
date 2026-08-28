@@ -12,7 +12,7 @@ read. It parses nothing and styles nothing.
 ## Present wiring
 
 The shell mounts it under a `GlobalKey<ReadingPaneState>` with the reader's
-current scale, `onLink` and `onActiveHeadingChanged` bound
+current scale, reading mode, `onLink` and `onActiveHeadingChanged` bound
 (`lib/api/screens/reader_screen.dart`).
 
 The build (`lib/api/widgets/reading_pane.dart`):
@@ -32,8 +32,8 @@ The build (`lib/api/widgets/reading_pane.dart`):
   and includes blocks which never mounted with the model's authored separators
   (`lib/api/widgets/model_backed_selection_area.dart`,
   `lib/api/widgets/reading_pane.dart`).
-- A `ReadingTheme` built once per frame from the palette, the faces and the
-  scale (`lib/api/widgets/reading_pane.dart`). See
+- A `ReadingTheme` built once per frame from the palette, selected proportional
+  role, faces and scale (`lib/api/widgets/reading_pane.dart`). See
   [Reading Theme](14-reading-theme.md).
 - The breadcrumb and any stand-in title inside a `SizedBox` of
   `theme.proseWidth`, because everything on the page should hang off one left
@@ -62,7 +62,7 @@ partly supersedes.
 
 ## Inputs and outputs
 
-In: `reading` (document, outline and content), `imageLoader`, `scale`, the
+In: `reading` (document, outline and content), `imageLoader`, `scale`, `mode`, the
 application-owned `viewportGeometry` factory, `onLink`, and
 `onActiveHeadingChanged` (`lib/api/widgets/reading_pane.dart`).
 
@@ -105,6 +105,10 @@ the state (`lib/api/widgets/reading_pane.dart`).
 Changing the text size rebuilds with a new scale; the column follows, because
 it is derived rather than stored
 (`test/presentation/text_size_test.dart`).
+Changing reading mode rebuilds the same document at the same scroll position;
+the active face supplies a newly measured column and beat
+(`lib/api/widgets/reading_pane.dart`,
+`test/presentation/reading_scale_test.dart`).
 
 When revisioned content changes only its suffix beneath the same `DocumentId`,
 the pane truncates its derived navigation arrays at that boundary and visits

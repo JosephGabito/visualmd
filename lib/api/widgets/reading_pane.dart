@@ -11,6 +11,7 @@ import '../../domain/search/search_result.dart';
 import '../../presentation/code/code_highlighter.dart';
 import '../../application/ports/mermaid_renderer.dart';
 import '../../presentation/theme/reading_scale.dart';
+import '../../presentation/theme/reading_mode.dart';
 import '../render/document_view.dart';
 import '../render/reading_theme.dart';
 import '../theme/library_theme.dart';
@@ -23,6 +24,7 @@ import 'windowed_paragraph.dart';
 class ReadingPane extends StatefulWidget {
   final DocumentReading reading;
   final ReadingScale scale;
+  final ReadingMode mode;
   final CodeHighlighter codeHighlighter;
   final MermaidRenderer mermaidRenderer;
   final DocumentImageLoader? imageLoader;
@@ -43,6 +45,7 @@ class ReadingPane extends StatefulWidget {
     super.key,
     required this.reading,
     required this.scale,
+    this.mode = ReadingMode.serif,
     this.codeHighlighter = const PlainCodeHighlighter(),
     this.mermaidRenderer = const UnavailableMermaidRenderer(),
     this.imageLoader,
@@ -479,7 +482,7 @@ class ReadingPaneState extends State<ReadingPane> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final reading = widget.reading;
-    final theme = ReadingTheme.of(context, widget.scale);
+    final theme = ReadingTheme.of(context, widget.scale, mode: widget.mode);
     final horizontalPadding = MediaQuery.sizeOf(context).width < 600
         ? 24.0
         : 48.0;

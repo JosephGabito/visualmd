@@ -509,10 +509,10 @@ sentence.
 than a source. Two failures they caught are fixed — widows were unhandled
 (see [Widow Binding](09-widow-binding.md)), and headings mixed two bold
 weights where one would do. One is knowingly unmet: the reader ships three
-families, not two. The page itself is a pair — a serif for reading and a mono
-for code, which is functional rather than a third voice — while Inter is
-furniture, used for the shelf, the outline and the controls, and never inside
-a document.
+families, not two. A page itself remains a pair: the selected proportional
+reading face and Geist Mono for functional code. Inter is furniture by default
+and the reader's deliberate alternative proportional voice in Sans reading
+mode.
 
 ## Mathematical notation
 

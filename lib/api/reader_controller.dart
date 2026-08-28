@@ -31,6 +31,7 @@ import '../domain/search/search_result.dart';
 import '../domain/workspace/workspace_theme.dart';
 import '../domain/workspace/workspace_id.dart';
 import '../presentation/theme/reader_theme.dart';
+import '../presentation/theme/reading_mode.dart';
 import '../presentation/theme/reading_scale.dart';
 import '../presentation/shelf/shelf_label_mode.dart';
 import '../presentation/theme/theme_choice.dart';
@@ -127,6 +128,7 @@ final class ReaderController extends ChangeNotifier {
     required FolderRef sampleFolder,
     required this.themes,
     ThemeChoice? themeChoice,
+    ReadingMode? readingMode,
     ReadingScale? readingScale,
     PanelWidths? panelWidths,
     ShelfLabelMode? shelfLabelMode,
@@ -152,6 +154,7 @@ final class ReaderController extends ChangeNotifier {
        _sampleFolder = sampleFolder,
        _sourceChanges = sourceChanges,
        _savePreference = savePreference ?? _discard,
+       readingMode = readingMode ?? ReadingMode.serif,
        readingScale = readingScale ?? ReadingScale.comfortable,
        panelWidths = panelWidths ?? const PanelWidths(),
        shelfLabelMode = shelfLabelMode ?? ShelfLabelMode.title,
@@ -210,6 +213,9 @@ final class ReaderController extends ChangeNotifier {
   /// The proportions of the reading column — body size, and everything cut
   /// from it.
   ReadingScale readingScale;
+
+  /// Which proportional role from the active theme sets the document.
+  ReadingMode readingMode;
 
   /// The reader's preferred shelf and outline widths. The shell may fit these
   /// to a smaller window without changing the remembered values.
@@ -641,6 +647,13 @@ final class ReaderController extends ChangeNotifier {
     await _savePreference(paragraphsPreference, readingScale.storedMarking);
   }
 
+  Future<void> chooseReadingMode(ReadingMode mode) async {
+    if (mode == readingMode) return;
+    readingMode = mode;
+    notifyListeners();
+    await _savePreference(readingModePreference, mode.stored);
+  }
+
   Future<void> enlargeText() => _setScale(readingScale.larger());
 
   Future<void> shrinkText() => _setScale(readingScale.smaller());
@@ -796,6 +809,7 @@ ThemeChoice _themeChoice(WorkspaceTheme theme) => switch (theme) {
 
 /// Keys the reader's choices are stored under.
 const themePreference = 'theme';
+const readingModePreference = 'readingMode';
 const textSizePreference = 'textSize';
 const paragraphsPreference = 'paragraphs';
 const shelfWidthPreference = 'shelfWidth';

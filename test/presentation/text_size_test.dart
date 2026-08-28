@@ -19,6 +19,7 @@ import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/infrastructure/memory/in_memory_library_repository.dart';
 import 'package:visualmd/infrastructure/search/literal_document_search.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/theme/reading_mode.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
 
@@ -54,7 +55,10 @@ void main() {
 
   late List<(String, String)> saved;
 
-  Future<ReaderController> controller({ReadingScale? scale}) async {
+  Future<ReaderController> controller({
+    ReadingMode? mode,
+    ReadingScale? scale,
+  }) async {
     saved = [];
     final repository = InMemoryLibraryRepository();
     final mutations = LibraryMutationQueue();
@@ -84,6 +88,7 @@ void main() {
       pickFolder: () async => null,
       sampleFolder: const FolderRef(id: 'sample', name: 'notes'),
       themes: ThemeRegistry(),
+      readingMode: mode,
       readingScale: scale,
       savePreference: (key, value) async => saved.add((key, value)),
     );
@@ -136,6 +141,25 @@ void main() {
         expect(ReadingScale.fromStoredBase('999'), ReadingScale.comfortable);
       },
     );
+  });
+
+  group('choosing a reading mode', () {
+    test('starts in serif and remembers a switch to sans', () async {
+      final c = await controller();
+      expect(c.readingMode, ReadingMode.serif);
+
+      await c.chooseReadingMode(ReadingMode.sans);
+
+      expect(c.readingMode, ReadingMode.sans);
+      expect(saved, [(readingModePreference, 'sans')]);
+    });
+
+    test('unknown stored values recover to the established serif page', () {
+      expect(ReadingMode.fromStored('sans'), ReadingMode.sans);
+      expect(ReadingMode.fromStored('serif'), ReadingMode.serif);
+      expect(ReadingMode.fromStored(null), ReadingMode.serif);
+      expect(ReadingMode.fromStored('display'), ReadingMode.serif);
+    });
   });
 
   testWidgets('the column grows with the text, so the measure holds', (

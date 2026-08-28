@@ -2,8 +2,9 @@
 
 ## Purpose and boundary
 
-`ThemePicker` is the top-bar control that shows what the reader is wearing and
-lets them change it. It owns the menu and the swatches; it owns no state. What
+`ThemePicker` is the top-bar control that shows the page's reading voice and
+theme and lets the reader change either. It owns the menu and the swatches; it
+owns no state. What
 themes exist is the [ThemeRegistry's](../04-presentation/05-theme-registry.md) business, what is
 worn is the [Reader Controller's](01-reader-controller.md), and where user
 theme files live is the platform's — the picker is handed all three.
@@ -23,12 +24,15 @@ name and the outline toggle (`lib/api/screens/reader_screen.dart`).
 
 The menu is an [Anchored Menu](08-anchored-menu.md)
 (`lib/api/widgets/theme_picker.dart`); choosing a row closes it and passes the
-choice straight to `ReaderController.chooseTheme`
+choice straight to `ReaderController.chooseTheme` or
+`ReaderController.chooseReadingMode`
 (`lib/api/widgets/theme_picker.dart`). Its rows are:
 
 | Entry | Value | Source |
 |-------|-------|--------|
 | Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart` |
+| Reading mode: Serif | `ReadingMode.serif` | `lib/api/widgets/theme_picker.dart` |
+| Reading mode: Sans | `ReadingMode.sans` | `lib/api/widgets/theme_picker.dart` |
 | Themes | A family pair, or Proof's fixed light theme | `lib/api/widgets/theme_picker.dart`, `lib/presentation/theme/theme_family.dart` |
 | Light | `FixedTheme(id)` for house and custom themes | `lib/api/widgets/theme_picker.dart` |
 | Dark | `FixedTheme(id)` for house and custom themes | `lib/api/widgets/theme_picker.dart` |
@@ -51,10 +55,15 @@ custom theme directly selectable. A previously saved fixed family member is
 still recognized as the selected family row, preserving older preferences.
 
 The menu is no longer only about themes, which is why its tooltip reads
-"Reading: <theme name>" (`lib/api/widgets/theme_picker.dart`). Both
+"Appearance: <theme name>, <reading mode>" (`lib/api/widgets/theme_picker.dart`). Both
 paragraph rows change how the page is *set* rather than what it is set in —
 see [Reading Scale](../04-presentation/07-reading-scale.md) for why the two
 markings are alternatives and never both.
+
+Reading mode sits before Themes because it changes the proportional voice while
+retaining the active palette. Its `Aa` specimens and every theme swatch use the
+selected role, so the menu previews the same kind of page it will produce
+(`lib/api/widgets/theme_picker.dart`).
 
 Each compact row lights up under the pointer before it acts. Keyboard focus
 uses that same ground instead of adding a second rounded outline signal
@@ -68,11 +77,11 @@ the bar always shows what is being worn.
 
 ## Inputs and outputs
 
-In: a `ThemeRegistry`, the current `ThemeChoice` and `ParagraphMarking`, an
-`onChoose` and an `onMark` callback, and an optional `onOpenThemesFolder`
-callback
+In: a `ThemeRegistry`, the current `ThemeChoice`, `ReadingMode` and
+`ParagraphMarking`, their three selection callbacks, and an optional
+`onOpenThemesFolder` callback
 (`lib/api/widgets/theme_picker.dart`).
-Out: one `ThemeChoice` or one `ParagraphMarking` per selection, or one request
+Out: one `ThemeChoice`, `ReadingMode` or `ParagraphMarking` per selection, or one request
 to reveal the custom-theme directory. The picker reads the system brightness
 from `MediaQuery` both to resolve system-following choices and to choose the
 family swatches currently shown (`lib/api/widgets/theme_picker.dart`).

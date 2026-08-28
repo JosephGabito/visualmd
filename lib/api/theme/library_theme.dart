@@ -7,6 +7,7 @@ import 'font_metrics.dart';
 import '../../presentation/theme/reader_theme.dart';
 import '../../presentation/theme/theme_palette.dart';
 import '../../presentation/theme/theme_typefaces.dart';
+import '../../presentation/theme/reading_mode.dart';
 import 'library_chrome.dart';
 
 /// The library's materials as the widget tree reads them. Values come from
@@ -126,11 +127,44 @@ final class LibraryTypefaces extends ThemeExtension<LibraryTypefaces> {
     double size = 13.5,
     double height = 1.4,
     FontWeight weight = FontWeight.w400,
+    FontStyle style = FontStyle.normal,
   }) => _font(
     families.sans,
     ThemeTypefaces.library.sans,
-    TextStyle(color: color, fontSize: size, height: height, fontWeight: weight),
+    TextStyle(
+      color: color,
+      fontSize: size,
+      height: height,
+      fontWeight: weight,
+      fontStyle: style,
+    ),
   );
+
+  /// The proportional face the reader chose for document content. The theme
+  /// still owns the family; the mode only selects its serif or sans role.
+  TextStyle reading(
+    ReadingMode mode, {
+    required Color color,
+    double size = 18,
+    double height = 1.7,
+    FontWeight weight = FontWeight.w400,
+    FontStyle style = FontStyle.normal,
+  }) => switch (mode) {
+    ReadingMode.serif => serif(
+      color: color,
+      size: size,
+      height: height,
+      weight: weight,
+      style: style,
+    ),
+    ReadingMode.sans => sans(
+      color: color,
+      size: size,
+      height: height,
+      weight: weight,
+      style: style,
+    ),
+  };
 
   TextStyle mono({
     required Color color,

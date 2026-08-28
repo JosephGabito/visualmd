@@ -4,6 +4,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/api/render/reading_theme.dart';
+import 'package:visualmd/api/theme/library_theme.dart';
+import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/theme/reading_mode.dart';
+import 'package:visualmd/presentation/theme/reading_scale.dart';
 
 Future<void> loadFont(String family, List<String> assets) async {
   final loader = FontLoader(family);
@@ -39,6 +44,10 @@ void main() {
     await loadFont('Inter', [
       'assets/fonts/Inter.ttf',
       'assets/fonts/Inter-Italic.ttf',
+    ]);
+    await loadFont('Alegreya', [
+      'assets/fonts/Alegreya.ttf',
+      'assets/fonts/Alegreya-Italic.ttf',
     ]);
     await loadFont('Geist Mono', ['assets/fonts/GeistMono.ttf']);
   });
@@ -151,6 +160,66 @@ void main() {
         'ascent=${metrics.ascent.toStringAsFixed(1)} descent=${metrics.descent.toStringAsFixed(1)} '
         'height=${metrics.height.toStringAsFixed(1)}',
       );
+    }
+  });
+
+  testWidgets('how do the complete reading systems compare?', (tester) async {
+    Future<ReadingTheme> readingFor(ReadingMode mode) async {
+      ReadingTheme? reading;
+      await tester.pumpWidget(
+        MaterialApp(
+          key: ValueKey(mode),
+          theme: libraryTheme(BuiltInThemes.paper),
+          home: Builder(
+            builder: (context) {
+              reading = ReadingTheme.of(
+                context,
+                ReadingScale.comfortable,
+                mode: mode,
+              );
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      return reading!;
+    }
+
+    for (final mode in ReadingMode.values) {
+      final reading = await readingFor(mode);
+      final family = reading.body.fontFamily!;
+      final body = reading.body;
+      final advance = widthOf(sample, body) / sample.length;
+      final digitWidths = [
+        for (final digit in '0123456789'.characters)
+          widthOf(digit, reading.body),
+      ];
+      final tableDigitWidths = [
+        for (final digit in '0123456789'.characters)
+          widthOf(digit, reading.tableBody),
+      ];
+      debugPrint(
+        'READING $family '
+        'requested=${reading.scale.base.toStringAsFixed(2)} '
+        'rendered=${reading.renderedBase.toStringAsFixed(3)} '
+        'leading=${reading.leading.toStringAsFixed(5)} '
+        'beat=${reading.baseline.toStringAsFixed(3)} '
+        'advance=${advance.toStringAsFixed(3)} '
+        'measure66=${(advance * reading.scale.measure).toStringAsFixed(3)} '
+        'proseDigits=${digitWidths.map((value) => value.toStringAsFixed(2)).join(',')} '
+        'tableDigits=${tableDigitWidths.map((value) => value.toStringAsFixed(2)).join(',')}',
+      );
+      for (var level = 1; level <= 6; level++) {
+        final heading = reading.heading(level);
+        debugPrint(
+          'HEADING $family h$level '
+          'requested=${reading.scale.heading(level).toStringAsFixed(2)} '
+          'rendered=${(heading.fontSize ?? 0).toStringAsFixed(3)} '
+          'height=${(heading.height ?? 0).toStringAsFixed(3)} '
+          'weight=${heading.fontWeight?.value} '
+          'tracking=${(heading.letterSpacing ?? 0).toStringAsFixed(3)}',
+        );
+      }
     }
   });
 }
