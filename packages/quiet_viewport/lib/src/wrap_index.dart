@@ -91,23 +91,23 @@ final class AppendWrapIndex {
     return isComplete;
   }
 
+  /// Extends the source without resolving it yet.
+  ///
+  /// This is the progressive counterpart of [append]. The caller supplies the
+  /// same adjacent-revision proof, but a frame scheduler decides when to grant
+  /// the new suffix layout time through [indexNext].
+  void stageAppend({required int baseLength, required String source}) {
+    _validateAppend(baseLength: baseLength, source: source);
+    _source = source;
+  }
+
   /// Indexes a source revision whose prefix is already represented here.
   ///
   /// [baseLength] is the upstream proof that [source] directly extends the
   /// indexed revision. Comparing the complete strings here would make every
   /// append scan the prefix this structure exists to retain.
   void append({required int baseLength, required String source}) {
-    if (baseLength != _source.length) {
-      throw StateError(
-        'Append base $baseLength does not match retained length '
-        '${_source.length}.',
-      );
-    }
-    if (source.length < baseLength) {
-      throw StateError(
-        'Append source length ${source.length} precedes base $baseLength.',
-      );
-    }
+    _validateAppend(baseLength: baseLength, source: source);
     _source = source;
     _indexedLength = baseLength;
     _indexToEnd();
@@ -205,6 +205,20 @@ final class AppendWrapIndex {
         windowCodeUnits,
         'windowCodeUnits',
         'Must leave room to avoid splitting a surrogate pair',
+      );
+    }
+  }
+
+  void _validateAppend({required int baseLength, required String source}) {
+    if (baseLength != _source.length) {
+      throw StateError(
+        'Append base $baseLength does not match retained length '
+        '${_source.length}.',
+      );
+    }
+    if (source.length < baseLength) {
+      throw StateError(
+        'Append source length ${source.length} precedes base $baseLength.',
       );
     }
   }

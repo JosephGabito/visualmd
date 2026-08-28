@@ -50,15 +50,28 @@ void main() {
     final runs = <Map<String, Object?>>[];
     for (final characters in const [10000, 100000, 1000000]) {
       final reading = _reading(characters);
+      final initialIndexStepUs = <int>[];
+      final initialIndexStepCodeUnits = <int>[];
       final beforeFrames = timings.length;
       final beforeRss = ProcessInfo.currentRss;
       final clock = Stopwatch()..start();
 
-      await tester.pumpWidget(_app(reading));
+      await tester.pumpWidget(
+        _app(
+          reading,
+          onInitialIndexStep: (codeUnits, elapsed) {
+            initialIndexStepCodeUnits.add(codeUnits);
+            initialIndexStepUs.add(elapsed.inMicroseconds);
+          },
+        ),
+      );
       await tester.pumpAndSettle();
       clock.stop();
       await Future<void>.delayed(const Duration(milliseconds: 180));
       await tester.pump();
+      final initialFrames = _frameSummary(
+        timings.skip(beforeFrames).toList(growable: false),
+      );
 
       final scrollable = find.descendant(
         of: find.byType(CustomScrollView),
@@ -126,6 +139,15 @@ void main() {
         'mounted_characters': mountedCharacters,
         'windowed': windowed,
         'open_wall_us': clock.elapsedMicroseconds,
+        'initial_index_step_count': initialIndexStepUs.length,
+        'initial_index_step_worst_us': initialIndexStepUs.isEmpty
+            ? 0
+            : initialIndexStepUs.reduce(math.max),
+        'initial_index_step_largest_code_units':
+            initialIndexStepCodeUnits.isEmpty
+            ? 0
+            : initialIndexStepCodeUnits.reduce(math.max),
+        'initial_frames': initialFrames,
         'maximum_scroll_extent': position.maxScrollExtent,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
         'middle_seek_wall_us': seekClock.elapsedMicroseconds,
@@ -171,7 +193,10 @@ int _mountedCharacters() => find
     )
     .fold(0, (total, length) => total + length);
 
-Widget _app(DocumentReading reading) => MaterialApp(
+Widget _app(
+  DocumentReading reading, {
+  ParagraphIndexStepObserver? onInitialIndexStep,
+}) => MaterialApp(
   theme: libraryTheme(BuiltInThemes.paper),
   home: Scaffold(
     body: ReadingPane(
@@ -180,6 +205,7 @@ Widget _app(DocumentReading reading) => MaterialApp(
       viewportGeometry: const QuietDocumentViewportGeometryFactory(),
       onLink: (_) {},
       onActiveHeadingChanged: (_) {},
+      debugOnParagraphInitialIndexStep: onInitialIndexStep,
     ),
   ),
 );

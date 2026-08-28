@@ -215,6 +215,9 @@ class SliverDocumentView extends StatefulWidget {
   /// Reports how many source code units a large prose wrap-index pass visited.
   final ValueChanged<int>? debugOnParagraphCodeUnitsIndexed;
 
+  /// Reports each bounded first-load prose indexing step.
+  final ParagraphIndexStepObserver? debugOnParagraphInitialIndexStep;
+
   SliverDocumentView({
     super.key,
     this.document,
@@ -236,6 +239,7 @@ class SliverDocumentView extends StatefulWidget {
     this.debugOnBlocksIndexed,
     this.debugOnCodeUnitsIndexed,
     this.debugOnParagraphCodeUnitsIndexed,
+    this.debugOnParagraphInitialIndexStep,
   }) : customAnchorKeys = customAnchorKeys ?? <String, GlobalKey>{},
        matchKeys = matchKeys ?? <int, GlobalKey>{};
 
@@ -340,6 +344,8 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             debugOnCodeUnitsIndexed: widget.debugOnCodeUnitsIndexed,
             debugOnParagraphCodeUnitsIndexed:
                 widget.debugOnParagraphCodeUnitsIndexed,
+            debugOnParagraphInitialIndexStep:
+                widget.debugOnParagraphInitialIndexStep,
             theme: widget.theme,
             composer: composer,
             codeHighlighter: widget.codeHighlighter,
@@ -946,6 +952,7 @@ class _BlockView extends StatelessWidget {
   final BlockTextAppend? textAppend;
   final ValueChanged<int>? debugOnCodeUnitsIndexed;
   final ValueChanged<int>? debugOnParagraphCodeUnitsIndexed;
+  final ParagraphIndexStepObserver? debugOnParagraphInitialIndexStep;
   final ReadingTheme theme;
   final InlineComposer composer;
   final CodeHighlighter codeHighlighter;
@@ -971,6 +978,7 @@ class _BlockView extends StatelessWidget {
     this.textAppend,
     this.debugOnCodeUnitsIndexed,
     this.debugOnParagraphCodeUnitsIndexed,
+    this.debugOnParagraphInitialIndexStep,
     required this.theme,
     required this.composer,
     required this.codeHighlighter,
@@ -1026,6 +1034,7 @@ class _BlockView extends StatelessWidget {
                 selectionIdentity: identity,
                 selectionOrder: selectionOrder,
                 debugOnSourceIndexed: debugOnParagraphCodeUnitsIndexed,
+                debugOnInitialIndexStep: debugOnParagraphInitialIndexStep,
               )
             : Paragraph(
                 spans: composer.compose(
