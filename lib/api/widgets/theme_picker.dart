@@ -49,11 +49,14 @@ class ThemePicker extends StatelessWidget {
     final current = registry.resolve(choice, system);
     final followingDefault = choice == registry.systemPair;
     final familyIds = BuiltInThemes.familyThemeIds;
+    final featuredIds = {BuiltInThemes.paper.id, BuiltInThemes.lamplight.id};
     final individualLight = registry.light.where(
-      (theme) => !familyIds.contains(theme.id),
+      (theme) =>
+          !familyIds.contains(theme.id) && !featuredIds.contains(theme.id),
     );
     final individualDark = registry.dark.where(
-      (theme) => !familyIds.contains(theme.id),
+      (theme) =>
+          !familyIds.contains(theme.id) && !featuredIds.contains(theme.id),
     );
 
     return AnchoredMenu(
@@ -76,6 +79,43 @@ class ThemePicker extends StatelessWidget {
         }
 
         return [
+          const _SectionLabel('Reading mode'),
+          for (final candidate in ReadingMode.values)
+            _Row(
+              label: candidate.label,
+              leading: _ReadingModeSample(mode: candidate),
+              selected: mode == candidate,
+              onTap: () => readIn(candidate),
+            ),
+          const _SectionLabel('Paragraphs'),
+          _Row(
+            label: 'Separated by space',
+            leading: Icon(
+              Icons.notes_outlined,
+              size: 18,
+              color: context.palette.muted,
+            ),
+            selected: marking == ParagraphMarking.spaced,
+            onTap: () {
+              close();
+              onMark(ParagraphMarking.spaced);
+            },
+          ),
+          _Row(
+            label: 'Book-style indents',
+            leading: Icon(
+              Icons.format_indent_increase,
+              size: 18,
+              color: context.palette.muted,
+            ),
+            selected: marking == ParagraphMarking.indented,
+            onTap: () {
+              close();
+              onMark(ParagraphMarking.indented);
+            },
+          ),
+          const _Rule(),
+          const _SectionLabel('Themes'),
           _Row(
             label: 'Follow system',
             leading: Icon(
@@ -86,17 +126,14 @@ class ThemePicker extends StatelessWidget {
             selected: followingDefault,
             onTap: () => pick(registry.systemPair),
           ),
-          const _Rule(),
-          const _SectionLabel('Reading mode'),
-          for (final candidate in ReadingMode.values)
+          for (final theme in [BuiltInThemes.paper, BuiltInThemes.lamplight])
             _Row(
-              label: candidate.label,
-              leading: _ReadingModeSample(mode: candidate),
-              selected: mode == candidate,
-              onTap: () => readIn(candidate),
+              label: theme.name,
+              leading: _Swatch(theme: theme, mode: mode, size: 24),
+              selected: choice is FixedTheme && theme.id == current.id,
+              onTap: () => pick(FixedTheme(theme.id)),
             ),
-          const _Rule(),
-          const _SectionLabel('Themes'),
+          const _SectionLabel('More themes'),
           for (final family in BuiltInThemes.families)
             if (family.supports(system))
               _Row(
@@ -109,7 +146,6 @@ class ThemePicker extends StatelessWidget {
                 selected: family.selects(choice, system),
                 onTap: () => pick(family.choiceFor(system)),
               ),
-          const _Rule(),
           const _SectionLabel('Light'),
           for (final theme in individualLight)
             _Row(
@@ -126,34 +162,6 @@ class ThemePicker extends StatelessWidget {
               selected: choice is FixedTheme && theme.id == current.id,
               onTap: () => pick(FixedTheme(theme.id)),
             ),
-          const _Rule(),
-          const _SectionLabel('Paragraphs'),
-          _Row(
-            label: 'Separated by space',
-            leading: Icon(
-              Icons.notes_outlined,
-              size: 18,
-              color: context.palette.muted,
-            ),
-            selected: marking == ParagraphMarking.spaced,
-            onTap: () {
-              close();
-              onMark(ParagraphMarking.spaced);
-            },
-          ),
-          _Row(
-            label: 'Indented, set solid',
-            leading: Icon(
-              Icons.format_indent_increase,
-              size: 18,
-              color: context.palette.muted,
-            ),
-            selected: marking == ParagraphMarking.indented,
-            onTap: () {
-              close();
-              onMark(ParagraphMarking.indented);
-            },
-          ),
           if (registry.errors.isNotEmpty) ...[
             const _Rule(),
             _SectionLabel(
