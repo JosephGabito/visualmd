@@ -30,4 +30,8 @@ jobs:
           cache: true
 
       - name: Validate
+        # Release archives are signed on the release machine. CI only needs an
+        # ad-hoc signature to verify the macOS bundle without private keys.
+        env:
+          FLUTTER_XCODE_CODE_SIGN_IDENTITY: "-"
         run: bin/tools/validate.sh
