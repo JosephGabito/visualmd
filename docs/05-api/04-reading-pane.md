@@ -121,8 +121,11 @@ only replacement records while retaining its exact `ScrollController` offset.
 A suffix containing headings or explicit anchors currently takes the safe full
 navigation rebuild because outline projection is not incremental yet. A
 non-tail replacement also rebuilds navigation but retains the offset. Only a
-different document identity jumps to the top. A reader already at the tail remains pinned while the lazy sliver
-converges on its new maximum; a reader anywhere above it never enters that path
+different document identity jumps to the top. A reader already at the tail
+remains pinned while the lazy sliver converges on its new maximum; a reader
+anywhere above it never enters that path. A new scroll interaction invalidates
+the pending convergence callbacks before they can move the page, so scrolling
+up always transfers control back to the reader
 (`lib/api/widgets/reading_pane.dart`).
 
 Before a non-append mutation, the pane identifies the stable block at the
