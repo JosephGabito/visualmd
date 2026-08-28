@@ -350,8 +350,11 @@ compares the inline structure it has just reparsed and emits a
 leaf becomes a new suffix `TextRun`; new top-level runs follow it. Closing an
 unfinished delimiter changes the prior tree and therefore withholds the proof.
 This first contract removes renderer-side prefix discovery; the fragment parser
-still reparses the provisional source tail and remains a separate measured
-streaming boundary
+still reparses the provisional source tail. The native profile makes that cost
+explicit: appending 57 rich Markdown characters takes 8.5 ms after 10,070
+characters, 105 ms after 100,035, and 7.10 seconds after 1,000,065. The final
+case reparses 1,000,122 characters and walks 63,167 inline runs to prove five
+new runs. This is the dominant quadratic streaming boundary
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
 ## Failure and recovery

@@ -211,3 +211,23 @@ one accumulated `String`, because the retained paragraph and semantics APIs
 currently accept a flat string. The parser benchmark must separately include
 provisional-tail parsing before the complete AI-streaming path can be called
 constant-cost.
+
+## Rich provisional-parser baseline
+
+The same native harness now measures the actual incremental Markdown session,
+not only a preconstructed domain revision. One open paragraph repeats ordinary
+strong, inline-code and link syntax, then receives a 57-character suffix with
+strong and inline-code runs:
+
+| Existing Markdown | Appended | Initial parse | Append parse | Parsed on append | Runs after | Proven runs |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10,070 | 57 | 11.7 ms | 8.5 ms | 10,127 | 641 | 5 |
+| 100,035 | 57 | 119.7 ms | 105.0 ms | 100,092 | 6,323 | 5 |
+| 1,000,065 | 57 | 6.87 s | 7.10 s | 1,000,122 | 63,167 | 5 |
+
+The renderer's million-character append now builds in 8.7 ms, but producing
+that revision takes 7.10 seconds. The session reparses the complete provisional
+tail and `_inlineAppend` then compares the complete prior inline prefix to
+recover five suffix runs. Repeating this for token-sized publications is
+quadratic. This is now the dominant end-to-end stream hazard and the next
+contract boundary; the numbers above are the proof before changing it.
