@@ -216,8 +216,12 @@ The same rules also expose `TypographicProjection` in
 string beside sparse contraction boundaries, so a windowed consumer can map a
 selection after an en dash or ellipsis back to the exact authored source in
 O(log substitutions), without allocating one offset per character
-(`test/presentation/typographic_punctuation_test.dart`). This is a presentation
-projection only; copied and searched text remains the domain's source.
+(`test/presentation/typographic_punctuation_test.dart`). A bounded projection
+also accepts the displayed character immediately to its left and reports the
+character before any later boundary. Adjacent viewport ranges therefore make
+the same opening-quote decision as one continuous composition without scanning
+their prefix. This is a presentation projection only; copied and searched text
+remains the domain's source.
 
 ## Inputs and outputs
 

@@ -45,7 +45,6 @@ const _windowedParagraphThreshold = 32768;
 
 bool _usesWindowedPlainParagraph({
   required Block block,
-  required BlockCommitment commitment,
   required double indent,
   required bool hasMatches,
 }) {
@@ -56,32 +55,6 @@ bool _usesWindowedPlainParagraph({
       block.content.single is! TextRun ||
       block.content.single.text.length < _windowedParagraphThreshold) {
     return false;
-  }
-  return commitment == BlockCommitment.provisional ||
-      _hasStableProseProjection(block.content.single.text);
-}
-
-/// Whether final composition changes no glyph before widow binding.
-///
-/// A large provisional paragraph deliberately shows authored punctuation.
-/// Final straight quotes, dash runs and ellipses have different advances or
-/// source lengths, so those documents stay on the complete composer until a
-/// range projection can carry exact source-to-glyph offsets.
-bool _hasStableProseProjection(String text) {
-  for (var index = 0; index < text.length; index++) {
-    final unit = text.codeUnitAt(index);
-    if (unit == 34 || unit == 39) return false;
-    if (unit == 45 &&
-        index + 1 < text.length &&
-        text.codeUnitAt(index + 1) == 45) {
-      return false;
-    }
-    if (unit == 46 &&
-        index + 2 < text.length &&
-        text.codeUnitAt(index + 1) == 46 &&
-        text.codeUnitAt(index + 2) == 46) {
-      return false;
-    }
   }
   return true;
 }
@@ -332,7 +305,6 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
               : 0.0;
           final windowedParagraph = _usesWindowedPlainParagraph(
             block: block,
-            commitment: entry.commitment,
             indent: indent,
             hasMatches: widget.matches.isNotEmpty,
           );
@@ -1006,7 +978,6 @@ class _BlockView extends StatelessWidget {
             useWindowedParagraph ??
             _usesWindowedPlainParagraph(
               block: block,
-              commitment: commitment,
               indent: indent,
               hasMatches: composer.matches.isNotEmpty,
             );

@@ -275,7 +275,7 @@ snapshots, source retention, provisional-tail parsing, and live outline
 projection are delta-bounded. Large fenced code is additionally windowed by
 line and column.
 
-A large provisional paragraph containing one plain text run is windowed by
+A large committed or provisional paragraph containing one plain text run is windowed by
 `lib/api/widgets/windowed_paragraph.dart`. Flutter's `TextPainter` remains the
 line-breaking authority: bounded layout windows commit every complete visual
 line, and `packages/quiet_viewport/lib/src/wrap_index.dart` retains those source
@@ -284,15 +284,17 @@ height as one eager paragraph, while only nearby lines own render objects. Its
 semantic label remains the complete source after indexing, and the mounted
 selection range is rebased into complete-block coordinates by
 `lib/api/widgets/model_backed_selection_area.dart`. The ordinary path adds a
-window offset. A typographic projection may instead supply a sparse
-display-to-source mapper, so selecting one displayed ellipsis still copies the
-three authored dots.
+window offset. Each bounded prose range projects quotes, dashes and ellipses
+before Flutter measures it, carrying the displayed character at every retained
+source boundary into the next range. Its sparse display-to-source mapper means
+selecting one displayed ellipsis still copies the three authored dots
+(`lib/presentation/theme/typographic_punctuation.dart`).
 
 The native result holds mounted text near 2,475 characters at both 100,000 and
 1,000,000 source characters. At one million characters, an initial indexing
-operation is at most 4,161 code units and 1.1 ms; the exact reveal frame is 4.6
-ms. A middle seek and adjacent append remain below 4.1 ms, safe finalization is
-7.8 ms, and neither mutation moves the parked reader at all
+operation is at most 4,161 code units and 1.9 ms; the exact reveal frame is 5.1
+ms. A middle seek remains 3.3 ms, while an adjacent append and safe finalization
+remain below 4.9 ms; neither mutation moves the parked reader at all
 (`integration_test/atomic_paragraph_performance_test.dart`,
 `benchmark/results/2026-08-28-atomic-paragraph.md`). Total initial line
 discovery remains O(source), but it starts after the placeholder frame, yields
@@ -302,6 +304,7 @@ so neither path walks the scrollbar through partial estimates.
 Plain final typography retains the line window: widow eligibility stops after
 four words, and only the visual line owning the final breakable space is
 re-resolved (`lib/presentation/theme/widow_binding.dart`). Straight quotes,
-dash runs, ellipses, rich inline content, active search, indented prose, tables,
-lists and quotations still take their exact eager paths; those boundaries are
-recorded rather than called solved.
+dash runs and ellipses are already projected while a paragraph streams, so
+finalization never reflows their committed prefix. Rich inline content, active
+search, indented prose, tables, lists and quotations still take their exact
+eager paths; those boundaries are recorded rather than called solved.
