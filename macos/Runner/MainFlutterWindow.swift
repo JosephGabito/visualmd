@@ -72,6 +72,11 @@ class MainFlutterWindow: NSWindow {
       object: self
     )
     self.minSize = NSSize(width: 720, height: 480)
+    // AppKit restores a saved frame when the autosave name is assigned and
+    // keeps it current as the user moves or resizes the window. When no saved
+    // frame exists, the 1280 x 800 frame supplied by MainMenu.xib remains the
+    // first-launch default.
+    _ = self.setFrameAutosaveName("visualmd.main-window")
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 

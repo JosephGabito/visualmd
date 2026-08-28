@@ -15,6 +15,17 @@ void main() {
     );
   });
 
+  test('macOS restores the last frame after enforcing the usable minimum', () {
+    final source = File('macos/Runner/MainFlutterWindow.swift')
+        .readAsStringSync();
+
+    const minimum = 'self.minSize = NSSize(width: 720, height: 480)';
+    const autosave = '_ = self.setFrameAutosaveName("visualmd.main-window")';
+    expect(source, contains(minimum));
+    expect(source, contains(autosave));
+    expect(source.indexOf(minimum), lessThan(source.indexOf(autosave)));
+  });
+
   test('macOS removes native menus that have no reader actions', () {
     final source = File('macos/Runner/MainFlutterWindow.swift')
         .readAsStringSync();

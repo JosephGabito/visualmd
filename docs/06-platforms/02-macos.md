@@ -96,9 +96,11 @@ bar that doubles as a drag handle with double-click-to-zoom
 [Window Chrome](../03-infrastructure/desktop/03-window-chrome.md).
 
 The initial content frame is 1280 × 800, wide enough to enter the reader's
-full desktop composition instead of its compact mode. The window remains
-resizable down to the smaller minimum above
-(`macos/Runner/Base.lproj/MainMenu.xib`).
+full desktop composition instead of its compact mode. After the first launch,
+AppKit saves moves and resizes under the stable `visualmd.main-window` autosave
+name and restores the last frame at startup. The window remains resizable down
+to the smaller minimum above (`macos/Runner/Base.lproj/MainMenu.xib`,
+`macos/Runner/MainFlutterWindow.swift`).
 
 The application File menu is native AppKit chrome, inserted beside the app
 menu after AppKit has installed the menu bar. Its Command-O Open panel accepts
@@ -116,8 +118,8 @@ Built and launched on 2026-08-24. Verified visually: the native File menu sits
 beside View and Window, the Flutter top bar contains no duplicate, and the
 single-title-bar chrome keeps the traffic lights centred without carrying an
 empty toolbar into fullscreen. Workspace codec, selected-path preservation,
-atomic writing, source binding, menu pruning, fullscreen chrome, and lifecycle
-behavior are covered by automated tests.
+atomic writing, source binding, menu pruning, fullscreen chrome, last-frame
+restoration, and lifecycle behavior are covered by automated tests.
 
 Not done: code signing and notarization. The local build is suitable for
 development, but it is not ready for normal distribution because Gatekeeper may
