@@ -133,8 +133,8 @@ belong in the focused typography tests
 
 The scripts under `bin/tools/` are the shared local and CI interface:
 
-- `beautify.sh` formats authored Dart and Swift.
-- `validate.sh` checks formatting and shell syntax, runs analysis and tests,
+- `beautify.sh` resolves dependencies, then formats authored Dart and Swift.
+- `validate.sh` resolves dependencies, checks formatting and shell syntax, runs analysis and tests,
   checks documentation, validates the embedded `quiet_viewport` package in its
   own dependency context, and builds web plus the native target supported by
   the host.
