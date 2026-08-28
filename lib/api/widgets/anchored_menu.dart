@@ -225,6 +225,10 @@ class _MenuOverlay extends StatelessWidget {
                 child: CallbackShortcuts(
                   bindings: {
                     const SingleActivator(LogicalKeyboardKey.escape): onDismiss,
+                    const SingleActivator(
+                      LogicalKeyboardKey.period,
+                      meta: true,
+                    ): onDismiss,
                   },
                   child: FocusScope(
                     node: focusScope,

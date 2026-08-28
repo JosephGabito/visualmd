@@ -265,15 +265,26 @@ class _ReaderScreenState extends State<ReaderScreen> {
       }
     }
 
+    void dismissTransient() {
+      if (_searchMode != _SearchMode.closed) {
+        _closeSearch();
+        return;
+      }
+      if (compact && (_compactShelfVisible || _compactOutlineVisible)) {
+        setState(() {
+          _compactShelfVisible = false;
+          _compactOutlineVisible = false;
+        });
+      }
+    }
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyB, meta: true): toggleShelf,
         const SingleActivator(LogicalKeyboardKey.keyB, control: true):
             toggleShelf,
         const SingleActivator(LogicalKeyboardKey.period, meta: true):
-            toggleOutline,
-        const SingleActivator(LogicalKeyboardKey.period, control: true):
-            toggleOutline,
+            dismissTransient,
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true): () =>
             _openSearch(_SearchMode.document),
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>
@@ -801,9 +812,7 @@ class _TopBar extends StatelessWidget {
           themePicker,
           const SizedBox(width: LibraryChromeScale.space1),
           _BarButton(
-            tooltip: outlineVisible
-                ? 'Hide outline  (⌘.)'
-                : 'Show outline  (⌘.)',
+            tooltip: outlineVisible ? 'Hide outline' : 'Show outline',
             icon: outlineVisible ? Icons.toc : Icons.toc_outlined,
             active: outlineVisible,
             onPressed: hasLibrary ? onToggleOutline : null,
