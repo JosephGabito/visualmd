@@ -1,4 +1,4 @@
-import 'dart:ui' show SemanticsAction;
+import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +33,11 @@ final _notesRoot = LibraryBuilder.buildRoot(
   ],
 );
 final _library = Library(roots: [_notesRoot]);
+
+ChromeListRow _rowForText(WidgetTester tester, String text) =>
+    tester.widget<ChromeListRow>(
+      find.ancestor(of: find.text(text), matching: find.byType(ChromeListRow)),
+    );
 
 final class _SourceActions implements ShelfSourceActions {
   ShelfSourceLocation? revealed;
@@ -136,7 +141,7 @@ void main() {
     expect(selected, markdown.id);
   });
 
-  testWidgets('standalone markdowns reveal remove only on hover', (
+  testWidgets('standalone markdowns reveal remove on hover', (
     tester,
   ) async {
     final markdown = Document(
@@ -168,6 +173,41 @@ void main() {
     expect(removed, markdown.id);
     expect(selected, isNull);
     await mouse.removePointer();
+  });
+
+  testWidgets('source remove actions remain available from keyboard focus', (
+    tester,
+  ) async {
+    final markdown = Document(
+      id: DocumentId(
+        const LibraryRootId('standalone-markdown:plan'),
+        'plan.md',
+      ),
+      content: '# Build plan',
+    );
+    DocumentId? removedMarkdown;
+    LibraryRootId? removedRoot;
+    await tester.pumpWidget(
+      shelf(
+        library: Library(roots: [_notesRoot], markdowns: [markdown]),
+        onRemoveMarkdown: (id) => removedMarkdown = id,
+        onRemove: (id) => removedRoot = id,
+      ),
+    );
+
+    _rowForText(tester, 'Build plan').focusNode!.requestFocus();
+    await tester.pump();
+    expect(find.byTooltip('Remove from Markdowns'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(removedMarkdown, markdown.id);
+
+    _rowForText(tester, 'notes').focusNode!.requestFocus();
+    await tester.pump();
+    expect(find.byTooltip('Remove from library'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(removedRoot, _notesId);
   });
 
   testWidgets('the shelf can identify documents by title or file name', (
@@ -327,6 +367,83 @@ void main() {
     expect(find.text('Copy full path'), findsNothing);
   });
 
+  testWidgets('arrow keys traverse and disclose the shelf tree', (
+    tester,
+  ) async {
+    await tester.pumpWidget(shelf());
+
+    _rowForText(tester, 'notes').focusNode!.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(find.text('Notes'), findsOneWidget);
+    expect(_rowForText(tester, 'notes').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(_rowForText(tester, 'Notes').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(_rowForText(tester, 'guide').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(find.text('Guide'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(_rowForText(tester, 'Guide').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(_rowForText(tester, 'guide').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(find.text('Guide'), findsNothing);
+    expect(_rowForText(tester, 'guide').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(_rowForText(tester, 'notes').focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(find.text('Notes'), findsNothing);
+  });
+
+  testWidgets('tree rows expose document and disclosure state', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(shelf());
+
+    var root = tester.getSemantics(
+      find.bySemanticsLabel('notes, folder 1 of 1'),
+    );
+    expect(root.flagsCollection.isExpanded, Tristate.isFalse);
+
+    await tester.tap(find.text('notes'));
+    await tester.pump();
+    root = tester.getSemantics(find.bySemanticsLabel('notes, folder 1 of 1'));
+    expect(root.flagsCollection.isExpanded, Tristate.isTrue);
+    expect(
+      tester
+          .getSemantics(find.bySemanticsLabel('Notes, document'))
+          .flagsCollection
+          .isSelected,
+      Tristate.isTrue,
+    );
+    expect(
+      tester
+          .getSemantics(find.bySemanticsLabel('guide, folder'))
+          .flagsCollection
+          .isExpanded,
+      Tristate.isFalse,
+    );
+    semantics.dispose();
+  });
+
   testWidgets('a failed native source command remains visible', (tester) async {
     final actions = _SourceActions()..failReveal = true;
     await tester.pumpWidget(shelf(sourceActions: actions));
@@ -377,6 +494,14 @@ void main() {
       );
       await tester.tap(find.text('Missing handbook'));
       expect(reconnected, missing.id);
+
+      _rowForText(tester, 'Missing handbook').focusNode!.requestFocus();
+      await tester.pump();
+      expect(find.byTooltip('Remove from workspace'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      expect(removed, missing.id);
+      removed = null;
 
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await mouse.addPointer(location: Offset.zero);
@@ -507,7 +632,7 @@ void main() {
     },
   );
 
-  testWidgets('root rows drag directly and reveal remove only on hover', (
+  testWidgets('root rows drag directly and reveal remove on hover', (
     tester,
   ) async {
     const guidesId = LibraryRootId('guides');

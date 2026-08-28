@@ -20,7 +20,8 @@ one named button to assistive technology; their visible tooltips stay help text
 rather than becoming separate semantic labels
 (`lib/api/widgets/shelf_panel.dart`). Each
 standalone row reserves the same quiet action space as a root: its delete icon
-appears only on hover, while semantic dismiss remains available. That intent
+appears on pointer hover or while keyboard focus is within the row, while
+semantic dismiss remains available. That intent
 reports the document id and never reaches disk
 (`lib/api/widgets/shelf_panel.dart`). The body is a
 stable `ListView`: dragging a root never removes its expanded section from the
@@ -44,7 +45,8 @@ Minimized descendants are not built, which keeps the first frame small for
 folders containing hundreds or thousands of markdown files.
 
 The minimized root row is itself the drag surface, so arrangement needs no
-permanent handle or action menu. Hover reveals only a delete icon; deletion
+permanent handle or action menu. Pointer hover or keyboard focus reveals only a
+delete icon; deletion
 means session membership, never a disk operation. Semantics retain arrange and
 dismiss actions for assistive navigation
 (`lib/api/widgets/shelf_panel.dart`). Its drag feedback is an invisible
@@ -69,6 +71,13 @@ Depth adds a fixed indent; the selected document receives one accessible
 ground, one weight change, and the same short location mark as active outline
 navigation. README files keep their book icon
 (`lib/api/widgets/chrome_list_row.dart`, `lib/api/widgets/shelf_panel.dart`).
+Each visible shelf row participates in one tree-order keyboard model: Up and
+Down move through rendered rows, Right opens a minimized folder or enters its
+first child, and Left minimizes an open folder or returns to its parent. Folder
+semantics expose disclosure state; document semantics expose selection. An
+unavailable source remains in that order and reveals both its reconnect cue and
+keyboard-focusable remove action when focused
+(`lib/api/widgets/shelf_panel.dart`).
 
 The Library heading switches every document row between its authored Markdown
 title and exact file name. `ReaderController` persists that one shelf-wide
@@ -100,9 +109,9 @@ motion, not another panel to enter
 | document row | `onSelect(document.id)` |
 | title/file-name control | persist one `ShelfLabelMode` for all document rows |
 | secondary-click source command | `ShelfSourceActions`; unavailable physical commands stay absent |
-| standalone hover delete or semantic dismiss | `onRemoveMarkdown(document.id)` |
+| standalone hover/focus delete or semantic dismiss | `onRemoveMarkdown(document.id)` |
 | root-row drag or semantic arrange action | `onMoveFolder(root.id, index)` |
-| hover delete or semantic dismiss action | `onRemoveFolder(root.id)` |
+| hover/focus delete or semantic dismiss action | `onRemoveFolder(root.id)` |
 
 The shell wires these callbacks directly to `ReaderController`
 (`lib/api/screens/reader_screen.dart`).
@@ -119,9 +128,10 @@ root preserves expansion for every surviving identity and prunes only removed
 identities. A library mutation therefore does not snap unrelated roots shut
 (`lib/api/widgets/shelf_panel.dart`).
 
-Widget tests cover standalone placement, hover removal, and the expand contract—including
-minimizing an unrelated open branch while revealing the active nested
-document—alongside minimized startup, navigation, dragging and hover removal
+Widget tests cover standalone placement, hover and keyboard removal, tree-key
+navigation and semantics, and the expand contract—including minimizing an
+unrelated open branch while revealing the active nested document—alongside
+minimized startup, navigation and dragging
 (`test/presentation/shelf_panel_test.dart`).
 
 ## Failure and recovery
