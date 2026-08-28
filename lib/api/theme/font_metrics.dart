@@ -11,7 +11,8 @@ abstract final class FontMetrics {
   /// x-height as a fraction of the em, read from each font's `OS/2` table.
   static const xHeights = <String, double>{
     'Literata': 0.507,
-    'Inter': 0.546,
+    // Inter 4.001: 1118 / 2048 units in the bundled file.
+    'Inter': 0.5458984375,
     'Geist Mono': 0.530,
     // A literary face: small letters, long extenders. It is set larger to
     // read the same, which is the whole point of quoting sizes this way.
@@ -23,14 +24,16 @@ abstract final class FontMetrics {
   /// the page, which is what the line above has to clear.
   static const capHeights = <String, double>{
     'Literata': 0.700,
-    'Inter': 0.728,
+    // Inter 4.001: 1490 / 2048 units in the bundled file.
+    'Inter': 0.7275390625,
     'Geist Mono': 0.710,
     'Alegreya': 0.637,
   };
 
   static const descenders = <String, double>{
     'Literata': 0.308,
-    'Inter': 0.244,
+    // Inter 4.001: abs(-494) / 2048 units in the bundled file.
+    'Inter': 0.2412109375,
     'Geist Mono': 0.295,
     'Alegreya': 0.345,
   };

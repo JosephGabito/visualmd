@@ -27,7 +27,7 @@ Three tables, all read from each font's `OS/2` table rather than estimated:
 |------|----------|------------|-----------|
 | Alegreya | 0.452 | 0.637 | 0.345 |
 | Literata | 0.507 | 0.700 | 0.308 |
-| Inter | 0.546 | 0.728 | 0.244 |
+| Inter 4.001 | 0.545898 | 0.727539 | 0.241211 |
 | Geist Mono | 0.530 | 0.710 | 0.295 |
 
 Citations: `lib/api/theme/font_metrics.dart`, `lib/api/theme/font_metrics.dart`, `lib/api/theme/font_metrics.dart`.
@@ -36,8 +36,9 @@ Citations: `lib/api/theme/font_metrics.dart`, `lib/api/theme/font_metrics.dart`,
 that delivers `size` worth of letters in that face
 (`lib/api/theme/font_metrics.dart`), quoted against a reference x-height
 of 0.55 — where most faces drawn for screens sit
-(`lib/api/theme/font_metrics.dart`). So an "18" is 21.9 px in Alegreya
-and 19.5 px in Literata, and both put the same size of letter on the page. It
+(`lib/api/theme/font_metrics.dart`). So an "18" is 21.9 px in Alegreya,
+18.135 px in Inter, and 19.5 px in Literata; all three put the same size of
+letter on the page. It
 is applied where a family is resolved into a style
 (`lib/api/theme/library_theme.dart`).
 
@@ -48,7 +49,13 @@ step and resolving Geist Mono from the result
 
 This measurement exposed a 7 % difference between the body text and the sans
 interface face at the same nominal size: Literata's x-height is 0.507, while
-Inter's is 0.546.
+Inter's is 0.545898.
+
+The Inter values are the exact ratios in the bundled 4.001 file: x-height
+`1118 / 2048`, cap height `1490 / 2048`, and descender depth `494 / 2048`.
+`test/typography_measure_test.dart` shapes the complete Serif and Sans systems
+with Flutter and prints the resulting font size, leading, baseline, mean
+advance, 66-character measure and every heading size.
 
 **Leading is derived, not chosen.** `leadingFor(family, fallback)` returns
 

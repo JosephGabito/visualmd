@@ -400,6 +400,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 : ReadingTheme.of(
                         context,
                         c.readingScale,
+                        mode: c.readingMode,
                       ).proseWidth(double.infinity) +
                       96;
             final fitted = c.panelWidths.fitWide(
@@ -441,6 +442,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 key: _pane,
                 reading: reading,
                 scale: c.readingScale,
+                mode: c.readingMode,
                 codeHighlighter: widget.codeHighlighter,
                 mermaidRenderer: widget.mermaidRenderer,
                 imageLoader: widget.imageLoader,
@@ -627,6 +629,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             registry: c.themes,
                             choice: c.themeChoice,
                             onChoose: c.chooseTheme,
+                            mode: c.readingMode,
+                            onMode: c.chooseReadingMode,
                             marking: c.readingScale.marking,
                             onMark: c.markParagraphs,
                             onOpenThemesFolder: widget.openThemesFolder,

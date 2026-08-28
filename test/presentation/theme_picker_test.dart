@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/theme_picker.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/theme/reading_mode.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 import 'package:visualmd/presentation/theme/theme_choice.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
@@ -13,12 +14,14 @@ import 'package:visualmd/presentation/theme/theme_registry.dart';
 void main() {
   late ThemeRegistry registry;
   late List<ThemeChoice> chosen;
+  late List<ReadingMode> modes;
   late List<ParagraphMarking> marked;
   late int themeFolderOpens;
 
   setUp(() {
     registry = ThemeRegistry();
     chosen = [];
+    modes = [];
     marked = [];
     themeFolderOpens = 0;
   });
@@ -46,6 +49,8 @@ void main() {
               registry: registry,
               choice: registry.systemPair,
               onChoose: chosen.add,
+              mode: ReadingMode.serif,
+              onMode: modes.add,
               marking: ParagraphMarking.spaced,
               onMark: marked.add,
               onOpenThemesFolder: () async {
@@ -75,6 +80,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Follow system'), findsOneWidget);
+    expect(find.text('READING MODE'), findsOneWidget);
+    expect(find.text('Serif'), findsOneWidget);
+    expect(find.text('Sans'), findsOneWidget);
     expect(find.text('THEMES'), findsOneWidget);
     expect(find.text('LIGHT'), findsOneWidget);
     expect(find.text('DARK'), findsOneWidget);
@@ -258,6 +266,27 @@ void main() {
 
     expect(chosen, [const FixedTheme('nord')]);
     expect(find.text('Nord'), findsNothing);
+  });
+
+  testWidgets('choosing a reading mode reports it and closes the menu', (
+    tester,
+  ) async {
+    await pumpPicker(tester);
+    await tester.tap(find.byType(ThemePicker));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getSemantics(find.bySemanticsLabel('Serif'))
+          .flagsCollection
+          .isSelected,
+      Tristate.isTrue,
+    );
+    await tester.tap(find.text('Sans'));
+    await tester.pumpAndSettle();
+
+    expect(modes, [ReadingMode.sans]);
+    expect(find.text('Sans'), findsNothing, reason: 'and the menu closes');
   });
 
   testWidgets('escape and tapping away both dismiss it without choosing', (

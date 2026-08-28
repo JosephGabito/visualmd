@@ -17,10 +17,10 @@ final class ThemeTypefaces {
   ///
   /// Alegreya reads the page: a face drawn for literature, with the long
   /// extenders and the movement of a book rather than the even texture of a
-  /// screen serif. Inter is the furniture — shelf, outline, controls — and
-  /// never appears inside a document. Geist Mono carries code: it was drawn
-  /// for code editors and terminals, where a letter has to be told from a
-  /// digit before a dense source file can be understood.
+  /// screen serif. Inter is the furniture and the alternative sans reading
+  /// voice. Geist Mono carries code: it was drawn for code editors and
+  /// terminals, where a letter has to be told from a digit before a dense
+  /// source file can be understood.
   static const library = ThemeTypefaces(
     serif: 'Alegreya',
     sans: 'Inter',

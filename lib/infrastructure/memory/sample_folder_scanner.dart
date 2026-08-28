@@ -254,7 +254,7 @@ Repeated Markdown marks remain individually legible: `######`, `===`, and
     FileEntry('notes/colophon.md', '''
 # Colophon
 
-Set in a serif face for reading and a quiet sans for the furniture.
+Choose a serif or sans reading voice; code keeps its own measured mono face.
 
 Paper by day, lamplight by night — that pair follows your system, and the
 swatch in the top bar swaps it for something else: Catppuccin, Nord, Gruvbox.

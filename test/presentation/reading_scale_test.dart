@@ -6,6 +6,7 @@ import 'package:visualmd/api/theme/font_metrics.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/theme/reading_measure.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
+import 'package:visualmd/presentation/theme/reading_mode.dart';
 import 'package:visualmd/presentation/theme/reading_scale.dart';
 import 'package:visualmd/presentation/theme/theme_typefaces.dart';
 
@@ -16,6 +17,7 @@ void main() {
     // Whatever the library's reading face is, that is the one measured.
     final files = {
       'Alegreya': 'Alegreya.ttf',
+      'Inter': 'Inter.ttf',
       'Literata': 'Literata.ttf',
       'Geist Mono': 'GeistMono.ttf',
     };
@@ -258,6 +260,71 @@ void main() {
 
     test('a face we do not ship is left alone rather than guessed at', () {
       expect(FontMetrics.sizeFor('Some Themed Face', 18), 18);
+    });
+  });
+
+  group('reading mode changes the voice without changing the rule', () {
+    Future<ReadingTheme> themeIn(WidgetTester tester, ReadingMode mode) async {
+      ReadingTheme? theme;
+      await tester.pumpWidget(
+        MaterialApp(
+          key: ValueKey(mode),
+          theme: libraryTheme(BuiltInThemes.paper),
+          home: Builder(
+            builder: (context) {
+              theme = ReadingTheme.of(context, scale, mode: mode);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      return theme!;
+    }
+
+    testWidgets('serif and sans put the same size of letter on the page', (
+      tester,
+    ) async {
+      final serif = await themeIn(tester, ReadingMode.serif);
+      final sans = await themeIn(tester, ReadingMode.sans);
+
+      expect(serif.body.fontFamily, 'Alegreya');
+      expect(sans.body.fontFamily, 'Inter');
+      expect(
+        serif.renderedBase * FontMetrics.xHeights['Alegreya']!,
+        closeTo(sans.renderedBase * FontMetrics.xHeights['Inter']!, 0.001),
+      );
+      expect(
+        serif.proseWidth(double.infinity) / ReadingMeasure.advance(serif.body),
+        closeTo(scale.measure, 0.001),
+      );
+      expect(
+        sans.proseWidth(double.infinity) / ReadingMeasure.advance(sans.body),
+        closeTo(scale.measure, 0.001),
+      );
+      for (var level = 1; level <= 6; level++) {
+        expect(serif.heading(level).fontFamily, 'Alegreya');
+        expect(sans.heading(level).fontFamily, 'Inter');
+      }
+      expect(serif.code.fontFamily, 'Geist Mono');
+      expect(sans.code.fontFamily, 'Geist Mono');
+    });
+
+    testWidgets('sans tables use one measured width for every digit', (
+      tester,
+    ) async {
+      final sans = await themeIn(tester, ReadingMode.sans);
+      final widths = [
+        for (final digit in '0123456789'.characters)
+          ReadingMeasure.widthOf(digit, sans.tableBody),
+      ];
+      expect(
+        widths.reduce((a, b) => a < b ? a : b),
+        closeTo(widths.first, 0.01),
+      );
+      expect(
+        widths.reduce((a, b) => a > b ? a : b),
+        closeTo(widths.first, 0.01),
+      );
     });
   });
 }

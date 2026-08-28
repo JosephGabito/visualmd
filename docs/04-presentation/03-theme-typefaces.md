@@ -2,8 +2,9 @@
 
 ## Purpose and boundary
 
-`ThemeTypefaces` names the three voices of the page: a serif for reading, a
-sans for the furniture, a mono for code
+`ThemeTypefaces` names the three voices of the page: a serif reading role, a
+sans role shared by the furniture and optional Sans reading mode, and a mono
+for code
 (`lib/presentation/theme/theme_typefaces.dart`). It owns the *names*
 only. Turning a name into glyphs happens in the API ring, where the font
 layer lives — see [Theme Binding](../05-api/06-theme.md).
@@ -18,7 +19,7 @@ rhythm.
 | Field | Default | Used for |
 |-------|---------|----------|
 | `serif` | `Alegreya` | Reading text, headings, the app name. |
-| `sans` | `Inter` | Shelf, outline, buttons, labels, breadcrumbs. |
+| `sans` | `Inter` | Shelf, outline, controls, and Sans reading mode. |
 | `mono` | `Geist Mono` | Code, inline and block. |
 
 `ThemeTypefaces.library` holds those three defaults
@@ -34,6 +35,9 @@ purposes at once: the default when a theme omits `typefaces` entirely
 theme names only some of them
 (`lib/presentation/theme/theme_typefaces.dart`), and the fallback when a
 named family cannot be resolved at render time.
+
+[ReadingMode](13-reading-mode.md) selects which proportional role sets document
+content without changing the theme.
 
 ## Inputs and outputs
 

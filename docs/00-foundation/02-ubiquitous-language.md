@@ -110,6 +110,7 @@ counterparts are in `api/`.
 | **ThemePalette** (Palette) | The nine semantic colour tokens of a theme. | `lib/presentation/theme/theme_palette.dart` | color scheme, swatch set |
 | **Token** | One named colour in a palette — `paper`, `ink`, `accent`. Named for meaning, never for a widget. | `lib/presentation/theme/theme_palette.dart` | variable, colour slot |
 | **ThemeTypefaces** | The three family names a theme sets: serif, sans, mono. | `lib/presentation/theme/theme_typefaces.dart` | fonts, typography |
+| **ReadingMode** | Which proportional role sets the document: serif or sans. | `lib/presentation/theme/reading_mode.dart` | font choice, theme mode |
 | **ThemeChoice** | What the reader picked: one theme, or a light/dark pair that follows the system. | `lib/presentation/theme/theme_choice.dart` | theme mode |
 | **ThemeRegistry** | Every theme available: built-ins, then user files that may replace them. | `lib/presentation/theme/theme_registry.dart` | theme manager, loader |
 | **ThemeFormatException** | A theme document the reader could not use, with a reason its author can act on. | `lib/presentation/theme/theme_format_exception.dart` | parse error, invalid theme |

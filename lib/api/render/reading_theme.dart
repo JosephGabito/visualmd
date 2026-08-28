@@ -6,6 +6,7 @@ import '../../domain/reading/content/block.dart';
 import '../../presentation/code/code_highlighter.dart';
 import '../theme/reading_measure.dart';
 import '../../presentation/theme/reading_scale.dart';
+import '../../presentation/theme/reading_mode.dart';
 import '../../presentation/theme/theme_palette.dart';
 import '../theme/font_metrics.dart';
 import '../theme/library_theme.dart';
@@ -59,7 +60,11 @@ final class ReadingTheme {
     required this.headings,
   });
 
-  factory ReadingTheme.of(BuildContext context, ReadingScale scale) {
+  factory ReadingTheme.of(
+    BuildContext context,
+    ReadingScale scale, {
+    ReadingMode mode = ReadingMode.serif,
+  }) {
     final p = context.palette;
     final type = context.type;
     final textScaler = MediaQuery.textScalerOf(context);
@@ -73,12 +78,25 @@ final class ReadingTheme {
     // Old-style figures have ascenders and descenders like lowercase letters,
     // so a number in a sentence sits in the line rather than standing up out
     // of it. Tables want the opposite: figures that line up in a column.
-    const prose = [FontFeature.oldstyleFigures()];
-    const tabular = [FontFeature.liningFigures(), FontFeature.tabularFigures()];
+    // Alegreya carries old-style, lining and tabular sets. Inter 4.001 carries
+    // proportional and tabular lining figures, but no old-style set. Ask each
+    // face only for features the bundled file actually contains.
+    final prose = switch (mode) {
+      ReadingMode.serif => const [FontFeature.oldstyleFigures()],
+      ReadingMode.sans => const [FontFeature('pnum')],
+    };
+    final tabular = switch (mode) {
+      ReadingMode.serif => const [
+        FontFeature.liningFigures(),
+        FontFeature.tabularFigures(),
+      ],
+      ReadingMode.sans => const [FontFeature.tabularFigures()],
+    };
 
-    final leading = FontMetrics.leadingFor(type.families.serif, scale.leading);
+    final readingFamily = mode.familyOf(type.families);
+    final leading = FontMetrics.leadingFor(readingFamily, scale.leading);
     final body = type
-        .serif(color: p.ink, size: scale.base, height: leading)
+        .reading(mode, color: p.ink, size: scale.base, height: leading)
         .copyWith(fontFeatures: prose, letterSpacing: tracking);
 
     final renderedBase = textScaler.scale(body.fontSize ?? scale.base);
@@ -112,7 +130,8 @@ final class ReadingTheme {
 
     TextStyle heading(int level) {
       final safeLevel = level.clamp(1, 6);
-      final drawn = type.serif(
+      final drawn = type.reading(
+        mode,
         color: safeLevel <= 4
             ? emphasised(emphasis[safeLevel - 1])
             : receded(recession),
@@ -161,7 +180,8 @@ final class ReadingTheme {
       quote: body.copyWith(color: p.muted),
       marker: body.copyWith(color: p.muted),
       tableHead: _onBeat(
-        type.serif(
+        type.reading(
+          mode,
           color: p.ink,
           size: scale.tableText,
           weight: FontWeight.w600,
@@ -170,7 +190,7 @@ final class ReadingTheme {
         textScaler,
       ).copyWith(fontFeatures: tabular, letterSpacing: tracking),
       tableBody: _onBeat(
-        type.serif(color: p.ink, size: scale.tableText),
+        type.reading(mode, color: p.ink, size: scale.tableText),
         unit,
         textScaler,
       ).copyWith(fontFeatures: tabular, letterSpacing: tracking),

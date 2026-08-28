@@ -8,6 +8,7 @@ import 'api/highlighting/shiki_code_highlighter.dart';
 import 'api/layout/panel_widths.dart';
 import 'api/theme/font_licences.dart';
 import 'presentation/theme/reading_scale.dart';
+import 'presentation/theme/reading_mode.dart';
 import 'api/reader_controller.dart';
 import 'api/reader_source_opener.dart';
 import 'presentation/theme/theme_choice.dart';
@@ -166,6 +167,9 @@ Future<void> main() async {
           await platform.readPreference(paragraphsPreference),
         ),
       );
+  final readingMode = ReadingMode.fromStored(
+    await platform.readPreference(readingModePreference),
+  );
   final panelWidths = PanelWidths.fromStored(
     await platform.readPreference(shelfWidthPreference),
     await platform.readPreference(outlineWidthPreference),
@@ -243,6 +247,7 @@ Future<void> main() async {
     sampleFolder: SampleFolderScanner.ref,
     themes: themes,
     themeChoice: themeChoice,
+    readingMode: readingMode,
     readingScale: readingScale,
     panelWidths: panelWidths,
     shelfLabelMode: shelfLabelMode,
