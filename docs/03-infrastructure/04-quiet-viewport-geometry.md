@@ -101,7 +101,9 @@ The package proofs live in `packages/quiet_viewport/test`, including retained
 measurement and lookup after suffix replacement. Visual MD verifies the adapter
 in `test/infrastructure/quiet_document_viewport_geometry_test.dart`.
 `test/presentation/geometry_sliver_list_test.dart` proves direct far seeking,
-pre-paint measurement correction, and stable layout-epoch changes.
+pre-paint measurement correction, stable layout-epoch changes, and the tail
+correction required when a large estimate collapses above the current scroll
+coordinate.
 `test/presentation/quiet_scrollbar_test.dart` proves both tail growth and a
 physical anchor correction leave a visible thumb exactly unchanged.
 `integration_test/resize_performance_test.dart` proves six width epochs visit

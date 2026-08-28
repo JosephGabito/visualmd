@@ -55,6 +55,14 @@ all estimates change together and the same anchor is compensated once
 (`lib/api/render/geometry_sliver_list.dart`,
 `lib/api/render/document_view.dart`).
 
+An overestimate can collapse the tail past the current scroll coordinate. In
+that case every child just laid out is technically above the corrected
+viewport. Returning an empty sliver would make the document disappear for one
+paint while Flutter catches up. `GeometrySliverList` instead corrects to the
+last coordinate which can fill the viewport before paint. The reader therefore
+keeps visible content through the same estimate correction which updates its
+scroll extent (`lib/api/render/geometry_sliver_list.dart`).
+
 `_BlockSequence` owns order-sensitive gaps and indents at every depth
 (`lib/api/render/document_view.dart`). After rendering the current block it
 spends `theme.spaceAfter(current, next)`, then advances. The final block spends
