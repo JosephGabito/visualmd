@@ -378,6 +378,17 @@ slope (`lib/infrastructure/markdown/markdown_document_parser.dart`,
 `test/infrastructure/incremental_markdown_parser_test.dart`,
 `benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
 
+One boundary remains inside that retained paragraph. If a later publication
+grows or closes an unresolved delimiter after the checkpoint, source parsing
+still visits only the small unresolved tail, but the current append-only proof
+may compare the complete retained inline-run prefix. Delimiter closure also
+forces full visible-text metric reconstruction because the domain has no typed
+inline-tail replacement yet. The native 10k/100k/1M fixture holds parsed input
+at 26–40 characters while growth rises from 0.067 ms to 7.903 ms and closure
+rises from 0.089 ms to 9.008 ms. Those numbers isolate mutation discovery from
+Markdown parsing; they are a recorded next boundary, not a constant-work claim
+(`benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
+
 ## Failure and recovery
 
 It does not throw. Markup with no mapping becomes `RawBlock`

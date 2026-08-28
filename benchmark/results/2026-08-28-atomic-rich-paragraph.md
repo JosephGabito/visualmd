@@ -30,11 +30,12 @@ parser, and no partial geometry is ever published to the scrollbar.
 | Source characters parsed for that append | 1,000,122 | 58 |
 | Scroll delta during append | 0 px | 0 px |
 
-The append path is now bounded by the incoming suffix on the accepted
-single-line checkpoint path. Initial parsing remains O(source), and ambiguous
-or block-changing syntax remains an explicit fallback. The sections below keep
-each intermediate baseline so the result can be reproduced rather than merely
-asserted.
+The closed-suffix path is now bounded by the incoming source after an accepted
+single-line checkpoint. Initial parsing remains O(source). A later section
+shows the next boundary honestly: growing or closing an unresolved inline tail
+parses bounded source but still scans the retained run prefix to construct its
+mutation. The sections below keep each intermediate baseline so the result can
+be reproduced rather than merely asserted.
 
 ## Environment
 
@@ -292,3 +293,32 @@ fixture still records 7.10 seconds for opening this deliberately dense
 million-character Markdown paragraph. Multi-line block reinterpretation and
 ambiguous inline tails remain explicit fallbacks rather than being called
 constant work.
+
+## Unresolved inline-tail baseline
+
+The stable checkpoint makes source parsing suffix-bounded, but the next
+publication contract still assumes that an inline tree either appends or is
+replaced in full. The harness therefore pauses inside `**unfinished`, grows
+that unresolved text by 10 characters, then appends 14 characters which close
+the emphasis. Both operations parse only the unresolved source after the
+checkpoint:
+
+| Existing Markdown | Prior inline runs | Growth parsed | Growth wall | Closure parsed | Closure wall | Closure append proof |
+|---:|---:|---:|---:|---:|---:|:---:|
+| 10,070 | 638 | 26 | 0.067 ms | 40 | 0.089 ms | no |
+| 100,035 | 6,320 | 26 | 0.663 ms | 40 | 0.735 ms | no |
+| 1,000,065 | 63,164 | 26 | 7.903 ms | 40 | 9.008 ms | no |
+
+The parsed-character counts are constant while elapsed time grows almost
+exactly with retained inline-run count. On unresolved growth, `_inlineAppend`
+walks the complete prefix to recover a one-run suffix proof. On delimiter
+closure, that comparison reaches the old final run, correctly rejects an
+append, and `DocumentBlock` then recomputes visible-text metrics across the
+complete revised tree. Presentation must also treat the closure as a complete
+rich replacement.
+
+The next contract needs a parser-owned stable-prefix boundary and an inline
+tail replacement carrying both removed and replacement runs. Consumers can
+then replace only the range and visual lines owned by that uncertain tail.
+This section is the pre-change proof; it does not claim the closure path is
+constant yet.
