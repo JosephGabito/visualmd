@@ -97,6 +97,9 @@ Its steady-state work is O(new suffix + previous final line), without making
 the package depend on Flutter or on one typography system. A width, face,
 scale, locale, direction, or feature change is a new layout epoch and must use
 `replace`, because each can legitimately change every line boundary.
+When a host can prove that a completed projection changes only a known visual
+suffix, `replaceTail` retains every line before that boundary and resolves only
+the revised tail.
 
 ## Revision fencing
 

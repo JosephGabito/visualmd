@@ -90,6 +90,28 @@ final class AppendWrapIndex {
     _indexToEnd();
   }
 
+  /// Re-resolves a declared visual-line suffix without visiting its prefix.
+  ///
+  /// The caller owns the semantic proof that [source] is unchanged before the
+  /// start of [line]. This is the layout counterpart of a revisioned tail
+  /// mutation: finalized punctuation, a widow binding, or another bounded
+  /// projection may change line breaks near the end while every earlier line
+  /// remains authoritative.
+  void replaceTail({required int line, required String source}) {
+    RangeError.checkValidIndex(line, this, 'line', length);
+    final start = _starts[line];
+    if (source.length < start) {
+      throw StateError(
+        'Replacement source length ${source.length} precedes line $line at '
+        '$start.',
+      );
+    }
+    _source = source;
+    _starts.removeRange(line + 1, _starts.length);
+    _indexedLength = start;
+    _indexToEnd();
+  }
+
   VisualLineRange rangeAt(int index) {
     RangeError.checkValidIndex(index, this, 'index', length);
     return VisualLineRange(
