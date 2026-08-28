@@ -139,3 +139,24 @@ window. In the 100,056-character fixture the middle seek falls from 8.2 ms to
 3.2 ms; the deliberately dense million-character fixture falls from 17.5 ms
 to 15.0 ms. The complete extent remains bit-for-bit unchanged, so this changes
 retained span work rather than scrollbar physics.
+
+## Rich stream-append baseline
+
+Viewport bounding does not by itself make a rich paragraph streamable. The
+same native journey now appends one 51-character suffix containing plain,
+strong and inline-code runs while the reader is parked halfway through the
+paragraph:
+
+| Existing characters | Appended | Append wall | Indexing pumps | Worst index step | Append frame worst | Mounted after | Scroll delta |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10,032 | 51 | 683 ms | 0 | 0 ms | 18.1 ms | 10,083 | 0 px |
+| 100,056 | 51 | 674 ms | 0 | 7.8 ms | 7.1 ms | 1,650 | 0 px |
+| 1,000,032 | 51 | 1.96 s | 119 | 7.4 ms | 37.9 ms | 1,650 | 0 px |
+
+The parked reader and constant mounted span count prove that presentation no
+longer scales with the complete paragraph. The append wall time and 119 pumps
+prove a different defect: an unproven rich revision reconstructs the complete
+source-range index and complete line index before atomic publication. Repeating
+that work for token-sized AI deltas is quadratic in the generated paragraph.
+The next intervention needs a parser-owned inline append proof and retained
+range/line indexes; lowering another widget constant cannot solve this slope.

@@ -101,6 +101,42 @@ void main() {
 
       final mountedCharacters = _mountedCharacters();
       final windowed = find.byType(WindowedRichParagraph).evaluate().isNotEmpty;
+
+      const suffix = <Inline>[
+        TextRun(' A streamed '),
+        MarkedRun(InlineMark.strong, [TextRun('styled')]),
+        TextRun(' suffix with '),
+        CodeRun('inline_code'),
+        TextRun(' arrives.'),
+      ];
+      final appended = _reading(characters, suffix: suffix);
+      final pixelsBeforeAppend = position.pixels;
+      final appendFramesStart = timings.length;
+      final appendClock = Stopwatch()..start();
+      var appendedIndexedCharacters = 0;
+      final appendIndexSteps = <Duration>[];
+      await tester.pumpWidget(
+        _app(
+          appended,
+          onSourceIndexed: (value) => appendedIndexedCharacters = value,
+          onIndexStep: (_, elapsed) => appendIndexSteps.add(elapsed),
+        ),
+      );
+      await tester.pumpAndSettle();
+      var appendIndexingPumps = 0;
+      while (windowed && appendedIndexedCharacters < appended.source.length) {
+        await tester.pump(const Duration(milliseconds: 1));
+        appendIndexingPumps++;
+        expect(appendIndexingPumps, lessThan(400));
+      }
+      appendClock.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await tester.pump();
+      final appendFrames = _frameSummary(
+        timings.skip(appendFramesStart).toList(growable: false),
+      );
+      final pixelsAfterAppend = position.pixels;
+
       runs.add({
         'source_characters': reading.source.length,
         'inline_runs': runCount,
@@ -114,6 +150,17 @@ void main() {
         'open_frames': openFrames,
         'middle_seek_wall_us': seekClock.elapsedMicroseconds,
         'middle_seek_frames': seekFrames,
+        'append_characters': appended.source.length - reading.source.length,
+        'append_indexing_pumps': appendIndexingPumps,
+        'append_index_step_worst_us': appendIndexSteps.isEmpty
+            ? 0
+            : appendIndexSteps
+                  .map((step) => step.inMicroseconds)
+                  .reduce(math.max),
+        'append_wall_us': appendClock.elapsedMicroseconds,
+        'append_frames': appendFrames,
+        'append_mounted_characters': _mountedCharacters(),
+        'append_scroll_delta': pixelsAfterAppend - pixelsBeforeAppend,
         'maximum_scroll_extent': position.maxScrollExtent,
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
       });
@@ -123,6 +170,7 @@ void main() {
         windowed ? lessThan(5000) : reading.source.length,
       );
       expect(position.maxScrollExtent, greaterThan(0));
+      expect(pixelsAfterAppend, pixelsBeforeAppend);
       expect(tester.takeException(), isNull);
     }
 
@@ -168,8 +216,11 @@ Widget _app(
   ),
 );
 
-DocumentReading _reading(int minimumCharacters) {
-  final runs = _richRuns(minimumCharacters);
+DocumentReading _reading(
+  int minimumCharacters, {
+  List<Inline> suffix = const [],
+}) {
+  final runs = [..._richRuns(minimumCharacters), ...suffix];
   final source = runs.map((run) => run.text).join();
   final id = DocumentId(
     const LibraryRootId('atomic-rich-paragraph-benchmark'),

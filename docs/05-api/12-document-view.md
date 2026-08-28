@@ -337,3 +337,12 @@ needs a separate geometry, semantics or navigation contract. The native
 rich-atomic benchmark records the current boundary
 (`integration_test/atomic_rich_paragraph_performance_test.dart`,
 `benchmark/results/2026-08-28-atomic-rich-paragraph.md`).
+
+Rich rendering is bounded, but rich streaming is not yet append-bounded. In
+the native fixture, adding 51 styled characters to a 1,000,032-character
+provisional paragraph keeps only 1,650 characters mounted and moves the parked
+reader by exactly zero pixels, yet takes 1.96 seconds and 119 indexing pumps.
+The parser currently advertises `BlockTextAppend` only for one plain `TextRun`
+or an open code block, so an ordinary rich suffix is an unproven replacement
+and both retained indexes must be reconstructed. This is recorded as the next
+streaming contract boundary, not described as solved.
