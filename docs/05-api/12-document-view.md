@@ -367,7 +367,7 @@ range eligibility means a proven suffix checks only its new runs. This lowers
 the million-character append build from 25.0 ms to 8.7 ms; the 100,056-
 character fixture takes 3.5 ms. A flat paragraph source is still consumed by
 Flutter's text and semantics APIs, but an isolated native measurement puts its
-one-million-character tail replacement at 0.132 ms and first hash at 0.795 ms;
+one-million-character tail replacement at 0.218 ms and first hash at 0.806 ms;
 first-strong direction resolves below microsecond resolution.
 The native delimiter-closure journey indexes exactly 88 characters at both
 100,035 and 1,000,065 source characters, keeps 1,650 mounted, and moves the
@@ -377,3 +377,14 @@ controls. A range-safe paragraph already proves that neither can exist. Reusing
 that fact removes both prefix scans and lowers the same builds to 2.17 ms and
 1.41 ms respectively. Parser, block metrics, range indexing, line geometry and
 the presentation queries are now all suffix-bounded.
+
+A sustained native journey repeats the harder case rather than extrapolating
+from one closure: 60 revisions grow, close and reopen strong delimiters against
+one million existing source characters. The parser promotes internally settled
+whitespace boundaries before the next unresolved delimiter, while separately
+parsing and displaying the still-live remainder. Every revision is checked
+against the canonical full Markdown parser. Parsed work tops out at 42
+characters, range and wrap work at 90 characters, build p99 at 1.86 ms and
+total-frame p99 at 4.72 ms. Only 1,716 characters remain mounted. Across all 60
+revisions the parked reader, scrollbar thumb position and scrollbar thumb
+height each move exactly 0 px (`lib/infrastructure/markdown/markdown_document_parser.dart`).

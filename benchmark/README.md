@@ -236,6 +236,11 @@ windowed open and seek cost, then appends a 51-character styled suffix while
 parked in the middle to expose whether retained rich indexes scale with the
 incoming delta or the complete provisional paragraph:
 
+The same journey then publishes 60 delimiter mutations against a
+one-million-character provisional paragraph while a scrollbar interaction
+epoch remains open. It records parser and range work, frame distributions,
+mounted text, memory, reader position and the scrollbar thumb rectangle.
+
 ```sh
 flutter drive --profile \
   --dart-define=INTEGRATION_TEST_SHOULD_REPORT_RESULTS_TO_NATIVE=false \
