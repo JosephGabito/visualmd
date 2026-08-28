@@ -32,6 +32,7 @@ final class _ReadableMathBlockState extends State<ReadableMathBlock> {
   final _scroll = ScrollController();
   Timer? _copyFeedback;
   var _hovered = false;
+  var _focused = false;
   var _copied = false;
 
   Future<void> _copy() async {
@@ -55,6 +56,8 @@ final class _ReadableMathBlockState extends State<ReadableMathBlock> {
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final source = widget.source;
+    final visibleAction = _hovered || _focused;
+    final still = MediaQuery.disableAnimationsOf(context);
     final display = _DisplayEquation.parse(source);
     final equation = Semantics(
       container: true,
@@ -111,24 +114,30 @@ final class _ReadableMathBlockState extends State<ReadableMathBlock> {
             end: 0,
             child: SelectionContainer.disabled(
               child: IgnorePointer(
-                ignoring: !_hovered,
+                ignoring: !visibleAction,
                 child: AnimatedOpacity(
                   key: const ValueKey('math-copy-visibility'),
-                  opacity: _hovered ? 1 : 0,
-                  duration: const Duration(milliseconds: 120),
-                  child: IconButton(
-                    key: const ValueKey('math-copy'),
-                    tooltip: _copied
-                        ? 'Equation copied'
-                        : 'Copy equation as TeX',
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 16,
-                    color: theme.palette.muted,
-                    onPressed: _copy,
-                    icon: Icon(
-                      _copied
-                          ? Icons.check_rounded
-                          : Icons.content_copy_rounded,
+                  opacity: visibleAction ? 1 : 0,
+                  duration: still
+                      ? Duration.zero
+                      : const Duration(milliseconds: 120),
+                  child: Focus(
+                    onFocusChange: (focused) =>
+                        setState(() => _focused = focused),
+                    child: IconButton(
+                      key: const ValueKey('math-copy'),
+                      tooltip: _copied
+                          ? 'Equation copied'
+                          : 'Copy equation as TeX',
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 16,
+                      color: theme.palette.muted,
+                      onPressed: _copy,
+                      icon: Icon(
+                        _copied
+                            ? Icons.check_rounded
+                            : Icons.content_copy_rounded,
+                      ),
                     ),
                   ),
                 ),
