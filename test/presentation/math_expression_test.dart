@@ -24,6 +24,7 @@ void main() {
     double width = 900,
     TextScaler textScaler = TextScaler.noScaling,
     bool dark = false,
+    bool reduceMotion = false,
   }) async {
     tester.view.physicalSize = Size(width, 1200);
     tester.view.devicePixelRatio = 1;
@@ -34,7 +35,9 @@ void main() {
           dark ? BuiltInThemes.lamplight : BuiltInThemes.paper,
         ),
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: textScaler, disableAnimations: reduceMotion),
           child: child!,
         ),
         home: Scaffold(
@@ -226,6 +229,40 @@ void main() {
     await mouse.removePointer();
 
     expect(clipboard, [r'\alpha + \beta']);
+  });
+
+  testWidgets('keyboard focus reveals the equation copy action', (
+    tester,
+  ) async {
+    await pumpDocument(tester, const [MathBlock(r'E = mc^2')]);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.byKey(const ValueKey('math-copy-visibility')),
+          )
+          .opacity,
+      1,
+    );
+    expect(
+      Focus.of(tester.element(find.byKey(const ValueKey('math-copy'))))
+          .hasFocus,
+      isTrue,
+    );
+  });
+
+  testWidgets('Reduce Motion removes the equation-action fade', (tester) async {
+    await pumpDocument(tester, const [
+      MathBlock(r'E = mc^2'),
+    ], reduceMotion: true);
+
+    final visibility = tester.widget<AnimatedOpacity>(
+      find.byKey(const ValueKey('math-copy-visibility')),
+    );
+    expect(visibility.duration, Duration.zero);
   });
 
   testWidgets('math follows accessibility scaling and the active ink', (

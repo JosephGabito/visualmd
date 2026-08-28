@@ -27,8 +27,10 @@ copying the surrounding sentence does not silently lose the equation.
 centred when it fits and scrolls horizontally inside its own region when it
 does not. It has no permanent panel, border, language label or background:
 mathematics is part of the paper, not source shown for transcription. A copy
-action appears on hover without changing the component's geometry and places
-the original TeX on the clipboard.
+action appears on pointer hover or keyboard focus without changing the
+component's geometry and places the original TeX on the clipboard. Its brief
+fade becomes an immediate state change when the system requests reduced motion
+(`lib/api/widgets/math_expression.dart`).
 
 Numbered display equations remain centred on the reading measure while their
 tags sit at its right edge. The selected renderer accepts `\tag` syntax but
