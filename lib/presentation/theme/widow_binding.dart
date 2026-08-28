@@ -5,6 +5,8 @@
 /// one that survives re-flowing text — bind the last two words with a space
 /// that cannot break, so the pair falls together or not at all.
 abstract final class WidowBinding {
+  static final _word = RegExp(r'\S+');
+
   /// A space that no line may break at.
   static const nonBreakingSpace = '\u00A0';
 
@@ -15,9 +17,12 @@ abstract final class WidowBinding {
   /// [text] with the final space bound, when it is worth binding.
   static String bind(String text) {
     if (text.trimRight().length != text.length) return text;
-    final words = text.trim().split(RegExp(r'\s+'));
-    if (words.length < leastWords) return text;
-    return bindLastSpace(text);
+    var words = 0;
+    for (final _ in _word.allMatches(text)) {
+      words++;
+      if (words == leastWords) return bindLastSpace(text);
+    }
+    return text;
   }
 
   /// Binds the final breakable space without making a second decision about

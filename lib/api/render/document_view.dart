@@ -48,14 +48,43 @@ bool _usesWindowedPlainParagraph({
   required BlockCommitment commitment,
   required double indent,
   required bool hasMatches,
-}) =>
-    commitment == BlockCommitment.provisional &&
-    indent == 0 &&
-    !hasMatches &&
-    block is ParagraphBlock &&
-    block.content.length == 1 &&
-    block.content.single is TextRun &&
-    block.content.single.text.length >= _windowedParagraphThreshold;
+}) {
+  if (indent != 0 ||
+      hasMatches ||
+      block is! ParagraphBlock ||
+      block.content.length != 1 ||
+      block.content.single is! TextRun ||
+      block.content.single.text.length < _windowedParagraphThreshold) {
+    return false;
+  }
+  return commitment == BlockCommitment.provisional ||
+      _hasStableProseProjection(block.content.single.text);
+}
+
+/// Whether final composition changes no glyph before widow binding.
+///
+/// A large provisional paragraph deliberately shows authored punctuation.
+/// Final straight quotes, dash runs and ellipses have different advances or
+/// source lengths, so those documents stay on the complete composer until a
+/// range projection can carry exact source-to-glyph offsets.
+bool _hasStableProseProjection(String text) {
+  for (var index = 0; index < text.length; index++) {
+    final unit = text.codeUnitAt(index);
+    if (unit == 34 || unit == 39) return false;
+    if (unit == 45 &&
+        index + 1 < text.length &&
+        text.codeUnitAt(index + 1) == 45) {
+      return false;
+    }
+    if (unit == 46 &&
+        index + 2 < text.length &&
+        text.codeUnitAt(index + 1) == 46 &&
+        text.codeUnitAt(index + 2) == 46) {
+      return false;
+    }
+  }
+  return true;
+}
 
 /// Sets a document on the page.
 ///
@@ -324,6 +353,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             reconcileContainer: true,
             selectionIdentity: entry.id,
             selectionOrder: index,
+            useWindowedParagraph: windowedParagraph,
           );
           final width = DocumentView._widthFor(block, prose, wide);
           final positioned = Align(
@@ -928,6 +958,7 @@ class _BlockView extends StatelessWidget {
   final bool reconcileContainer;
   final DocumentBlockId? selectionIdentity;
   final int selectionOrder;
+  final bool? useWindowedParagraph;
 
   /// The first-line indent this paragraph is set with; 0 for every other kind
   /// of block, and for a paragraph that opens a document or a section.
@@ -952,6 +983,7 @@ class _BlockView extends StatelessWidget {
     required this.reconcileContainer,
     this.selectionIdentity,
     this.selectionOrder = 0,
+    this.useWindowedParagraph,
     this.indent = 0,
   });
 
@@ -962,15 +994,16 @@ class _BlockView extends StatelessWidget {
         // The style comes from the theme in hand, which inside a quotation is
         // the quoting one.
         final identity = selectionIdentity;
-        final paragraph =
+        final windowed =
+            useWindowedParagraph ??
             _usesWindowedPlainParagraph(
-                  block: block,
-                  commitment: commitment,
-                  indent: indent,
-                  hasMatches: composer.matches.isNotEmpty,
-                ) &&
-                identity != null
-            ? WindowedProvisionalParagraph(
+              block: block,
+              commitment: commitment,
+              indent: indent,
+              hasMatches: composer.matches.isNotEmpty,
+            );
+        final paragraph = windowed && identity != null
+            ? WindowedPlainParagraph(
                 source: content.single.text,
                 sourceRevision: sourceRevision,
                 sourceAppend: switch (textAppend) {
@@ -988,6 +1021,7 @@ class _BlockView extends StatelessWidget {
                   content.single.text,
                   fallback: Directionality.of(context),
                 ),
+                finalized: commitment == BlockCommitment.committed,
                 selectionColor: theme.palette.selection,
                 selectionIdentity: identity,
                 selectionOrder: selectionOrder,

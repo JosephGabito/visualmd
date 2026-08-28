@@ -192,8 +192,8 @@ The eager-wrap baseline is retained in
 The atomic-paragraph benchmark isolates the prose form most likely to grow
 without a structural boundary during AI generation. It measures one
 provisional paragraph at 10,000, 100,000, and 1,000,000 characters, including
-initial Flutter line indexing, a seek into its middle, and an adjacent tail
-append while the reader remains there:
+initial Flutter line indexing, a seek into its middle, an adjacent tail append,
+and finalization while the reader remains there:
 
 ```sh
 flutter drive --profile \
