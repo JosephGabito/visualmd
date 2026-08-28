@@ -55,6 +55,7 @@ void main() {
       final information = source('macos/Runner/Info.plist');
       final appInfo = source('macos/Runner/Configs/AppInfo.xcconfig');
       final menu = source('macos/Runner/Base.lproj/MainMenu.xib');
+      final package = source('pubspec.yaml');
 
       expect(
         information,
@@ -76,6 +77,7 @@ void main() {
         contains('Copyright © 2026 Joseph Gabito. All rights reserved.'),
       );
       expect(menu, contains('selector="orderFrontStandardAboutPanel:"'));
+      expect(package, contains('version: 1.0.0+1'));
     });
   });
 }
