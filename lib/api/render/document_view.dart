@@ -359,7 +359,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
             children: [
               _withAnchorTargets(observed, [
                 ...entry.anchors,
-                ..._footnoteReferenceAnchors(block),
+                if (!entry.rangeSafe) ..._footnoteReferenceAnchors(block),
               ], widget.customAnchorKeys),
               if (followingSpace > 0) SizedBox(height: followingSpace),
             ],
@@ -724,7 +724,7 @@ class _BlockSequence extends StatelessWidget {
       children.add(
         _withAnchorTargets(positioned, [
           ...entry.anchors,
-          ..._footnoteReferenceAnchors(block),
+          if (!entry.rangeSafe) ..._footnoteReferenceAnchors(block),
         ], customKeys),
       );
       if (followingSpace > 0) {
@@ -1124,7 +1124,7 @@ class _BlockView extends StatelessWidget {
                 indent: indent,
               );
         return _matchTarget(
-          reconcileContainer && content.any(_containsMath)
+          reconcileContainer && !windowed && content.any(_containsMath)
               ? _RhythmicContainer(
                   beat: theme.baseline,
                   followingSpace: followingSpace,
