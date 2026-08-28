@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_shared.sh"
 prepare_project
+resolve_dependencies
 
 section "Format Dart"
 dart format "${DART_PATHS[@]}"
