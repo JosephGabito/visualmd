@@ -27,6 +27,7 @@ first frame (`macos/Runner/MainFlutterWindow.swift`):
 | `toolbarStyle = .unified` + an empty `NSToolbar` | the zone grows to toolbar height and macOS centres the traffic lights in it | `macos/Runner/MainFlutterWindow.swift` |
 | fullscreen notifications | hide that empty toolbar while no persistent traffic lights need it | `macos/Runner/MainFlutterWindow.swift` |
 | `minSize = 720 × 480` | preserves a usable three-pane layout | `macos/Runner/MainFlutterWindow.swift` |
+| `setFrameAutosaveName("visualmd.main-window")` | lets AppKit save moves and resizes, then restore the last frame on the next launch | `macos/Runner/MainFlutterWindow.swift` |
 
 The empty toolbar is the trick: it has no items and draws nothing, but its
 presence makes the invisible zone tall enough (measured at startup; 52 px if
@@ -70,10 +71,13 @@ None. Window chrome contributes layout and interaction, not domain activity.
 
 ## Lifecycle
 
-Native settings and fullscreen observers are installed when the window wakes.
-The adapter measures once at startup; the bar does not re-measure if the system
-changes title-bar metrics mid-session. The observers leave with the window
-(`macos/Runner/MainFlutterWindow.swift`).
+Native settings, frame autosave, and fullscreen observers are installed when
+the window wakes. AppKit restores the named frame when one exists and otherwise
+leaves the 1280 × 800 frame from `MainMenu.xib` in place. It then saves later
+moves and resizes under that same name. The adapter measures once at startup;
+the bar does not re-measure if the system changes title-bar metrics mid-session.
+The observers leave with the window (`macos/Runner/MainFlutterWindow.swift`,
+`macos/Runner/Base.lproj/MainMenu.xib`).
 
 ## Failure and recovery
 
@@ -82,6 +86,8 @@ changes title-bar metrics mid-session. The observers leave with the window
   (`lib/infrastructure/platform/platform_io.dart`).
 - If `window_manager` ever failed to initialise, `createPlatformAdapters`
   would throw before `runApp`; there is no degraded mode today.
+- A missing saved frame is the normal first-launch case: AppKit keeps the
+  1280 × 800 nib frame rather than inventing a second fallback.
 - Verified by screenshot on macOS 26 on 2026-08-22: lights centred, no overlap.
   Drag and double-click zoom are not yet confirmed by hand.
 - Fullscreen toolbar visibility is guarded by a source-level platform test and
