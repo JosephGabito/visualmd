@@ -72,15 +72,18 @@ than becoming accidental navigation (`lib/api/reader_controller.dart`).
 
 ## Preferences
 
-The same controller owns transient panel, typography and theme choices. Theme,
-reading mode, text size, paragraph marking, shelf width and outline width each
-have a named storage key (`lib/api/reader_controller.dart`,
-`lib/api/reader_controller.dart`). Previewing a panel resize notifies
-continuously; persistence happens only on commit or reset.
+The same controller owns wide-panel, typography and theme choices. Theme,
+reading mode, text size, paragraph marking, shelf and outline visibility, and
+each panel width have a named storage key (`lib/api/reader_controller.dart`).
+Previewing a panel resize notifies
+continuously; width persistence happens only on commit or reset.
 
 The platform stores opaque strings. It never needs to know what a theme choice
-or panel width means (`lib/main.dart`, `lib/main.dart`). Folder membership and
-root order are deliberately not preferences yet.
+or panel preference means. Startup accepts only exact stored booleans and keeps
+each panel visible for absent or unrecognized values (`lib/main.dart`). Compact
+panel overlays remain transient shell state rather than changing those wide
+preferences (`lib/api/screens/reader_screen.dart`). Folder membership and root
+order are deliberately not preferences yet.
 
 ## Inputs and outputs
 

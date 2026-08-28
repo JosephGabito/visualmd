@@ -238,6 +238,8 @@ void main() {
     Stream<ReaderUiCommand>? uiCommands,
     DocumentSearch? documentSearch,
     double topBarLeadingInset = 8,
+    bool shelfVisible = true,
+    bool outlineVisible = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -273,6 +275,8 @@ void main() {
       sampleFolder: const FolderRef(id: 'sample', name: 'notes'),
       themes: ThemeRegistry(),
       panelWidths: panelWidths,
+      shelfVisible: shelfVisible,
+      outlineVisible: outlineVisible,
       savePreference: (key, value) async => saved.add((key, value)),
     );
     if (withLibrary) await controller.openSampleLibrary();
@@ -565,6 +569,15 @@ void main() {
     await press.up();
     await tester.pumpAndSettle();
     expect(find.byType(ShelfPanel), findsNothing);
+    expect(saved, [(shelfVisiblePreference, 'false')]);
+
+    await tester.tap(barButton(tester, 'Show shelf'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsOneWidget);
+    expect(saved, [
+      (shelfVisiblePreference, 'false'),
+      (shelfVisiblePreference, 'true'),
+    ]);
   });
 
   testWidgets('the shelf slides out rather than vanishing', (tester) async {
@@ -769,10 +782,15 @@ void main() {
     await press.up();
     await tester.pumpAndSettle();
     expect(find.byType(OutlinePanel), findsNothing);
+    expect(saved, [(outlineVisiblePreference, 'false')]);
 
     await tester.tap(barButton(tester, 'Show outline'));
     await tester.pumpAndSettle();
     expect(find.byType(OutlinePanel), findsOneWidget);
+    expect(saved, [
+      (outlineVisiblePreference, 'false'),
+      (outlineVisiblePreference, 'true'),
+    ]);
   });
 
   testWidgets('each wide panel follows its own resize seam and remembers it', (
@@ -943,8 +961,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ShelfPanel), findsNothing);
       expect(find.byType(OutlinePanel), findsOneWidget);
+      expect(controller.shelfVisible, isTrue);
+      expect(controller.outlineVisible, isTrue);
+      expect(saved, isEmpty);
     },
   );
+
+  testWidgets('restored panel choices set the initial wide layout', (
+    tester,
+  ) async {
+    await pumpReader(tester, shelfVisible: false, outlineVisible: false);
+
+    expect(find.byType(ShelfPanel), findsNothing);
+    expect(find.byType(OutlinePanel), findsNothing);
+    expect(barButton(tester, 'Show shelf'), findsOneWidget);
+    expect(barButton(tester, 'Show outline'), findsOneWidget);
+    expect(saved, isEmpty);
+  });
 
   testWidgets('Command-Period cancels search instead of toggling the outline', (
     tester,

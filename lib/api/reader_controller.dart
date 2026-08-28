@@ -131,6 +131,8 @@ final class ReaderController extends ChangeNotifier {
     ReadingMode? readingMode,
     ReadingScale? readingScale,
     PanelWidths? panelWidths,
+    bool shelfVisible = true,
+    bool outlineVisible = true,
     ShelfLabelMode? shelfLabelMode,
     SourceWatchCoordinator? sourceChanges,
     Future<void> Function(String key, String value)? savePreference,
@@ -157,6 +159,8 @@ final class ReaderController extends ChangeNotifier {
        readingMode = readingMode ?? ReadingMode.serif,
        readingScale = readingScale ?? ReadingScale.comfortable,
        panelWidths = panelWidths ?? const PanelWidths(),
+       shelfVisible = shelfVisible,
+       outlineVisible = outlineVisible,
        shelfLabelMode = shelfLabelMode ?? ShelfLabelMode.title,
        workspaceSession = workspaceSession {
     _appearance = ValueNotifier(
@@ -189,8 +193,8 @@ final class ReaderController extends ChangeNotifier {
   DocumentId? _failedDocumentOpen;
   var _searchAttempt = 0;
   int contentRevision = 0;
-  bool shelfVisible = true;
-  bool outlineVisible = true;
+  bool shelfVisible;
+  bool outlineVisible;
   WorkspaceSession? workspaceSession;
 
   String? get workspaceName => workspaceSession?.file?.name;
@@ -666,11 +670,15 @@ final class ReaderController extends ChangeNotifier {
   void toggleShelf() {
     shelfVisible = !shelfVisible;
     notifyListeners();
+    unawaited(_savePreference(shelfVisiblePreference, shelfVisible.toString()));
   }
 
   void toggleOutline() {
     outlineVisible = !outlineVisible;
     notifyListeners();
+    unawaited(
+      _savePreference(outlineVisiblePreference, outlineVisible.toString()),
+    );
   }
 
   /// The theme to wear for the system's brightness.
@@ -867,4 +875,6 @@ const textSizePreference = 'textSize';
 const paragraphsPreference = 'paragraphs';
 const shelfWidthPreference = 'shelfWidth';
 const outlineWidthPreference = 'outlineWidth';
+const shelfVisiblePreference = 'shelfVisible';
+const outlineVisiblePreference = 'outlineVisible';
 const shelfLabelModePreference = 'shelfLabelMode';
