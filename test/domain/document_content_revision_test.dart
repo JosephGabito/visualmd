@@ -118,10 +118,7 @@ void main() {
         ),
         inlineTailReplace: BlockInlineTailReplace(
           baseRevision: 1,
-          retainedPrefix: const BlockTextMetrics(
-            codeUnits: 0,
-            lineBreaks: 0,
-          ),
+          retainedPrefix: const BlockTextMetrics(codeUnits: 0, lineBreaks: 0),
           runs: const [TextRun('new')],
         ),
       ),
