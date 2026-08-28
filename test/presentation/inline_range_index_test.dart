@@ -55,6 +55,35 @@ void main() {
     ]);
   });
 
+  test('a proven suffix extends the index without changing earlier ranges', () {
+    final index = InlineRangeIndex(content);
+    final appended = index.append(const [
+      TextRun(' five '),
+      MarkedRun(InlineMark.strong, [TextRun('six')]),
+    ]);
+
+    expect(appended.source, '${index.source} five six');
+    expect(
+      appended.slice(0, index.length).map((run) => run.text).join(),
+      index.source,
+    );
+    expect(
+      appended.slice(7, 17).map((run) => run.text).join(),
+      index.slice(7, 17).map((run) => run.text).join(),
+    );
+    final suffix = appended.slice(index.length, appended.length);
+    expect(suffix.first, const TextRun(' five '));
+    final marked = suffix.last as MarkedRun;
+    expect(marked.mark, InlineMark.strong);
+    expect(marked.children, const [TextRun('six')]);
+  });
+
+  test('an unsupported suffix cannot enter a range-safe index', () {
+    final index = InlineRangeIndex(content);
+
+    expect(() => index.append(const [MathRun('x')]), throwsArgumentError);
+  });
+
   test('progressive indexing publishes only one complete immutable result', () {
     final builder = ProgressiveInlineRangeIndex.fromSupported(content);
 

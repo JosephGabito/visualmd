@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../domain/reading/content/document_content.dart';
 import '../../domain/reading/content/inline.dart';
 import '../../presentation/theme/typographic_punctuation.dart';
 import '../render/inline_composer.dart';
@@ -17,6 +18,7 @@ import 'windowed_paragraph.dart';
 final class WindowedRichParagraph extends StatefulWidget {
   final List<Inline> content;
   final int sourceRevision;
+  final BlockInlineAppend? inlineAppend;
   final InlineComposer composer;
   final int documentOffset;
   final TextStyle style;
@@ -33,6 +35,7 @@ final class WindowedRichParagraph extends StatefulWidget {
     super.key,
     required this.content,
     required this.sourceRevision,
+    this.inlineAppend,
     required this.composer,
     required this.documentOffset,
     required this.style,
@@ -64,6 +67,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
   ProgressiveInlineRangeIndex? _pending;
   var _indexRevision = -1;
   var _indexFinalized = false;
+  ParagraphSourceAppend? _sourceAppend;
   var _epoch = 0;
   int? _scheduledEpoch;
 
@@ -78,6 +82,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sourceRevision != widget.sourceRevision ||
         !identical(oldWidget.content, widget.content)) {
+      if (_applyInlineAppend()) return;
       _beginIndex();
     }
   }
@@ -109,6 +114,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
     return WindowedPlainParagraph(
       source: index.source,
       sourceRevision: replacing ? _indexRevision : widget.sourceRevision,
+      sourceAppend: replacing ? null : _sourceAppend,
       style: widget.style,
       textScaler: widget.textScaler,
       strutStyle: widget.strutStyle,
@@ -142,8 +148,34 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
 
   void _beginIndex() {
     final epoch = ++_epoch;
+    _sourceAppend = null;
     _pending = ProgressiveInlineRangeIndex.fromSupported(widget.content);
     _scheduleIndex(epoch);
+  }
+
+  bool _applyInlineAppend() {
+    final proof = widget.inlineAppend;
+    final index = _index;
+    if (_pending != null ||
+        proof == null ||
+        index == null ||
+        _indexFinalized ||
+        widget.finalized ||
+        proof.baseRevision != _indexRevision ||
+        widget.sourceRevision <= _indexRevision ||
+        !InlineRangeIndex.supports(proof.runs)) {
+      return false;
+    }
+
+    final appended = index.append(proof.runs);
+    _index = appended;
+    _indexRevision = widget.sourceRevision;
+    _indexFinalized = false;
+    _sourceAppend = ParagraphSourceAppend(
+      baseRevision: proof.baseRevision,
+      text: proof.runs.map((run) => run.text).join(),
+    );
+    return true;
   }
 
   void _scheduleIndex(int epoch) {
@@ -178,6 +210,7 @@ final class _WindowedRichParagraphState extends State<WindowedRichParagraph> {
           _index = pending.result;
           _indexRevision = widget.sourceRevision;
           _indexFinalized = widget.finalized;
+          _sourceAppend = null;
           _pending = null;
         });
       } else {

@@ -241,7 +241,12 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
         pending
           ..modelSource = widget.source
           ..revision = widget.sourceRevision;
-        pending.projection.update(widget.source, finalized: widget.finalized);
+        pending.projection.update(
+          widget.source,
+          finalized: widget.finalized,
+          widowOffsetFor: widget.widowOffsetFor,
+          rangeProjector: widget.rangeProjector,
+        );
         pending.lines.stageAppend(
           baseLength: pending.lines.sourceLength,
           source: pending.modelSource,
@@ -268,7 +273,12 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
           widget.sourceRevision > _indexedRevision &&
           _indexedSourceLength + append.text.length == widget.source.length;
       if (directAppend) {
-        _projection!.update(widget.source, finalized: widget.finalized);
+        _projection!.update(
+          widget.source,
+          finalized: widget.finalized,
+          widowOffsetFor: widget.widowOffsetFor,
+          rangeProjector: widget.rangeProjector,
+        );
         _lines!.stageAppend(
           baseLength: _indexedSourceLength,
           source: widget.source,
@@ -292,7 +302,12 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     if (!_indexedFinalized &&
         widget.finalized &&
         _indexedSourceLength == widget.source.length) {
-      _projection!.update(widget.source, finalized: true);
+      _projection!.update(
+        widget.source,
+        finalized: true,
+        widowOffsetFor: widget.widowOffsetFor,
+        rangeProjector: widget.rangeProjector,
+      );
       var indexedCodeUnits = 0;
       final widowOffset = _projection!.widowOffset;
       if (widowOffset != null) {
@@ -319,7 +334,12 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
         _indexedSourceLength + append.text.length == widget.source.length;
     if (directAppend) {
       _modelSource = widget.source;
-      _projection!.update(widget.source, finalized: false);
+      _projection!.update(
+        widget.source,
+        finalized: false,
+        widowOffsetFor: widget.widowOffsetFor,
+        rangeProjector: widget.rangeProjector,
+      );
       _lines!.append(baseLength: _indexedSourceLength, source: widget.source);
     } else {
       _beginReplacementIndex(width);
@@ -643,8 +663,8 @@ final class _ParagraphProjection {
   String source;
   bool finalized;
   int? widowOffset;
-  final ParagraphWidowOffset widowOffsetFor;
-  final WindowedParagraphProjector? rangeProjector;
+  ParagraphWidowOffset widowOffsetFor;
+  WindowedParagraphProjector? rangeProjector;
   final Map<int, String?> previousBySourceOffset = {0: null};
 
   _ParagraphProjection(
@@ -654,9 +674,16 @@ final class _ParagraphProjection {
     required this.rangeProjector,
   }) : widowOffset = finalized ? widowOffsetFor(source) : null;
 
-  void update(String next, {required bool finalized}) {
+  void update(
+    String next, {
+    required bool finalized,
+    required ParagraphWidowOffset widowOffsetFor,
+    required WindowedParagraphProjector? rangeProjector,
+  }) {
     source = next;
     this.finalized = finalized;
+    this.widowOffsetFor = widowOffsetFor;
+    this.rangeProjector = rangeProjector;
     widowOffset = finalized ? widowOffsetFor(next) : null;
   }
 }

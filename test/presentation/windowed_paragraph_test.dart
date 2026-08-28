@@ -329,6 +329,73 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a proven rich append indexes only its final line and keeps the viewport fixed',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final indexed = <int>[];
+      final initial = _richParagraph(800);
+      const suffix = <Inline>[
+        TextRun(' A streamed '),
+        MarkedRun(InlineMark.strong, [TextRun('styled')]),
+        TextRun(' suffix with '),
+        CodeRun('inline_code'),
+        TextRun(' arrives.'),
+      ];
+
+      await tester.pumpWidget(
+        _page(_richContent(initial, revision: 1), onSourceIndexed: indexed.add),
+      );
+      await tester.pumpAndSettle();
+      final retained = find.byType(WindowedRichParagraph).evaluate().single;
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      position.jumpTo(position.maxScrollExtent * 0.5);
+      await tester.pumpAndSettle();
+      final pixels = position.pixels;
+
+      await tester.pumpWidget(
+        _page(
+          _richContent(
+            ParagraphBlock([...initial.content, ...suffix]),
+            revision: 2,
+            inlineAppend: BlockInlineAppend(baseRevision: 1, runs: suffix),
+          ),
+          onSourceIndexed: indexed.add,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final nextPosition = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      expect(
+        identical(
+          find.byType(WindowedRichParagraph).evaluate().single,
+          retained,
+        ),
+        isTrue,
+      );
+      expect(nextPosition.pixels, pixels);
+      expect(indexed, hasLength(2));
+      expect(
+        indexed.last,
+        lessThan(
+          suffix.map((run) => run.text.length).fold(0, (a, b) => a + b) + 256,
+        ),
+      );
+      expect(_renderedWindow().length, lessThan(5000));
+      expect(
+        find.byKey(const ValueKey('rich-paragraph-indexing')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('a proven append indexes only the old final line and suffix', (
     tester,
   ) async {
@@ -559,12 +626,14 @@ DocumentContent _content(
 DocumentContent _richContent(
   ParagraphBlock paragraph, {
   required int revision,
+  BlockInlineAppend? inlineAppend,
 }) => DocumentContent.revisioned([
   DocumentBlock(
     id: const DocumentBlockId('provisional-rich-paragraph'),
     revision: revision,
     commitment: BlockCommitment.provisional,
     block: paragraph,
+    inlineAppend: inlineAppend,
   ),
 ], revision: revision);
 
