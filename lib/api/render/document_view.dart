@@ -23,6 +23,8 @@ import '../widgets/math_expression.dart';
 import '../widgets/mermaid_diagram.dart';
 import '../widgets/model_backed_selection_area.dart';
 import '../widgets/windowed_paragraph.dart';
+import '../widgets/windowed_rich_paragraph.dart';
+import 'inline_range_index.dart';
 import 'inline_composer.dart';
 import 'geometry_sliver_list.dart';
 import 'reading_direction.dart';
@@ -43,20 +45,16 @@ abstract final class ParagraphRules {
 
 const _windowedParagraphThreshold = 32768;
 
-bool _usesWindowedPlainParagraph({
+bool _usesWindowedTextParagraph({
   required Block block,
   required double indent,
   required bool hasMatches,
 }) {
-  if (indent != 0 ||
-      hasMatches ||
-      block is! ParagraphBlock ||
-      block.content.length != 1 ||
-      block.content.single is! TextRun ||
-      block.content.single.text.length < _windowedParagraphThreshold) {
+  if (indent != 0 || hasMatches || block is! ParagraphBlock) {
     return false;
   }
-  return true;
+  return InlineRangeIndex.supports(block.content) &&
+      InlineRangeIndex.textLength(block.content) >= _windowedParagraphThreshold;
 }
 
 /// Sets a document on the page.
@@ -303,7 +301,7 @@ class _SliverDocumentViewState extends State<SliverDocumentView> {
               ParagraphRules.indents(previous, widget.theme.scale.marking)
               ? widget.theme.indent
               : 0.0;
-          final windowedParagraph = _usesWindowedPlainParagraph(
+          final windowedParagraph = _usesWindowedTextParagraph(
             block: block,
             indent: indent,
             hasMatches: widget.matches.isNotEmpty,
@@ -976,37 +974,54 @@ class _BlockView extends StatelessWidget {
         final identity = selectionIdentity;
         final windowed =
             useWindowedParagraph ??
-            _usesWindowedPlainParagraph(
+            _usesWindowedTextParagraph(
               block: block,
               indent: indent,
               hasMatches: composer.matches.isNotEmpty,
             );
         final paragraph = windowed && identity != null
-            ? WindowedPlainParagraph(
-                source: content.single.text,
-                sourceRevision: sourceRevision,
-                sourceAppend: switch (textAppend) {
-                  BlockTextAppend(:final baseRevision, :final text) =>
-                    ParagraphSourceAppend(
-                      baseRevision: baseRevision,
-                      text: text,
-                    ),
-                  null => null,
-                },
-                style: theme.body,
-                textScaler: theme.textScaler,
-                strutStyle: theme.strutFor(theme.body),
-                textDirection: ReadingDirection.of(
-                  content.single.text,
-                  fallback: Directionality.of(context),
+            ? switch (content) {
+                [TextRun(:final text)] => WindowedPlainParagraph(
+                  source: text,
+                  sourceRevision: sourceRevision,
+                  sourceAppend: switch (textAppend) {
+                    BlockTextAppend(:final baseRevision, :final text) =>
+                      ParagraphSourceAppend(
+                        baseRevision: baseRevision,
+                        text: text,
+                      ),
+                    null => null,
+                  },
+                  style: theme.body,
+                  textScaler: theme.textScaler,
+                  strutStyle: theme.strutFor(theme.body),
+                  textDirection: ReadingDirection.of(
+                    text,
+                    fallback: Directionality.of(context),
+                  ),
+                  finalized: commitment == BlockCommitment.committed,
+                  selectionColor: theme.palette.selection,
+                  selectionIdentity: identity,
+                  selectionOrder: selectionOrder,
+                  debugOnSourceIndexed: debugOnParagraphCodeUnitsIndexed,
+                  debugOnInitialIndexStep: debugOnParagraphInitialIndexStep,
                 ),
-                finalized: commitment == BlockCommitment.committed,
-                selectionColor: theme.palette.selection,
-                selectionIdentity: identity,
-                selectionOrder: selectionOrder,
-                debugOnSourceIndexed: debugOnParagraphCodeUnitsIndexed,
-                debugOnInitialIndexStep: debugOnParagraphInitialIndexStep,
-              )
+                _ => WindowedRichParagraph(
+                  content: content,
+                  sourceRevision: sourceRevision,
+                  composer: composer,
+                  documentOffset: offset,
+                  style: theme.body,
+                  textScaler: theme.textScaler,
+                  strutStyle: theme.strutFor(theme.body),
+                  finalized: commitment == BlockCommitment.committed,
+                  selectionColor: theme.palette.selection,
+                  selectionIdentity: identity,
+                  selectionOrder: selectionOrder,
+                  debugOnSourceIndexed: debugOnParagraphCodeUnitsIndexed,
+                  debugOnInitialIndexStep: debugOnParagraphInitialIndexStep,
+                ),
+              }
             : Paragraph(
                 spans: composer.compose(
                   content,

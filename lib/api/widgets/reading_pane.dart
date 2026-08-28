@@ -36,6 +36,7 @@ class ReadingPane extends StatefulWidget {
   /// by one navigation or render indexing pass.
   final ValueChanged<int>? debugOnNavigationBlocksIndexed;
   final ValueChanged<int>? debugOnRenderBlocksIndexed;
+  final ValueChanged<int>? debugOnParagraphCodeUnitsIndexed;
   final ParagraphIndexStepObserver? debugOnParagraphInitialIndexStep;
 
   const ReadingPane({
@@ -52,6 +53,7 @@ class ReadingPane extends StatefulWidget {
     this.activeMatch = -1,
     this.debugOnNavigationBlocksIndexed,
     this.debugOnRenderBlocksIndexed,
+    this.debugOnParagraphCodeUnitsIndexed,
     this.debugOnParagraphInitialIndexStep,
   });
 
@@ -559,6 +561,8 @@ class ReadingPaneState extends State<ReadingPane> {
                     matchKeys: _matchKeys,
                     onHeadingMount: _headingMountChanged,
                     debugOnBlocksIndexed: widget.debugOnRenderBlocksIndexed,
+                    debugOnParagraphCodeUnitsIndexed:
+                        widget.debugOnParagraphCodeUnitsIndexed,
                     debugOnParagraphInitialIndexStep:
                         widget.debugOnParagraphInitialIndexStep,
                     viewportGeometry: _geometry,

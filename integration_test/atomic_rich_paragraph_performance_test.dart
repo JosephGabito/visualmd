@@ -9,6 +9,8 @@ import 'package:integration_test/integration_test.dart';
 import 'package:visualmd/api/render/document_view.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
 import 'package:visualmd/api/widgets/reading_pane.dart';
+import 'package:visualmd/api/widgets/windowed_paragraph.dart';
+import 'package:visualmd/api/widgets/windowed_rich_paragraph.dart';
 import 'package:visualmd/application/use_cases/read_document.dart';
 import 'package:visualmd/domain/library/document.dart';
 import 'package:visualmd/domain/library/document_id.dart';
@@ -55,9 +57,19 @@ void main() {
       final beforeFrames = timings.length;
       final beforeRss = ProcessInfo.currentRss;
       final clock = Stopwatch()..start();
+      var indexedCharacters = 0;
 
-      await tester.pumpWidget(_app(reading));
+      await tester.pumpWidget(
+        _app(reading, onSourceIndexed: (value) => indexedCharacters = value),
+      );
       await tester.pumpAndSettle();
+      var indexingPumps = 0;
+      while (reading.source.length >= 32768 &&
+          indexedCharacters < reading.source.length) {
+        await tester.pump(const Duration(milliseconds: 1));
+        indexingPumps++;
+        expect(indexingPumps, lessThan(400));
+      }
       clock.stop();
       await Future<void>.delayed(const Duration(milliseconds: 180));
       await tester.pump();
@@ -83,11 +95,13 @@ void main() {
       );
 
       final mountedCharacters = _mountedCharacters();
+      final windowed = find.byType(WindowedRichParagraph).evaluate().isNotEmpty;
       runs.add({
         'source_characters': reading.source.length,
         'inline_runs': runCount,
         'mounted_characters': mountedCharacters,
-        'windowed': find.byType(Paragraph).evaluate().isEmpty,
+        'windowed': windowed,
+        'indexing_pumps': indexingPumps,
         'open_wall_us': clock.elapsedMicroseconds,
         'open_frames': openFrames,
         'middle_seek_wall_us': seekClock.elapsedMicroseconds,
@@ -96,7 +110,10 @@ void main() {
         'rss_delta_bytes': ProcessInfo.currentRss - beforeRss,
       });
 
-      expect(mountedCharacters, reading.source.length);
+      expect(
+        mountedCharacters,
+        windowed ? lessThan(5000) : reading.source.length,
+      );
       expect(position.maxScrollExtent, greaterThan(0));
       expect(tester.takeException(), isNull);
     }
@@ -111,7 +128,12 @@ void main() {
 }
 
 int _mountedCharacters() => find
-    .descendant(of: find.byType(Paragraph), matching: find.byType(RichText))
+    .descendant(
+      of: find.byType(Paragraph).evaluate().isNotEmpty
+          ? find.byType(Paragraph)
+          : find.byType(WindowedPlainParagraph),
+      matching: find.byType(RichText),
+    )
     .evaluate()
     .map(
       (element) =>
@@ -119,18 +141,20 @@ int _mountedCharacters() => find
     )
     .fold(0, (total, length) => total + length);
 
-Widget _app(DocumentReading reading) => MaterialApp(
-  theme: libraryTheme(BuiltInThemes.paper),
-  home: Scaffold(
-    body: ReadingPane(
-      reading: reading,
-      scale: ReadingScale.comfortable,
-      viewportGeometry: const QuietDocumentViewportGeometryFactory(),
-      onLink: (_) {},
-      onActiveHeadingChanged: (_) {},
-    ),
-  ),
-);
+Widget _app(DocumentReading reading, {ValueChanged<int>? onSourceIndexed}) =>
+    MaterialApp(
+      theme: libraryTheme(BuiltInThemes.paper),
+      home: Scaffold(
+        body: ReadingPane(
+          reading: reading,
+          scale: ReadingScale.comfortable,
+          viewportGeometry: const QuietDocumentViewportGeometryFactory(),
+          onLink: (_) {},
+          onActiveHeadingChanged: (_) {},
+          debugOnParagraphCodeUnitsIndexed: onSourceIndexed,
+        ),
+      ),
+    );
 
 DocumentReading _reading(int minimumCharacters) {
   final runs = _richRuns(minimumCharacters);
