@@ -106,6 +106,56 @@ void main() {
     expect(index.lineAtOffset(15), 2);
     expect(() => index.lineAtOffset(16), throwsRangeError);
   });
+
+  test('progressive indexing does no work until the host grants a step', () {
+    var resolutions = 0;
+    final index = AppendWrapIndex.progressive(
+      source: 'aaaaabbbbbccccc',
+      windowCodeUnits: 5,
+      resolve: (text) {
+        resolutions++;
+        return _fiveColumns(text);
+      },
+    );
+
+    expect(index.isComplete, isFalse);
+    expect(index.length, 1);
+    expect(resolutions, 0);
+
+    expect(index.indexNext(), isFalse);
+    expect(resolutions, 1);
+    expect(index.lastIndexedCodeUnits, 5);
+  });
+
+  test('progressive and eager construction produce identical geometry', () {
+    const source = 'aaaaabbbbbcccccdddddeeeeefffff';
+    final eager = AppendWrapIndex(
+      source: source,
+      windowCodeUnits: 7,
+      resolve: _fiveColumns,
+    );
+    final progressive = AppendWrapIndex.progressive(
+      source: source,
+      windowCodeUnits: 7,
+      resolve: _fiveColumns,
+    );
+    final work = <int>[];
+
+    while (!progressive.indexNext()) {
+      work.add(progressive.lastIndexedCodeUnits);
+    }
+    work.add(progressive.lastIndexedCodeUnits);
+
+    expect(progressive.isComplete, isTrue);
+    expect(
+      [
+        for (var line = 0; line < progressive.length; line++)
+          progressive.startAt(line),
+      ],
+      [for (var line = 0; line < eager.length; line++) eager.startAt(line)],
+    );
+    expect(work, everyElement(lessThanOrEqualTo(11)));
+  });
 }
 
 List<int> _fiveColumns(String text) => [
