@@ -37,8 +37,8 @@ is, and keep mobile and the browser extension on the roadmap.
   its sandboxed Finder drop uses optional, identity-defaulted hooks in `api/`.
   Windows is scaffolded and named but remains unverified on a Windows machine.
 - The first implementation fetched fonts at runtime. Visual MD now bundles its
-  four primary families and uses Google Fonts only for additional names in a
-  user theme; see [Theme Binding](../05-api/06-theme.md).
+  four measured families and falls back locally when a theme names anything
+  else; see [Theme Binding](../05-api/06-theme.md).
 
 ## Evidence
 

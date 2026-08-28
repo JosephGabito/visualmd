@@ -323,10 +323,9 @@ Future<void> main() async {
   if (requested != null && themes.byId(requested) != null) {
     controller.themeChoice = FixedTheme(requested);
   }
-  // `?serif=<family>` sets the reading face for this run only, for judging a
-  // face on a real document rather than in a specimen.
+  // The two measured serifs can be judged on a real document for this run.
   final serif = options['serif'];
-  if (serif != null && serif.isNotEmpty) {
+  if (serif == 'Alegreya' || serif == 'Literata') {
     controller.serifOverride = serif;
   }
   if (options['paragraphs'] != null) {

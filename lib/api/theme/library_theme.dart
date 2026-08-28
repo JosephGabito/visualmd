@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'font_licences.dart';
 import 'font_metrics.dart';
@@ -140,8 +139,12 @@ final class LibraryTypefaces extends ThemeExtension<LibraryTypefaces> {
     ),
   );
 
-  /// The proportional face the reader chose for document content. The theme
-  /// still owns the family; the mode only selects its serif or sans role.
+  /// The proportional face the reader chose for document content.
+  ///
+  /// Reading faces are a smaller contract than theme furniture: Serif accepts
+  /// only the two bundled serifs whose metrics have been measured, while Sans
+  /// is always Inter. A palette cannot silently replace a measured reading
+  /// system with an arbitrary runtime font.
   TextStyle reading(
     ReadingMode mode, {
     required Color color,
@@ -149,22 +152,27 @@ final class LibraryTypefaces extends ThemeExtension<LibraryTypefaces> {
     double height = 1.7,
     FontWeight weight = FontWeight.w400,
     FontStyle style = FontStyle.normal,
-  }) => switch (mode) {
-    ReadingMode.serif => serif(
-      color: color,
-      size: size,
-      height: height,
-      weight: weight,
-      style: style,
-    ),
-    ReadingMode.sans => sans(
-      color: color,
-      size: size,
-      height: height,
-      weight: weight,
-      style: style,
-    ),
-  };
+  }) {
+    final family = switch (mode) {
+      ReadingMode.serif when _serifReadingFamilies.contains(families.serif) =>
+        families.serif,
+      ReadingMode.serif => ThemeTypefaces.library.serif,
+      ReadingMode.sans => ThemeTypefaces.library.sans,
+    };
+    return _font(
+      family,
+      mode == ReadingMode.serif
+          ? ThemeTypefaces.library.serif
+          : ThemeTypefaces.library.sans,
+      TextStyle(
+        color: color,
+        fontSize: size,
+        height: height,
+        fontWeight: weight,
+        fontStyle: style,
+      ),
+    );
+  }
 
   TextStyle mono({
     required Color color,
@@ -176,33 +184,31 @@ final class LibraryTypefaces extends ThemeExtension<LibraryTypefaces> {
     TextStyle(color: color, fontSize: size, height: height),
   );
 
-  /// Bundled families are used directly — no network, no flash of a fallback
-  /// face, and metrics a test can measure. A theme may name any other family,
-  /// which is fetched at runtime; if that fails, the library's own face stands
-  /// in, so a typo in a theme file costs a font rather than the app.
+  /// Only bundled, licensed and measured families are used. Unsupported theme
+  /// names fall back locally; fonts are never fetched while someone is reading.
   static TextStyle _font(String family, String fallback, TextStyle base) {
     base = base.copyWith(fontFamilyFallback: _readingFallbacks);
-    if (bundledFontLicences.containsKey(family)) {
-      final optical = bundledOpticalSizes[family];
-      // The size asked for is a size of letters; this is the font size that
-      // produces it in this particular face.
-      final size = FontMetrics.sizeFor(family, base.fontSize ?? 16);
-      return base.copyWith(
-        fontFamily: family,
-        fontSize: size,
-        // Weight still reaches the `wght` axis through [TextStyle.fontWeight];
-        // this only tells the face what size it is being drawn at.
-        fontVariations: optical == null
-            ? null
-            : [FontVariation('opsz', size.clamp(optical.$1, optical.$2))],
-      );
-    }
-    try {
-      return GoogleFonts.getFont(family, textStyle: base);
-    } on Exception {
-      return base.copyWith(fontFamily: fallback);
-    }
+    final resolved =
+        bundledFontLicences.containsKey(family) &&
+            FontMetrics.xHeights.containsKey(family)
+        ? family
+        : fallback;
+    final optical = bundledOpticalSizes[resolved];
+    // The size asked for is a size of letters; this is the font size that
+    // produces it in this particular face.
+    final size = FontMetrics.sizeFor(resolved, base.fontSize ?? 16);
+    return base.copyWith(
+      fontFamily: resolved,
+      fontSize: size,
+      // Weight still reaches the `wght` axis through [TextStyle.fontWeight];
+      // this only tells the face what size it is being drawn at.
+      fontVariations: optical == null
+          ? null
+          : [FontVariation('opsz', size.clamp(optical.$1, optical.$2))],
+    );
   }
+
+  static const _serifReadingFamilies = {'Alegreya', 'Literata'};
 
   /// Native desktop reading faces for scripts and emoji outside the bundled
   /// Latin families. Flutter still falls back to the platform default after

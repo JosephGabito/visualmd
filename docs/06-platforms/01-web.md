@@ -39,7 +39,7 @@ root interprets the supported keys (`lib/main.dart`):
 | `?theme=light` / `?theme=dark` | shorthand for the two halves of the default pair |
 | `?paragraphs=indented` | sets the page solid: indented first lines, no gaps |
 | `?paragraphs=spaced` | the default — a gap between paragraphs, no indent |
-| `?serif=<family>` | previews one reading face for this run without saving it |
+| `?serif=Alegreya` / `?serif=Literata` | previews one bundled, measured serif for this run without saving it |
 
 They compose: `?open=sample&theme=nord&paragraphs=indented`. An unknown theme
 id is ignored, and launch overrides are not saved

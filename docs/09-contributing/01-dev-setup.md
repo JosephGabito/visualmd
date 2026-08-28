@@ -87,7 +87,7 @@ Build outputs are written to:
 
 The web target accepts launch options that make repeatable visual review easy:
 `?open=sample`, `?theme=<id>`, `?paragraphs=indented`, and
-`?serif=<family>`. [Web](../06-platforms/01-web.md) explains which values are
+`?serif=Alegreya|Literata`. [Web](../06-platforms/01-web.md) explains which values are
 available and which choices are temporary.
 
 Continue with [Testing and Validation](02-testing-and-validation.md) for the
