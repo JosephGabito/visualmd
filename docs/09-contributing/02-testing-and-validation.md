@@ -135,8 +135,9 @@ The scripts under `bin/tools/` are the shared local and CI interface:
 
 - `beautify.sh` formats authored Dart and Swift.
 - `validate.sh` checks formatting and shell syntax, runs analysis and tests,
-  checks documentation, and builds web plus the native target supported by the
-  host.
+  checks documentation, validates the embedded `quiet_viewport` package in its
+  own dependency context, and builds web plus the native target supported by
+  the host.
 - `beautipass.sh` formats first, then runs validation.
 - `validate-macos-bundle.sh` audits release metadata, sandbox entitlements,
   hardened runtime, privacy declarations, nested signatures, and native
