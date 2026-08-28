@@ -304,12 +304,15 @@ Known gaps:
 - **Hanging punctuation only applies to a paragraph's opening mark**, not to
   every line that happens to begin with one — that needs per-line control the
   text engine does not expose.
-- **Relative images do not resolve.**
+- **A lone browser-selected Markdown file cannot resolve neighbouring images.**
+  Relative images work when the browser has been offered the containing folder
+  or directory context.
 - **Windows is scaffolded but never built** — it needs a Windows machine.
 - **Apple credentials remain machine-local.** The repository enables hardened
-  runtime, ships its privacy declaration, and audits the release bundle. A
-  distributable artifact still requires a Developer ID identity and
-  notarization on the release machine; see
+  runtime, ships its privacy declaration, and audits the release bundle and
+  archive. The Mac App Store route has a team-signed archive; a direct download
+  still requires a Developer ID identity and notarization on its release
+  machine. See
   [Releasing for macOS](docs/09-contributing/06-releasing-for-macos.md).
 
 ## Before calling a change complete

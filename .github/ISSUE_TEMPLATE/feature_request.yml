@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a focused improvement to the reading experience.
+title: "idea: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What reading problem would this solve?
+      description: Describe the situation before proposing an interface or implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What would a good outcome feel like?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today?

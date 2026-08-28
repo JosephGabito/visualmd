@@ -11,6 +11,12 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2f6f9f" alt="MIT licence"></a>
 </p>
 
+<p align="center">
+  <a href="https://visualmd.gabi.to/playground/">Try Visual MD in your browser</a>
+  ·
+  <a href="https://visualmd.gabi.to/">Visit the website</a>
+</p>
+
 Markdown is pleasant to write and strangely tiring to read. It usually lives
 inside an editor, a file browser, or a documentation site crowded with tools.
 Visual MD is for the part that comes afterward: sitting down with the words.
@@ -48,17 +54,17 @@ On desktop, Visual MD reads the files you choose directly from disk. In a
 browser, file access stays inside the browser's permission model. Documents are
 not sent to a Visual MD server because no such server exists.
 
-Remote images and links can still contact their authored destinations. A theme
-that names a font not bundled with the app may also ask the font provider for
-it. The four standard typefaces ship with Visual MD and require no network.
+Remote images and links can still contact their authored destinations. The four
+supported typefaces ship with Visual MD; a custom theme naming anything else
+falls back to a bundled face instead of fetching a font.
 
 ## Run it
 
 Visual MD currently runs on the web and macOS. Until signed downloads are
 published, the complete reader is available from source.
 
-Install a stable Flutter SDK satisfying the Dart constraint in `pubspec.yaml`,
-then:
+Install a stable Flutter SDK satisfying the Dart constraint in `pubspec.yaml`.
+The web asset preparation step also requires Node.js and npm. Then:
 
 ```sh
 flutter pub get
@@ -75,8 +81,8 @@ flutter run -d macos
 
 | Platform | Status |
 |----------|--------|
-| Web | Built and tested in Chrome. Modern browsers can retain folder access; older ones use explicit upload and download fallbacks. |
-| macOS | Built and tested with native files, folders, menus, sandboxed access, and drag and drop. Public downloads still require Developer ID signing and notarization. |
+| Web | Built and tested in Chrome. Modern browsers can retain folder access; older ones use local file-picker and download fallbacks. |
+| macOS | Built and tested with native files, folders, menus, sandboxed access, and drag and drop. The App Store archive is signed and validated; public availability still depends on App Review. A separate direct download would require Developer ID signing and notarization. |
 | Windows | The project and desktop adapters exist, but the native build has not yet been verified on Windows hardware. |
 
 More detailed setup and troubleshooting live in
@@ -140,5 +146,10 @@ project; see [Visual MD Name and Logo](TRADEMARKS.md) for fair-use guidance for
 forks and modified distributions.
 
 Bundled typefaces retain their SIL Open Font License notices under
-`assets/fonts/`. Third-party packages and attributed theme palettes remain
-under their respective licences.
+`assets/fonts/`. Third-party package licences remain available through
+Flutter's licence registry in the app; generated-asset attributions are also
+recorded in [Third-party notices](THIRD_PARTY_NOTICES.md).
+
+---
+
+<p align="center">Created with OpenAI Codex using GPT-5.6 Sol.</p>

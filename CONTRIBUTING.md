@@ -6,7 +6,7 @@ changes no more than the solution requires.
 
 The [contributor guide](docs/09-contributing/README.md) covers setup, testing,
 platform work, documentation, themes, and the project's dependency boundaries.
-For the shortest useful loop:
+For the shortest app-only loop:
 
 ```sh
 flutter pub get

@@ -14,9 +14,10 @@ experience rather than turn the reader into a general-purpose editor.
 
 ## Principles
 
-1. **Nothing leaves the machine.** Files are read where they are — in the
-   browser on the web, from disk on desktop — and never uploaded. There is no
-   server. See [Platforms](../06-platforms/README.md).
+1. **Documents stay on the device.** Files are read where they are — in the
+   browser on the web, from disk on desktop — and never uploaded to a Visual MD
+   server because no such server exists. Authored remote images and links can
+   still contact their destinations. See [Platforms](../06-platforms/README.md).
 2. **The reading path stays small.** The domain, application, presentation, and
    API rings keep the core journey understandable. Optional capabilities can
    grow around it.
@@ -57,7 +58,7 @@ build status that follows records where the application has actually been run.
 | Reconnect workspace sources that are unavailable on the current machine | all platforms, subject to the access the platform can grant |
 | Bundled sample library so the reader is never empty | all platforms |
 
-## Status as of 2026-08-24
+## Status as of 2026-08-28
 
 - **Web** — built (`flutter build web --release`), served and screenshotted.
 - **macOS** — built and run natively once Xcode 26.6 was installed; dropping a
@@ -67,8 +68,10 @@ build status that follows records where the application has actually been run.
   Windows machine with Visual Studio).
 - **Tests** — domain, application, infrastructure, API, presentation, and docs
   suites, plus one architecture test per source file.
-- **Distribution** — no packaged downloads or signed builds yet; the project
-  currently runs from source.
+- **Distribution** — a team-signed Mac App Store archive passes the repository
+  bundle and archive validators. Public availability still depends on upload
+  processing and App Review. A Developer ID/notarized direct download remains
+  a separate future route.
 
 ## Document status
 

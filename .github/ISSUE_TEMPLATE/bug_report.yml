@@ -1,0 +1,45 @@
+name: Bug report
+description: Report reproducible behavior that is not working as intended.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach private Markdown libraries. Remove personal paths and credentials from logs and screenshots.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Tell us what you expected and what Visual MD did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: Use the smallest safe sample and list the exact steps.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Visual MD version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS app
+        - Browser playground
+        - Source build
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant context
+      description: Add safe logs or screenshots if they materially help explain the problem.

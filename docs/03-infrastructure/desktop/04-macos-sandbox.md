@@ -18,7 +18,7 @@ capabilities; the debug profile adds Flutter tooling permissions:
 | `com.apple.security.app-sandbox` | the app is sandboxed at all | `macos/Runner/DebugProfile.entitlements` | `macos/Runner/Release.entitlements` |
 | `com.apple.security.files.user-selected.read-write` | open and save files chosen through native panels, and read dropped sources | `macos/Runner/DebugProfile.entitlements` | `macos/Runner/Release.entitlements` |
 | `com.apple.security.files.bookmarks.app-scope` | create durable access bookmarks for workspace sources | `macos/Runner/DebugProfile.entitlements` | `macos/Runner/Release.entitlements` |
-| `com.apple.security.network.client` | allow a user theme's unbundled web font fallback | `macos/Runner/DebugProfile.entitlements` | `macos/Runner/Release.entitlements` |
+| `com.apple.security.network.client` | load remote images authored in a document | `macos/Runner/DebugProfile.entitlements` | `macos/Runner/Release.entitlements` |
 | `com.apple.security.cs.allow-jit` | Flutter debug mode JIT | `macos/Runner/DebugProfile.entitlements` | — |
 | `com.apple.security.network.server` | Flutter debug tooling (hot reload, DevTools) | `macos/Runner/DebugProfile.entitlements` | — |
 
@@ -88,7 +88,7 @@ bookmark bytes.
 
 ## Transition
 
-The built-in fonts are already bundled. If the optional fallback for unbundled
-theme fonts moves fully offline, `network.client` can be removed after verifying
-custom themes. Signing and notarization are the next platform-wide checks for
-bookmark restoration outside a developer build.
+The supported fonts are bundled and an unknown custom-theme family falls back
+locally. `network.client` remains necessary for remote images authored in a
+document. The Mac App Store archive is team-signed and validated; a separate
+Developer ID/notarized direct-download route remains future packaging work.

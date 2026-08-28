@@ -72,8 +72,8 @@ surprise downloads (`lib/infrastructure/platform/platform_web.dart`).
 
 - The reading, interface and code faces are bundled under `assets/fonts/`
   (`pubspec.yaml`), so the page does not depend on a network font fetch.
-  A user theme may still name an unbundled family, in which case the fallback
-  loader can require the network (`lib/api/theme/library_theme.dart`).
+  A user theme naming an unsupported family falls back to the corresponding
+  bundled face without a network request (`lib/api/theme/library_theme.dart`).
 - Relative images resolve through a folder handle, dropped directory, or file
   list already offered to the page. A Markdown file uploaded alone has no
   browser capability for its neighbouring files, so its relative images fall

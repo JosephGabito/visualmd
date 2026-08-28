@@ -130,10 +130,11 @@ atomic writing, source binding, native menu validation, hidden-title syncing,
 fullscreen chrome, last-frame restoration, and lifecycle behavior are covered
 by automated tests.
 
-Not done: code signing and notarization. The local build is suitable for
-development, but it is not ready for normal distribution because Gatekeeper may
-block an unsigned app on another Mac. Release packaging needs an Apple
-Developer identity, signing, notarization, and verification on a clean machine.
+The Mac App Store route now has a team-signed archive that passes the bundle
+and archive validators, including matching Merman dSYM UUIDs. Upload processing
+and App Review remain outside the repository. A direct download is a separate
+route and still needs a Developer ID Application identity, notarization,
+stapling, and verification on a clean machine.
 
 ## Troubleshooting
 

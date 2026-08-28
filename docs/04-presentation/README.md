@@ -17,7 +17,7 @@ the page a reader sees.
 | [ThemeTypefaces](03-theme-typefaces.md) | The three voices of the page and their fallback |
 | [ThemeChoice](04-theme-choice.md) | One theme, or a light/dark pair that follows the system |
 | [ThemeRegistry](05-theme-registry.md) | Every theme available, and what happens to a bad file |
-| [Built-in Themes](06-built-in-themes.md) | The six shipped themes, with values and attribution |
+| [Built-in Themes](06-built-in-themes.md) | The shipped theme collection, with values and attribution |
 | [Reading Scale](07-reading-scale.md) | The measure, the leading, and every gap cut from the line |
 | [Hanging Punctuation](08-hanging-punctuation.md) | Which marks hang outside the column, and how far |
 | [Widow Binding](09-widow-binding.md) | Keeping the last word of a paragraph off a line of its own |

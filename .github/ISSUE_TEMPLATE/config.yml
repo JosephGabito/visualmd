@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Visual MD support
+    url: https://visualmd.gabi.to/support/
+    about: Get help using Visual MD without opening a bug report.
+  - name: Security report
+    url: https://github.com/JosephGabito/visualmd/security/policy
+    about: Read the private vulnerability reporting policy.
