@@ -105,6 +105,22 @@ void main() {
     expect(finalized.entries.single.textAppend, isNull);
   });
 
+  test('one block revision cannot claim two incompatible append proofs', () {
+    expect(
+      () => DocumentBlock(
+        id: const DocumentBlockId('tail'),
+        revision: 2,
+        block: const ParagraphBlock([TextRun('new')]),
+        textAppend: const BlockTextAppend(baseRevision: 1, text: 'new'),
+        inlineAppend: BlockInlineAppend(
+          baseRevision: 1,
+          runs: const [TextRun('new')],
+        ),
+      ),
+      throwsStateError,
+    );
+  });
+
   test('duplicate identities cannot enter a document snapshot', () {
     expect(
       () =>

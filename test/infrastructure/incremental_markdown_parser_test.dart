@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/domain/reading/content/block.dart';
 import 'package:visualmd/domain/reading/content/document_content.dart';
+import 'package:visualmd/domain/reading/content/inline.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 
 void main() {
@@ -32,8 +33,32 @@ void main() {
       expect(first.blocks.single.text, 'An *unfinished');
       expect(second.blocks.single.text, 'An unfinished emphasis');
       expect(second.entries.single.textAppend, isNull);
+      expect(second.entries.single.inlineAppend, isNull);
     },
   );
+
+  test('a stable rich paragraph advertises only its new inline suffix', () {
+    final session = parser.startSession();
+
+    final first = session.append('A **bold** thought');
+    final previous = first.entries.single;
+    final second = session.append(' keeps `streaming`.');
+    final current = second.entries.single;
+
+    expect(current.id, previous.id);
+    expect(current.textAppend, isNull);
+    expect(current.inlineAppend?.baseRevision, previous.revision);
+    expect(current.inlineAppend?.runs, const [
+      TextRun(' keeps '),
+      CodeRun('streaming'),
+      TextRun('.'),
+    ]);
+    expect(
+      '${previous.block.text}'
+      '${current.inlineAppend!.runs.map((run) => run.text).join()}',
+      current.block.text,
+    );
+  });
 
   test('a blank line commits prose and later work visits only the tail', () {
     final session = parser.startSession();

@@ -17,10 +17,12 @@ reader share one vocabulary without putting Flutter in the domain
 (`lib/domain/reading/content/document_content.dart`).
 
 When a stable block's reading text is known to have grown by an exact suffix,
-`BlockTextAppend` carries that suffix and the revision it follows. This is a
-parser-owned fact, not something a renderer rediscovers with a full-prefix
-string comparison. A consumer applies it only when its retained block revision
-matches the named base (`lib/domain/reading/content/document_content.dart`).
+`BlockTextAppend` carries that suffix and the revision it follows. A rich
+paragraph uses `BlockInlineAppend` when its existing mark/link tree is stable;
+that proof carries only the newly visible inline runs. These are parser-owned
+facts, not something a renderer rediscovers with a full-prefix comparison. A
+consumer applies either only when its retained block revision matches the named
+base (`lib/domain/reading/content/document_content.dart`).
 
 The model's one rule is that it carries the author's **reading text** exactly.
 Markdown delimiters and escape backslashes have already served their grammar,
@@ -204,8 +206,8 @@ outline always resolves on the page.
 In: blocks for a complete snapshot, or revisioned `DocumentBlock` entries and
 `DocumentMutation` operations for an incremental sequence. Insert, replace,
 finalise, and remove operations name the revision they follow and the revision
-they create. A revised entry may also carry a `BlockTextAppend` for consumers
-which own an appendable text index
+they create. A revised entry may also carry one `BlockTextAppend` or
+`BlockInlineAppend` for consumers which own an appendable text or style index
 (`lib/domain/reading/content/document_content.dart`).
 
 Out: `entries` with stable identity, `blocks` and `headings` in source order,
