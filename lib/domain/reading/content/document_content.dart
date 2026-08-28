@@ -2,6 +2,7 @@ import 'dart:collection';
 
 import '../../collection/persistent_sequence.dart';
 import 'block.dart';
+import 'inline.dart';
 
 /// Stable identity for one block within a document generation.
 ///
@@ -40,6 +41,28 @@ final class BlockTextAppend {
     : assert(baseRevision >= 0);
 }
 
+/// A parser-proven append to one stable paragraph's inline structure.
+///
+/// The suffix begins after the complete prior inline tree, except that a final
+/// plain text leaf may continue as a new [TextRun]. Consumers can therefore
+/// extend a retained style-range index without comparing the accumulated
+/// prefix. Delimiter closure or any other earlier reinterpretation withholds
+/// this proof and remains a full block replacement.
+final class BlockInlineAppend {
+  final int baseRevision;
+  final List<Inline> runs;
+
+  BlockInlineAppend({required this.baseRevision, required List<Inline> runs})
+    : runs = List.unmodifiable(runs) {
+    if (baseRevision < 0) {
+      throw RangeError.value(baseRevision, 'baseRevision');
+    }
+    if (runs.isEmpty) {
+      throw ArgumentError.value(runs, 'runs', 'Must contain a visible suffix');
+    }
+  }
+}
+
 /// One revisioned block in the reading model.
 final class DocumentBlock {
   final DocumentBlockId id;
@@ -47,6 +70,7 @@ final class DocumentBlock {
   final BlockCommitment commitment;
   final Block block;
   final BlockTextAppend? textAppend;
+  final BlockInlineAppend? inlineAppend;
 
   DocumentBlock({
     required this.id,
@@ -54,12 +78,17 @@ final class DocumentBlock {
     required this.block,
     this.commitment = BlockCommitment.committed,
     this.textAppend,
+    this.inlineAppend,
   }) {
     if (revision < 0) throw RangeError.value(revision, 'revision');
-    final append = textAppend;
-    if (append != null && append.baseRevision >= revision) {
+    if (textAppend != null && inlineAppend != null) {
+      throw StateError('Block $id cannot advertise two append proofs.');
+    }
+    final appendRevision =
+        textAppend?.baseRevision ?? inlineAppend?.baseRevision;
+    if (appendRevision != null && appendRevision >= revision) {
       throw StateError(
-        'Block $id append starts at revision ${append.baseRevision}; '
+        'Block $id append starts at revision $appendRevision; '
         'the resulting revision is $revision.',
       );
     }

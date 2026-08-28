@@ -344,6 +344,16 @@ revised block. The renderer can then extend its physical-line index without
 scanning the code it already indexed
 (`lib/infrastructure/markdown/markdown_document_parser.dart`).
 
+When a paragraph already contains closed emphasis, code or links, the session
+compares the inline structure it has just reparsed and emits a
+`BlockInlineAppend` only if every prior run remains exact. A growing final plain
+leaf becomes a new suffix `TextRun`; new top-level runs follow it. Closing an
+unfinished delimiter changes the prior tree and therefore withholds the proof.
+This first contract removes renderer-side prefix discovery; the fragment parser
+still reparses the provisional source tail and remains a separate measured
+streaming boundary
+(`lib/infrastructure/markdown/markdown_document_parser.dart`).
+
 ## Failure and recovery
 
 It does not throw. Markup with no mapping becomes `RawBlock`

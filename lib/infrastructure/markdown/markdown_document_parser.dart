@@ -256,7 +256,7 @@ final class _IncrementalMarkdownParserSession
           commitments[index],
           previous,
           revision,
-          allowTextAppend:
+          allowAppend:
               !rebase &&
               commitments[index] == BlockCommitment.provisional &&
               index == blocks.length - 1,
@@ -330,12 +330,15 @@ final class _IncrementalMarkdownParserSession
     BlockCommitment commitment,
     DocumentBlock? previous,
     int revision, {
-    bool allowTextAppend = false,
+    bool allowAppend = false,
   }) {
     final sameShape =
         previous != null && previous.block.runtimeType == block.runtimeType;
-    final textAppend = sameShape && allowTextAppend
+    final textAppend = sameShape && allowAppend
         ? _textAppend(previous, block)
+        : null;
+    final inlineAppend = sameShape && allowAppend && textAppend == null
+        ? _inlineAppend(previous, block)
         : null;
     return DocumentBlock(
       id: sameShape ? previous.id : DocumentBlockId('stream:${_nextBlockId++}'),
@@ -343,6 +346,7 @@ final class _IncrementalMarkdownParserSession
       commitment: commitment,
       block: block,
       textAppend: textAppend,
+      inlineAppend: inlineAppend,
     );
   }
 
@@ -385,6 +389,83 @@ final class _IncrementalMarkdownParserSession
       }
     }
     return null;
+  }
+
+  BlockInlineAppend? _inlineAppend(DocumentBlock? previous, Block block) {
+    if (previous?.block case ParagraphBlock(content: final before)) {
+      if (block case ParagraphBlock(content: final after)) {
+        var stable = 0;
+        while (stable < before.length &&
+            stable < after.length &&
+            _sameTextInline(before[stable], after[stable])) {
+          stable++;
+        }
+
+        final suffix = <Inline>[];
+        if (stable == before.length) {
+          suffix.addAll(after.skip(stable));
+        } else if (stable == before.length - 1) {
+          switch ((before[stable], after[stable])) {
+            case (TextRun(text: final oldText), TextRun(text: final newText))
+                when newText.length >= oldText.length &&
+                    newText.startsWith(oldText):
+              final text = newText.substring(oldText.length);
+              if (text.isNotEmpty) suffix.add(TextRun(text));
+              suffix.addAll(after.skip(stable + 1));
+            default:
+              return null;
+          }
+        } else {
+          return null;
+        }
+
+        if (suffix.isNotEmpty) {
+          return BlockInlineAppend(
+            baseRevision: previous!.revision,
+            runs: suffix,
+          );
+        }
+      }
+    }
+    return null;
+  }
+
+  static bool _sameTextInline(Inline before, Inline after) => switch ((
+    before,
+    after,
+  )) {
+    (TextRun(text: final left), TextRun(text: final right)) => left == right,
+    (CodeRun(text: final left), CodeRun(text: final right)) => left == right,
+    (LineBreakRun(), LineBreakRun()) => true,
+    (
+      MarkedRun(mark: final leftMark, children: final left),
+      MarkedRun(mark: final rightMark, children: final right),
+    ) =>
+      leftMark == rightMark && _sameTextInlineList(left, right),
+    (
+      LinkRun(
+        href: final leftHref,
+        title: final leftTitle,
+        children: final left,
+      ),
+      LinkRun(
+        href: final rightHref,
+        title: final rightTitle,
+        children: final right,
+      ),
+    ) =>
+      leftHref == rightHref &&
+          leftTitle == rightTitle &&
+          _sameTextInlineList(left, right),
+    _ => false,
+  };
+
+  static bool _sameTextInlineList(List<Inline> before, List<Inline> after) {
+    if (before.length != after.length) return false;
+    for (var index = 0; index < before.length; index++) {
+      if (!_sameTextInline(before[index], after[index])) return false;
+    }
+    return true;
   }
 
   static int _lastBlankBoundary(String source) {
