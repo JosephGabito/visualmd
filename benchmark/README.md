@@ -209,7 +209,9 @@ The eager baseline and windowed result are retained together in
 
 The rich atomic-paragraph benchmark holds the same geometry while one
 paragraph contains ordinary emphasis, inline code and links. It records the
-remaining eager span and shaping cost before that path is windowed:
+windowed open and seek cost, then appends a 51-character styled suffix while
+parked in the middle to expose whether retained rich indexes scale with the
+incoming delta or the complete provisional paragraph:
 
 ```sh
 flutter drive --profile \
