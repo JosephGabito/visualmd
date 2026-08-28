@@ -35,22 +35,23 @@ line boundaries in bounded source windows. It retains those boundaries across
 an upstream-proven append, reports the complete paragraph height to the outer
 document, and mounts only the lines near that viewport:
 
-| Source characters | Characters mounted | Initial worst frame | Middle-seek worst | Append worst | Append movement | RSS added |
-|---:|---:|---:|---:|---:|---:|---:|
-| 10,000 | 10,000 | 6.9 ms | 1.4 ms | 6.4 ms | 0 px | 34.6 MiB |
-| 100,000 | 2,474 | 43.3 ms | 3.2 ms | 1.6 ms | 0 px | 12.7 MiB |
-| 1,000,000 | 2,477 | 238.3 ms | 3.7 ms | 3.6 ms | 0 px | 66.4 MiB |
+| Source characters | Characters mounted | Initial worst frame | Middle-seek worst | Append worst | Finalize worst | Movement | RSS added |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10,000 | 10,000 | 8.8 ms | 3.1 ms | 6.8 ms | 16.6 ms | 0 px | 33.5 MiB |
+| 100,000 | 2,474 | 42.1 ms | 2.2 ms | 1.7 ms | 2.2 ms | 0 px | 17.6 MiB |
+| 1,000,000 | 2,477 | 236.8 ms | 3.7 ms | 4.4 ms | 6.8 ms | 0 px | 62.2 MiB |
 
 Ten thousand characters deliberately remains on the ordinary eager path. At
-the two pathological sizes, mounted text is constant and both a deep seek and
-an adjacent stream append stay below 4 ms. The one-million-character append is
-about 65 times cheaper than the initial full indexing frame and does not move
-the reader parked in the middle.
+the two pathological sizes, mounted text is constant; a deep seek, adjacent
+stream append and safe finalization all remain below the 8.3 ms frame budget of
+a 120 Hz display. The million-character append is about 53 times cheaper than
+the initial full indexing frame and does not move the reader parked in the
+middle.
 
 Initial construction is still O(source): a pre-existing million-character
 paragraph must discover its line boundaries once, and that synchronous pass is
-still a 238 ms frame. Its peak process delta is substantially lower than the
-eager paragraph's 292 MiB, but 66 MiB is not a memory plateau proof. This slice
+still a 237 ms frame. Its peak process delta is substantially lower than the
+eager paragraph's 292 MiB, but 62 MiB is not a memory plateau proof. This slice
 solves repeated stream updates and interactive access; it does not claim that
 opening a pathological completed blob is constant-time.
 
@@ -62,19 +63,21 @@ opening a pathological completed blob is constant-time.
   suffix; the million-character prefix contributes no text-layout work.
 - The paragraph's complete height remains exact, and a tail append moves a
   reader above it by exactly zero pixels.
-- Initial full-source indexing, final typographic punctuation/widow treatment,
-  and rich-inline paragraphs remain distinct costs rather than hidden claims.
+- Safe finalization binds the widow by re-resolving only its owning line;
+  counting eligibility stops after four words instead of allocating a complete
+  word list.
+- Initial full-source indexing, punctuation that changes shaping, and
+  rich-inline paragraphs remain distinct costs rather than hidden claims.
 
 ## Acceptance boundary
 
-The next boundary is finalization. The current fast path is deliberately only
-for one large provisional plain-text run with no active search decoration and
-no first-line indent. It preserves authored source, Flutter line breaking,
-model-backed selection offsets, complete semantics, reading direction, exact
-height, scrollbar geometry and outer-page scrolling. Final typography still
-uses the eager composer, so a pathological finalization can pay the complete
-cost once.
+The current fast path is deliberately for one large plain-text run with no
+active search decoration and no first-line indent. It preserves authored
+source, Flutter line breaking, model-backed selection offsets, complete
+semantics, reading direction, exact height, widow binding, scrollbar geometry
+and outer-page scrolling through a safe finish event.
 
-The next slice must extend range composition to typographic punctuation and
-rich inline semantics, then retain the window through provisional-to-committed
-transition without changing the final line breaks or selection coordinates.
+Straight quotes, dash runs and ellipses still use the eager final composer
+because their glyph advances or visible length can change throughout the
+paragraph. The next slice must carry exact source-to-glyph offsets through a
+range projection before those paragraphs can retain the window safely.

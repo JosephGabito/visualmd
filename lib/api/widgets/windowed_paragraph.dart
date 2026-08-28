@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:quiet_viewport/quiet_viewport.dart';
 
+import '../../presentation/theme/widow_binding.dart';
 import 'model_backed_selection_area.dart';
 
 /// An upstream-proven suffix for one adjacent paragraph revision.
@@ -14,13 +15,14 @@ final class ParagraphSourceAppend {
   const ParagraphSourceAppend({required this.baseRevision, required this.text});
 }
 
-/// A provisional plain paragraph whose render cost is bounded by its viewport.
+/// A large plain paragraph whose render cost is bounded by its viewport.
 ///
 /// The complete source remains one semantic and selectable paragraph, while
 /// only nearby visual lines become [RenderParagraph] objects. Line boundaries
 /// are resolved by Flutter's own [TextPainter] and retained across upstream-
-/// proven appends, so this does not substitute a second typography engine.
-final class WindowedProvisionalParagraph extends StatefulWidget {
+/// proven appends and final tail projections, so this does not substitute a
+/// second typography engine.
+final class WindowedPlainParagraph extends StatefulWidget {
   final String source;
   final int sourceRevision;
   final ParagraphSourceAppend? sourceAppend;
@@ -28,12 +30,13 @@ final class WindowedProvisionalParagraph extends StatefulWidget {
   final TextScaler textScaler;
   final StrutStyle? strutStyle;
   final TextDirection textDirection;
+  final bool finalized;
   final Color? selectionColor;
   final Object selectionIdentity;
   final int selectionOrder;
   final ValueChanged<int>? debugOnSourceIndexed;
 
-  const WindowedProvisionalParagraph({
+  const WindowedPlainParagraph({
     super.key,
     required this.source,
     required this.sourceRevision,
@@ -42,6 +45,7 @@ final class WindowedProvisionalParagraph extends StatefulWidget {
     this.textScaler = TextScaler.noScaling,
     this.strutStyle,
     required this.textDirection,
+    required this.finalized,
     this.selectionColor,
     required this.selectionIdentity,
     required this.selectionOrder,
@@ -49,12 +53,10 @@ final class WindowedProvisionalParagraph extends StatefulWidget {
   });
 
   @override
-  State<WindowedProvisionalParagraph> createState() =>
-      _WindowedProvisionalParagraphState();
+  State<WindowedPlainParagraph> createState() => _WindowedPlainParagraphState();
 }
 
-final class _WindowedProvisionalParagraphState
-    extends State<WindowedProvisionalParagraph> {
+final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
   static const _overscanLines = 8;
 
   ScrollPosition? _page;
@@ -65,6 +67,8 @@ final class _WindowedProvisionalParagraphState
   var _firstLine = 0;
   var _lastLine = 1;
   var _lineHeight = 0.0;
+  var _indexedFinalized = false;
+  var _displaySource = '';
 
   double get _contentHeight => (_lines?.length ?? 1) * _lineHeight;
 
@@ -80,7 +84,7 @@ final class _WindowedProvisionalParagraphState
   }
 
   @override
-  void didUpdateWidget(WindowedProvisionalParagraph oldWidget) {
+  void didUpdateWidget(WindowedPlainParagraph oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.source != widget.source ||
         oldWidget.style != widget.style ||
@@ -108,8 +112,8 @@ final class _WindowedProvisionalParagraphState
       final start = lines.startAt(first);
       final end = last < lines.length
           ? lines.startAt(last)
-          : widget.source.length;
-      final visible = widget.source.substring(start, end);
+          : _displaySource.length;
+      final visible = _displaySource.substring(start, end);
 
       return Semantics(
         container: true,
@@ -162,12 +166,14 @@ final class _WindowedProvisionalParagraphState
     if (_lines == null || signature != _layoutSignature) {
       _layoutSignature = signature;
       _lineHeight = _measureLineHeight(width);
+      _displaySource = _projectedSource();
       _lines = AppendWrapIndex(
-        source: widget.source,
+        source: _displaySource,
         resolve: (text) => _resolveLineStarts(text, width),
       );
       _indexedRevision = widget.sourceRevision;
       _indexedSourceLength = widget.source.length;
+      _indexedFinalized = widget.finalized;
       _firstLine = 0;
       _lastLine = math.min(1, _lines!.length);
       widget.debugOnSourceIndexed?.call(_lines!.lastIndexedCodeUnits);
@@ -175,7 +181,29 @@ final class _WindowedProvisionalParagraphState
       return;
     }
     if (_indexedRevision == widget.sourceRevision &&
+        _indexedSourceLength == widget.source.length &&
+        _indexedFinalized == widget.finalized) {
+      return;
+    }
+
+    if (!_indexedFinalized &&
+        widget.finalized &&
         _indexedSourceLength == widget.source.length) {
+      final projected = _projectedSource();
+      var indexedCodeUnits = 0;
+      if (!identical(projected, widget.source)) {
+        final changedAt = _changedOffset(_displaySource, projected);
+        _displaySource = projected;
+        _lines!.replaceTail(
+          line: _lines!.lineAtOffset(changedAt),
+          source: projected,
+        );
+        indexedCodeUnits = _lines!.lastIndexedCodeUnits;
+      }
+      _indexedRevision = widget.sourceRevision;
+      _indexedFinalized = true;
+      widget.debugOnSourceIndexed?.call(indexedCodeUnits);
+      _scheduleSync();
       return;
     }
 
@@ -186,16 +214,30 @@ final class _WindowedProvisionalParagraphState
         widget.sourceRevision > _indexedRevision &&
         _indexedSourceLength + append.text.length == widget.source.length;
     if (directAppend) {
-      _lines!.append(baseLength: _indexedSourceLength, source: widget.source);
+      _displaySource = widget.source;
+      _lines!.append(baseLength: _indexedSourceLength, source: _displaySource);
     } else {
-      _lines!.replace(widget.source);
+      _displaySource = _projectedSource();
+      _lines!.replace(_displaySource);
       _firstLine = 0;
       _lastLine = math.min(1, _lines!.length);
     }
     _indexedRevision = widget.sourceRevision;
     _indexedSourceLength = widget.source.length;
+    _indexedFinalized = widget.finalized;
     widget.debugOnSourceIndexed?.call(_lines!.lastIndexedCodeUnits);
     _scheduleSync();
+  }
+
+  String _projectedSource() =>
+      widget.finalized ? WidowBinding.bind(widget.source) : widget.source;
+
+  static int _changedOffset(String before, String after) {
+    final limit = math.min(before.length, after.length);
+    for (var offset = limit - 1; offset >= 0; offset--) {
+      if (before.codeUnitAt(offset) != after.codeUnitAt(offset)) return offset;
+    }
+    return limit;
   }
 
   List<int> _resolveLineStarts(String text, double width) {

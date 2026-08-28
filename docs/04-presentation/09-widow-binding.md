@@ -63,8 +63,9 @@ downstream needs to know it ran.
 ## Lifecycle
 
 Stateless and synchronous; the constants are compile-time. `bind` is called
-during a build, once per paragraph, on a string that is normally a sentence
-long.
+during a build, once per paragraph. It stops counting as soon as the fourth
+word proves the paragraph eligible, then searches backward for the final
+breakable space; it does not allocate a complete word list for a long text.
 
 ## Failure and recovery
 

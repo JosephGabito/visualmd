@@ -286,11 +286,15 @@ rebased into complete-block coordinates by
 `lib/api/widgets/model_backed_selection_area.dart`.
 
 The native result holds mounted text near 2,475 characters at both 100,000 and
-1,000,000 source characters. A middle seek and an adjacent append remain below
-4 ms, and the append moves the parked reader by exactly zero pixels
+1,000,000 source characters. A middle seek, adjacent append and safe
+finalization remain below 7 ms, and neither mutation moves the parked reader
+at all
 (`integration_test/atomic_paragraph_performance_test.dart`,
 `benchmark/results/2026-08-28-atomic-paragraph.md`). Initial line discovery is
 still O(source), reaching 238 ms for a pre-existing million-character blob.
-Committed final typography, rich inline content, active search, indented prose,
-tables, lists and quotations still take their eager paths; those boundaries are
+Plain final typography retains the line window: widow eligibility stops after
+four words, and only the visual line owning the final breakable space is
+re-resolved (`lib/presentation/theme/widow_binding.dart`). Straight quotes,
+dash runs, ellipses, rich inline content, active search, indented prose, tables,
+lists and quotations still take their exact eager paths; those boundaries are
 recorded rather than called solved.

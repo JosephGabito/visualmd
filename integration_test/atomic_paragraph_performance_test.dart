@@ -67,7 +67,7 @@ void main() {
       final position = tester.state<ScrollableState>(scrollable.first).position;
       final mountedCharacters = _mountedCharacters();
       final windowed = find
-          .byType(WindowedProvisionalParagraph)
+          .byType(WindowedPlainParagraph)
           .evaluate()
           .isNotEmpty;
       final seekFramesStart = timings.length;
@@ -105,6 +105,22 @@ void main() {
         timings.skip(appendFramesStart).toList(growable: false),
       );
 
+      final pixelsBeforeFinalize = position.pixels;
+      final finalizeFramesStart = timings.length;
+      final finalizeClock = Stopwatch()..start();
+      await tester.pumpWidget(
+        _app(_reading(characters, suffix: suffix, finalized: true)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      finalizeClock.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await tester.pump();
+      final pixelsAfterFinalize = position.pixels;
+      final finalizeFrames = _frameSummary(
+        timings.skip(finalizeFramesStart).toList(growable: false),
+      );
+
       runs.add({
         'source_characters': characters,
         'mounted_characters': mountedCharacters,
@@ -117,6 +133,9 @@ void main() {
         'append_wall_us': appendClock.elapsedMicroseconds,
         'append_scroll_delta': pixelsAfterAppend - pixelsBeforeAppend,
         'append_frames': appendFrames,
+        'finalize_wall_us': finalizeClock.elapsedMicroseconds,
+        'finalize_scroll_delta': pixelsAfterFinalize - pixelsBeforeFinalize,
+        'finalize_frames': finalizeFrames,
         'frames': _frameSummary(
           timings.skip(beforeFrames).toList(growable: false),
         ),
@@ -125,6 +144,7 @@ void main() {
       expect(mountedCharacters, windowed ? lessThan(5000) : equals(characters));
       expect(position.maxScrollExtent, greaterThan(0));
       expect(pixelsAfterAppend, pixelsBeforeAppend);
+      expect(pixelsAfterFinalize, pixelsBeforeFinalize);
       expect(tester.takeException(), isNull);
     }
 
@@ -141,7 +161,7 @@ int _mountedCharacters() => find
     .descendant(
       of: find.byType(Paragraph).evaluate().isNotEmpty
           ? find.byType(Paragraph)
-          : find.byType(WindowedProvisionalParagraph),
+          : find.byType(WindowedPlainParagraph),
       matching: find.byType(RichText),
     )
     .evaluate()
@@ -168,6 +188,7 @@ DocumentReading _reading(
   int characters, {
   String suffix = '',
   BlockTextAppend? append,
+  bool finalized = false,
 }) {
   const unit =
       'Generated prose keeps extending without an authored paragraph break. ';
@@ -188,8 +209,10 @@ DocumentReading _reading(
     content: DocumentContent.revisioned([
       DocumentBlock(
         id: const DocumentBlockId('provisional-paragraph'),
-        revision: characters + (append == null ? 0 : 1),
-        commitment: BlockCommitment.provisional,
+        revision: characters + (finalized ? 2 : (append == null ? 0 : 1)),
+        commitment: finalized
+            ? BlockCommitment.committed
+            : BlockCommitment.provisional,
         block: ParagraphBlock([TextRun(source)]),
         textAppend: append,
       ),

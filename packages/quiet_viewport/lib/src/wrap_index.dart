@@ -125,6 +125,22 @@ final class AppendWrapIndex {
     return _starts[index];
   }
 
+  /// The visual line which owns [offset], found without scanning its prefix.
+  int lineAtOffset(int offset) {
+    RangeError.checkValueInInterval(offset, 0, _source.length, 'offset');
+    var low = 0;
+    var high = _starts.length;
+    while (low < high) {
+      final middle = low + ((high - low) >> 1);
+      if (_starts[middle] <= offset) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    return low == 0 ? 0 : low - 1;
+  }
+
   void _indexToEnd() {
     _lastIndexedCodeUnits = 0;
     _largestWindowCodeUnits = 0;

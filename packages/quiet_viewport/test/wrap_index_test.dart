@@ -92,6 +92,20 @@ void main() {
       for (var line = 0; line < index.length; line++) index.startAt(line),
     ], before);
   });
+
+  test('source offsets resolve directly to their owning visual line', () {
+    final index = AppendWrapIndex(
+      source: 'aaaaabbbbbccccc',
+      resolve: _fiveColumns,
+    );
+
+    expect(index.lineAtOffset(0), 0);
+    expect(index.lineAtOffset(4), 0);
+    expect(index.lineAtOffset(5), 1);
+    expect(index.lineAtOffset(14), 2);
+    expect(index.lineAtOffset(15), 2);
+    expect(() => index.lineAtOffset(16), throwsRangeError);
+  });
 }
 
 List<int> _fiveColumns(String text) => [
