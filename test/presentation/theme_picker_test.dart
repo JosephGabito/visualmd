@@ -179,6 +179,19 @@ void main() {
         reason: 'a menu row does not add a second rounded outline signal',
       );
 
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(
+        tester
+            .getSemantics(find.bySemanticsLabel('Sans'))
+            .flagsCollection
+            .isFocused,
+        Tristate.isTrue,
+        reason: 'arrow keys traverse the menu without requiring Tab',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pumpAndSettle();
       expect(modes, [ReadingMode.serif]);

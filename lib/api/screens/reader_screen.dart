@@ -373,6 +373,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
             toggleShelf,
         const SingleActivator(LogicalKeyboardKey.period, meta: true):
             dismissTransient,
+        const SingleActivator(LogicalKeyboardKey.escape): dismissTransient,
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true): () =>
             _openSearch(_SearchMode.document),
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () =>

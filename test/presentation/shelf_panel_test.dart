@@ -141,9 +141,7 @@ void main() {
     expect(selected, markdown.id);
   });
 
-  testWidgets('standalone markdowns reveal remove on hover', (
-    tester,
-  ) async {
+  testWidgets('standalone markdowns reveal remove on hover', (tester) async {
     final markdown = Document(
       id: DocumentId(
         const LibraryRootId('standalone-markdown:plan'),
@@ -334,6 +332,29 @@ void main() {
     expect(find.text('Reveal in Finder'), findsOneWidget);
     expect(find.text('Copy relative path'), findsOneWidget);
     expect(find.text('Copy full path'), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.byElementPredicate(
+          (element) => element == FocusManager.instance.primaryFocus?.context,
+        ),
+        matching: find.byKey(const ValueKey('shelf-context-item-reveal')),
+      ),
+      findsOneWidget,
+      reason: 'the first available command receives initial keyboard focus',
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(
+      find.ancestor(
+        of: find.byElementPredicate(
+          (element) => element == FocusManager.instance.primaryFocus?.context,
+        ),
+        matching: find.byKey(
+          const ValueKey('shelf-context-item-copyRelativePath'),
+        ),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Reveal in Finder'));
     await tester.pumpAndSettle();
     expect(actions.revealed, isA<ShelfFolderLocation>());
@@ -352,19 +373,31 @@ void main() {
   ) async {
     await tester.pumpWidget(shelf());
 
-    for (
-      var step = 0;
-      step < 10 && find.text('Copy relative path').evaluate().isEmpty;
-      step++
-    ) {
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
-      await tester.pump();
-    }
+    final row = _rowForText(tester, 'notes');
+    row.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pump();
 
     expect(find.text('Copy relative path'), findsOneWidget);
     expect(find.text('Reveal in Finder'), findsNothing);
     expect(find.text('Copy full path'), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.byElementPredicate(
+          (element) => element == FocusManager.instance.primaryFocus?.context,
+        ),
+        matching: find.byKey(
+          const ValueKey('shelf-context-item-copyRelativePath'),
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Copy relative path'), findsNothing);
+    expect(row.focusNode!.hasFocus, isTrue);
   });
 
   testWidgets('arrow keys traverse and disclose the shelf tree', (

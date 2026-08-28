@@ -92,10 +92,12 @@ root-relative path, or copy its full local path. Relative paths are
 always available; physical commands appear only when the platform adapter can
 resolve the opaque source. The API therefore never interprets a root id as a
 filesystem path. A context-menu key or Shift-F10 opens the same surface for a
-focused row, and a failed platform command remains visible in the reader. The
-command surface appears without transition delay and uses compact rows on a
-translucent, blurred theme surface: a contextual tool for a reader already in
-motion, not another panel to enter
+focused row. Its first available command receives focus immediately, arrow
+keys traverse the commands, and dismissal restores the shelf row through the
+route focus scope. A failed platform command remains visible in the reader.
+The command surface appears without transition delay and uses compact rows on
+the elevated theme surface: a contextual tool for a reader already in motion,
+not another panel to enter
 (`lib/application/ports/shelf_source_actions.dart`,
 `lib/api/widgets/shelf_panel.dart`).
 
