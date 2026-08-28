@@ -120,3 +120,22 @@ cost, but exposes one smaller shared boundary:
 This is now a viewport-sized composition problem rather than million-character
 text shaping. It should be compacted only with another measured pass; the
 present result does not call it solved.
+
+## Exact rich viewport
+
+Plain text retains eight inexpensive lines beyond each viewport edge. Styled
+text has a different cost: each speculative line carries authored span and
+recognizer state. The rich window now uses the exact floor/ceil-covered visual
+lines with no extra overscan. Scroll-position listeners update the range before
+paint, and a widget proof checks that its mounted rectangle covers both edges
+of the viewport after a deep jump.
+
+| Visible characters | Mounted characters | Open wall | Worst index step | Open frame worst | Open frame p99 | Middle-seek frame worst | Exact extent |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1,000,032 | 1,650 | 2.00 s | 8.9 ms | 39.1 ms | 14.0 ms | 15.0 ms | 514,739.8 px |
+
+This removes 39% of the retained styled text from the prior 2,706-character
+window. In the 100,056-character fixture the middle seek falls from 8.2 ms to
+3.2 ms; the deliberately dense million-character fixture falls from 17.5 ms
+to 15.0 ms. The complete extent remains bit-for-bit unchanged, so this changes
+retained span work rather than scrollbar physics.

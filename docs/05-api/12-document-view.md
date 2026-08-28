@@ -324,10 +324,13 @@ both complete. A widget contract checks the extent on every intermediate pump,
 so partial rich geometry cannot twitch the scrollbar.
 
 At one million characters and 106,064 authored inline runs, range-index steps
-stay below 7.6 ms, mounted text remains 2,706 characters, and the exact extent
-remains 514,739.8 logical pixels. The worst open frame is 43.1 ms, down from
+stay below 8.9 ms, mounted text remains 1,650 characters, and the exact extent
+remains 514,739.8 logical pixels. Rich text mounts exactly the floor/ceil-
+covered viewport lines rather than the eight inexpensive speculative lines
+kept by plain prose; a widget proof verifies that this exact window covers both
+viewport edges after a deep jump. The worst open frame is 39.1 ms, down from
 55.2 ms before scheduling and 5,280.5 ms on the eager path. The remaining
-17.5 ms middle-seek boundary is viewport-sized rich-span composition, not work
+15.0 ms middle-seek boundary is viewport-sized rich-span composition, not work
 over the complete paragraph. Inline images, mathematics, footnote controls,
 active search and first-line indents still use the eager paragraph because each
 needs a separate geometry, semantics or navigation contract. The native
