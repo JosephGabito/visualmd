@@ -1084,6 +1084,67 @@ A supported claim.[^source]
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a table uses its rounded perimeter and quiet row rules', (
+    tester,
+  ) async {
+    await pumpDocument(tester, [
+      const TableBlock(
+        head: [
+          TableCell([TextRun('Property')]),
+          TableCell([TextRun('Value')]),
+        ],
+        rows: [
+          [
+            TableCell([TextRun('Radius')]),
+            TableCell([TextRun('Continuous')]),
+          ],
+        ],
+      ),
+    ]);
+
+    final table = tester.widget<Table>(find.byType(Table));
+    final clip = tester.widget<ClipRRect>(
+      find.ancestor(of: find.byType(Table), matching: find.byType(ClipRRect)),
+    );
+    expect(table.border, isNotNull);
+    expect(table.border!.borderRadius, clip.borderRadius);
+    expect(clip.borderRadius, isNot(BorderRadius.zero));
+    expect(table.border!.top.style, BorderStyle.solid);
+    expect(table.border!.horizontalInside.style, BorderStyle.solid);
+    expect(table.border!.verticalInside, BorderSide.none);
+  });
+
+  testWidgets('a path-like table value stays on one line', (tester) async {
+    await pumpDocument(tester, [
+      const TableBlock(
+        head: [
+          TableCell([TextRun('Layer')]),
+          TableCell([TextRun('Responsibility')]),
+        ],
+        rows: [
+          [
+            TableCell([TextRun('infrastructure/')]),
+            TableCell([TextRun('Adapters for the outside world')]),
+          ],
+        ],
+      ),
+    ], width: 320);
+
+    final value = tester.widget<Text>(find.text('infrastructure/'));
+    final paragraph = value.textSpan!.toPlainText();
+    final painter = TextPainter(
+      text: value.textSpan,
+      textDirection: value.textDirection ?? TextDirection.ltr,
+      textAlign: value.textAlign ?? TextAlign.start,
+    )..layout(maxWidth: tester.getSize(find.text('infrastructure/')).width);
+    expect(paragraph, 'infrastructure/');
+    expect(
+      painter.computeLineMetrics(),
+      hasLength(1),
+      reason: 'an atomic path should not fracture inside its table column',
+    );
+  });
+
   testWidgets('table cells keep the alignment the author assigned', (
     tester,
   ) async {
