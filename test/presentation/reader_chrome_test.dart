@@ -237,6 +237,7 @@ void main() {
     bool withLibrary = true,
     Stream<ReaderUiCommand>? uiCommands,
     DocumentSearch? documentSearch,
+    double topBarLeadingInset = 8,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -284,6 +285,7 @@ void main() {
           openExternal: openExternal ?? (_) {},
           openReaderSources: openReaderSources,
           uiCommands: uiCommands,
+          topBar: (height: 52, leadingInset: topBarLeadingInset),
         ),
       ),
     );
@@ -521,6 +523,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.outlineVisible, isFalse);
     semantics.dispose();
+  });
+
+  testWidgets('unequal title-bar clusters cannot move the document title', (
+    tester,
+  ) async {
+    await pumpReader(tester, topBarLeadingInset: 88);
+
+    final barCenter = tester.getCenter(
+      find.byKey(const ValueKey('reader-top-bar')),
+    );
+    final titleCenter = tester.getCenter(
+      find.byKey(const ValueKey('top-bar-document-title')),
+    );
+
+    expect(titleCenter.dx, closeTo(barCenter.dx, 0.01));
   });
 
   testWidgets('the title-bar search opens the existing document finder', (
