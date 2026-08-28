@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/api/theme/library_theme.dart';
+import 'package:visualmd/api/widgets/anchored_menu.dart';
 import 'package:visualmd/api/widgets/theme_picker.dart';
 import 'package:visualmd/presentation/theme/built_in_themes.dart';
 import 'package:visualmd/presentation/theme/reading_mode.dart';
@@ -30,6 +31,7 @@ void main() {
     WidgetTester tester, {
     bool reduceMotion = false,
     Brightness brightness = Brightness.light,
+    AnchoredMenuController? controller,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -46,6 +48,7 @@ void main() {
           body: Align(
             alignment: Alignment.topRight,
             child: ThemePicker(
+              menuController: controller,
               registry: registry,
               choice: registry.systemPair,
               onChoose: chosen.add,
@@ -62,6 +65,21 @@ void main() {
       ),
     );
   }
+
+  testWidgets('an external command opens the existing appearance menu', (
+    tester,
+  ) async {
+    final controller = AnchoredMenuController();
+    addTearDown(controller.dispose);
+    await pumpPicker(tester, controller: controller);
+
+    controller.open();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Follow system'), findsOneWidget);
+    expect(find.text('Serif'), findsOneWidget);
+    expect(find.text('Sans'), findsOneWidget);
+  });
 
   /// The opacity the stagger gives a row, nearest wrapper first.
   double opacityOf(WidgetTester tester, String label) => tester

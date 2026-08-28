@@ -59,4 +59,33 @@ void main() {
 
     expect(await received, PlatformCommand.openSampleLibrary);
   });
+
+  for (final entry in {
+    'openAppearance': PlatformCommand.openAppearance,
+    'findDocument': PlatformCommand.findDocument,
+    'searchLibrary': PlatformCommand.searchLibrary,
+    'toggleShelf': PlatformCommand.toggleShelf,
+    'toggleOutline': PlatformCommand.toggleOutline,
+    'enlargeText': PlatformCommand.enlargeText,
+    'shrinkText': PlatformCommand.shrinkText,
+    'resetText': PlatformCommand.resetText,
+    'showKeyboardShortcuts': PlatformCommand.showKeyboardShortcuts,
+    'openSupport': PlatformCommand.openSupport,
+    'openPrivacy': PlatformCommand.openPrivacy,
+    'showLicenses': PlatformCommand.showLicenses,
+  }.entries) {
+    test('the native ${entry.key} item reaches its typed command', () async {
+      final commands = DesktopCommands();
+      final received = commands.stream.first;
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'com.visualmd.visualmd/commands',
+            const StandardMethodCodec().encodeMethodCall(MethodCall(entry.key)),
+            (_) {},
+          );
+
+      expect(await received, entry.value);
+    });
+  }
 }

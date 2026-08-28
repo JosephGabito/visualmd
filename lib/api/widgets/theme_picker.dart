@@ -14,6 +14,7 @@ import 'anchored_menu.dart';
 /// Pick what the reader wears: the default pair, a named light/dark family, or
 /// one fixed theme. Each entry shows its own paper and ink.
 class ThemePicker extends StatelessWidget {
+  final AnchoredMenuController? menuController;
   final ThemeRegistry registry;
   final ThemeChoice choice;
   final ValueChanged<ThemeChoice> onChoose;
@@ -39,6 +40,7 @@ class ThemePicker extends StatelessWidget {
     required this.marking,
     required this.onMark,
     this.onOpenThemesFolder,
+    this.menuController,
   });
 
   @override
@@ -55,6 +57,7 @@ class ThemePicker extends StatelessWidget {
     );
 
     return AnchoredMenu(
+      controller: menuController,
       tooltip: 'Appearance: ${current.name}, ${mode.label}',
       width: 268,
       trigger: (context, isOpen) => Padding(

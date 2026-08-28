@@ -9,13 +9,18 @@ the host's File menu, while file I/O remains behind application ports.
 
 ## Present wiring
 
-The platform command contract distinguishes Open reader sources, Open
-Workspace, and Open Sample Library, alongside New, Save, Save As, Add Folder,
-and Add Markdown
+The platform command contract distinguishes workspace actions from native
+reader commands. It carries Open reader sources, Open Workspace, and Open
+Sample Library alongside New, Save, Save As, Add Folder, and Add Markdown. The
+same channel also carries Settings, search, panel visibility, text size, and
+Help selections
 (`lib/infrastructure/platform/platform_command.dart`). Desktop hosts send
 those selections over one method channel, where they become a typed stream
 (`lib/infrastructure/io/desktop_commands.dart`). The composition root maps
-each command to the matching controller method (`lib/main.dart`).
+durable actions to the matching controller method, external links to the
+platform opener, and transient surfaces to a small API-owned command stream
+(`lib/main.dart`, `lib/api/reader_ui_command.dart`). This translation keeps the
+API ring independent of the infrastructure command type.
 
 The Open boundary is typed before it reaches the controller. A
 `ReaderSourcePicker` returns folder or Markdown selections behind opaque refs
@@ -35,6 +40,17 @@ the current UI on failure and display the error in the same notice
 Flutter `CallbackShortcuts` provides Command shortcuts on macOS and Control
 shortcuts elsewhere, so keyboard behavior remains available on web while the
 desktop menu remains genuinely native.
+
+The macOS menu is deliberately a reader menu rather than the editor template
+Flutter starts with. File includes Close Window; Edit retains Copy and Select
+All plus the two search scopes; View exposes panels, text size, and full
+screen; Help exposes shortcuts, support, privacy, and the licence registry.
+Settings requests the existing Appearance popover through an
+`AnchoredMenuController`, so the menu bar never creates a second preferences
+model (`macos/Runner/MainFlutterWindow.swift`,
+`macos/Runner/Base.lproj/MainMenu.xib`,
+`lib/api/widgets/anchored_menu.dart`,
+`lib/api/screens/reader_screen.dart`).
 
 ## Inputs and outputs
 
