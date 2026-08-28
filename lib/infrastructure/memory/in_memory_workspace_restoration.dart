@@ -9,7 +9,7 @@ final class InMemoryWorkspaceRestoration implements WorkspaceRestoration {
   const InMemoryWorkspaceRestoration(this._state);
 
   @override
-  void replace(Library library, WorkspaceSession session) {
+  Future<void> replace(Library library, WorkspaceSession session) async {
     _state.replace(library, session);
   }
 }

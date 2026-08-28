@@ -9,6 +9,7 @@ import '../../application/ports/reader_source_picker.dart';
 import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/shelf_source_actions.dart';
 import '../../application/ports/workspace_files.dart';
+import '../../application/ports/workspace_recovery_store.dart';
 import '../../application/ports/workspace_source_access.dart';
 import 'platform_command.dart';
 
@@ -21,6 +22,7 @@ abstract interface class PlatformAdapters {
   MarkdownScanner get markdownScanner;
   SourceChangeMonitor get sourceChangeMonitor;
   WorkspaceFiles get workspaceFiles;
+  WorkspaceRecoveryStore get workspaceRecoveryStore;
   WorkspaceSourceAccess get workspaceSourceAccess;
   ReaderSourcePicker? get readerSourcePicker;
   ShelfSourceActions? get shelfSourceActions;

@@ -5,10 +5,12 @@ import 'package:visualmd/application/ports/library_repository.dart';
 import 'package:visualmd/application/ports/markdown_scanner.dart';
 import 'package:visualmd/application/ports/workspace_files.dart';
 import 'package:visualmd/application/ports/workspace_ids.dart';
+import 'package:visualmd/application/ports/workspace_recovery_store.dart';
 import 'package:visualmd/application/ports/workspace_session_repository.dart';
 import 'package:visualmd/application/ports/workspace_restoration.dart';
 import 'package:visualmd/application/ports/workspace_source_access.dart';
 import 'package:visualmd/application/use_cases/open_workspace.dart';
+import 'package:visualmd/application/use_cases/recover_workspace.dart';
 import 'package:visualmd/application/use_cases/create_workspace.dart';
 import 'package:visualmd/application/use_cases/reconnect_workspace_source.dart';
 import 'package:visualmd/application/use_cases/save_workspace.dart';
@@ -243,6 +245,49 @@ void main() {
       expect(opened.library.roots.single.id.value, 'folder');
       expect(opened.session.workspace.folders, [missing, folder]);
       expect(opened.session.unavailableSources, {missing.id});
+    },
+  );
+
+  test(
+    'private recovery restores sources independently and remains unbound',
+    () async {
+      final missing = WorkspaceSource(
+        id: const WorkspaceSourceId('missing'),
+        displayName: 'Missing',
+        relativePath: 'Missing',
+      );
+      final source = workspace(
+        folders: [missing, folder],
+        active: WorkspaceDocument(
+          sourceId: missing.id,
+          relativePath: 'README.md',
+        ),
+      );
+      final access = _Access()..missingFolders.add(missing.id);
+      final folders = _Folders({
+        'folder': const ScannedFolder(
+          name: 'Notes',
+          files: [FileEntry('README.md', '# Notes')],
+        ),
+      });
+      final libraries = _Libraries(null);
+      final sessions = _Sessions(null);
+      final opened = await RecoverWorkspace(
+        recovery: _Recovery(source),
+        open: _open(_Files(), libraries, sessions, access, folders: folders),
+      ).execute();
+
+      expect(opened, isNotNull);
+      expect(opened!.session.file, isNull);
+      expect(opened.session.dirty, isTrue);
+      expect(opened.session.workspace.id, source.id);
+      expect(opened.session.workspace.documentRootAbsolutePath, '/work');
+      expect(opened.session.workspace.folders, [missing, folder]);
+      expect(opened.session.workspace.activeDocument, source.activeDocument);
+      expect(opened.session.workspace.theme, source.theme);
+      expect(opened.session.unavailableSources, {missing.id});
+      expect(opened.library.roots.single.id.value, folder.id.value);
+      expect(opened.activeDocument!.id.rootId.value, folder.id.value);
     },
   );
 
@@ -700,6 +745,18 @@ final class _Files implements WorkspaceFiles {
   }
 }
 
+final class _Recovery implements WorkspaceRecoveryStore {
+  final Workspace workspace;
+
+  const _Recovery(this.workspace);
+
+  @override
+  Future<Workspace?> load() async => workspace;
+
+  @override
+  Future<void> save(Workspace workspace) async {}
+}
+
 final class _Sessions implements WorkspaceSessionRepository {
   WorkspaceSession? value;
   final List<String> events;
@@ -739,7 +796,7 @@ final class _Restoration implements WorkspaceRestoration {
   const _Restoration(this.libraries, this.sessions);
 
   @override
-  void replace(Library library, WorkspaceSession session) {
+  Future<void> replace(Library library, WorkspaceSession session) async {
     libraries.events.add('library');
     libraries.value = library;
     sessions.events.add('session:${session.workspace.id.value}');

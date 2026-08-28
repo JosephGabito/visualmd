@@ -39,7 +39,7 @@ final class CreateWorkspace {
         file: null,
         dirty: true,
       );
-      _restoration.replace(Library.empty(), session);
+      await _restoration.replace(Library.empty(), session);
       return session;
     });
   }

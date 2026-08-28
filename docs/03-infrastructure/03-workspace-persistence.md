@@ -31,6 +31,15 @@ temporary-file replacement and last-good backup implemented by its runner.
 Machine-local source access is keyed by Workspace ID and source ID, so two
 workspaces may grant different authority to the same path.
 
+Desktop also keeps `session.json`, a private last-room journal separate from
+preferences and public workspace files. It uses the same exact Workspace
+encoding, including the absolute document root required to rebase relative
+source paths, but restores without a `WorkspaceFileRef`. The recovery wrappers
+journal only after committing live state, so filesystem failure cannot undo an
+in-memory reading action
+(`lib/infrastructure/io/desktop_workspace_recovery_store.dart`,
+`lib/infrastructure/recovery/recovering_workspace_state.dart`).
+
 On macOS that local record contains a security-scoped bookmark. On Windows the
 portable absolute root and relative path reconstruct the location, while the
 same local registry shape remains available. Browser implementations prefer
@@ -51,6 +60,7 @@ used by the scanner (`lib/infrastructure/io/desktop_workspace_source_access.dart
 | `WorkspaceSourceAccess` | paths and macOS bookmarks in reader-owned JSON | file/directory handles in IndexedDB |
 | `WorkspaceCodec` | `WorkspaceJsonCodec` | `WorkspaceJsonCodec` |
 | `WorkspaceIds` | opaque random IDs | opaque random IDs |
+| `WorkspaceRecoveryStore` | atomic app-support journal with backup fallback | no-op |
 
 The suggested filename uses the public `.visualmd-workspace.json` suffix
 (`lib/application/ports/workspace_files.dart`). The final name remains
@@ -69,6 +79,13 @@ represented by an opaque `WorkspaceFileRef` for the current run. Durable source
 bindings outlive that run in the platform's local store and are copied to a new
 Workspace ID during Save As.
 
+The private session journal also outlives the process. Startup restores each
+source independently through its saved machine authority. Missing sources keep
+their identities and order as reconnectable rows; successful sources still
+open. The resulting session stays unbound and dirty
+(`lib/application/use_cases/recover_workspace.dart`,
+`lib/application/use_cases/open_workspace.dart`).
+
 ## Failure and recovery
 
 The codec reports actionable `WorkspaceFormatException`s. Opening parses and
@@ -78,6 +95,11 @@ retain `.bak` as the last known complete file
 (`lib/infrastructure/io/desktop_atomic_files.dart`). Missing or denied
 source authority becomes an unavailable source, not a partially restored
 Library.
+
+Session recovery tries the primary journal and then its last-good `.bak`. If a
+primary is corrupt while the backup is readable, the next replacement does not
+rotate the corrupt file over that fallback
+(`lib/infrastructure/io/desktop_workspace_recovery_store.dart`).
 
 On browsers without writable handles, Save downloads a new file only when the
 reader explicitly invokes it. Deferred changes remain visibly dirty rather

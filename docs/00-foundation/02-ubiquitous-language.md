@@ -70,6 +70,7 @@ Five directories under `lib/`, plus the composition root. "Ring" is the word;
 | **SearchDocuments** | Use case: choose one-document or whole-library scope, then search it. | `lib/application/use_cases/search_documents.dart` | global find, grep |
 | **WorkspaceSession** | The current Workspace plus its selected file, dirty state, and unavailable source identities. | `lib/application/ports/workspace_session_repository.dart` | database row, project state |
 | **WorkspaceFiles** | Port: select, read, and write user-owned workspace documents. | `lib/application/ports/workspace_files.dart` | file service |
+| **WorkspaceRecoveryStore** | Port: retain the private last reading room without binding a public workspace file. | `lib/application/ports/workspace_recovery_store.dart` | autosave file, recent project |
 | **WorkspaceSourceAccess** | Port: locate, bind, restore, and reconnect machine authority for durable source identities. | `lib/application/ports/workspace_source_access.dart` | path store, permission service |
 
 ## Infrastructure terms
@@ -80,7 +81,7 @@ Five directories under `lib/`, plus the composition root. "Ring" is the word;
 | **FolderRegistry** | Issues `FolderRef`s for platform handles; one per adapter family. | `lib/infrastructure/folder_registry.dart` | cache, map |
 | **MarkdownRegistry** | Issues `MarkdownRef`s for platform file handles, preserving stable identity where available. | `lib/infrastructure/markdown_registry.dart` | cache, map |
 | **PlatformAdapters** | Everything the composition root needs from the current platform family. | `lib/infrastructure/platform/platform_adapters.dart` | platform service, environment |
-| **ReaderFiles** | The reader's own files on disk: preferences, themes, and machine-local workspace access records. | `lib/infrastructure/io/reader_files.dart` | storage, settings service |
+| **ReaderFiles** | The reader's own files on disk: preferences, themes, private recovery, and machine-local workspace access records. | `lib/infrastructure/io/reader_files.dart` | storage, settings service |
 | **LiteralDocumentSearch** | Adapter using Dart's escaped, case-insensitive regular-expression engine over visible text. | `lib/infrastructure/search/literal_document_search.dart` | grep, index |
 | **Composition root** | `lib/main.dart` — the only file that sees every ring. | `lib/main.dart` | bootstrap, DI container, app module |
 
