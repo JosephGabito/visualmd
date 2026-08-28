@@ -58,7 +58,9 @@ a library result follows the ordinary document-opening path.
 
 The screen owns one text controller, focus node and debounce timer, disposing
 all three with its state (`lib/api/screens/reader_screen.dart`). Closing
-search invalidates pending requests and removes every highlight (`lib/api/screens/reader_screen.dart`).
+search invalidates pending requests, removes every highlight, and returns
+keyboard focus to the control or reader surface that had it before search
+opened (`lib/api/screens/reader_screen.dart`).
 When source synchronization increments `contentRevision`, an open non-empty
 search reruns against the committed Library, using the same request-number guard
 as typed queries (`lib/api/screens/reader_screen.dart`).
@@ -70,6 +72,13 @@ shows `0 of 0`; no library results shows “No matches.” Navigation wraps rath
 than stopping at either end (`lib/api/screens/reader_screen.dart`).
 Search cannot open before a library, and document scope cannot open without a
 reading (`lib/api/screens/reader_screen.dart`).
+
+An adapter or source failure ends the searching state with no result for that
+request and uses the occupied reader's persistent, human-labelled error notice.
+Raw exception text never becomes interface copy, and another edit reruns the
+ordinary request path so a recovered source can answer. The notice's Retry
+action repeats the current request without losing its scope or query
+(`lib/api/reader_controller.dart`, `lib/api/screens/reader_screen.dart`).
 
 Widget tests exercise both shortcuts, result counts and the handoff from a
 library result to an open highlighted document

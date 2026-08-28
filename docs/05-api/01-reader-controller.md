@@ -50,8 +50,10 @@ active (`lib/api/reader_controller.dart`). `moveFolder` replaces the
 aggregate but intentionally leaves `reading` unchanged
 (`lib/api/reader_controller.dart`).
 
-`openDocument` skips an already-open identity. Search delegates scope to
-`SearchDocuments` without retaining query state. Library mutations align both
+`openDocument` skips an already-open identity. It commits a new reading only
+after the source read and workspace update both succeed, so a failed selection
+leaves the prior page readable and can be selected again. Search delegates
+scope to `SearchDocuments` without retaining query state. Library mutations align both
 the reading cache and the search projection index: changed identities are
 invalidated, removed identities are released, and a new workspace clears both
 (`lib/api/reader_controller.dart`).
@@ -135,9 +137,17 @@ surface instead of disappearing behind the welcome screen. The last good
 Library remains readable, and a later successful synchronization clears only
 that synchronization error (`lib/api/reader_controller.dart`).
 
-Shelf-generated remove and move ids are safe no-ops if stale. A missing
-document still surfaces as `DocumentNotFound`; the shelf can only offer ids
-from the current aggregate.
+A document-opening failure likewise keeps the last good reading and reports a
+short document-labelled message without exposing adapter exceptions. Search
+failures become scope-labelled messages and an empty result for that request;
+a Retry action repeats the failed document or active query, and a later
+successful request clears only the search failure it replaces
+(`lib/api/reader_controller.dart`).
+
+Shelf-generated remove and move ids are safe no-ops if stale. A stale or
+temporarily unreadable document selection uses the same recoverable opening
+failure rather than allowing `DocumentNotFound` or an adapter error to cross
+the widget boundary.
 
 ## Transition
 

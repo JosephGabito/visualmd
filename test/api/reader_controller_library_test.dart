@@ -27,6 +27,8 @@ import 'package:visualmd/infrastructure/search/literal_document_search.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
 
 final class _Scanner implements FolderScanner, FolderDocumentScanner {
+  final documentContents = <String, String>{};
+  final unavailableDocuments = <String>{};
   final folders = <String, ScannedFolder>{
     'a': const ScannedFolder(
       name: 'alpha',
@@ -52,10 +54,14 @@ final class _Scanner implements FolderScanner, FolderDocumentScanner {
     FolderRef folder,
     String relativePath,
   ) async {
+    final key = '${folder.id}/$relativePath';
+    if (unavailableDocuments.contains(key)) {
+      throw StateError('private scanner failure');
+    }
     final entry = folders[folder.id]!.files
         .where((candidate) => candidate.path == relativePath)
         .firstOrNull;
-    final content = entry?.content;
+    final content = documentContents[key] ?? entry?.content;
     return content == null
         ? null
         : ScannedFolderDocument(
@@ -346,6 +352,63 @@ void main() {
       expect(controller.reading, isNull);
     },
   );
+
+  test(
+    'a failed document open preserves the readable page and can be retried',
+    () async {
+      scanner.folders['a'] = const ScannedFolder(
+        name: 'alpha',
+        files: [
+          FileEntry('README.md', '# Alpha'),
+          FileEntry('guide.md', null, title: 'Field guide'),
+        ],
+      );
+      scanner.documentContents['a/guide.md'] = '# Field guide\n\nRecovered';
+      await controller.addFolder(alpha);
+      final prior = controller.reading;
+      scanner.unavailableDocuments.add('a/guide.md');
+
+      await controller.openDocument(DocumentId(alphaId, 'guide.md'));
+
+      expect(controller.reading, same(prior));
+      expect(controller.error, 'Couldn\'t open “Field guide”. Try again.');
+      expect(controller.error, isNot(contains('private scanner failure')));
+      expect(controller.canRetryDocumentOpen, isTrue);
+
+      scanner.unavailableDocuments.clear();
+      await controller.retryDocumentOpen();
+
+      expect(controller.reading?.document.id, DocumentId(alphaId, 'guide.md'));
+      expect(controller.reading?.source, contains('Recovered'));
+      expect(controller.error, isNull);
+    },
+  );
+
+  test('a failed library search is contained and can be retried', () async {
+    scanner.folders['a'] = const ScannedFolder(
+      name: 'alpha',
+      files: [
+        FileEntry('README.md', '# Alpha'),
+        FileEntry('guide.md', null, title: 'Field guide'),
+      ],
+    );
+    scanner.documentContents['a/guide.md'] = '# Field guide\n\nRecovered';
+    await controller.addFolder(alpha);
+    scanner.unavailableDocuments.add('a/guide.md');
+
+    final failed = await controller.search('Recovered');
+
+    expect(failed, isEmpty);
+    expect(controller.error, 'Couldn\'t search the library. Try again.');
+    expect(controller.error, isNot(contains('private scanner failure')));
+
+    scanner.unavailableDocuments.clear();
+    final recovered = await controller.search('Recovered');
+
+    expect(recovered, hasLength(1));
+    expect(recovered.single.document.id, DocumentId(alphaId, 'guide.md'));
+    expect(controller.error, isNull);
+  });
 
   test(
     'the sample command opens its existing root without duplicating it',
