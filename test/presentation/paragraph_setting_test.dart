@@ -655,14 +655,17 @@ void main() {
       final bound = WidowBinding.bind('one two three four five');
       expect(bound, 'one two three four five');
       expect(bound.split(' ').last, 'four five');
+      expect(WidowBinding.bindingOffset('one two three four five'), 18);
     });
 
     test('a short paragraph is left alone', () {
       expect(WidowBinding.bind('just three words'), 'just three words');
+      expect(WidowBinding.bindingOffset('just three words'), isNull);
     });
 
     test('text that ends in a space is left as it is', () {
       expect(WidowBinding.bind('one two three four '), 'one two three four ');
+      expect(WidowBinding.bindingOffset('one two three four '), isNull);
     });
 
     testWidgets('a rendered paragraph carries the binding', (tester) async {

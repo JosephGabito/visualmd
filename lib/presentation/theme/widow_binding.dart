@@ -16,13 +16,28 @@ abstract final class WidowBinding {
 
   /// [text] with the final space bound, when it is worth binding.
   static String bind(String text) {
-    if (text.trimRight().length != text.length) return text;
+    final offset = bindingOffset(text);
+    if (offset == null) return text;
+    return '${text.substring(0, offset)}$nonBreakingSpace${text.substring(offset + 1)}';
+  }
+
+  /// The authored space which should become non-breaking, when one exists.
+  ///
+  /// Returning the boundary separately lets a range renderer apply the same
+  /// rule inside its final bounded window. It avoids materialising a second
+  /// copy of a very large paragraph merely to change one code unit near its
+  /// end.
+  static int? bindingOffset(String text) {
+    if (text.trimRight().length != text.length) return null;
     var words = 0;
     for (final _ in _word.allMatches(text)) {
       words++;
-      if (words == leastWords) return bindLastSpace(text);
+      if (words == leastWords) {
+        final lastSpace = text.lastIndexOf(RegExp(r'[ \t]'));
+        return lastSpace > 0 ? lastSpace : null;
+      }
     }
-    return text;
+    return null;
   }
 
   /// Binds the final breakable space without making a second decision about
