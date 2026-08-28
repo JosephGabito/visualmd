@@ -1,5 +1,19 @@
 # Windowed syntax-highlighting result
 
+## Reader's summary
+
+**Problem.** Windowed code layout was still followed by full-source syntax
+classification. At one million characters, that separate enhancement stage
+took 2.93 seconds and retained 200,000 tokens.
+
+**Solution.** Highlighting is now requested for a revision-fenced, debounced
+source window around the mounted rows and columns. Plain source never waits for
+the optional colour result.
+
+**Before and after.** At one million characters, the largest classification
+request falls from 1,000,000 characters to 1,379, returned tokens from 200,000
+to 828, and measured classification time from 2,930.9 ms to 2.0 ms.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

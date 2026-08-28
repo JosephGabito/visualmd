@@ -1,5 +1,20 @@
 # Atomic code-block baseline
 
+## Reader's summary
+
+**Problem.** One open code fence is one top-level Markdown block, so document
+slivers cannot stop Flutter from shaping every line inside it. At 50,000 lines,
+the eager block produced a 513 ms frame and added 771.3 MiB of process RSS.
+
+**Solution.** The paired
+[viewport-windowed result](2026-08-28-windowed-code-block.md) retains the full
+line coordinate system but mounts only the rows around the page viewport.
+
+**Before and after.** At 50,000 lines, the eager block laid out all 50,000 rows;
+the repaired midpoint mounts 54. The worst measured frame falls from 513 ms to
+31.7 ms on open and 14.5 ms on a direct midpoint seek, while the complete
+1,099,650 px outer scroll extent and exact-source Copy remain intact.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

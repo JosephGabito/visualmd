@@ -1,5 +1,21 @@
 # Native drag-selection retention baseline
 
+## Reader's summary
+
+**Problem.** Flutter's native cross-sliver selection kept every selected
+paragraph widget alive after it left the viewport. Over a 3,800 px drag,
+retained paragraphs grew from 19 to 54 even though only nine were visible.
+
+**Solution.** Flutter still owns pointer interaction, auto-scroll, and visible
+highlighting, while `ModelSelectionSnapshot` owns the durable document range
+and assembles Copy from the source model.
+
+**Before and after.** At the longest drag, retained paragraphs fall from 54 to
+15 and stay flat across increasing selection distance. Copied content still
+grows with the selected model range, and wall time remains essentially
+unchanged at 10.18 versus 10.19 seconds because the native auto-scroll journey
+itself is intentionally the same.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

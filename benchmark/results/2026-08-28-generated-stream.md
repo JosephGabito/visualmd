@@ -1,4 +1,22 @@
-# Generated Markdown stream baseline
+# Generated Markdown stream scaling result
+
+## Reader's summary
+
+**Problem.** A token stream must be able to revise its provisional tail without
+reparsing, reindexing, or remounting thousands of already committed paragraphs,
+and it must not cancel a reader's active scroll.
+
+**Solution.** The generation path retains chunked source, persistent document
+revisions, suffix-projected outline/navigation/render indexes, and stable
+viewport geometry. Each publication carries only the parser work and mutation
+caused by its incoming source delta.
+
+**Measured result.** With 5,000 committed blocks, each revision parses at most
+121 source characters and visits one outline, navigation, and render record.
+Parse/publish p90 is 0.173 ms, eight paragraphs remain mounted, and ballistic
+scrolling continues. This note is a prefix-scaling proof rather than a retained
+pre-refactor timing comparison; the structural counts demonstrate that later
+work does not depend on the committed prefix.
 
 ## Environment
 

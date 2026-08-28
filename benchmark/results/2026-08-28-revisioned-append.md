@@ -1,4 +1,19 @@
-# Revisioned append baseline
+# Revisioned append scaling result
+
+## Reader's summary
+
+**Problem.** Appending one generated block must not rescan every already parsed
+block or disrupt an unrelated ballistic scroll.
+
+**Solution.** The domain publishes an explicit suffix mutation. Navigation and
+render indexes extend from that payload, and stable block keys preserve mounted
+elements.
+
+**Measured result.** With 5,000 committed paragraphs, an append visits one
+navigation record and one render record, mounts ten paragraphs, and costs a
+2.5 ms worst frame. A second append during ballistic scrolling again visits one
+record per index while the viewport advances 1,294 px. This is a structural
+scaling proof; no pre-change wall-clock baseline was retained in this note.
 
 ## Environment
 

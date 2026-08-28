@@ -1,5 +1,20 @@
 # Atomic code-line baseline
 
+## Reader's summary
+
+**Problem.** Vertical line windowing still handed one unbroken source line to
+one `RenderParagraph`. A one-million-character line mounted all one million
+characters, produced a 147.7 ms frame, and added 291.3 MiB of process RSS.
+
+**Solution.** The paired
+[column-windowed result](2026-08-28-windowed-code-line.md) preserves the full
+monospace coordinate system while composing only the visible columns and fixed
+overscan.
+
+**Before and after.** At one million characters, mounted text falls from
+1,000,000 characters to 154 and the worst measured frame from 147.7 ms to
+5.4 ms. The full 9,338,841 px horizontal range remains reachable.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

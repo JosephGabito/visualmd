@@ -1,5 +1,20 @@
 # Library-search refinement baseline
 
+## Reader's summary
+
+**Problem.** Every query refinement reread and reparsed every unchanged
+document. At 5,000 documents, refining `needle` to `needle 77` performed 5,000
+source reads, 5,000 parses, and took 2,551.6 ms.
+
+**Solution.** A source-invalidated, byte-bounded index retains each document's
+visible-text projection. Later refinements scan those projections without
+touching source or Markdown parsing.
+
+**Before and after.** The same 5,000-document refinement now performs zero
+source reads and zero parses and takes 6.302 ms instead of 2,551.6 ms. Initial
+projection remains necessarily proportional to the library, while a source
+change rebuilds only its own identity.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1
