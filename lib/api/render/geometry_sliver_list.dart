@@ -314,6 +314,23 @@ final class RenderGeometrySliverList extends RenderSliverMultiBoxAdaptor {
       final laidFirst = firstChild;
       final laidLast = lastChild;
       if (laidFirst == null || laidLast == null) {
+        // A block may own the current offset only because its estimate is too
+        // large. If measuring it collapses the document tail above that
+        // offset, every laid-out child is now leading garbage. Publishing a
+        // zero geometry here would let the viewport paint one empty frame.
+        // Correct to the last offset which can fill the viewport instead.
+        final correctedTotalExtent = _viewportGeometry.totalExtent;
+        if (reachedEnd &&
+            sliverConstraints.scrollOffset > correctedTotalExtent) {
+          final tailOffset =
+              (correctedTotalExtent - sliverConstraints.remainingPaintExtent)
+                  .clamp(0.0, double.infinity)
+                  .toDouble();
+          geometry = SliverGeometry(
+            scrollOffsetCorrection: tailOffset - sliverConstraints.scrollOffset,
+          );
+          return;
+        }
         geometry = SliverGeometry.zero;
         return;
       }

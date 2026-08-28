@@ -128,6 +128,58 @@ void main() {
     expect(tester.getTopLeft(target).dy, closeTo(beforeTop, 0.01));
     expect(controller.offset, closeTo(anchor * 80, 0.01));
   });
+
+  testWidgets('a collapsing tail estimate is corrected before paint', (
+    tester,
+  ) async {
+    const count = 60;
+    DocumentExtentSeed seedAt(int index) =>
+        _seed(index, index == 50 ? 5000 : 40);
+    final geometry = factory.create()
+      ..appendAll([for (var index = 0; index < count; index++) seedAt(index)]);
+    final controller = ScrollController();
+
+    await tester.pumpWidget(
+      _Viewport(
+        controller: controller,
+        child: GeometrySliverList.builder(
+          viewportGeometry: geometry,
+          layoutRevision: 0,
+          itemCount: count,
+          seedAt: seedAt,
+          indexOf: (id) => int.parse(id.value.substring(6)),
+          itemBuilder: (context, index) => SizedBox(
+            key: ValueKey('item-$index'),
+            height: 40,
+            child: Text('$index'),
+          ),
+        ),
+      ),
+    );
+
+    expect(controller.position.maxScrollExtent, greaterThan(5000));
+    controller.jumpTo(5000);
+    await tester.pump();
+
+    expect(_paintedItemCount(tester), greaterThan(0));
+    expect(controller.offset, lessThan(geometry.totalExtent));
+  });
+}
+
+int _paintedItemCount(WidgetTester tester) {
+  const viewport = Rect.fromLTWH(0, 0, 800, 600);
+  final items = find.byWidgetPredicate((widget) {
+    final key = widget.key;
+    return key is ValueKey<String> && key.value.startsWith('item-');
+  }, skipOffstage: false);
+  var visible = 0;
+  for (final element in items.evaluate()) {
+    final box = element.renderObject;
+    if (box is! RenderBox || !box.attached || !box.hasSize) continue;
+    final rect = box.localToGlobal(Offset.zero) & box.size;
+    if (rect.overlaps(viewport)) visible++;
+  }
+  return visible;
 }
 
 DocumentExtentSeed _seed(int index, double extent) => DocumentExtentSeed(
