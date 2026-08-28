@@ -137,6 +137,28 @@ void main() {
     expect(_shape(continued.blocks), _shape(canonical.blocks));
   });
 
+  test('delimiter closure proves only the uncertain inline tail changed', () {
+    final session = parser.startSession();
+    final stable = session.append('Settled **strong** prose. ');
+    final opened = session.append('An **unfinished');
+
+    final closed = session.append(' thought**.');
+    final proof = closed.entries.single.inlineTailReplace!;
+
+    expect(proof.baseRevision, opened.entries.single.revision);
+    expect(proof.retainedPrefix, stable.entries.single.textMetrics);
+    expect(
+      '${opened.blocks.single.text.substring(0, proof.retainedPrefix.codeUnits)}'
+      '${proof.runs.map((run) => run.text).join()}',
+      closed.blocks.single.text,
+    );
+    expect(
+      closed.entries.single.textMetrics.codeUnits,
+      closed.blocks.single.text.length,
+    );
+    expect(closed.entries.single.inlineAppend, isNull);
+  });
+
   test('ambiguous inline boundaries retain the complete parser fallback', () {
     const cases = <String>[
       'An *unclosed delimiter ',

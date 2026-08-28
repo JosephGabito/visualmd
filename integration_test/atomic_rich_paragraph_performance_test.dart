@@ -245,8 +245,10 @@ Map<String, Object> _benchmarkUnstableRichParser(int minimumCharacters) {
   closureClock.stop();
   final closedEntry = closed.entries.single;
 
-  expect(grownEntry.inlineAppend, isNotNull);
+  expect(grownEntry.inlineAppend, isNull);
+  expect(grownEntry.inlineTailReplace, isNotNull);
   expect(closedEntry.inlineAppend, isNull);
+  expect(closedEntry.inlineTailReplace, isNotNull);
 
   return {
     'source_characters': source.length,
@@ -254,11 +256,12 @@ Map<String, Object> _benchmarkUnstableRichParser(int minimumCharacters) {
     'growth_characters': growth.length,
     'growth_wall_us': growthClock.elapsedMicroseconds,
     'growth_parsed_source_characters': growthParsed,
-    'growth_proved_suffix_runs': grownEntry.inlineAppend!.runs.length,
+    'growth_proved_tail_runs': grownEntry.inlineTailReplace!.runs.length,
     'closure_characters': closure.length,
     'closure_wall_us': closureClock.elapsedMicroseconds,
     'closure_parsed_source_characters': session.lastParsedSourceLength,
     'closure_proved_suffix': closedEntry.inlineAppend != null,
+    'closure_proved_tail': closedEntry.inlineTailReplace != null,
   };
 }
 

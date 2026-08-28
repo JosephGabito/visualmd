@@ -19,17 +19,22 @@ reader share one vocabulary without putting Flutter in the domain
 When a stable block's reading text is known to have grown by an exact suffix,
 `BlockTextAppend` carries that suffix and the revision it follows. A rich
 paragraph uses `BlockInlineAppend` when its existing mark/link tree is stable;
-that proof carries only the newly visible inline runs. These are parser-owned
-facts, not something a renderer rediscovers with a full-prefix comparison. A
-consumer applies either only when its retained block revision matches the named
-base (`lib/domain/reading/content/document_content.dart`).
+that proof carries only the newly visible inline runs. When an unresolved
+delimiter changes the paragraph's final tree, `BlockInlineTailReplace` instead
+names the exact visible prefix which survives and carries only its replacement
+runs. These are parser-owned facts, not something a renderer rediscovers with a
+full-prefix comparison. A consumer applies a proof only when its retained block
+revision matches the named base
+(`lib/domain/reading/content/document_content.dart`).
 
 Each revision also carries `BlockTextMetrics`: the exact visible UTF-16 length
 and authored line-break count, derived from the block tree without flattening
 it (`lib/domain/reading/content/block.dart`). A proven suffix extends those two
 facts from its own runs. Navigation offsets and initial geometry can therefore
 advance with the revision instead of joining the complete provisional block on
-every token.
+every token. A tail replacement combines its retained-prefix metrics with only
+the replacement runs, so delimiter closure does not recount the complete rich
+paragraph either.
 
 The model's one rule is that it carries the author's **reading text** exactly.
 Markdown delimiters and escape backslashes have already served their grammar,
@@ -214,7 +219,9 @@ In: blocks for a complete snapshot, or revisioned `DocumentBlock` entries and
 `DocumentMutation` operations for an incremental sequence. Insert, replace,
 finalise, and remove operations name the revision they follow and the revision
 they create. A revised entry may also carry one `BlockTextAppend` or
-`BlockInlineAppend` for consumers which own an appendable text or style index
+`BlockInlineAppend` for consumers which own an appendable text or style index,
+or one `BlockInlineTailReplace` for a consumer which can truncate and rebuild
+only an uncertain inline suffix
 (`lib/domain/reading/content/document_content.dart`).
 
 Out: `entries` with stable identity, visible-text metrics, `blocks` and
