@@ -340,11 +340,21 @@ final class _IncrementalMarkdownParserSession
     final inlineAppend = sameShape && allowAppend && textAppend == null
         ? _inlineAppend(previous, block)
         : null;
+    final suffixMetrics = switch ((textAppend, inlineAppend)) {
+      (BlockTextAppend(:final text), null) => BlockTextMetrics.fromText(text),
+      (null, BlockInlineAppend(:final runs)) => BlockTextMetrics.fromInlines(
+        runs,
+      ),
+      _ => null,
+    };
     return DocumentBlock(
       id: sameShape ? previous.id : DocumentBlockId('stream:${_nextBlockId++}'),
       revision: revision,
       commitment: commitment,
       block: block,
+      textMetrics: suffixMetrics == null
+          ? null
+          : previous!.textMetrics.append(suffixMetrics),
       textAppend: textAppend,
       inlineAppend: inlineAppend,
     );

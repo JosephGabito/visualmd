@@ -69,6 +69,7 @@ final class DocumentBlock {
   final int revision;
   final BlockCommitment commitment;
   final Block block;
+  final BlockTextMetrics textMetrics;
   final BlockTextAppend? textAppend;
   final BlockInlineAppend? inlineAppend;
 
@@ -76,10 +77,11 @@ final class DocumentBlock {
     required this.id,
     required this.revision,
     required this.block,
+    BlockTextMetrics? textMetrics,
     this.commitment = BlockCommitment.committed,
     this.textAppend,
     this.inlineAppend,
-  }) {
+  }) : textMetrics = textMetrics ?? BlockTextMetrics.fromBlock(block) {
     if (revision < 0) throw RangeError.value(revision, 'revision');
     if (textAppend != null && inlineAppend != null) {
       throw StateError('Block $id cannot advertise two append proofs.');
@@ -92,6 +94,14 @@ final class DocumentBlock {
         'the resulting revision is $revision.',
       );
     }
+    assert(() {
+      final actual = BlockTextMetrics.fromBlock(block);
+      if (actual.codeUnits != this.textMetrics.codeUnits ||
+          actual.lineBreaks != this.textMetrics.lineBreaks) {
+        throw StateError('Block $id carries stale visible-text metrics.');
+      }
+      return true;
+    }());
   }
 
   DocumentBlock revise({
@@ -108,6 +118,7 @@ final class DocumentBlock {
       id: id,
       revision: revision,
       block: block ?? this.block,
+      textMetrics: block == null ? textMetrics : null,
       commitment: commitment ?? this.commitment,
     );
   }

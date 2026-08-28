@@ -350,8 +350,12 @@ provisional paragraph now needs zero indexing pumps instead of 119, keeps only
 1,650 characters mounted, and moves the parked reader by exactly zero pixels.
 Append wall falls from 1.96 seconds to 691 ms; most of that wall is fixed
 harness settling, while the worst append frame falls from 37.9 ms to 25.0 ms.
-The remaining frame slope is not range or line indexing: document entry
-offsets, geometry estimates and window eligibility still derive values by
-walking the complete replacement block. Those upstream presentation walks are
-the next measured boundary. The retained rich indexes themselves are now
-append-bounded.
+The range and line indexes are append-bounded, and revisioned blocks now carry
+their exact visible length and authored line-break count. Document offsets and
+geometry seeds extend those facts without flattening the block, while retained
+range eligibility means a proven suffix checks only its new runs. This lowers
+the million-character append build from 25.0 ms to 8.7 ms; the 100,056-
+character fixture takes 3.5 ms. The remaining size-dependent allocation is the
+flat paragraph source still consumed by Flutter's text and semantics APIs.
+Replacing that value with a chunk-addressable source is the next rendering
+boundary; parser-tail reconstruction is a separate upstream boundary.
