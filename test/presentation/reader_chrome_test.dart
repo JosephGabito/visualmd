@@ -535,9 +535,7 @@ void main() {
     expect(find.byKey(const ValueKey('document-search-field')), findsOneWidget);
   });
 
-  testWidgets('the shelf toggles on the press, not the release', (
-    tester,
-  ) async {
+  testWidgets('the shelf toggles on release inside', (tester) async {
     await pumpReader(tester);
     expect(panelWidth(tester, ShelfPanel), greaterThan(200));
 
@@ -545,11 +543,7 @@ void main() {
       tester.getCenter(barButton(tester, 'Hide shelf')),
     );
     await tester.pump(); // still holding
-    expect(
-      controller.shelfVisible,
-      isFalse,
-      reason: 'acted before the release',
-    );
+    expect(controller.shelfVisible, isTrue);
 
     await press.up();
     await tester.pumpAndSettle();
@@ -745,7 +739,7 @@ void main() {
     expect(find.text('1 of 1'), findsOneWidget);
   });
 
-  testWidgets('the outline toggles the same way', (tester) async {
+  testWidgets('the outline also toggles on release inside', (tester) async {
     await pumpReader(tester);
     expect(panelWidth(tester, OutlinePanel), greaterThan(200));
 
@@ -753,7 +747,7 @@ void main() {
       tester.getCenter(barButton(tester, 'Hide outline')),
     );
     await tester.pump();
-    expect(controller.outlineVisible, isFalse);
+    expect(controller.outlineVisible, isTrue);
 
     await press.up();
     await tester.pumpAndSettle();

@@ -148,6 +148,7 @@ class _AnchoredMenuState extends State<AnchoredMenu>
     // bar: it acts on the way down, and leans in first.
     final trigger = Pressable(
       onPress: _open,
+      activateOnPointerDown: true,
       active: _isOpen,
       expanded: _isOpen,
       focusNode: _triggerFocus,

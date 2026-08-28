@@ -13,6 +13,7 @@ void main() {
     String? tooltip,
     bool? expanded,
     FocusNode? focusNode,
+    bool activateOnPointerDown = false,
     Widget child = const SizedBox(
       width: 40,
       height: 40,
@@ -28,6 +29,7 @@ void main() {
             tooltip: tooltip,
             expanded: expanded,
             focusNode: focusNode,
+            activateOnPointerDown: activateOnPointerDown,
             child: child,
           ),
         ),
@@ -35,21 +37,51 @@ void main() {
     ),
   );
 
-  testWidgets(
-    'the pointer activates on its way down and not again on release',
-    (tester) async {
-      var activations = 0;
-      await pumpPressable(tester, onPress: () => activations++);
+  testWidgets('an ordinary button activates on release inside', (tester) async {
+    var activations = 0;
+    await pumpPressable(tester, onPress: () => activations++);
 
-      final pointer = await tester.startGesture(
-        tester.getCenter(find.byType(Pressable)),
-      );
-      expect(activations, 1);
+    final pointer = await tester.startGesture(
+      tester.getCenter(find.byType(Pressable)),
+    );
+    expect(activations, 0);
 
-      await pointer.up();
-      expect(activations, 1);
-    },
-  );
+    await pointer.up();
+    expect(activations, 1);
+  });
+
+  testWidgets('moving away before release cancels an ordinary button', (
+    tester,
+  ) async {
+    var activations = 0;
+    await pumpPressable(tester, onPress: () => activations++);
+
+    final pointer = await tester.startGesture(
+      tester.getCenter(find.byType(Pressable)),
+    );
+    await pointer.moveBy(const Offset(100, 100));
+    await pointer.up();
+
+    expect(activations, 0);
+  });
+
+  testWidgets('a menu trigger can explicitly activate on pointer down', (
+    tester,
+  ) async {
+    var activations = 0;
+    await pumpPressable(
+      tester,
+      onPress: () => activations++,
+      activateOnPointerDown: true,
+    );
+
+    final pointer = await tester.startGesture(
+      tester.getCenter(find.byType(Pressable)),
+    );
+    expect(activations, 1);
+    await pointer.up();
+    expect(activations, 1);
+  });
 
   testWidgets('assistive technology receives one named button contract', (
     tester,
