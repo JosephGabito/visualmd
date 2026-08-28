@@ -787,6 +787,20 @@ void main() {
       expect(find.byType(ShelfPanel), findsOneWidget);
       expect(find.byType(OutlinePanel), findsNothing);
 
+      final shelf = tester.widget<ShelfPanel>(find.byType(ShelfPanel));
+      shelf.onSelect(DocumentId(const LibraryRootId('sample'), 'other.md'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ShelfPanel), findsNothing);
+      expect(controller.reading!.document.fileName, 'other.md');
+
+      await tester.tap(barButton(tester, 'Show shelf'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('compact-panel-dismiss-region')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ShelfPanel), findsNothing);
+
       await tester.tap(barButton(tester, 'Show outline'));
       await tester.pumpAndSettle();
       expect(find.byType(ShelfPanel), findsNothing);

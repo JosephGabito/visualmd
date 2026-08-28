@@ -509,6 +509,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
                                 if (_searchMode == _SearchMode.document) {
                                   await _searchNow();
                                 }
+                                if (compact && mounted) {
+                                  setState(() => _compactShelfVisible = false);
+                                }
                               },
                               onOpenFolder: c.pickAndAddFolder,
                               onRemoveFolder: c.removeFolder,
@@ -647,6 +650,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             ? Stack(
                                 children: [
                                   Positioned.fill(child: readingPane()),
+                                  if (shelfVisible || showOutline)
+                                    Positioned.fill(
+                                      child: GestureDetector(
+                                        key: const ValueKey(
+                                          'compact-panel-dismiss-region',
+                                        ),
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: dismissTransient,
+                                      ),
+                                    ),
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: shelfPanel(shelfVisible),
