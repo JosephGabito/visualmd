@@ -211,6 +211,14 @@ Because `CodeRun` never reaches `_set`, `git log --oneline "HEAD"...` is
 composed exactly as written
 (`test/presentation/inline_composer_test.dart`).
 
+The same rules also expose `TypographicProjection` in
+`lib/presentation/theme/typographic_punctuation.dart`. It keeps the displayed
+string beside sparse contraction boundaries, so a windowed consumer can map a
+selection after an en dash or ellipsis back to the exact authored source in
+O(log substitutions), without allocating one offset per character
+(`test/presentation/typographic_punctuation_test.dart`). This is a presentation
+projection only; copied and searched text remains the domain's source.
+
 ## Inputs and outputs
 
 | In | Type | From |
