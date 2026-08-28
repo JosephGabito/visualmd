@@ -16,6 +16,25 @@ typedef ParagraphIndexStepObserver = void Function(
   Duration elapsed,
 );
 
+/// One displayed source range with exact authored-boundary recovery.
+abstract interface class WindowedParagraphProjection {
+  InlineSpan get span;
+  String get text;
+  int sourceOffsetAt(int displayOffset);
+  String? previousDisplayAt(int displayOffset);
+}
+
+/// Composes one bounded source range without visiting its prefix.
+typedef WindowedParagraphProjector = WindowedParagraphProjection Function({
+  required int start,
+  required int end,
+  required String? previous,
+  required int? widowOffset,
+});
+
+/// Locates the one source boundary finalization may make non-breaking.
+typedef ParagraphWidowOffset = int? Function(String source);
+
 /// An upstream-proven suffix for one adjacent paragraph revision.
 final class ParagraphSourceAppend {
   final int baseRevision;
@@ -41,6 +60,8 @@ final class WindowedPlainParagraph extends StatefulWidget {
   final TextDirection textDirection;
   final bool finalized;
   final Color? selectionColor;
+  final WindowedParagraphProjector? rangeProjector;
+  final ParagraphWidowOffset widowOffsetFor;
   final Object selectionIdentity;
   final int selectionOrder;
   final ValueChanged<int>? debugOnSourceIndexed;
@@ -57,6 +78,8 @@ final class WindowedPlainParagraph extends StatefulWidget {
     required this.textDirection,
     required this.finalized,
     this.selectionColor,
+    this.rangeProjector,
+    this.widowOffsetFor = WidowBinding.bindingOffset,
     required this.selectionIdentity,
     required this.selectionOrder,
     this.debugOnSourceIndexed,
@@ -133,7 +156,7 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
           ? lines.startAt(last)
           : _modelSource.length;
       final visible = _projectRange(
-        _modelSource.substring(start, end),
+        source: _modelSource.substring(start, end),
         sourceOffset: start,
         projection: _projection!,
       );
@@ -159,8 +182,8 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
                     rangeOffset: start,
                     sourceOffsetAt: (displayOffset) =>
                         start + visible.sourceOffsetAt(displayOffset),
-                    child: Text(
-                      visible.text,
+                    child: Text.rich(
+                      visible.span,
                       key: const ValueKey('paragraph-window'),
                       style: widget.style,
                       strutStyle: widget.strutStyle,
@@ -345,6 +368,7 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     _projection = _ParagraphProjection(
       widget.source,
       finalized: widget.finalized,
+      widowOffsetFor: widget.widowOffsetFor,
     );
     _pending = null;
     _lines = AppendWrapIndex.progressiveWithContext(
@@ -369,6 +393,7 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     final projection = _ParagraphProjection(
       widget.source,
       finalized: widget.finalized,
+      widowOffsetFor: widget.widowOffsetFor,
     );
     final lines = AppendWrapIndex.progressiveWithContext(
       source: widget.source,
@@ -458,12 +483,12 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
   }) {
     if (text.isEmpty) return const [0];
     final projected = _projectRange(
-      text,
+      source: text,
       sourceOffset: sourceOffset,
       projection: projection,
     );
     final painter = TextPainter(
-      text: TextSpan(text: projected.text, style: widget.style),
+      text: TextSpan(style: widget.style, children: [projected.span]),
       textAlign: TextAlign.start,
       textDirection: widget.textDirection,
       textScaler: widget.textScaler,
@@ -498,8 +523,8 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
     return starts;
   }
 
-  TypographicProjection _projectRange(
-    String source, {
+  WindowedParagraphProjection _projectRange({
+    required String source,
     required int sourceOffset,
     required _ParagraphProjection projection,
   }) {
@@ -509,6 +534,15 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
       );
     }
     final widowOffset = projection.widowOffset;
+    final rangeProjector = widget.rangeProjector;
+    if (rangeProjector != null) {
+      return rangeProjector(
+        start: sourceOffset,
+        end: sourceOffset + source.length,
+        previous: projection.previousBySourceOffset[sourceOffset],
+        widowOffset: widowOffset,
+      );
+    }
     var displaySource = source;
     if (widowOffset != null &&
         widowOffset >= sourceOffset &&
@@ -518,9 +552,11 @@ final class _WindowedPlainParagraphState extends State<WindowedPlainParagraph> {
           '${source.substring(0, local)}${WidowBinding.nonBreakingSpace}'
           '${source.substring(local + 1)}';
     }
-    return TypographicProjection.of(
-      displaySource,
-      previous: projection.previousBySourceOffset[sourceOffset],
+    return _PlainParagraphProjection(
+      TypographicProjection.of(
+        displaySource,
+        previous: projection.previousBySourceOffset[sourceOffset],
+      ),
     );
   }
 
@@ -598,14 +634,38 @@ final class _ParagraphProjection {
   String source;
   bool finalized;
   int? widowOffset;
+  final ParagraphWidowOffset widowOffsetFor;
   final Map<int, String?> previousBySourceOffset = {0: null};
 
-  _ParagraphProjection(this.source, {required this.finalized})
-    : widowOffset = finalized ? WidowBinding.bindingOffset(source) : null;
+  _ParagraphProjection(
+    this.source, {
+    required this.finalized,
+    required this.widowOffsetFor,
+  }) : widowOffset = finalized ? widowOffsetFor(source) : null;
 
   void update(String next, {required bool finalized}) {
     source = next;
     this.finalized = finalized;
-    widowOffset = finalized ? WidowBinding.bindingOffset(next) : null;
+    widowOffset = finalized ? widowOffsetFor(next) : null;
   }
+}
+
+final class _PlainParagraphProjection implements WindowedParagraphProjection {
+  final TypographicProjection projection;
+
+  const _PlainParagraphProjection(this.projection);
+
+  @override
+  InlineSpan get span => TextSpan(text: projection.text);
+
+  @override
+  String get text => projection.text;
+
+  @override
+  int sourceOffsetAt(int displayOffset) =>
+      projection.sourceOffsetAt(displayOffset);
+
+  @override
+  String? previousDisplayAt(int displayOffset) =>
+      projection.previousDisplayAt(displayOffset);
 }
