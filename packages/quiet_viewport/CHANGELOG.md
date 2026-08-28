@@ -10,3 +10,4 @@
   offscreen records.
 - Retain soft-wrap boundaries across source appends while delegating line
   breaking to the host text engine.
+- Re-resolve a proven visual-line tail without discarding prefix geometry.

@@ -60,6 +60,38 @@ void main() {
       throwsStateError,
     );
   });
+
+  test('a tail revision retains every declared prefix line', () {
+    const initial = 'aaaaabbbbbcccccddddd';
+    const revised = 'aaaaabbbbbXXXXXYYYYYZZZZZ';
+    final index = AppendWrapIndex(
+      source: initial,
+      windowCodeUnits: 7,
+      resolve: _fiveColumns,
+    );
+    final retained = [index.startAt(0), index.startAt(1), index.startAt(2)];
+
+    index.replaceTail(line: 2, source: revised);
+
+    expect([index.startAt(0), index.startAt(1), index.startAt(2)], retained);
+    expect(_ranges(index, revised).join(), revised);
+    expect(index.lastIndexedCodeUnits, lessThan(revised.length));
+  });
+
+  test('a rejected tail revision leaves retained geometry unchanged', () {
+    final index = AppendWrapIndex(
+      source: 'aaaaabbbbbccccc',
+      resolve: _fiveColumns,
+    );
+    final before = [
+      for (var line = 0; line < index.length; line++) index.startAt(line),
+    ];
+
+    expect(() => index.replaceTail(line: 2, source: 'short'), throwsStateError);
+    expect([
+      for (var line = 0; line < index.length; line++) index.startAt(line),
+    ], before);
+  });
 }
 
 List<int> _fiveColumns(String text) => [
