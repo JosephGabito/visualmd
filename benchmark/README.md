@@ -1,5 +1,28 @@
 # Reader performance benchmark
 
+## How to read the result notes
+
+Every result note begins with the same argument:
+
+1. **Problem** — the reader-visible failure or scaling risk being measured.
+2. **Solution** — the retained boundary or scheduling rule introduced to
+   remove that work.
+3. **Before and after** — the decisive structural counter and profile timing at
+   the largest fixture, followed by the contract that must remain exact.
+
+A baseline-only file links to its paired result. A result without a retained
+pre-change timing says so explicitly and uses structural counters—source parsed,
+records visited, widgets mounted—as its scaling proof. Initial loading is not
+called O(1): opening new source must inspect that source. The streaming claim is
+narrower and more useful: once a prefix is retained, an eligible suffix update
+must do work proportional to the suffix or viewport, preserve the complete
+coordinate system, and move a parked reader exactly 0 px.
+
+Absolute profile timings vary with desktop load. The before/after comparison is
+therefore read together with the structural count that explains *why* the curve
+changed. RSS is reported as a retention signal, never as precise Dart-heap
+attribution.
+
 The native reader benchmark measures the real `ReadingPane` after parsing, so
 its numbers describe widget construction, layout, paint, scrolling, and a
 one-block document update. It runs the same viewport with 100, 1,000, and 5,000

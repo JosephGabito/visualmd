@@ -1,5 +1,19 @@
 # Desktop library-scan baseline
 
+## Reader's summary
+
+**Problem.** The old shelf waited for every Markdown file to be opened and
+decoded before showing anything. A 5,000-document library therefore took
+506.2 ms to appear even though directory metadata was already available.
+
+**Solution.** Scanning now publishes filename-backed metadata first, then an
+eight-worker pool enriches surviving physical identities with authored titles.
+
+**Before and after.** At 5,000 documents, time to the first usable shelf falls
+from 506.2 ms to 33.2 ms. Bounded title enrichment completes the full result in
+315.8 ms, preserves discovery order, and cannot resurrect a file removed while
+its title was being read.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

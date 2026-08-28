@@ -1,5 +1,21 @@
 # Full-source syntax-highlighting baseline
 
+## Reader's summary
+
+**Problem.** Viewport-bounded code layout still sent the complete fence through
+syntax classification. One million characters took 2.93 seconds, returned
+200,000 tokens, and added 123.6 MiB of process RSS.
+
+**Solution.** The paired
+[windowed-highlighting result](2026-08-28-windowed-highlighting.md) debounces and
+revision-fences classification requests for only the mounted source window;
+plain source paints without waiting for colour.
+
+**Before and after.** At one million characters, classification input falls
+from 1,000,000 characters to a largest request of 1,379, returned tokens fall
+from 200,000 to 828, and measured classification time falls from 2,930.9 ms to
+2.0 ms.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

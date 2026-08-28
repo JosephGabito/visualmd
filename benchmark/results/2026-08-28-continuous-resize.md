@@ -1,5 +1,20 @@
 # Continuous resize geometry baseline
 
+## Reader's summary
+
+**Problem.** Resizing the window rebuilt one offscreen height estimate per
+document block on every width change. Six resize steps over 5,000 blocks
+visited 30,000 extents even though only nine paragraphs were retained.
+
+**Solution.** `StableExtentLedger.scaleRelayout` changes one latent scale for
+the coordinate system; mounted blocks replace their own estimates as real
+measurements arrive.
+
+**Before and after.** The 5,000-block journey falls from 30,000 offscreen extent
+visits to zero. Wall time remains effectively flat—51.9 ms before and 51.0 ms
+after—but the structural count proves corpus-length work has left the resize
+frame.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

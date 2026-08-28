@@ -1,5 +1,22 @@
 # Atomic provisional-paragraph virtualization
 
+## Reader's summary
+
+**Problem.** A long AI answer can remain one unfinished paragraph, which the
+old path shaped as one complete `RenderParagraph`. At one million characters,
+opening cost 233.8 ms, a midpoint seek cost 97.8 ms, and Flutter retained every
+character.
+
+**Solution.** A retained visual-line index gives the outer page one exact
+paragraph height while Flutter mounts only the lines covering the viewport.
+Appending revisits the old final line and suffix; finalization revisits only the
+widow tail.
+
+**Before and after.** At one million characters, mounted text falls from
+1,000,000 to 2,477 characters, the worst opening frame from 233.8 ms to 5.1 ms,
+and midpoint seek from 97.8 ms to 3.3 ms. Append and finalize remain below
+4.8 ms and move the parked reader exactly 0 px.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

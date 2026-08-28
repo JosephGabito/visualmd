@@ -1,5 +1,19 @@
 # Wrapped atomic code-block baseline
 
+## Reader's summary
+
+**Problem.** Turning on **Wrap long lines** abandoned the windowed code path and
+mounted the complete fence. At 50,000 physical lines, that produced an 896.7 ms
+frame and added 1,593.2 MiB of process RSS.
+
+**Solution.** A dense per-line height ledger establishes the complete wrapped
+coordinate system; Flutter shapes only mounted physical lines and replaces
+their estimates with exact heights.
+
+**Before and after.** At 50,000 lines, the worst frame falls from 896.7 ms to
+19.3 ms, observed RSS growth from 1,593.2 MiB to 3.2 MiB, and mounted source to
+27 lines or 3,156 characters. Copy still returns all 6,366,669 characters.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

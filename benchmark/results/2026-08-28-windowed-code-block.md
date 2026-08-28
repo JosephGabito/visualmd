@@ -1,5 +1,18 @@
 # Viewport-windowed code-block result
 
+## Reader's summary
+
+**Problem.** A 50,000-line fence previously became one eager rich paragraph,
+producing a 513 ms frame and a 771.3 MiB process-RSS increase.
+
+**Solution.** A retained line-start index preserves the fence's full height and
+source offsets while mounting only the rows around the outer page viewport.
+
+**Before and after.** At 50,000 lines, the midpoint mounts 54 rows instead of
+all 50,000. The worst measured frame is 31.7 ms on initial open and 14.5 ms on
+a direct midpoint seek, while the complete 1,099,650 px scroll extent and exact
+3,327,779-character Copy remain available.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

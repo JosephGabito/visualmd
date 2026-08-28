@@ -1,5 +1,20 @@
 # Viewport-windowed code-line result
 
+## Reader's summary
+
+**Problem.** After vertical code windowing, one enormous physical line still
+forced Flutter to shape and retain every character. At one million characters,
+that meant a 147.7 ms frame and 291.3 MiB of added process RSS.
+
+**Solution.** Column windowing uses the monospace advance to preserve the full
+horizontal coordinate system while mounting only visible columns and fixed
+overscan.
+
+**Before and after.** At one million characters, mounted text falls from
+1,000,000 characters to 154 and the worst measured frame from 147.7 ms to
+5.4 ms. A direct seek reaches character 500,000 without shaping its prefix, and
+the full 9,338,841 px horizontal range remains exact.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1

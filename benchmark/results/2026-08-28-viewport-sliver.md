@@ -1,5 +1,19 @@
 # Viewport sliver baseline and result
 
+## Reader's summary
+
+**Problem.** The eager page mounted every Markdown block, so opening or
+appending to a large document rebuilt work that could not affect the current
+viewport.
+
+**Solution.** The document is now a geometry-aware sliver that mounts only the
+visible and cached block run while preserving the complete outer scroll extent.
+
+**Before and after.** At 5,000 blocks, mounted paragraphs fall from 5,000 to 11,
+the worst initial frame from 296.6 ms to 1.8 ms, and the worst one-block append
+frame from 110.0 ms to 3.3 ms. That is 99.8% fewer mounted paragraphs without
+truncating the document.
+
 ## Environment
 
 - Flutter 3.47.1 stable, Dart 3.13.1
