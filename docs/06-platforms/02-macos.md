@@ -107,10 +107,18 @@ menu after AppKit has installed the menu bar. Its Command-O Open panel accepts
 folders and Markdown files in one multi-selection operation; Command-Shift-O
 opens a workspace, while Command-Option-O opens the bundled sample library.
 New, Save, Save As, Add Folder, and Add Markdown remain explicit actions
-(`macos/Runner/MainFlutterWindow.swift`). The unused template Edit and
-Help menus are removed rather than advertising actions the Flutter reader
-cannot serve (`macos/Runner/MainFlutterWindow.swift`). The Flutter top
-bar does not duplicate the menu.
+(`macos/Runner/MainFlutterWindow.swift`). Edit is reduced to Copy, Select All,
+and the two reader search scopes. Help contains only shortcuts, support,
+privacy, and open-source licences. Reader-dependent items validate against a
+small Flutter state projection, while Shelf and Outline show their current
+visibility with native checkmarks (`lib/infrastructure/io/desktop_commands.dart`,
+`macos/Runner/MainFlutterWindow.swift`). The Flutter top bar does not duplicate
+the menu.
+
+Although the custom title bar hides AppKit's title, the native window title
+still follows the open document for Mission Control and accessibility. With no
+document it falls back to **Visual MD** (`lib/main.dart`,
+`macos/Runner/MainFlutterWindow.swift`).
 
 ## Status
 
@@ -118,8 +126,9 @@ Built and launched on 2026-08-24. Verified visually: the native File menu sits
 beside View and Window, the Flutter top bar contains no duplicate, and the
 single-title-bar chrome keeps the traffic lights centred without carrying an
 empty toolbar into fullscreen. Workspace codec, selected-path preservation,
-atomic writing, source binding, menu pruning, fullscreen chrome, last-frame
-restoration, and lifecycle behavior are covered by automated tests.
+atomic writing, source binding, native menu validation, hidden-title syncing,
+fullscreen chrome, last-frame restoration, and lifecycle behavior are covered
+by automated tests.
 
 Not done: code signing and notarization. The local build is suitable for
 development, but it is not ready for normal distribution because Gatekeeper may

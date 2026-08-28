@@ -36,6 +36,7 @@ import '../io/reader_files.dart';
 import '../workspace/workspace_json_codec.dart';
 import 'platform_adapters.dart';
 import 'platform_command.dart';
+import 'native_reader_state.dart';
 
 Future<PlatformAdapters> createPlatformAdapters() async {
   var topBar = plainTopBar;
@@ -141,6 +142,12 @@ final class _DesktopAdapters implements PlatformAdapters {
 
   @override
   Stream<PlatformCommand> get commands => _commands.stream;
+
+  @override
+  Future<void> syncNativeReaderState(NativeReaderState state) =>
+      Platform.isMacOS
+      ? _commands.syncReaderState(state)
+      : Future<void>.value();
 
   @override
   void openExternal(String url) => openWithSystem(url);

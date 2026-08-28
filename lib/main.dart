@@ -47,6 +47,7 @@ import 'infrastructure/memory/sample_document_image_loader.dart';
 import 'infrastructure/memory/sample_folder_scanner.dart';
 import 'infrastructure/platform/platform.dart';
 import 'infrastructure/platform/platform_command.dart';
+import 'infrastructure/platform/native_reader_state.dart';
 import 'infrastructure/routing_folder_scanner.dart';
 import 'infrastructure/routing_document_image_loader.dart';
 import 'infrastructure/routing_workspace_source_access.dart';
@@ -282,6 +283,21 @@ Future<void> main() async {
   if (recoveredWorkspace != null) {
     await controller.restoreOpenedWorkspace(recoveredWorkspace);
   }
+  void syncNativeReaderState() {
+    unawaited(
+      platform.syncNativeReaderState(
+        NativeReaderState(
+          documentTitle: controller.reading?.document.title,
+          hasLibrary: controller.library != null,
+          hasDocument: controller.reading != null,
+          shelfVisible: controller.shelfVisible,
+          outlineVisible: controller.outlineVisible,
+        ),
+      ),
+    );
+  }
+
+  controller.addListener(syncNativeReaderState);
   final openReaderSources = switch (platform.readerSourcePicker) {
     final picker? => ReaderSourceOpener(picker, controller),
     null => null,
@@ -388,6 +404,7 @@ Future<void> main() async {
       uiCommands: readerUiCommands.stream,
     ),
   );
+  WidgetsBinding.instance.addPostFrameCallback((_) => syncNativeReaderState());
 }
 
 Future<void> _whenReaderIsReady(ReaderController controller) async {

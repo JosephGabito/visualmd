@@ -29,6 +29,7 @@ import '../web/browser_workspace_source_access.dart';
 import '../web/browser_links.dart';
 import 'platform_adapters.dart';
 import 'platform_command.dart';
+import 'native_reader_state.dart';
 
 Future<PlatformAdapters> createPlatformAdapters() async => _WebAdapters();
 
@@ -106,6 +107,9 @@ final class _WebAdapters implements PlatformAdapters {
 
   @override
   Stream<PlatformCommand> get commands => const Stream.empty();
+
+  @override
+  Future<void> syncNativeReaderState(NativeReaderState state) async {}
 
   @override
   void openExternal(String url) => openInBrowser(url);

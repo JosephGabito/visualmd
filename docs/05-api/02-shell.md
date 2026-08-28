@@ -97,6 +97,14 @@ the automatic transition and leaves direct reader input untouched
 (`lib/api/screens/reader_screen.dart`,
 `test/presentation/reader_chrome_test.dart`).
 
+On macOS the visible identity remains Flutter chrome, but the hidden AppKit
+window title follows the current document for Mission Control and assistive
+technology, falling back to **Visual MD** when no document is open. The same
+small state projection keeps native reader actions enabled only when their
+library or document exists and gives Shelf and Outline native checkmarks
+(`lib/main.dart`, `lib/infrastructure/platform/native_reader_state.dart`,
+`macos/Runner/MainFlutterWindow.swift`).
+
 The permanent room uses [Library Chrome](28-library-chrome.md)'s three opaque
 planes. Page, side panels, and the unified top bar separate mostly by surface
 tone; only the permanent seams keep a softened divider. Menus and find surfaces

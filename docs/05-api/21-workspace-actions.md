@@ -16,7 +16,12 @@ same channel also carries Settings, search, panel visibility, text size, and
 Help selections
 (`lib/infrastructure/platform/platform_command.dart`). Desktop hosts send
 those selections over one method channel, where they become a typed stream
-(`lib/infrastructure/io/desktop_commands.dart`). The composition root maps
+(`lib/infrastructure/io/desktop_commands.dart`). The channel is bidirectional:
+the composition root sends a small capability projection back after controller
+changes, so AppKit can validate its own items, check Shelf and Outline, and
+name the hidden native window after the current document
+(`lib/infrastructure/platform/native_reader_state.dart`,
+`lib/infrastructure/io/desktop_commands.dart`). The composition root maps
 durable actions to the matching controller method, external links to the
 platform opener, and transient surfaces to a small API-owned command stream
 (`lib/main.dart`, `lib/api/reader_ui_command.dart`). This translation keeps the
@@ -45,6 +50,11 @@ The macOS menu is deliberately a reader menu rather than the editor template
 Flutter starts with. File includes Close Window; Edit retains Copy and Select
 All plus the two search scopes; View exposes panels, text size, and full
 screen; Help exposes shortcuts, support, privacy, and the licence registry.
+Save and library search remain unavailable until a library exists; document
+find, Outline, and text sizing remain unavailable until a document exists.
+The Shelf and Outline items carry AppKit checkmarks for their current wide-mode
+visibility. Their labels stay stable because the checkmark, not changing copy,
+communicates state.
 Settings requests the existing Appearance popover through an
 `AnchoredMenuController`, so the menu bar never creates a second preferences
 model (`macos/Runner/MainFlutterWindow.swift`,
@@ -83,7 +93,9 @@ None. Native menu selections are commands, not domain events.
 The native menu is installed by the host window after its menu system exists.
 Its method channel lives for the process. The controller is constructed once,
 receives both menu commands and drops, and notifies widgets after each state
-transition.
+transition. One composition-root listener then projects only the current title,
+library and document capabilities, and panel visibility to the host; browser
+and non-macOS adapters deliberately ignore that projection.
 
 ## Failure and recovery
 

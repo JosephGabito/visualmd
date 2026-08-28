@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visualmd/infrastructure/io/desktop_commands.dart';
 import 'package:visualmd/infrastructure/platform/platform_command.dart';
+import 'package:visualmd/infrastructure/platform/native_reader_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +59,40 @@ void main() {
         );
 
     expect(await received, PlatformCommand.openSampleLibrary);
+  });
+
+  test('reader state is projected back to the native host exactly', () async {
+    const channel = MethodChannel('com.visualmd.visualmd/commands');
+    MethodCall? received;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          received = call;
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    final commands = DesktopCommands();
+    await commands.syncReaderState(
+      const NativeReaderState(
+        documentTitle: 'Notes',
+        hasLibrary: true,
+        hasDocument: true,
+        shelfVisible: false,
+        outlineVisible: true,
+      ),
+    );
+
+    expect(received?.method, 'updateReaderState');
+    expect(received?.arguments, {
+      'documentTitle': 'Notes',
+      'hasLibrary': true,
+      'hasDocument': true,
+      'shelfVisible': false,
+      'outlineVisible': true,
+    });
   });
 
   for (final entry in {
