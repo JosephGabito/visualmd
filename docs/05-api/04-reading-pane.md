@@ -76,8 +76,13 @@ Out:
 - `scrollToAnchor(anchor)`, called by the shell: an already mounted explicit
   or heading anchor uses `Scrollable.ensureVisible`. A distant lazy anchor is
   materialised from the geometry ledger's prefix position without proportional
-  retries, then its real render box supplies the exact alignment. The final motion is 320 ms,
-  `easeOutCubic`, aligned to the top (`lib/api/widgets/reading_pane.dart`).
+  retries, then its real render box supplies the exact alignment. The final
+  motion is 320 ms, `easeOutCubic`, aligned to the top. Search-result navigation
+  uses the same route with a quieter 220 ms duration and 0.18 alignment. Reduce
+  Motion gives both paths a zero-duration alignment rather than walking the
+  reader through the intervening document
+  (`lib/api/widgets/reading_pane.dart`,
+  `test/presentation/reading_pane_refresh_test.dart`).
 
 Active-heading tracking visits only heading widgets mounted in the viewport
 and cache region. The last one at or above the 120 px line wins; between
@@ -137,6 +142,10 @@ tail records reader intent until the bounded geometry-convergence window ends,
 so learning the final extents cannot leave a tail follower behind
 (`lib/api/widgets/quiet_scrollbar.dart`,
 `lib/api/widgets/reading_pane.dart`).
+Reduce Motion shows and hides the thumb without an opacity tween while keeping
+the delay, frozen epoch, scrolling, and direct thumb dragging unchanged
+(`lib/api/widgets/quiet_scrollbar.dart`,
+`test/presentation/quiet_scrollbar_test.dart`).
 
 Pointer selection is reset by a new primary-button gesture or native selection
 clear. A block range remains in `ModelSelectionSnapshot` when its lazy widget is

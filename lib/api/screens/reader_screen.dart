@@ -751,6 +751,9 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final chrome = context.chrome;
+    final motionDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 140);
     return Container(
       height: height,
       padding: EdgeInsets.only(
@@ -786,7 +789,7 @@ class _TopBar extends StatelessWidget {
           Expanded(
             child: Center(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 140),
+                duration: motionDuration,
                 child: documentTitle == null
                     ? const SizedBox.shrink()
                     : Column(
@@ -858,6 +861,9 @@ class _BarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final motionDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 140);
     return Pressable(
       tooltip: tooltip,
       semanticLabel: tooltip.split('  (').first,
@@ -867,7 +873,7 @@ class _BarButton extends StatelessWidget {
         // The icon swaps as the panel comes and goes; cross-fading it keeps
         // the change as quiet as the panel's own movement.
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 140),
+          duration: motionDuration,
           transitionBuilder: (child, animation) =>
               FadeTransition(opacity: animation, child: child),
           child: Icon(

@@ -24,6 +24,7 @@ void main() {
     WidgetTester tester,
     MermaidRenderer renderer, {
     String source = 'flowchart LR\n  Read --> Understand',
+    bool reduceMotion = false,
   }) async {
     tester.view.physicalSize = const Size(900, 700);
     tester.view.devicePixelRatio = 1;
@@ -31,6 +32,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: libraryTheme(BuiltInThemes.paper),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(disableAnimations: reduceMotion),
+          child: child!,
+        ),
         home: Scaffold(
           body: Center(
             child: SizedBox(
@@ -129,6 +135,22 @@ void main() {
       expect(find.byKey(const ValueKey('mermaid-surface')), findsOneWidget);
     },
   );
+
+  testWidgets('Reduce Motion opens the full-screen explorer without a fade', (
+    tester,
+  ) async {
+    await pumpDiagram(tester, _FakeRenderer(), reduceMotion: true);
+
+    await tester.tap(find.byKey(const ValueKey('mermaid-fullscreen')));
+    await tester.pump();
+
+    final fullScreen = find.byKey(const ValueKey('mermaid-close-fullscreen'));
+    expect(fullScreen, findsOneWidget);
+    expect(
+      ModalRoute.of(tester.element(fullScreen))!.transitionDuration,
+      Duration.zero,
+    );
+  });
 
   testWidgets('copy preserves the exact authored Mermaid source', (
     tester,

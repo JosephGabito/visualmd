@@ -78,6 +78,14 @@ final class _QuietScrollbarState extends State<QuietScrollbar>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _opacity.duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : widget.fadeDuration;
+  }
+
+  @override
   void didUpdateWidget(QuietScrollbar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) _finishEpoch();
@@ -86,7 +94,9 @@ final class _QuietScrollbarState extends State<QuietScrollbar>
       widget.epochController?._attach(this);
     }
     if (oldWidget.fadeDuration != widget.fadeDuration) {
-      _opacity.duration = widget.fadeDuration;
+      _opacity.duration = MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : widget.fadeDuration;
     }
   }
 

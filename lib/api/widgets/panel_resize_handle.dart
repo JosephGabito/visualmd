@@ -76,6 +76,9 @@ class _PanelResizeHandleState extends State<PanelResizeHandle> {
     final p = context.palette;
     final chrome = context.chrome;
     final active = _hovering || _focused;
+    final highlightDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 100);
     return Semantics(
       label: 'Resize ${widget.panelName}',
       value: '${widget.width.round()} pixels',
@@ -113,7 +116,7 @@ class _PanelResizeHandleState extends State<PanelResizeHandle> {
                 width: PanelResizeHandle.extent,
                 child: Center(
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 100),
+                    duration: highlightDuration,
                     width: active ? 2 : 1,
                     color: active ? p.accent : chrome.separator,
                   ),

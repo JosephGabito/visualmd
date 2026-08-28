@@ -118,4 +118,54 @@ void main() {
 
     expect(controller.position.pixels, greaterThan(before));
   });
+
+  testWidgets('Reduce Motion shows the quiet thumb without a fade', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(BuiltInThemes.paper),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: QuietScrollbar(
+            controller: controller,
+            geometryFactory: factory,
+            child: ListView.builder(
+              controller: controller,
+              itemExtent: 40,
+              itemCount: 200,
+              itemBuilder: (_, index) => Text('Block $index'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -100));
+    await tester.pump();
+
+    final fade = tester.widget<FadeTransition>(
+      find.descendant(
+        of: find.byKey(thumbKey),
+        matching: find.byType(FadeTransition),
+      ),
+    );
+    final opacity = fade.opacity as AnimationController;
+    expect(opacity.duration, Duration.zero);
+    expect(opacity.value, 1);
+    expect(controller.position.pixels, greaterThan(0));
+
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
+    expect(find.byKey(thumbKey), findsNothing);
+  });
 }

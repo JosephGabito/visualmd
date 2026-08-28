@@ -78,6 +78,11 @@ its position without owning theme behavior
 (`lib/api/screens/reader_screen.dart`). Both toggles use
 [Pressable](09-pressable.md), carry separate Show/Hide shelf and outline names
 for assistive technology, and remain disabled until a library exists.
+Document-title and toggle-icon replacements cross-fade for 140 ms during
+ordinary use. Reduce Motion makes both replacements immediate; it changes only
+the automatic transition and leaves direct reader input untouched
+(`lib/api/screens/reader_screen.dart`,
+`test/presentation/reader_chrome_test.dart`).
 
 The permanent room uses [Library Chrome](28-library-chrome.md)'s three opaque
 planes. Page, side panels, and the unified top bar separate mostly by surface
