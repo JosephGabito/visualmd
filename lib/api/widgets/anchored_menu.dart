@@ -175,7 +175,7 @@ class _AnchoredMenuState extends State<AnchoredMenu>
   }
 }
 
-class _MenuOverlay extends StatelessWidget {
+class _MenuOverlay extends StatefulWidget {
   final LayerLink link;
   final FocusScopeNode focusScope;
   final Animation<double> motion;
@@ -195,18 +195,31 @@ class _MenuOverlay extends StatelessWidget {
   });
 
   @override
+  State<_MenuOverlay> createState() => _MenuOverlayState();
+}
+
+class _MenuOverlayState extends State<_MenuOverlay> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final chrome = context.chrome;
 
     // Opacity leads and finishes early; the surface is fully visible while it
     // is still settling, which reads as faster than it is.
     final fade = CurvedAnimation(
-      parent: motion,
+      parent: widget.motion,
       curve: const Interval(0, 0.55, curve: Curves.easeOut),
       reverseCurve: Curves.easeIn,
     );
     final grow = CurvedAnimation(
-      parent: motion,
+      parent: widget.motion,
       curve: Easing.emphasizedDecelerate,
       reverseCurve: Easing.emphasizedAccelerate,
     );
@@ -225,11 +238,11 @@ class _MenuOverlay extends StatelessWidget {
             Positioned.fill(
               child: Listener(
                 behavior: HitTestBehavior.opaque,
-                onPointerDown: (_) => onDismiss(),
+                onPointerDown: (_) => widget.onDismiss(),
               ),
             ),
             CompositedTransformFollower(
-              link: link,
+              link: widget.link,
               targetAnchor: Alignment.bottomRight,
               followerAnchor: Alignment.topRight,
               offset: const Offset(0, 8),
@@ -241,16 +254,17 @@ class _MenuOverlay extends StatelessWidget {
                 heightFactor: 1,
                 child: CallbackShortcuts(
                   bindings: {
-                    const SingleActivator(LogicalKeyboardKey.escape): onDismiss,
+                    const SingleActivator(LogicalKeyboardKey.escape):
+                        widget.onDismiss,
                     const SingleActivator(
                       LogicalKeyboardKey.period,
                       meta: true,
-                    ): onDismiss,
+                    ): widget.onDismiss,
                   },
                   child: FocusScope(
-                    node: focusScope,
+                    node: widget.focusScope,
                     child: AnimatedBuilder(
-                      animation: motion,
+                      animation: widget.motion,
                       builder: (context, child) => Opacity(
                         opacity: fade.value,
                         child: Transform.translate(
@@ -293,26 +307,35 @@ class _MenuOverlay extends StatelessWidget {
                             color: chrome.elevated,
                             surfaceTintColor: Colors.transparent,
                             child: Container(
-                              width: width,
+                              width: widget.width,
                               constraints: BoxConstraints(maxHeight: maxHeight),
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    for (var i = 0; i < items.length; i++)
-                                      _Staggered(
-                                        motion: motion,
-                                        index: i,
-                                        total: items.length,
-                                        still: still,
-                                        child: items[i],
-                                      ),
-                                  ],
+                              child: Scrollbar(
+                                controller: _scroll,
+                                thumbVisibility: true,
+                                child: SingleChildScrollView(
+                                  controller: _scroll,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (
+                                        var i = 0;
+                                        i < widget.items.length;
+                                        i++
+                                      )
+                                        _Staggered(
+                                          motion: widget.motion,
+                                          index: i,
+                                          total: widget.items.length,
+                                          still: widget.still,
+                                          child: widget.items[i],
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

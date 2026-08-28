@@ -102,6 +102,7 @@ void main() {
     expect(find.text('Serif'), findsOneWidget);
     expect(find.text('Sans'), findsOneWidget);
     expect(find.text('THEMES'), findsOneWidget);
+    expect(find.text('MORE THEMES'), findsOneWidget);
     expect(find.text('LIGHT'), findsOneWidget);
     expect(find.text('DARK'), findsOneWidget);
     for (final family in BuiltInThemes.families) {
@@ -122,6 +123,8 @@ void main() {
     await tester.tap(find.byType(ThemePicker));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Codex'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Codex'));
     await tester.pumpAndSettle();
 
@@ -152,14 +155,14 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
 
-      final row = tester.getSemantics(find.bySemanticsLabel('Follow system'));
+      final row = tester.getSemantics(find.bySemanticsLabel('Serif'));
       expect(row.flagsCollection.isButton, isTrue);
       expect(row.flagsCollection.isSelected, Tristate.isTrue);
 
       final focusedContainer = tester.widget<AnimatedContainer>(
         find
             .ancestor(
-              of: find.text('Follow system'),
+              of: find.text('Serif'),
               matching: find.byType(AnimatedContainer),
             )
             .first,
@@ -178,7 +181,7 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pumpAndSettle();
-      expect(chosen, [registry.systemPair]);
+      expect(modes, [ReadingMode.serif]);
       expect(find.text('Follow system'), findsNothing);
 
       // Closing restores the trigger, so keyboard users can reopen without
@@ -345,16 +348,34 @@ void main() {
     expect(find.text('PARAGRAPHS'), findsOneWidget);
     // The menu is taller than this window, so the row has to be brought up
     // before it can be pressed.
-    await tester.ensureVisible(find.text('Indented, set solid'));
+    await tester.ensureVisible(find.text('Book-style indents'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Indented, set solid'));
+    await tester.tap(find.text('Book-style indents'));
     await tester.pumpAndSettle();
 
     expect(marked, [ParagraphMarking.indented]);
     expect(
-      find.text('Indented, set solid'),
+      find.text('Book-style indents'),
       findsNothing,
       reason: 'and the menu closes',
+    );
+  });
+
+  testWidgets('the constrained menu keeps a visible scroll affordance', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(720, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpPicker(tester);
+
+    await tester.tap(find.byType(ThemePicker));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Scrollbar>(find.byType(Scrollbar)).thumbVisibility,
+      isTrue,
     );
   });
 

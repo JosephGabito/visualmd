@@ -30,16 +30,24 @@ choice straight to `ReaderController.chooseTheme` or
 
 | Entry | Value | Source |
 |-------|-------|--------|
-| Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart` |
 | Reading mode: Serif | `ReadingMode.serif` | `lib/api/widgets/theme_picker.dart` |
 | Reading mode: Sans | `ReadingMode.sans` | `lib/api/widgets/theme_picker.dart` |
-| Themes | A family pair, or Proof's fixed light theme | `lib/api/widgets/theme_picker.dart`, `lib/presentation/theme/theme_family.dart` |
+| Paragraphs: "Separated by space" | `ParagraphMarking.spaced` | `lib/api/widgets/theme_picker.dart` |
+| Paragraphs: "Book-style indents" | `ParagraphMarking.indented` | `lib/api/widgets/theme_picker.dart` |
+| Themes: Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart` |
+| Themes: Paper and Lamplight | `FixedTheme(id)` | `lib/api/widgets/theme_picker.dart` |
+| More themes | A family pair, or Proof's fixed light theme | `lib/api/widgets/theme_picker.dart`, `lib/presentation/theme/theme_family.dart` |
 | Light | `FixedTheme(id)` for house and custom themes | `lib/api/widgets/theme_picker.dart` |
 | Dark | `FixedTheme(id)` for house and custom themes | `lib/api/widgets/theme_picker.dart` |
-| Paragraphs: "Separated by space" | `ParagraphMarking.spaced` | `lib/api/widgets/theme_picker.dart` |
-| Paragraphs: "Indented, set solid" | `ParagraphMarking.indented` | `lib/api/widgets/theme_picker.dart` |
 | A skipped theme's filename and validation reason | not selectable | `lib/api/widgets/theme_picker.dart`, `lib/api/widgets/theme_picker.dart` |
 | Open themes folder | platform callback | `lib/api/widgets/theme_picker.dart` |
+
+Reading mode and paragraph structure come first because both change how the
+page is set. Themes then begin with Follow System, Paper and Lamplight; the
+larger collection sits under More Themes so the house choices do not compete
+with every imported palette at once. A persistent scroll thumb makes the
+remaining choices discoverable in the minimum-height window
+(`lib/api/widgets/theme_picker.dart`, `lib/api/widgets/anchored_menu.dart`).
 
 The named families mirror the compact control in Codex: Absolutely through
 Xcode appear once rather than as separate Light and Dark rows. The picker reads
@@ -60,9 +68,10 @@ paragraph rows change how the page is *set* rather than what it is set in —
 see [Reading Scale](../04-presentation/07-reading-scale.md) for why the two
 markings are alternatives and never both.
 
-Reading mode sits before Themes because it changes the proportional voice while
-retaining the active palette. Its `Aa` specimens and every theme swatch use the
-selected role, so the menu previews the same kind of page it will produce
+Reading mode sits before Paragraphs and Themes because it changes the
+proportional voice while retaining the active palette. Its `Aa` specimens and
+every theme swatch use the selected role, so the menu previews the same kind of
+page it will produce
 (`lib/api/widgets/theme_picker.dart`).
 
 Each compact row lights up under the pointer before it acts. Keyboard focus
