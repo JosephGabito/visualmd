@@ -17,6 +17,7 @@ import 'presentation/theme/theme_choice.dart';
 import 'presentation/theme/theme_registry.dart';
 import 'presentation/shelf/shelf_label_mode.dart';
 import 'application/library_mutation_queue.dart';
+import 'application/ports/external_open_item.dart';
 import 'application/document_source_reader.dart';
 import 'application/source_watch_coordinator.dart';
 import 'application/workspace_autosave.dart';
@@ -263,6 +264,17 @@ Future<void> main() async {
   platform.folderDrops.listen(controller.addFolder);
   platform.markdownDrops.listen(controller.addMarkdown);
   platform.dragging.listen(controller.setDragging);
+  platform.externalOpenItems
+      .asyncMap((item) async {
+        await _whenReaderIsReady(controller);
+        switch (item) {
+          case ExternalReaderSource(:final source):
+            await openReaderSources?.open([source]);
+          case ExternalWorkspace():
+            await controller.openWorkspace();
+        }
+      })
+      .listen(null);
   final readerUiCommands = StreamController<ReaderUiCommand>.broadcast();
   platform.commands.listen((command) {
     switch (command) {
@@ -351,6 +363,22 @@ Future<void> main() async {
       uiCommands: readerUiCommands.stream,
     ),
   );
+}
+
+Future<void> _whenReaderIsReady(ReaderController controller) async {
+  if (!controller.opening) return;
+  final ready = Completer<void>();
+  void observe() {
+    if (!controller.opening && !ready.isCompleted) ready.complete();
+  }
+
+  controller.addListener(observe);
+  observe();
+  try {
+    await ready.future;
+  } finally {
+    controller.removeListener(observe);
+  }
 }
 
 WorkspaceTheme _workspaceTheme(ThemeChoice choice) => switch (choice) {

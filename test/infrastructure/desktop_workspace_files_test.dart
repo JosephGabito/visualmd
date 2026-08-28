@@ -67,7 +67,7 @@ void main() {
         id: path,
         name: 'project.visualmd-workspace.json',
       );
-      const adapter = DesktopWorkspaceFiles(
+      final adapter = DesktopWorkspaceFiles(
         atomic: DesktopAtomicFiles(useNative: false),
       );
 

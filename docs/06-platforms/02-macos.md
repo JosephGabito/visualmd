@@ -43,6 +43,16 @@ bookmarks that bracket filesystem access. The workspace binding retains an
 app-scoped bookmark locally, outside the shared JSON. Full detail in
 [macOS Sandbox](../03-infrastructure/desktop/04-macos-sandbox.md).
 
+The bundle registers as an alternate Markdown and JSON viewer
+(`macos/Runner/Info.plist`). LaunchServices classifies by the final extension,
+so it cannot register the compound `.visualmd-workspace.json` suffix alone;
+the Dart edge accepts only that exact suffix and ignores other JSON. Finder
+double-click and Open With are delivered for both cold and warm launches. The
+delegate queues early requests until Dart is ready, while the window creates
+the security-scoped bookmarks needed after the system callback returns
+(`macos/Runner/AppDelegate.swift`, `macos/Runner/MainFlutterWindow.swift`,
+`lib/infrastructure/io/desktop_external_open_items.dart`).
+
 Workspace Save As keeps the exact URL returned by `NSSavePanel`. The runner
 writes that URL with Foundation's atomic option, allowing macOS to manage the
 auxiliary file without exposing an ungranted sibling path to Dart

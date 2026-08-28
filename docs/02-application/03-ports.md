@@ -182,6 +182,16 @@ at the composition root (`lib/infrastructure/viewport/quiet_document_viewport_ge
 `lib/main.dart`). Its algorithm and the visible-interaction contract are
 documented in [Quiet Viewport Geometry](../03-infrastructure/04-quiet-viewport-geometry.md).
 
+## External open items
+
+Finder and other desktop file managers may offer a document without presenting
+Visual MD's own Open panel. `ExternalOpenItem` preserves that distinction while
+still carrying only an already-registered `ReaderSourceSelection` or
+`WorkspaceFileRef` (`lib/application/ports/external_open_item.dart`). The
+composition root dispatches those values through the same controller actions
+as explicit Open, so no native path or bookmark reaches the API or application
+use cases (`lib/main.dart`).
+
 ## Workspace ports
 
 Workspace use cases need two kinds of outside help: access to the user's JSON

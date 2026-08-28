@@ -37,6 +37,8 @@ private final class NativeMenuController: NSObject {
 
 class MainFlutterWindow: NSWindow {
   private var nativeMenuController: NativeMenuController?
+  private var externalOpenItems: FlutterMethodChannel?
+  private var externalOpenItemsReady = false
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -77,6 +79,23 @@ class MainFlutterWindow: NSWindow {
       name: "com.visualmd.visualmd/commands",
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
+
+    let externalOpenItems = FlutterMethodChannel(
+      name: "com.visualmd.visualmd/external-open-items",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    self.externalOpenItems = externalOpenItems
+    externalOpenItems.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "ready", let self else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      self.externalOpenItemsReady = true
+      if let appDelegate = NSApp.delegate as? AppDelegate {
+        _ = self.deliverOpenFiles(appDelegate.takePendingOpenFiles())
+      }
+      result(nil)
+    }
 
     let readerSourcePicker = FlutterMethodChannel(
       name: "com.visualmd.visualmd/reader-source-picker",
@@ -259,6 +278,28 @@ class MainFlutterWindow: NSWindow {
 
   deinit {
     NotificationCenter.default.removeObserver(self)
+  }
+
+  /// Delivers Finder requests only after Dart has installed its receiver.
+  /// AppDelegate retains cold-launch requests until this method returns true.
+  func deliverOpenFiles(_ filenames: [String]) -> Bool {
+    guard externalOpenItemsReady, let externalOpenItems else { return false }
+    let records = filenames.map { path -> [String: Any] in
+      let url = URL(fileURLWithPath: path)
+      var record: [String: Any] = ["path": path]
+      if let bookmark = try? url.bookmarkData(
+          options: [.withSecurityScope],
+          includingResourceValuesForKeys: nil,
+          relativeTo: nil
+        ) {
+        record["bookmark"] = FlutterStandardTypedData(bytes: bookmark)
+      }
+      return record
+    }
+    if !records.isEmpty {
+      externalOpenItems.invokeMethod("open", arguments: records)
+    }
+    return true
   }
 
   @objc private func hideToolbarForFullScreen(_ notification: Notification) {
