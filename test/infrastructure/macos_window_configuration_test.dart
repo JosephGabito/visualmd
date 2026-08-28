@@ -32,4 +32,23 @@ void main() {
     expect(source, contains('toolbar?.isVisible = false'));
     expect(source, contains('toolbar?.isVisible = true'));
   });
+
+  test('closing the last macOS window does not quit the app', () {
+    final source = File('macos/Runner/AppDelegate.swift').readAsStringSync();
+
+    expect(
+      source,
+      contains(
+        'applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication)',
+      ),
+    );
+    expect(source, contains('false'));
+  });
+
+  test('clicking the Dock icon reopens the reader window', () {
+    final source = File('macos/Runner/AppDelegate.swift').readAsStringSync();
+
+    expect(source, contains('applicationShouldHandleReopen'));
+    expect(source, contains('mainFlutterWindow?.makeKeyAndOrderFront(self)'));
+  });
 }
