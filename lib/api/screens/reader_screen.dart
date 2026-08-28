@@ -1075,7 +1075,7 @@ class _EmptyLibrary extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'No markdown in this folder.',
+            'No Markdown in this folder.',
             style: context.type.serif(
               color: p.ink,
               size: 22,
