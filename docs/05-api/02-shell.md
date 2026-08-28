@@ -124,6 +124,10 @@ The welcome composition centres itself inside the available height at normal
 desktop sizes. Below its preferred height it scrolls instead of overflowing,
 so deliberately compact windows remain usable
 (`lib/api/widgets/welcome_view.dart`, `lib/api/widgets/welcome_view.dart`).
+Its launch actions share one elevated surface and a restrained shadow. The
+surface deliberately has no perimeter stroke: elevation already separates the
+group from the page, so a border would add a second signal without adding
+structure (`lib/api/widgets/welcome_view.dart`).
 
 ## Events
 

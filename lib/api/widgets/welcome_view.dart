@@ -67,13 +67,13 @@ class WelcomeView extends StatelessWidget {
                     ),
                     const SizedBox(height: 34),
                     Container(
+                      key: const ValueKey('welcome-launch-surface'),
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: context.chrome.elevated,
                         borderRadius: BorderRadius.circular(
                           LibraryChromeScale.windowRadius,
                         ),
-                        border: Border.all(color: context.chrome.separator),
                         boxShadow: [
                           BoxShadow(
                             color: context.chrome.shadow,
