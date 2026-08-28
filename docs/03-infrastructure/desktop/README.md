@@ -44,7 +44,8 @@ the path (`lib/infrastructure/io/desktop_shelf_source_actions.dart`,
 
 ## From Finder to the shelf
 
-1. A reader drops a folder onto Visual MD or chooses one in the native panel.
+1. A reader drops a folder onto Visual MD, chooses one in the native panel, or
+   asks Finder to open a Markdown/workspace document.
 2. The adapter registers a `LocalDirectory`. A Finder drop may include a
    security bookmark; an open panel already grants access
    (`lib/infrastructure/io/desktop_folder_drop.dart`,
@@ -62,3 +63,9 @@ location, writes replace the destination atomically, and the macOS menu sends
 typed commands over a method channel. Security bookmarks allow a saved
 workspace to request access to its sources again. The complete contract is in
 [Workspace Persistence](../03-workspace-persistence.md).
+
+Finder double-click and Open With enter through a readiness-gated native
+channel so cold-launch requests cannot outrun Flutter startup. The desktop
+adapter retains each bookmark behind an opaque ref, then uses the ordinary
+reader-source or workspace-open path (`lib/infrastructure/io/desktop_external_open_items.dart`,
+`macos/Runner/AppDelegate.swift`).

@@ -118,9 +118,13 @@ final class _DeferredMetadataScanner
 
 final class _ReaderSourcePicker implements ReaderSourcePicker {
   List<ReaderSourceSelection> selected = const [];
+  var calls = 0;
 
   @override
-  Future<List<ReaderSourceSelection>> pick() async => selected;
+  Future<List<ReaderSourceSelection>> pick() async {
+    calls++;
+    return selected;
+  }
 }
 
 final class _DeferredReaderSourcePicker implements ReaderSourcePicker {
@@ -209,6 +213,23 @@ void main() {
       expect(controller.reading!.document.title, 'Plan');
     },
   );
+
+  test('an already-authorised source bypasses the native picker', () async {
+    markdownScanner.markdowns['finder-plan'] = const ScannedMarkdown(
+      name: 'finder-plan.md',
+      content: '# Finder plan',
+      sourceId: DocumentSourceId('/outside/finder-plan.md'),
+    );
+
+    await ReaderSourceOpener(readerSourcePicker, controller).open(const [
+      MarkdownSourceSelection(
+        MarkdownRef(id: 'finder-plan', name: 'finder-plan.md'),
+      ),
+    ]);
+
+    expect(readerSourcePicker.calls, 0);
+    expect(controller.reading?.document.title, 'Finder plan');
+  });
 
   test(
     'folder opening publishes filename metadata before source and title reads',

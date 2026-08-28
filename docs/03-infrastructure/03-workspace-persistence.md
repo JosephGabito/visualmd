@@ -20,6 +20,11 @@ are rejected rather than silently discarded
 Desktop workspace files use native open/save panels. The adapter preserves the
 exact path returned by the save panel because macOS grants access to that URL,
 not to a renamed sibling (`lib/infrastructure/io/desktop_workspace_files.dart`).
+Finder-opened workspaces instead receive a security-scoped bookmark while the
+system open grant is live. `DesktopWorkspaceFiles` retains that path and
+bookmark behind a process-local `WorkspaceFileRef`, opens the scope around
+reads and automatic saves, and never exposes the native path inward
+(`lib/infrastructure/io/desktop_workspace_files.dart`).
 On macOS, Foundation writes that selected URL atomically through the native
 channel (`macos/Runner/MainFlutterWindow.swift`). Windows keeps the
 temporary-file replacement and last-good backup implemented by its runner.

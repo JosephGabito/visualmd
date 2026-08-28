@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../application/ports/document_image_loader.dart';
+import '../../application/ports/external_open_item.dart';
 import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
@@ -13,6 +14,7 @@ import '../../application/ports/source_change_monitor.dart';
 import '../../application/ports/workspace_files.dart';
 import '../../application/ports/workspace_source_access.dart';
 import '../io/desktop_folder_drop.dart';
+import '../io/desktop_external_open_items.dart';
 import '../io/desktop_commands.dart';
 import '../io/desktop_folder_picker.dart';
 import '../io/desktop_links.dart';
@@ -56,6 +58,9 @@ final class _DesktopAdapters implements PlatformAdapters {
   late final _drop = DesktopFolderDrop(_registry, _markdownRegistry);
   late final _picker = DesktopFolderPicker(_registry);
   late final _markdownPicker = DesktopMarkdownPicker(_markdownRegistry);
+  late final DesktopExternalOpenItems? _externalOpenItems = Platform.isMacOS
+      ? DesktopExternalOpenItems(_markdownRegistry, _workspaceFiles)
+      : null;
   late final _shelfSourceActions = DesktopShelfSourceActions(
     _registry,
     _markdownRegistry,
@@ -91,8 +96,10 @@ final class _DesktopAdapters implements PlatformAdapters {
   late final SourceChangeMonitor sourceChangeMonitor =
       DesktopSourceChangeMonitor(_registry, _markdownRegistry);
 
+  final DesktopWorkspaceFiles _workspaceFiles = DesktopWorkspaceFiles();
+
   @override
-  final WorkspaceFiles workspaceFiles = const DesktopWorkspaceFiles();
+  WorkspaceFiles get workspaceFiles => _workspaceFiles;
 
   @override
   late final WorkspaceSourceAccess workspaceSourceAccess =
@@ -120,6 +127,10 @@ final class _DesktopAdapters implements PlatformAdapters {
 
   @override
   Stream<bool> get dragging => _drop.dragging;
+
+  @override
+  Stream<ExternalOpenItem> get externalOpenItems =>
+      _externalOpenItems?.stream ?? const Stream.empty();
 
   @override
   Stream<PlatformCommand> get commands => _commands.stream;

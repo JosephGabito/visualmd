@@ -2,14 +2,15 @@
 
 ## Purpose and boundary
 
-Three small adapters let the desktop offer a folder or markdown, or hand off a
-link:
+Four small adapters let the desktop offer a folder or markdown, accept a
+Finder-opened document, or hand off a link:
 
 | Adapter | Does | Source |
 |---------|------|--------|
 | `DesktopFolderDrop` | folder and direct-markdown drops become opaque refs | `lib/infrastructure/io/desktop_folder_drop.dart` |
 | `DesktopFolderPicker` | the native "choose a folder" dialog | `lib/infrastructure/io/desktop_folder_picker.dart` |
 | `DesktopReaderSourcePicker` | macOS Open records become typed folder or Markdown refs | `lib/infrastructure/io/desktop_reader_source_picker.dart` |
+| `DesktopExternalOpenItems` | Finder double-click and Open With records become ordered opaque refs | `lib/infrastructure/io/desktop_external_open_items.dart` |
 | `openWithSystem` | a URL or local path goes to its system handler | `lib/infrastructure/io/desktop_links.dart` |
 
 All three stop at the registry or the OS; none reads a file. Their boundary
@@ -54,6 +55,16 @@ desktop families leave the capability absent rather than pretending a
 file-only or folder-only dialog is the same interaction
 (`lib/infrastructure/platform/platform_io.dart`).
 
+**Finder open.** The application delegate accepts both cold-launch and warm
+`openFiles` requests. Native code waits for Dart's explicit readiness signal,
+creates a security-scoped bookmark while Finder's grant is live, and delivers
+the path and bookmark together (`macos/Runner/AppDelegate.swift`,
+`macos/Runner/MainFlutterWindow.swift`). Dart validates the compound workspace
+suffix before Markdown, registers the native handle, and emits only an opaque
+reader or workspace reference (`lib/infrastructure/io/desktop_external_open_items.dart`).
+The composition root consumes the single-subscription stream in order through
+the same controller paths as the Open panels (`lib/main.dart`).
+
 **System handoff.** `openWithSystem` shells out per OS: `open` on macOS, `rundll32
 url.dll,FileProtocolHandler` on Windows, `xdg-open` elsewhere
 (`lib/infrastructure/io/desktop_links.dart`). External links and the
@@ -68,6 +79,7 @@ appropriate (`lib/infrastructure/platform/platform_io.dart`,
 | drop | `DropDoneDetails.files` (`List<DropItem>`) | folder, markdown and dragging streams — `lib/infrastructure/io/desktop_folder_drop.dart` |
 | picker | a user gesture | `Future<FolderRef?>` |
 | Open | native folder/file records | typed opaque reader-source selections |
+| Finder open | native path and bookmark records | ordered reader-source or workspace refs |
 | system handoff | a URL or local path | a child process; result ignored |
 
 ## Events
@@ -77,10 +89,12 @@ the corresponding library changes.
 
 ## Lifecycle
 
-Drop and picker are created with the desktop `PlatformAdapters`
+Drop, picker, and Finder-open receiver are created with the desktop `PlatformAdapters`
 (`lib/infrastructure/platform/platform_io.dart`). The drop adapter's
 broadcast stream controllers live for the process; the `DropTarget` widget is
-rebuilt with the UI but the adapter is not.
+rebuilt with the UI but the adapter is not. The Finder receiver is
+single-subscription so a multi-file open cannot reorder workspace replacement
+and source addition.
 
 ## Failure and recovery
 
@@ -89,6 +103,8 @@ rebuilt with the UI but the adapter is not.
   (`lib/infrastructure/io/desktop_folder_drop.dart`).
 - Picker cancel yields `null`; the controller ignores it
   (`lib/api/reader_controller.dart`).
+- Unrecognised Finder files are ignored before any path crosses inward. A
+  cold-launch request remains native until Dart has installed its receiver.
 - `Process.run` failures (no `xdg-open` on a minimal Linux) are awaited but
   not surfaced; the link simply does not open.
 - A drop whose bookmark the sandbox refuses fails later, in the scanner, as a

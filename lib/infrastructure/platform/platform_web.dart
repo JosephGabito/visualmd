@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:web/web.dart' as web;
 
 import '../../application/ports/document_image_loader.dart';
+import '../../application/ports/external_open_item.dart';
 import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
@@ -93,6 +94,9 @@ final class _WebAdapters implements PlatformAdapters {
 
   @override
   Stream<bool> get dragging => _drop.dragging;
+
+  @override
+  Stream<ExternalOpenItem> get externalOpenItems => const Stream.empty();
 
   @override
   Stream<PlatformCommand> get commands => const Stream.empty();

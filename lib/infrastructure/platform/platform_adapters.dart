@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../application/ports/document_image_loader.dart';
+import '../../application/ports/external_open_item.dart';
 import '../../application/ports/folder_document_scanner.dart';
 import '../../application/ports/folder_scanner.dart';
 import '../../application/ports/markdown_scanner.dart';
@@ -31,6 +32,9 @@ abstract interface class PlatformAdapters {
   Stream<MarkdownRef> get markdownDrops;
 
   Stream<bool> get dragging;
+
+  /// Files the operating system delivered through double-click or Open With.
+  Stream<ExternalOpenItem> get externalOpenItems;
 
   /// Commands selected from native application menus, where the host has one.
   Stream<PlatformCommand> get commands;
