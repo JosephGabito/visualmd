@@ -34,6 +34,7 @@ body:
       label: Platform
       options:
         - macOS app
+        - Windows app
         - Browser playground
         - Source build
     validations:

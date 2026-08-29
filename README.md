@@ -60,8 +60,13 @@ falls back to a bundled face instead of fetching a font.
 
 ## Run it
 
-Visual MD currently runs on the web and macOS. Until signed downloads are
-published, the complete reader is available from source.
+Visual MD runs on the web, macOS, and Windows.
+
+- [Download the signed Windows 11 x64 installer](https://github.com/JosephGabito/visualmd/releases/latest/download/VisualMD-1.0.0-windows-x64-setup.exe)
+- [Try Visual MD in your browser](https://visualmd.gabi.to/playground/?open=sample)
+
+The Mac app is in App Review. The complete reader also remains available from
+source.
 
 Install a stable Flutter SDK satisfying the Dart constraint in `pubspec.yaml`.
 The web asset preparation step also requires Node.js and npm. Then:
@@ -83,7 +88,7 @@ flutter run -d macos
 |----------|--------|
 | Web | Built and tested in Chrome. Modern browsers can retain folder access; older ones use local file-picker and download fallbacks. |
 | macOS | Built and tested with native files, folders, menus, sandboxed access, and drag and drop. The App Store archive is signed and validated; public availability still depends on App Review. A separate direct download would require Developer ID signing and notarization. |
-| Windows | The project and desktop adapters exist, but the native build has not yet been verified on Windows hardware. |
+| Windows | Built and visually verified on Windows 11, including bundled typography, the sample library, native folder selection, and recursive Markdown scanning. CI rebuilds the x64 bundle on Windows; tagged releases require Authenticode signing before the installer can be published. |
 
 More detailed setup and troubleshooting live in
 [Development Setup](docs/09-contributing/01-dev-setup.md).
@@ -97,9 +102,9 @@ More detailed setup and troubleshooting live in
 | Show or hide the shelf | <kbd>⌘/Ctrl</kbd> <kbd>B</kbd> |
 | Show or hide the outline | <kbd>⌘/Ctrl</kbd> <kbd>.</kbd> |
 
-The macOS **File** menu creates, opens, and saves workspaces and adds Markdown
-files or folders. Shelf menus can reveal a source in Finder, copy its path, or
-remove it from the current reading room without deleting the original file.
+The desktop **File** menu creates, opens, and saves workspaces and adds Markdown
+files or folders. Shelf menus can reveal a source, copy its path, or remove it
+from the current reading room without deleting the original file.
 
 ## Made for reading
 
