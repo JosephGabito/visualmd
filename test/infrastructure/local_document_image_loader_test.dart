@@ -81,8 +81,8 @@ void main() {
   test('a filesystem root remains a valid authorised folder', () async {
     final image = File('${sandbox.path}/root-image.png');
     await image.writeAsBytes([8, 9, 10]);
-    final filesystemRoot = Directory(Platform.pathSeparator).absolute.path;
-    final relativeImage = image.path
+    final filesystemRoot = _filesystemRootOf(sandbox).path;
+    final relativeImage = image.absolute.path
         .substring(filesystemRoot.length)
         .replaceAll(Platform.pathSeparator, '/');
 
@@ -127,4 +127,12 @@ void main() {
       [5, 6, 7],
     );
   });
+}
+
+Directory _filesystemRootOf(Directory directory) {
+  var root = directory.absolute;
+  while (root.parent.path != root.path) {
+    root = root.parent;
+  }
+  return root;
 }
