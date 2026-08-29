@@ -16,12 +16,13 @@ the deeper architectural reasoning.
 
 | Document | What it helps you do |
 |----------|----------------------|
-| [Development Setup](01-dev-setup.md) | Install Flutter and run Visual MD on the web or macOS. |
+| [Development Setup](01-dev-setup.md) | Install Flutter and run Visual MD on the web, macOS, or Windows. |
 | [Testing and Validation](02-testing-and-validation.md) | Choose a focused test and run the complete project checks. |
 | [Adding a Platform](03-adding-a-platform.md) | Follow the path used for the macOS adapter on another target. |
 | [Writing Docs](04-writing-docs.md) | Keep component guides, links, and source references useful. |
 | [Creating a Theme](05-creating-a-theme.md) | Create a theme file and understand its schema and fallback behavior. |
 | [Releasing for macOS](06-releasing-for-macos.md) | Build, sign, notarize, and audit the Apple distribution artifact. |
+| [Releasing for Windows](07-releasing-for-windows.md) | Build, sign, package, verify, and publish the Windows installer. |
 
 ## A good first loop
 

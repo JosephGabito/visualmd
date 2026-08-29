@@ -1,0 +1,7 @@
+// CI validates the release bundle without access to Joseph's Apple identity.
+// XCODE_XCCONFIG_FILE gives this file the final say over project signing while
+// leaving the normal Release configuration ready for Xcode distribution.
+CODE_SIGN_IDENTITY = -
+CODE_SIGN_STYLE = Manual
+DEVELOPMENT_TEAM =
+PROVISIONING_PROFILE_SPECIFIER =

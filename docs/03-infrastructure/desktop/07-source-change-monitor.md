@@ -61,8 +61,9 @@ Ordinary operation performs no polling while the filesystem is quiet
 
 The adapter test changes a real temporary Markdown file and waits for the native
 relative-path event (`test/infrastructure/desktop_source_change_monitor_test.dart`).
-Windows uses the same Dart implementation, but native Windows verification is
-still required before release.
+Windows uses the same Dart implementation. Its release build and native folder
+scan are verified; a live edit-and-refresh check remains part of the
+clean-machine installer checklist.
 
 ## Transition
 

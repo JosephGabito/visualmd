@@ -28,7 +28,7 @@ relevant checks are:
 - **Xcode** for macOS. The full application, not only Command Line Tools, is
   required; see [macOS](../06-platforms/02-macos.md).
 - **Visual Studio with Desktop development with C++** for Windows. The target
-  is scaffolded but has not yet been verified on a Windows machine; see
+  is built and verified with Visual Studio 2022; see
   [Windows](../06-platforms/03-windows.md).
 
 Android and iOS are not current project targets.
@@ -39,6 +39,7 @@ Android and iOS are not current project targets.
 bin/tools/prepare-web-assets.sh
 flutter run -d chrome     # web, opens Chrome
 flutter run -d macos      # native macOS window; requires Xcode
+flutter run -d windows    # native Windows window; requires Visual Studio
 ```
 
 The preparation command runs `npm ci` from `web/package-lock.json` only when
@@ -81,7 +82,7 @@ Build outputs are written to:
 
 - `build/web` for the web release;
 - `build/macos/Build/Products/Release/` for macOS;
-- the standard Flutter build directory for another native target.
+- `build/windows/x64/runner/Release/` for Windows.
 
 ## Useful web launch options
 

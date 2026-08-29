@@ -78,6 +78,34 @@ void main() {
     expect(await loader.load(document, 'secret.png'), isNull);
   });
 
+  test('a filesystem root remains a valid authorised folder', () async {
+    final image = File('${sandbox.path}/root-image.png');
+    await image.writeAsBytes([8, 9, 10]);
+    final filesystemRoot = Directory(Platform.pathSeparator).absolute.path;
+    final relativeImage = image.path
+        .substring(filesystemRoot.length)
+        .replaceAll(Platform.pathSeparator, '/');
+
+    final folders = LocalFolderRegistry('test-folder');
+    final ref = folders.register(
+      'root',
+      LocalDirectory(filesystemRoot),
+      identity: filesystemRoot,
+    );
+    final loader = LocalDocumentImageLoader(
+      folders,
+      LocalMarkdownRegistry('test-markdown'),
+    );
+
+    expect(
+      await loader.load(
+        DocumentId(LibraryRootId(ref.id), 'page.md'),
+        relativeImage,
+      ),
+      [8, 9, 10],
+    );
+  });
+
   test('a standalone markdown may resolve a neighbour it can access', () async {
     final markdownFile = File('${sandbox.path}/page.md');
     final imageFile = File('${sandbox.path}/map.png');

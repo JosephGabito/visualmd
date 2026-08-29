@@ -108,9 +108,12 @@ final class LocalDocumentImageLoader implements DocumentImageLoader {
 bool _isWithin(String root, String candidate) {
   final canonicalRoot = localMarkdownIdentity(root);
   final canonicalCandidate = localMarkdownIdentity(candidate);
-  return canonicalCandidate.startsWith(
-    '$canonicalRoot${Platform.pathSeparator}',
-  );
+  // localMarkdownIdentity deliberately uses portable separators, including on
+  // Windows. Keep the containment boundary in that same representation.
+  final boundary = canonicalRoot.endsWith('/')
+      ? canonicalRoot
+      : '$canonicalRoot/';
+  return canonicalCandidate.startsWith(boundary);
 }
 
 String _beneath(String root, String relative) =>

@@ -47,8 +47,10 @@ its recovery contract, not a reaction to a Library event.
 - Missing access is recoverable and retains source order.
 - Format evolution is a public contract requiring versions and migrations.
 - A copied workspace may require the receiving machine to reconnect sources.
-- Windows behavior can be implemented in source and portable tests, but native
-  replacement remains unverified until built on Windows.
+- Windows production writes use the native `ReplaceFileW` / `MoveFileExW`
+  channel. Portable tests exercise the same backup and recovery contract
+  through the non-native adapter, while an actual save and overwrite remain a
+  clean-machine release check for the native channel.
 
 ## Evidence
 

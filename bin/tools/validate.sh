@@ -55,6 +55,10 @@ case "$(uname -s)" in
   MINGW* | MSYS* | CYGWIN*)
     section "Build Windows release"
     flutter build windows --release
+    section "Audit Windows bundle"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass \
+      -File "$(cygpath -w "$TOOLS_DIR/validate-windows-bundle.ps1")" \
+      -BundlePath "$(cygpath -w "$PROJECT_ROOT/build/windows/x64/runner/Release")"
     ;;
   *)
     section "Build native desktop release"

@@ -5,8 +5,9 @@ application window. They live under `lib/infrastructure/io/` and are selected
 by [Platform Adapters](../01-platform-adapters.md) when the Dart runtime offers
 `dart:io` rather than the browser interop libraries.
 
-macOS is the verified desktop target today. Windows uses this same Dart adapter
-family, but its build still needs verification on a Windows machine.
+macOS and Windows are verified desktop build targets. Windows uses this same
+Dart adapter family; its x64 release has been launched and visually exercised
+on Windows 11, including the native folder picker and recursive scan.
 
 ## On this shelf
 

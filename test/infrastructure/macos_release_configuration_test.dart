@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  String source(String path) => File(path).readAsStringSync();
+  String source(String path) =>
+      File(path).readAsStringSync().replaceAll('\r\n', '\n');
 
   group('the macOS release contract', () {
     test('release code is hardened without debugger entitlement injection', () {
@@ -14,6 +15,17 @@ void main() {
         configuration,
         contains('CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO'),
       );
+    });
+
+    test('CI can audit a release without Josephs signing identity', () {
+      final workflow = source('.github/workflows/validate.yml');
+      final signing = source('macos/Runner/Configs/AdHoc.xcconfig');
+
+      expect(workflow, contains('XCODE_XCCONFIG_FILE:'));
+      expect(workflow, contains('AdHoc.xcconfig'));
+      expect(signing, contains('CODE_SIGN_IDENTITY = -'));
+      expect(signing, contains('CODE_SIGN_STYLE = Manual'));
+      expect(signing, contains('DEVELOPMENT_TEAM ='));
     });
 
     test('the shipping sandbox grants only reader capabilities', () {

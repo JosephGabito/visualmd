@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 enum Ring { domain, application, presentation, api, infrastructure, root }
 
 Ring ringOf(String libRelativePath) {
-  final top = libRelativePath.split('/').first;
+  final top = portablePath(libRelativePath).split('/').first;
   return switch (top) {
     'domain' => Ring.domain,
     'application' => Ring.application,
@@ -56,9 +56,11 @@ final importPattern = RegExp(
   multiLine: true,
 );
 
+String portablePath(String path) => path.replaceAll('\\', '/');
+
 String normalize(String from, String target) {
-  final segments = from.split('/')..removeLast();
-  for (final part in target.split('/')) {
+  final segments = portablePath(from).split('/')..removeLast();
+  for (final part in portablePath(target).split('/')) {
     if (part == '..') {
       segments.removeLast();
     } else if (part != '.') {
@@ -75,9 +77,17 @@ void main() {
           .listSync(recursive: true)
           .whereType<File>()
           .where((f) => f.path.endsWith('.dart'))
-          .map((f) => f.path.substring('lib/'.length))
+          .map((f) => portablePath(f.path.substring(libDir.path.length + 1)))
           .toList()
         ..sort();
+
+  test('dependency paths have one shape on POSIX and Windows', () {
+    expect(ringOf(r'api\app.dart'), Ring.api);
+    expect(
+      normalize(r'api\widgets\reader.dart', r'..\..\domain\library.dart'),
+      'domain/library.dart',
+    );
+  });
 
   test('lib/ contains the expected rings and nothing else', () {
     final tops = files

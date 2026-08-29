@@ -14,24 +14,69 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Format, test, and build
+  macos:
+    name: macOS and portable validation
     runs-on: macos-latest
     timeout-minutes: 30
 
     steps:
       - name: Check out the repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Install Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          channel: stable
-          cache: true
+          flutter-version: 3.47.1
+          cache: false
 
       - name: Validate
         # Release archives are signed on the release machine. CI only needs an
         # ad-hoc signature to verify the macOS bundle without private keys.
         env:
-          FLUTTER_XCODE_CODE_SIGN_IDENTITY: "-"
+          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/macos/Runner/Configs/AdHoc.xcconfig
         run: bin/tools/validate.sh
+
+  windows:
+    name: Windows build contract
+    runs-on: windows-2025
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.47.1
+          cache: false
+
+      - name: Resolve locked dependencies and version
+        id: version
+        shell: pwsh
+        run: |
+          flutter pub get --enforce-lockfile
+          $line = Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1
+          if ($line -notmatch '^version:\s*([^+\s]+)\+(\d+)\s*$') {
+            throw 'pubspec.yaml must declare version as <name>+<build>'
+          }
+          "value=$($Matches[1])" >> $env:GITHUB_OUTPUT
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test on Windows
+        run: flutter test
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Audit Windows bundle
+        shell: pwsh
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.value }}
+        run: bin/tools/validate-windows-bundle.ps1 -ExpectedVersion $env:EXPECTED_VERSION

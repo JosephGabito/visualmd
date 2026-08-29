@@ -13,6 +13,11 @@ void main() {
   test(
     'desktop shelf locations resolve without leaking paths into domain ids',
     () {
+      String beneath(String root, String relative) =>
+          File([root, ...relative.split('/')].join(Platform.pathSeparator))
+              .absolute
+              .path;
+
       final folders = LocalFolderRegistry('test');
       final markdowns = LocalMarkdownRegistry('test-markdown');
       final root = folders.register(
@@ -38,7 +43,7 @@ void main() {
             relativePath: 'docs',
           ),
         ),
-        File('/work/project/docs').absolute.path,
+        beneath('/work/project', 'docs'),
       );
       expect(
         actions.absolutePath(
@@ -46,7 +51,7 @@ void main() {
             DocumentId(LibraryRootId(root.id), 'docs/guide.md'),
           ),
         ),
-        File('/work/project/docs/guide.md').absolute.path,
+        beneath('/work/project', 'docs/guide.md'),
       );
       expect(
         actions.absolutePath(

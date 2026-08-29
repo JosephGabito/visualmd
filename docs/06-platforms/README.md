@@ -14,21 +14,21 @@ explains the shared object returned to the composition root.
 |----------|----------------|
 | [Web](01-web.md) | Built, served, and verified in Chrome |
 | [macOS](02-macos.md) | Built and launched; Finder folder drop verified |
-| [Windows](03-windows.md) | Project scaffold and desktop adapter path exist; a build on Windows has not yet been verified |
+| [Windows](03-windows.md) | x64 release built and visually verified on Windows 11; signed installer pipeline present |
 
-Windows support is therefore implementation work in progress, not a confirmed
-release target yet. The platform document records what is shared and what still
-needs a Windows machine.
+The Windows target is now a confirmed build target. The platform document
+separates what was exercised in the VM from interactions that still need a
+clean-machine release check.
 
 ## Capability map
 
 | Capability | Web | macOS | Windows |
 |------------|-----|-------|---------|
-| Drop a folder | Document-level DOM drop (`lib/infrastructure/web/browser_folder_drop.dart`) | `desktop_drop` widget wrapper (`lib/infrastructure/platform/platform_io.dart`) | Intended to use the desktop adapter; unverified |
-| Drop one Markdown file | Direct stream; physical identity depends on the browser handle | Direct stream with normalized physical identity | Intended to use the desktop adapter; unverified |
-| Pick a folder | `<input webkitdirectory>` | Native open panel through `file_selector` | Intended to use the desktop adapter; unverified |
+| Drop a folder | Document-level DOM drop (`lib/infrastructure/web/browser_folder_drop.dart`) | `desktop_drop` widget wrapper (`lib/infrastructure/platform/platform_io.dart`) | Desktop adapter present; drag/drop remains in the clean-machine checklist |
+| Drop one Markdown file | Direct stream; physical identity depends on the browser handle | Direct stream with normalized physical identity | Desktop adapter present; direct drop remains in the clean-machine checklist |
+| Pick a folder | `<input webkitdirectory>` | Native open panel through `file_selector` | Native Windows picker and recursive scan verified |
 | Open an external link | `window.open` (`lib/infrastructure/platform/platform_web.dart`) | `open` (`lib/infrastructure/io/desktop_links.dart`) | `rundll32` implementation present (`lib/infrastructure/io/desktop_links.dart`) |
-| Restore source access | Browser permissions and optional persisted handles | Security-scoped bookmarks (`lib/infrastructure/io/desktop_security_scope.dart`) | No sandbox scope expected; unverified |
+| Restore source access | Browser permissions and optional persisted handles | Security-scoped bookmarks (`lib/infrastructure/io/desktop_security_scope.dart`) | Direct local access; restart restoration remains in the clean-machine checklist |
 | Window chrome | Owned by the browser (`lib/infrastructure/platform/platform_web.dart`) | Hidden system title bar, 84 px inset, draggable Visual MD top bar (`lib/infrastructure/platform/platform_io.dart`, `lib/infrastructure/platform/platform_io.dart`) | System title bar implementation present (`lib/infrastructure/platform/platform_io.dart`) |
 | Launch options | URL query (`lib/infrastructure/platform/platform_web.dart`) | None (`lib/infrastructure/platform/platform_io.dart`) | None |
 

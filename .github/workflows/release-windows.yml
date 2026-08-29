@@ -1,0 +1,274 @@
+name: Release Windows
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: 3.47.1
+  INNO_SETUP_VERSION: 6.7.3
+
+jobs:
+  qa:
+    name: Build and exercise unsigned installer
+    runs-on: windows-2025
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Check out source without persisting credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: false
+
+      - name: Resolve and verify release version
+        id: version
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          flutter pub get --enforce-lockfile
+          $line = Get-Content pubspec.yaml | Where-Object { $_ -match '^version:' } | Select-Object -First 1
+          if ($line -notmatch '^version:\s*([^+\s]+)\+(\d+)\s*$') {
+            throw 'pubspec.yaml must declare version as <name>+<build>'
+          }
+          $version = $Matches[1]
+          if ($env:EVENT_NAME -eq 'push' -and $env:REF_TYPE -eq 'tag' -and $env:REF_NAME -ne "v$version") {
+            throw "Tag $env:REF_NAME does not match pubspec version $version"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test on Windows
+        run: flutter test
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Audit unsigned bundle
+        shell: pwsh
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.version }}
+        run: bin/tools/validate-windows-bundle.ps1 -ExpectedVersion $env:EXPECTED_VERSION
+
+      - name: Install pinned Inno Setup
+        shell: pwsh
+        run: |
+          winget install --id JRSoftware.InnoSetup -e --version $env:INNO_SETUP_VERSION `
+            --source winget --silent --accept-package-agreements --accept-source-agreements
+
+      - name: Build unsigned QA installer
+        id: installer
+        shell: pwsh
+        run: |
+          $path = bin/tools/package-windows.ps1 -ExpectedInnoVersion $env:INNO_SETUP_VERSION
+          "path=$path" >> $env:GITHUB_OUTPUT
+
+      - name: Exercise unsigned installer lifecycle
+        shell: pwsh
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.version }}
+          INSTALLER_PATH: ${{ steps.installer.outputs.path }}
+        run: |
+          bin/tools/test-windows-installer.ps1 `
+            -InstallerPath $env:INSTALLER_PATH `
+            -ExpectedVersion $env:EXPECTED_VERSION
+
+      - name: Write unsigned QA checksum
+        if: github.event_name == 'workflow_dispatch'
+        id: qa-checksum
+        shell: pwsh
+        env:
+          INSTALLER_PATH: ${{ steps.installer.outputs.path }}
+        run: |
+          $path = bin/tools/write-windows-checksum.ps1 -InstallerPath $env:INSTALLER_PATH
+          "path=$path" >> $env:GITHUB_OUTPUT
+
+      - name: Upload unmistakably unsigned manual QA artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: UNSIGNED-QA-DO-NOT-DISTRIBUTE-VisualMD-${{ steps.version.outputs.version }}-windows-x64
+          path: |
+            ${{ steps.installer.outputs.path }}
+            ${{ steps.qa-checksum.outputs.path }}
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Transfer unsigned bundle to protected release job
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: UNSIGNED-INTERNAL-VisualMD-${{ steps.version.outputs.version }}-${{ github.run_id }}
+          path: build/windows/x64/runner/Release
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Sign and publish Windows installer
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: qa
+    runs-on: windows-2025
+    timeout-minutes: 30
+    environment: windows-release
+    permissions:
+      contents: write # Create the tagged GitHub release after every gate passes.
+      id-token: write # Exchange GitHub OIDC for short-lived Azure signing access.
+      attestations: write # Record build provenance for the published installer.
+
+    steps:
+      - name: Check out tagged source without persisting credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Prove the tag belongs to main
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          git fetch origin +refs/heads/main:refs/remotes/origin/main --no-tags
+          if ((git rev-parse HEAD).Trim() -ne $env:EXPECTED_SHA) {
+            throw 'Checked-out commit does not match the tag event SHA'
+          }
+          git merge-base --is-ancestor $env:EXPECTED_SHA origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The tagged commit is not reachable from origin/main'
+          }
+
+      - name: Download audited unsigned bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: UNSIGNED-INTERNAL-VisualMD-${{ needs.qa.outputs.version }}-${{ github.run_id }}
+          path: build/windows/x64/runner/Release
+
+      - name: Install pinned Inno Setup
+        shell: pwsh
+        run: |
+          winget install --id JRSoftware.InnoSetup -e --version $env:INNO_SETUP_VERSION `
+            --source winget --silent --accept-package-agreements --accept-source-agreements
+
+      - name: Authenticate to Azure for signing
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign application bundle
+        uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\build\windows\x64\runner\Release
+          files-folder-filter: exe,dll
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          cache-dependencies: false
+
+      - name: Audit signed bundle
+        shell: pwsh
+        env:
+          EXPECTED_SIGNER_SUBJECT: ${{ vars.WINDOWS_SIGNER_SUBJECT }}
+          EXPECTED_VERSION: ${{ needs.qa.outputs.version }}
+        run: |
+          bin/tools/validate-windows-bundle.ps1 `
+            -BundlePath build/windows/x64/runner/Release `
+            -ExpectedVersion $env:EXPECTED_VERSION `
+            -RequireSignature `
+            -ExpectedSignerSubject $env:EXPECTED_SIGNER_SUBJECT
+
+      - name: Build signed installer and signed uninstaller
+        id: installer
+        shell: pwsh
+        env:
+          AZURE_ARTIFACT_SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          AZURE_ARTIFACT_SIGNING_ACCOUNT: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          AZURE_ARTIFACT_SIGNING_PROFILE: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
+        run: |
+          $path = bin/tools/package-windows.ps1 `
+            -ExpectedInnoVersion $env:INNO_SETUP_VERSION `
+            -Sign
+          "path=$path" >> $env:GITHUB_OUTPUT
+
+      - name: Exercise signed installer lifecycle
+        shell: pwsh
+        env:
+          EXPECTED_SIGNER_SUBJECT: ${{ vars.WINDOWS_SIGNER_SUBJECT }}
+          EXPECTED_VERSION: ${{ needs.qa.outputs.version }}
+          INSTALLER_PATH: ${{ steps.installer.outputs.path }}
+        run: |
+          bin/tools/test-windows-installer.ps1 `
+            -InstallerPath $env:INSTALLER_PATH `
+            -ExpectedVersion $env:EXPECTED_VERSION `
+            -RequireSignature `
+            -ExpectedSignerSubject $env:EXPECTED_SIGNER_SUBJECT
+
+      - name: Write release checksum
+        id: checksum
+        shell: pwsh
+        env:
+          INSTALLER_PATH: ${{ steps.installer.outputs.path }}
+        run: |
+          $path = bin/tools/write-windows-checksum.ps1 -InstallerPath $env:INSTALLER_PATH
+          "path=$path" >> $env:GITHUB_OUTPUT
+
+      - name: Attest installer provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: ${{ steps.installer.outputs.path }}
+
+      - name: Publish an immutable GitHub release
+        shell: pwsh
+        env:
+          CHECKSUM_PATH: ${{ steps.checksum.outputs.path }}
+          GH_TOKEN: ${{ github.token }}
+          INSTALLER_PATH: ${{ steps.installer.outputs.path }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.qa.outputs.version }}
+        run: |
+          gh release view $env:RELEASE_TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Release $env:RELEASE_TAG already exists; refusing to replace its public assets"
+          }
+          gh release create $env:RELEASE_TAG `
+            --draft `
+            --verify-tag `
+            --title "Visual MD $env:RELEASE_VERSION" `
+            --generate-notes
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not create draft release $env:RELEASE_TAG"
+          }
+          gh release upload $env:RELEASE_TAG `
+            $env:INSTALLER_PATH `
+            $env:CHECKSUM_PATH
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not upload every asset; release $env:RELEASE_TAG remains a private draft"
+          }
+          gh release edit $env:RELEASE_TAG --draft=false
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not publish completed draft release $env:RELEASE_TAG"
+          }

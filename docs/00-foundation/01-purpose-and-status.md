@@ -58,20 +58,25 @@ build status that follows records where the application has actually been run.
 | Reconnect workspace sources that are unavailable on the current machine | all platforms, subject to the access the platform can grant |
 | Bundled sample library so the reader is never empty | all platforms |
 
-## Status as of 2026-08-28
+## Status as of 2026-08-29
 
 - **Web** — built (`flutter build web --release`), served and screenshotted.
 - **macOS** — built and run natively once Xcode 26.6 was installed; dropping a
   folder from Finder works under the app sandbox; the system title bar is
   hidden so the traffic lights share the app's own top bar.
-- **Windows** — project scaffolded and named; not yet compiled (needs a
-  Windows machine with Visual Studio).
+- **Windows** — x64 release built on Windows 11 ARM with Visual Studio 2022,
+  launched under Windows x64 emulation, and visually checked with the bundled
+  sample and a recursively scanned native folder. The release pipeline packages
+  the complete Flutter bundle into one installer and requires Authenticode for
+  tagged releases.
 - **Tests** — domain, application, infrastructure, API, presentation, and docs
   suites, plus one architecture test per source file.
 - **Distribution** — a team-signed Mac App Store archive passes the repository
   bundle and archive validators. Public availability still depends on upload
-  processing and App Review. A Developer ID/notarized direct download remains
-  a separate future route.
+  processing and App Review. Windows has a guarded installer pipeline; a public
+  artifact still needs an Azure Artifact Signing identity and repository
+  federation. A Developer ID/notarized direct macOS download remains a separate
+  future route.
 
 ## Document status
 

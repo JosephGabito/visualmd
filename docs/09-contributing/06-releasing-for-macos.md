@@ -42,6 +42,11 @@ Merman library, and valid nested signatures. `--distribution` additionally
 requires Developer ID, a signing team, a secure timestamp, a stapled ticket,
 and Gatekeeper acceptance.
 
+CI points `XCODE_XCCONFIG_FILE` at
+`macos/Runner/Configs/AdHoc.xcconfig`. That Xcode-supported override produces a
+real ad-hoc signature without an Apple private key while leaving the normal
+Release configuration untouched for App Store or Developer ID distribution.
+
 `bin/tools/validate-macos-archive.sh` checks the archive as well as the app. It
 requires an Apple team and signing identity, then requires the embedded Merman
 dylib to have a companion dSYM with the same UUID for every architecture. This

@@ -35,7 +35,10 @@ is, and keep mobile and the browser extension on the roadmap.
   launch options exist for sharing links and for screenshots.
 - The macOS target later built without changes to `domain/` or `application/`;
   its sandboxed Finder drop uses optional, identity-defaulted hooks in `api/`.
-  Windows is scaffolded and named but remains unverified on a Windows machine.
+  Windows later built through the same desktop adapters and was verified on a
+  Windows 11 ARM virtual machine under x64 emulation. The native picker,
+  recursive scan, bundled typography, and release bundle all survived the
+  crossing without a new domain or application implementation.
 - The first implementation fetched fonts at runtime. Visual MD now bundles its
   four measured families and falls back locally when a theme names anything
   else; see [Theme Binding](../05-api/06-theme.md).

@@ -44,8 +44,15 @@ void main() {
       expect(restored.folders, room.folders);
       expect(restored.activeDocument, room.activeDocument);
       expect(restored.theme, room.theme);
-      expect(files.sessionJournal.path, '${root.path}/session.json');
-      expect(File('${root.path}/preferences.json').existsSync(), isFalse);
+      expect(
+        files.sessionJournal.path,
+        File('${root.path}${Platform.pathSeparator}session.json').path,
+      );
+      expect(
+        File('${root.path}${Platform.pathSeparator}preferences.json')
+            .existsSync(),
+        isFalse,
+      );
     },
   );
 
