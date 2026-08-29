@@ -62,11 +62,11 @@ falls back to a bundled face instead of fetching a font.
 
 Visual MD runs on the web, macOS, and Windows.
 
-- [Download the signed Windows 11 x64 installer](https://github.com/JosephGabito/visualmd/releases/latest/download/VisualMD-1.0.0-windows-x64-setup.exe)
 - [Try Visual MD in your browser](https://visualmd.gabi.to/playground/?open=sample)
 
-The Mac app is in App Review. The complete reader also remains available from
-source.
+The Mac app is in App Review, and the Windows app is being prepared for the
+Microsoft Store. The complete reader also remains available from source. No
+unsigned Windows installer is published from this repository.
 
 Install a stable Flutter SDK satisfying the Dart constraint in `pubspec.yaml`.
 The web asset preparation step also requires Node.js and npm. Then:
@@ -88,7 +88,7 @@ flutter run -d macos
 |----------|--------|
 | Web | Built and tested in Chrome. Modern browsers can retain folder access; older ones use local file-picker and download fallbacks. |
 | macOS | Built and tested with native files, folders, menus, sandboxed access, and drag and drop. The App Store archive is signed and validated; public availability still depends on App Review. A separate direct download would require Developer ID signing and notarization. |
-| Windows | Built and visually verified on Windows 11, including bundled typography, the sample library, native folder selection, and recursive Markdown scanning. CI rebuilds the x64 bundle on Windows; tagged releases require Authenticode signing before the installer can be published. |
+| Windows | Built and visually verified on Windows 11, including bundled typography, the sample library, native folder selection, and recursive Markdown scanning. CI rebuilds and audits the x64 Microsoft Store package; the public install will come from the Store after certification. |
 
 More detailed setup and troubleshooting live in
 [Development Setup](docs/09-contributing/01-dev-setup.md).

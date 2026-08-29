@@ -28,58 +28,51 @@ void main() {
       expect(window, contains('ColorRefFromArgb'));
     });
 
-    test('the installer carries the complete bundle without elevation', () {
-      final installer = source('windows/installer/visualmd.iss');
+    test('the Store manifest declares the narrow desktop contract', () {
+      final manifest = source('windows/store/AppxManifest.xml');
 
-      expect(installer, contains('PrivilegesRequired=lowest'));
-      expect(installer, contains('ArchitecturesAllowed=x64compatible'));
-      expect(installer, contains(r'DefaultDirName={localappdata}'));
-      expect(installer, contains(r'Source: "{#SourceDir}\*"'));
-      expect(installer, contains('recursesubdirs createallsubdirs'));
-      expect(installer, contains(r'Filename: "{app}\visualmd.exe"'));
-      expect(installer, contains('SignTool=visualmd'));
-      expect(installer, contains('SignedUninstaller=yes'));
-      expect(installer, contains('[InstallDelete]'));
-      expect(installer, contains(r'Name: "{app}\*.dll"'));
+      expect(manifest, contains('ProcessorArchitecture="x64"'));
+      expect(manifest, contains('Name="Windows.Desktop"'));
+      expect(manifest, contains('MinVersion="10.0.19041.0"'));
+      expect(manifest, contains('Executable="visualmd.exe"'));
+      expect(manifest, contains('uap10:RuntimeBehavior="packagedClassicApp"'));
+      expect(manifest, contains('uap10:TrustLevel="mediumIL"'));
+      expect(manifest, contains('rescap:Capability Name="runFullTrust"'));
+      expect(manifest, isNot(contains('broadFileSystemAccess')));
+      expect(manifest, isNot(contains('internetClient')));
     });
 
-    test('tagged releases cannot publish unsigned artifacts', () {
-      final workflow = source('.github/workflows/release-windows.yml');
+    test('production packaging requires the Partner Center identity', () {
+      final packager = source('bin/tools/package-windows-store.ps1');
 
-      expect(workflow, contains('tags: ["v*.*.*"]'));
-      expect(workflow, contains('azure/login@'));
-      expect(workflow, contains('Azure/artifact-signing-action@'));
-      expect(workflow, contains('AZURE_ARTIFACT_SIGNING_ENDPOINT'));
-      expect(workflow, contains('environment: windows-release'));
-      expect(workflow, contains('WINDOWS_SIGNER_SUBJECT'));
-      expect(workflow, contains("github.event_name == 'push'"));
-      expect(workflow, contains('persist-credentials: false'));
-      expect(workflow, contains('-RequireSignature'));
-      expect(workflow, contains('test-windows-installer.ps1'));
-      expect(workflow, contains('actions/attest@'));
-      expect(workflow, contains('gh release create'));
-      expect(workflow, contains('--draft'));
-      expect(workflow, contains('gh release edit'));
-      expect(workflow, isNot(contains('--clobber')));
-      expect(workflow, contains(r'Release $env:RELEASE_TAG already exists'));
-      expect(
-        workflow,
-        contains(r'release $env:RELEASE_TAG remains a private draft'),
-      );
+      expect(packager, contains(r'[Parameter(Mandatory = $true)]'));
+      expect(packager, contains(r'[string]$IdentityName'));
+      expect(packager, contains(r'[string]$Publisher'));
+      expect(packager, contains(r'[string]$PublisherDisplayName'));
+      expect(packager, contains('makeappx.exe'));
+      expect(packager, contains('/h SHA256'));
+      expect(packager, contains('| Out-Host'));
+      expect(packager, contains(r'$packageVersion = "$appVersion.0"'));
+      expect(packager, isNot(contains('Azure')));
+      expect(packager, isNot(contains('Inno')));
     });
 
-    test('ordinary CI compiles and audits on a Windows host', () {
+    test('ordinary CI builds and audits an unpublished Store package', () {
       final workflow = source('.github/workflows/validate.yml');
 
       expect(workflow, contains('runs-on: windows-2025'));
       expect(workflow, contains('flutter test'));
       expect(workflow, contains('flutter build windows --release'));
       expect(workflow, contains('validate-windows-bundle.ps1'));
-      expect(workflow, contains('steps.version.outputs.value'));
+      expect(workflow, contains('package-windows-store.ps1'));
+      expect(workflow, contains('validate-windows-store-package.ps1'));
+      expect(workflow, contains('IdentityName VisualMD.CI'));
+      expect(workflow, isNot(contains('upload-artifact')));
+      expect(workflow, isNot(contains('gh release')));
     });
 
-    test('the bundle audit keeps runtime and licence assets together', () {
-      final validator = source('bin/tools/validate-windows-bundle.ps1');
+    test('the package audit keeps runtime and Store assets together', () {
+      final validator = source('bin/tools/validate-windows-store-package.ps1');
 
       for (final required in [
         'visualmd.exe',
@@ -88,21 +81,31 @@ void main() {
         'AssetManifest.bin',
         'FontManifest.json',
         'NOTICES.Z',
-        'LICENSE-*.txt',
-        '*-THIRD_PARTY_NOTICES.md',
-        'TimeStamperCertificate',
-        'ExpectedSignerSubject',
+        'StoreLogo.png',
+        'Square44x44Logo.png',
+        'Square150x150Logo.png',
+        'Square44x44Logo.targetsize-16.png',
+        'Square44x44Logo.targetsize-256.png',
+        'Square150x150Logo.scale-400.png',
+        'runFullTrust',
+        'packagedClassicApp',
+        'mediumIL',
       ]) {
         expect(validator, contains(required));
       }
     });
 
-    test('the lifecycle smoke test refuses an existing installation', () {
-      final smokeTest = source('bin/tools/test-windows-installer.ps1');
+    test('the local smoke test removes its package and certificates', () {
+      final smokeTest = source('bin/tools/test-windows-store-package.ps1');
 
-      expect(smokeTest, contains('Visual MD is already installed'));
-      expect(smokeTest, contains('E1875246-B154-4B31-A75A-4D65902E05F5'));
-      expect(smokeTest, contains(r'Test-Path -LiteralPath $installDirectory'));
+      expect(smokeTest, contains('New-SelfSignedCertificate'));
+      expect(smokeTest, contains('StoreName]::Root'));
+      expect(smokeTest, contains('StoreLocation]::CurrentUser'));
+      expect(smokeTest, contains('not Local System'));
+      expect(smokeTest, contains('Add-AppxPackage'));
+      expect(smokeTest, contains('Remove-AppxPackage'));
+      expect(smokeTest, contains('shell:AppsFolder'));
+      expect(smokeTest, contains('appcert.exe'));
     });
   });
 }

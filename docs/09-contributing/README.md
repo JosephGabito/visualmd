@@ -22,7 +22,6 @@ the deeper architectural reasoning.
 | [Writing Docs](04-writing-docs.md) | Keep component guides, links, and source references useful. |
 | [Creating a Theme](05-creating-a-theme.md) | Create a theme file and understand its schema and fallback behavior. |
 | [Releasing for macOS](06-releasing-for-macos.md) | Build, sign, notarize, and audit the Apple distribution artifact. |
-| [Releasing for Windows](07-releasing-for-windows.md) | Build, sign, package, verify, and publish the Windows installer. |
 
 ## A good first loop
 

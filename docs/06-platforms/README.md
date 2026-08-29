@@ -14,7 +14,7 @@ explains the shared object returned to the composition root.
 |----------|----------------|
 | [Web](01-web.md) | Built, served, and verified in Chrome |
 | [macOS](02-macos.md) | Built and launched; Finder folder drop verified |
-| [Windows](03-windows.md) | x64 release built and visually verified on Windows 11; signed installer pipeline present |
+| [Windows](03-windows.md) | x64 release built and visually verified on Windows 11; Microsoft Store MSIX pipeline present |
 
 The Windows target is now a confirmed build target. The platform document
 separates what was exercised in the VM from interactions that still need a

@@ -15,7 +15,7 @@ scanned a local folder recursively, and rendered its Markdown.
 
 That establishes the compiler, Flutter engine, native plugins, bundled assets,
 and core local-reading path. Drag/drop, external-link launch, live source
-refresh, saved-workspace restoration, installer upgrade, and uninstall remain
+refresh, saved-workspace restoration, Store update, and uninstall remain
 explicit clean-machine checks rather than inferred claims.
 
 ## Native host
@@ -67,22 +67,23 @@ licence notices, release metadata, and the absence of debug symbols.
 
 ## Distribution
 
-The installer is an Inno Setup `.exe`. It installs per user under Local App
-Data, needs no administrator prompt, places the complete Flutter bundle in one
-directory, creates a Start Menu shortcut, and offers an optional desktop
-shortcut (`windows/installer/visualmd.iss`).
+The public Windows package is MSIX and its only distribution channel is the
+Microsoft Store. MSIX carries the complete Flutter bundle, gives Windows a
+stable package identity, installs and removes cleanly, and lets the Store
+deliver updates. Microsoft signs the package after certification, so neither a
+commercial certificate nor an unsigned public download belongs in this
+repository (`windows/store/AppxManifest.xml`).
 
-Pull requests and `main` build an unsigned Windows bundle as a portability
-check. A manual **Release Windows** run creates an unsigned QA installer. A
-matching version tag takes the production path: it requires the repository's
-Azure Artifact Signing configuration, signs every executable and DLL without
-exporting a private key, validates the signatures, builds and signs the
-installer, writes a SHA-256 checksum, attests provenance, and publishes the
-files to the GitHub release
-(`.github/workflows/release-windows.yml`).
+Pull requests and `main` build an MSIX with an unmistakably non-production
+identity, unpack it again, and audit its manifest and payload. The real package
+must be built with the three exact identity values Partner Center assigns after
+the product name is reserved. The package script refuses to invent them
+(`.github/workflows/validate.yml`,
+`bin/tools/package-windows-store.ps1`,
+`bin/tools/validate-windows-store-package.ps1`).
 
-See [Releasing for Windows](../09-contributing/07-releasing-for-windows.md) for
-the credential contract and exact release command.
+The production identity and Partner Center submission remain release-operator
+work. They are deliberately not presented as contributor setup.
 
 ## Window chrome
 

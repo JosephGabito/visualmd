@@ -80,3 +80,26 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ steps.version.outputs.value }}
         run: bin/tools/validate-windows-bundle.ps1 -ExpectedVersion $env:EXPECTED_VERSION
+
+      - name: Build Microsoft Store package with non-production identity
+        id: store-package
+        shell: pwsh
+        run: |
+          $path = bin/tools/package-windows-store.ps1 `
+            -IdentityName VisualMD.CI `
+            -Publisher 'CN=Visual MD CI' `
+            -PublisherDisplayName 'Visual MD CI'
+          "path=$path" >> $env:GITHUB_OUTPUT
+
+      - name: Audit Microsoft Store package
+        shell: pwsh
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.value }}
+          PACKAGE_PATH: ${{ steps.store-package.outputs.path }}
+        run: |
+          bin/tools/validate-windows-store-package.ps1 `
+            -PackagePath $env:PACKAGE_PATH `
+            -IdentityName VisualMD.CI `
+            -Publisher 'CN=Visual MD CI' `
+            -PublisherDisplayName 'Visual MD CI' `
+            -ExpectedVersion $env:EXPECTED_VERSION

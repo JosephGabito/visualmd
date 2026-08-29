@@ -67,16 +67,15 @@ build status that follows records where the application has actually been run.
 - **Windows** — x64 release built on Windows 11 ARM with Visual Studio 2022,
   launched under Windows x64 emulation, and visually checked with the bundled
   sample and a recursively scanned native folder. The release pipeline packages
-  the complete Flutter bundle into one installer and requires Authenticode for
-  tagged releases.
+  the complete Flutter bundle into an audited Microsoft Store MSIX.
 - **Tests** — domain, application, infrastructure, API, presentation, and docs
   suites, plus one architecture test per source file.
 - **Distribution** — a team-signed Mac App Store archive passes the repository
   bundle and archive validators. Public availability still depends on upload
-  processing and App Review. Windows has a guarded installer pipeline; a public
-  artifact still needs an Azure Artifact Signing identity and repository
-  federation. A Developer ID/notarized direct macOS download remains a separate
-  future route.
+  processing and App Review. Windows has a Store package pipeline; public
+  availability still needs the exact reserved Partner Center identity and
+  Store certification. A Developer ID/notarized direct macOS download remains
+  a separate future route.
 
 ## Document status
 
