@@ -15,6 +15,8 @@ final class ThemeFamily {
   const ThemeFamily({required this.name, this.light, this.dark})
     : assert(light != null || dark != null);
 
+  bool get followsSystem => light != null && dark != null;
+
   bool supports(Brightness brightness) => idFor(brightness) != null;
 
   String? idFor(Brightness brightness) => switch (brightness) {

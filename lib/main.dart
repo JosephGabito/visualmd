@@ -400,6 +400,8 @@ Future<void> main() async {
       openExternal: platform.openExternal,
       dropRegion: platform.dropRegion,
       topBar: platform.topBar,
+      showWorkspaceMenu: platform.showWorkspaceMenu,
+      syncWindowChrome: platform.syncWindowChrome,
       windowDragRegion: platform.windowDragRegion,
       openThemesFolder: platform.openThemesFolder,
       uiCommands: readerUiCommands.stream,

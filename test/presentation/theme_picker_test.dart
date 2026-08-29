@@ -90,7 +90,9 @@ void main() {
       )
       .opacity;
 
-  testWidgets('opens on tap and lists each family once', (tester) async {
+  testWidgets('opens on tap and makes adaptive and fixed variants explicit', (
+    tester,
+  ) async {
     await pumpPicker(tester);
     expect(find.text('Catppuccin Mocha'), findsNothing);
 
@@ -106,13 +108,16 @@ void main() {
     expect(find.text('LIGHT'), findsOneWidget);
     expect(find.text('DARK'), findsOneWidget);
     for (final family in BuiltInThemes.families) {
-      expect(find.text(family.name), findsOneWidget);
+      final label = family.followsSystem
+          ? '${family.name} · follows system'
+          : family.name;
+      expect(find.text(label), findsOneWidget);
     }
     expect(find.text('Paper'), findsOneWidget);
     expect(find.text('Lamplight'), findsOneWidget);
     expect(find.text('Nord'), findsOneWidget);
-    expect(find.text('Codex Light'), findsNothing);
-    expect(find.text('Codex Dark'), findsNothing);
+    expect(find.text('Codex Light'), findsOneWidget);
+    expect(find.text('Codex Dark'), findsOneWidget);
     expect(find.text('Open themes folder'), findsOneWidget);
   });
 
@@ -123,15 +128,31 @@ void main() {
     await tester.tap(find.byType(ThemePicker));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Codex'));
+    await tester.ensureVisible(find.text('Codex · follows system'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Codex'));
+    await tester.tap(find.text('Codex · follows system'));
     await tester.pumpAndSettle();
 
     expect(chosen, [
       const FollowSystem(light: 'codex-light', dark: 'codex-dark'),
     ]);
-    expect(find.text('Codex'), findsNothing);
+    expect(find.text('Codex · follows system'), findsNothing);
+  });
+
+  testWidgets('a dark family member can override a light operating system', (
+    tester,
+  ) async {
+    await pumpPicker(tester);
+    await tester.tap(find.byType(ThemePicker));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Raycast Dark'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Raycast Dark'));
+    await tester.pumpAndSettle();
+
+    expect(chosen, [const FixedTheme('raycast-dark')]);
+    expect(find.text('Raycast Dark'), findsNothing);
   });
 
   testWidgets('a family without a dark member is absent on a dark system', (
@@ -141,7 +162,7 @@ void main() {
     await tester.tap(find.byType(ThemePicker));
     await tester.pumpAndSettle();
 
-    expect(find.text('Codex'), findsOneWidget);
+    expect(find.text('Codex · follows system'), findsOneWidget);
     expect(find.text('Proof'), findsNothing);
   });
 
@@ -221,10 +242,13 @@ void main() {
     // A menu that paints in one place and hit-tests in another is the bug
     // this guards: every row must be reachable by a real pointer.
     for (final family in BuiltInThemes.families) {
-      await tester.ensureVisible(find.text(family.name));
+      final label = family.followsSystem
+          ? '${family.name} · follows system'
+          : family.name;
+      await tester.ensureVisible(find.text(label));
       await tester.pumpAndSettle();
       expect(
-        find.text(family.name).hitTestable(),
+        find.text(label).hitTestable(),
         findsOneWidget,
         reason: family.name,
       );
@@ -270,7 +294,11 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 70));
     final first = opacityOf(tester, 'Follow system');
-    final last = opacityOf(tester, BuiltInThemes.families.last.name);
+    final lastFamily = BuiltInThemes.families.last;
+    final lastLabel = lastFamily.followsSystem
+        ? '${lastFamily.name} · follows system'
+        : lastFamily.name;
+    final last = opacityOf(tester, lastLabel);
     expect(
       first,
       greaterThan(last),
@@ -283,7 +311,7 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(opacityOf(tester, BuiltInThemes.families.last.name), 1.0);
+    expect(opacityOf(tester, lastLabel), 1.0);
   });
 
   testWidgets('choosing a theme reports it and closes the menu', (
@@ -348,7 +376,10 @@ void main() {
 
     expect(find.text('Follow system'), findsOneWidget);
     expect(opacityOf(tester, 'Follow system'), 1.0);
-    expect(find.text('Absolutely').hitTestable(), findsOneWidget);
+    expect(
+      find.text('Absolutely · follows system').hitTestable(),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the menu also chooses how paragraphs are marked', (

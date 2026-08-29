@@ -1,24 +1,15 @@
 #include "flutter_window.h"
 
+#include <cstdint>
 #include <optional>
 
+#include <dwmapi.h>
 #include <flutter/standard_method_codec.h>
 
 #include "flutter/generated_plugin_registrant.h"
 #include "utils.h"
 
 namespace {
-constexpr UINT kNewWorkspace = 1001;
-constexpr UINT kOpenWorkspace = 1002;
-constexpr UINT kSaveWorkspace = 1003;
-constexpr UINT kSaveWorkspaceAs = 1004;
-constexpr UINT kAddFolder = 1005;
-constexpr UINT kAddMarkdown = 1006;
-
-void AppendCommand(HMENU menu, UINT id, const wchar_t* label) {
-  ::AppendMenuW(menu, MF_STRING, id, label);
-}
-
 const std::string* StringArgument(const flutter::EncodableMap& arguments,
                                   const char* name) {
   const auto found = arguments.find(flutter::EncodableValue(name));
@@ -26,6 +17,26 @@ const std::string* StringArgument(const flutter::EncodableMap& arguments,
     return nullptr;
   }
   return std::get_if<std::string>(&found->second);
+}
+
+std::optional<uint32_t> ColorArgument(
+    const flutter::EncodableMap& arguments,
+    const char* name) {
+  const auto found = arguments.find(flutter::EncodableValue(name));
+  if (found == arguments.end()) {
+    return std::nullopt;
+  }
+  if (const auto* value = std::get_if<int32_t>(&found->second)) {
+    return static_cast<uint32_t>(*value);
+  }
+  if (const auto* value = std::get_if<int64_t>(&found->second)) {
+    return static_cast<uint32_t>(*value);
+  }
+  return std::nullopt;
+}
+
+COLORREF ColorRefFromArgb(uint32_t color) {
+  return RGB((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
 }
 }  // namespace
 
@@ -55,6 +66,34 @@ bool FlutterWindow::OnCreate() {
           flutter_controller_->engine()->messenger(),
           "com.visualmd.visualmd/commands",
           &flutter::StandardMethodCodec::GetInstance());
+  command_channel_->SetMethodCallHandler(
+      [this](const auto& call, auto result) {
+        if (call.method_name() != "updateWindowChrome" || !call.arguments()) {
+          result->NotImplemented();
+          return;
+        }
+        const auto* arguments =
+            std::get_if<flutter::EncodableMap>(call.arguments());
+        if (!arguments) {
+          result->Error("argument", "Window chrome colours are required.");
+          return;
+        }
+        const auto background = ColorArgument(*arguments, "background");
+        const auto foreground = ColorArgument(*arguments, "foreground");
+        if (!background || !foreground) {
+          result->Error("argument", "Window chrome colours are required.");
+          return;
+        }
+        const COLORREF caption = ColorRefFromArgb(*background);
+        const COLORREF text = ColorRefFromArgb(*foreground);
+        // These attributes are supported from Windows 11 build 22000. An
+        // older host simply keeps its system colours when DWM rejects them.
+        ::DwmSetWindowAttribute(GetHandle(), DWMWA_CAPTION_COLOR, &caption,
+                                sizeof(caption));
+        ::DwmSetWindowAttribute(GetHandle(), DWMWA_TEXT_COLOR, &text,
+                                sizeof(text));
+        result->Success();
+      });
   atomic_files_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           flutter_controller_->engine()->messenger(),
@@ -109,21 +148,6 @@ bool FlutterWindow::OnCreate() {
         }
         result->Success();
       });
-
-  application_menu_ = ::CreateMenu();
-  HMENU file_menu = ::CreatePopupMenu();
-  AppendCommand(file_menu, kNewWorkspace, L"New Workspace\tCtrl+N");
-  AppendCommand(file_menu, kOpenWorkspace, L"Open Workspace...\tCtrl+O");
-  ::AppendMenuW(file_menu, MF_SEPARATOR, 0, nullptr);
-  AppendCommand(file_menu, kSaveWorkspace, L"Save Workspace\tCtrl+S");
-  AppendCommand(file_menu, kSaveWorkspaceAs,
-                L"Save Workspace As...\tCtrl+Shift+S");
-  ::AppendMenuW(file_menu, MF_SEPARATOR, 0, nullptr);
-  AppendCommand(file_menu, kAddFolder, L"Add Folder...");
-  AppendCommand(file_menu, kAddMarkdown, L"Add Markdown...");
-  ::AppendMenuW(application_menu_, MF_POPUP,
-                reinterpret_cast<UINT_PTR>(file_menu), L"File");
-  ::SetMenu(GetHandle(), application_menu_);
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -141,11 +165,6 @@ bool FlutterWindow::OnCreate() {
 void FlutterWindow::OnDestroy() {
   atomic_files_channel_.reset();
   command_channel_.reset();
-  if (application_menu_) {
-    ::SetMenu(GetHandle(), nullptr);
-    ::DestroyMenu(application_menu_);
-    application_menu_ = nullptr;
-  }
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
@@ -168,35 +187,6 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
-    case WM_COMMAND:
-      if (command_channel_) {
-        const char* command = nullptr;
-        switch (LOWORD(wparam)) {
-          case kNewWorkspace:
-            command = "newWorkspace";
-            break;
-          case kOpenWorkspace:
-            command = "openWorkspace";
-            break;
-          case kSaveWorkspace:
-            command = "saveWorkspace";
-            break;
-          case kSaveWorkspaceAs:
-            command = "saveWorkspaceAs";
-            break;
-          case kAddFolder:
-            command = "addFolder";
-            break;
-          case kAddMarkdown:
-            command = "addMarkdown";
-            break;
-        }
-        if (command) {
-          command_channel_->InvokeMethod(command, nullptr);
-          return 0;
-        }
-      }
-      break;
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;

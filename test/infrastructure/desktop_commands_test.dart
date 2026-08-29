@@ -95,6 +95,32 @@ void main() {
     });
   });
 
+  test(
+    'the active Flutter chrome reaches the native Windows caption',
+    () async {
+      const channel = MethodChannel('com.visualmd.visualmd/commands');
+      MethodCall? received;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            received = call;
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null),
+      );
+
+      final commands = DesktopCommands();
+      await commands.syncWindowChrome(0xff141414, 0xffffffff);
+
+      expect(received?.method, 'updateWindowChrome');
+      expect(received?.arguments, {
+        'background': 0xff141414,
+        'foreground': 0xffffffff,
+      });
+    },
+  );
+
   for (final entry in {
     'openAppearance': PlatformCommand.openAppearance,
     'findDocument': PlatformCommand.findDocument,

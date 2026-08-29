@@ -48,15 +48,12 @@ class ThemePicker extends StatelessWidget {
     final system = MediaQuery.platformBrightnessOf(context);
     final current = registry.resolve(choice, system);
     final followingDefault = choice == registry.systemPair;
-    final familyIds = BuiltInThemes.familyThemeIds;
     final featuredIds = {BuiltInThemes.paper.id, BuiltInThemes.lamplight.id};
     final individualLight = registry.light.where(
-      (theme) =>
-          !familyIds.contains(theme.id) && !featuredIds.contains(theme.id),
+      (theme) => !featuredIds.contains(theme.id),
     );
     final individualDark = registry.dark.where(
-      (theme) =>
-          !familyIds.contains(theme.id) && !featuredIds.contains(theme.id),
+      (theme) => !featuredIds.contains(theme.id),
     );
 
     return AnchoredMenu(
@@ -137,7 +134,9 @@ class ThemePicker extends StatelessWidget {
           for (final family in BuiltInThemes.families)
             if (family.supports(system))
               _Row(
-                label: family.name,
+                label: family.followsSystem
+                    ? '${family.name} · follows system'
+                    : family.name,
                 leading: _Swatch(
                   theme: registry.byId(family.idFor(system)!)!,
                   mode: mode,

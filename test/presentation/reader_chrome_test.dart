@@ -240,6 +240,7 @@ void main() {
     double topBarLeadingInset = 8,
     bool shelfVisible = true,
     bool outlineVisible = true,
+    bool showWorkspaceMenu = false,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -290,11 +291,37 @@ void main() {
           openReaderSources: openReaderSources,
           uiCommands: uiCommands,
           topBar: (height: 52, leadingInset: topBarLeadingInset),
+          showWorkspaceMenu: showWorkspaceMenu,
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('Windows workspace commands live in the Visual MD wordmark', (
+    tester,
+  ) async {
+    await pumpReader(tester, showWorkspaceMenu: true);
+
+    expect(find.byKey(const ValueKey('workspace-menu')), findsOneWidget);
+    expect(find.text('New Workspace'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('workspace-menu')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('New Workspace'), findsOneWidget);
+    expect(find.text('Open Workspace…'), findsOneWidget);
+    expect(find.text('Add Folder…'), findsOneWidget);
+    expect(find.text('Add Markdown…'), findsOneWidget);
+    expect(find.text('Save Workspace'), findsOneWidget);
+    expect(find.text('Save Workspace As…'), findsOneWidget);
+    expect(find.text('Ctrl+Shift+O'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('New Workspace')).dx,
+      greaterThanOrEqualTo(0),
+      reason: 'the left-side menu must open into the window, not off-screen',
+    );
+  });
 
   testWidgets('native UI commands reuse the reader surfaces', (tester) async {
     final commands = StreamController<ReaderUiCommand>.broadcast();
@@ -374,6 +401,47 @@ void main() {
       expect(rootBuilds, 2);
     },
   );
+
+  testWidgets('a fixed dark theme paints the whole Windows reader surface', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    final nativeChrome = <(int, int)>[];
+
+    await tester.pumpWidget(
+      VisualMdApp(
+        controller: controller,
+        codeHighlighter: const PlainCodeHighlighter(),
+        mermaidRenderer: const UnavailableMermaidRenderer(),
+        imageLoader: const SampleDocumentImageLoader(),
+        viewportGeometry: const QuietDocumentViewportGeometryFactory(),
+        openExternal: (_) {},
+        showWorkspaceMenu: true,
+        syncWindowChrome: (background, foreground) async {
+          nativeChrome.add((background, foreground));
+        },
+      ),
+    );
+    await controller.chooseTheme(const FixedTheme('raycast-dark'));
+    await tester.pumpAndSettle();
+
+    final expected = controller.themes.byId('raycast-dark')!.palette.paper;
+    final scaffold = find.byType(Scaffold).first;
+    expect(
+      Theme.of(tester.element(scaffold)).scaffoldBackgroundColor,
+      expected,
+    );
+    expect(
+      tester.widget<Scaffold>(scaffold).backgroundColor,
+      anyOf(isNull, expected),
+      reason:
+          'the scaffold inherits the authored paper instead of Windows white',
+    );
+    expect(nativeChrome.last, (
+      tester.element(scaffold).chrome.topBar.toARGB32(),
+      tester.element(scaffold).palette.ink.toARGB32(),
+    ));
+  });
 
   testWidgets(
     'Open and Open Workspace keep their distinct keyboard contracts',

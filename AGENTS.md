@@ -307,7 +307,11 @@ Known gaps:
 - **A lone browser-selected Markdown file cannot resolve neighbouring images.**
   Relative images work when the browser has been offered the containing folder
   or directory context.
-- **Windows is scaffolded but never built** — it needs a Windows machine.
+- **Windows keeps the classic native title bar.** Workspace commands live in
+  the Visual MD wordmark menu below it, and Windows 11's caption is tinted to
+  the active reader theme. Its x64 release builds and runs on Windows 11,
+  including under Windows on ARM emulation; replacing native caption controls
+  remains a separate product-polish decision.
 - **Apple credentials remain machine-local.** The repository enables hardened
   runtime, ships its privacy declaration, and audits the release bundle and
   archive. The Mac App Store route has a team-signed archive; a direct download

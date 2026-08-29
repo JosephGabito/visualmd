@@ -85,6 +85,9 @@ final class _DesktopAdapters implements PlatformAdapters {
   );
 
   @override
+  bool get showWorkspaceMenu => Platform.isWindows;
+
+  @override
   FolderScanner get folderScanner => _folderScanner;
 
   @override
@@ -147,6 +150,12 @@ final class _DesktopAdapters implements PlatformAdapters {
   Future<void> syncNativeReaderState(NativeReaderState state) =>
       Platform.isMacOS
       ? _commands.syncReaderState(state)
+      : Future<void>.value();
+
+  @override
+  Future<void> syncWindowChrome(int background, int foreground) =>
+      Platform.isWindows
+      ? _commands.syncWindowChrome(background, foreground)
       : Future<void>.value();
 
   @override

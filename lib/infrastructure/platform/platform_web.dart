@@ -112,6 +112,9 @@ final class _WebAdapters implements PlatformAdapters {
   Future<void> syncNativeReaderState(NativeReaderState state) async {}
 
   @override
+  Future<void> syncWindowChrome(int background, int foreground) async {}
+
+  @override
   void openExternal(String url) => openInBrowser(url);
 
   @override
@@ -123,6 +126,9 @@ final class _WebAdapters implements PlatformAdapters {
 
   @override
   ({double height, double leadingInset}) get topBar => plainTopBar;
+
+  @override
+  bool get showWorkspaceMenu => false;
 
   @override
   Widget windowDragRegion(Widget child) => child; // the browser owns its chrome

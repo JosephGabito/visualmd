@@ -36,9 +36,9 @@ choice straight to `ReaderController.chooseTheme` or
 | Paragraphs: "Book-style indents" | `ParagraphMarking.indented` | `lib/api/widgets/theme_picker.dart` |
 | Themes: Follow system | `registry.systemPair` | `lib/api/widgets/theme_picker.dart` |
 | Themes: Paper and Lamplight | `FixedTheme(id)` | `lib/api/widgets/theme_picker.dart` |
-| More themes | A family pair, or Proof's fixed light theme | `lib/api/widgets/theme_picker.dart`, `lib/presentation/theme/theme_family.dart` |
-| Light | `FixedTheme(id)` for house and custom themes | `lib/api/widgets/theme_picker.dart` |
-| Dark | `FixedTheme(id)` for house and custom themes | `lib/api/widgets/theme_picker.dart` |
+| More themes | A family pair labelled “follows system”, or Proof's fixed light theme | `lib/api/widgets/theme_picker.dart`, `lib/presentation/theme/theme_family.dart` |
+| Light | `FixedTheme(id)` for every light member and custom light theme | `lib/api/widgets/theme_picker.dart` |
+| Dark | `FixedTheme(id)` for every dark member and custom dark theme | `lib/api/widgets/theme_picker.dart` |
 | A skipped theme's filename and validation reason | not selectable | `lib/api/widgets/theme_picker.dart`, `lib/api/widgets/theme_picker.dart` |
 | Open themes folder | platform callback | `lib/api/widgets/theme_picker.dart` |
 
@@ -50,17 +50,18 @@ remaining choices discoverable in the minimum-height window
 (`lib/api/widgets/theme_picker.dart`, `lib/api/widgets/anchored_menu.dart`).
 
 The named families mirror the compact control in Codex: Absolutely through
-Xcode appear once rather than as separate Light and Dark rows. The picker reads
+Xcode each have one adaptive row labelled “follows system”. The picker reads
 system brightness to draw the currently relevant member's swatch. Choosing a
 paired family saves both member ids as `FollowSystem`, so it continues to match
 the operating system. Proof has no source dark member and is therefore absent
 on a dark system rather than being represented by an invented palette
 (`lib/presentation/theme/theme_family.dart`).
 
-Family member ids are removed from the later Light and Dark sections. This
-keeps the collection compact while leaving Paper, Lamplight, Nord, and every
-custom theme directly selectable. A previously saved fixed family member is
-still recognized as the selected family row, preserving older preferences.
+Every family member also appears by its full name in the later Light and Dark
+sections. This is the explicit override: a reader whose operating system is
+light can still choose Raycast Dark, and that fixed choice remains dark until
+changed. A fixed family member is also recognized as the selected adaptive row,
+preserving older preferences.
 
 The menu is no longer only about themes, which is why its tooltip reads
 "Appearance: <theme name>, <reading mode>" (`lib/api/widgets/theme_picker.dart`). Both

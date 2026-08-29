@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../application/ports/document_image_loader.dart';
@@ -31,6 +33,14 @@ class VisualMdApp extends StatelessWidget {
   /// Top bar geometry: taller and inset where window controls share the row.
   final ({double height, double leadingInset}) topBar;
 
+  /// Places workspace commands in the app bar where the platform has no
+  /// suitable application menu of its own.
+  final bool showWorkspaceMenu;
+
+  /// Lets a native caption wear the same background and ink as the Flutter
+  /// top bar while the operating system keeps ownership of its controls.
+  final Future<void> Function(int background, int foreground)? syncWindowChrome;
+
   /// Lets the platform make the top bar a window-drag handle; identity otherwise.
   final Widget Function(Widget child) windowDragRegion;
 
@@ -50,6 +60,8 @@ class VisualMdApp extends StatelessWidget {
     this.uiCommands,
     this.dropRegion = _identity,
     this.topBar = (height: 52, leadingInset: 8),
+    this.showWorkspaceMenu = false,
+    this.syncWindowChrome,
     this.windowDragRegion = _identity,
     this.openThemesFolder,
   });
@@ -86,6 +98,12 @@ class VisualMdApp extends StatelessWidget {
       builder: (context, _) => MaterialApp(
         title: 'Visual MD',
         debugShowCheckedModeBanner: false,
+        builder: syncWindowChrome == null
+            ? null
+            : (context, child) => _WindowChromeSync(
+                onChanged: syncWindowChrome!,
+                child: child!,
+              ),
         // A fixed theme wears the same clothes day and night; a pair follows the system.
         theme: libraryTheme(_wearing(controller, Brightness.light)),
         darkTheme: libraryTheme(_wearing(controller, Brightness.dark)),
@@ -107,6 +125,7 @@ class VisualMdApp extends StatelessWidget {
             openReaderSources: openReaderSources,
             shelfSourceActions: shelfSourceActions,
             topBar: topBar,
+            showWorkspaceMenu: showWorkspaceMenu,
             windowDragRegion: windowDragRegion,
             openThemesFolder: openThemesFolder,
             uiCommands: uiCommands,
@@ -115,4 +134,35 @@ class VisualMdApp extends StatelessWidget {
       ),
     );
   }
+}
+
+final class _WindowChromeSync extends StatefulWidget {
+  final Future<void> Function(int background, int foreground) onChanged;
+  final Widget child;
+
+  const _WindowChromeSync({required this.onChanged, required this.child});
+
+  @override
+  State<_WindowChromeSync> createState() => _WindowChromeSyncState();
+}
+
+final class _WindowChromeSyncState extends State<_WindowChromeSync> {
+  (int, int)? _last;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final next = (
+      context.chrome.topBar.toARGB32(),
+      context.palette.ink.toARGB32(),
+    );
+    if (_last == next) return;
+    _last = next;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(widget.onChanged(next.$1, next.$2));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

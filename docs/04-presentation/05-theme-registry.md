@@ -24,7 +24,7 @@ supported way to tweak a shipped theme rather than fork it.
 | Member | Answers |
 |--------|---------|
 | `all` | Every theme, built-ins first (`lib/presentation/theme/theme_registry.dart`). |
-| `light` / `dark` | The same list split by brightness; the picker filters out named family members before building its individual groups (`lib/presentation/theme/theme_registry.dart`, `lib/api/widgets/theme_picker.dart`). |
+| `light` / `dark` | The same list split by brightness; the picker uses these complete lists for explicit fixed choices (`lib/presentation/theme/theme_registry.dart`, `lib/api/widgets/theme_picker.dart`). |
 | `byId` | One theme, or null (`lib/presentation/theme/theme_registry.dart`). |
 | `systemPair` | The default `FollowSystem`: Paper and Lamplight (`lib/presentation/theme/theme_registry.dart`). |
 | `errors` | Files that could not be used (`lib/presentation/theme/theme_registry.dart`). |

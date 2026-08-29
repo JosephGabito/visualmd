@@ -58,6 +58,14 @@ abstract interface class PlatformAdapters {
   /// controls, inset so it doesn't sit under them.
   ({double height, double leadingInset}) get topBar;
 
+  /// Whether workspace commands belong in the app's own top bar. Windows has
+  /// no global menu bar, while macOS keeps these commands in its native menu.
+  bool get showWorkspaceMenu;
+
+  /// Gives native window chrome the active top-bar background and foreground
+  /// as ARGB values. Platforms that do not tint their caption ignore it.
+  Future<void> syncWindowChrome(int background, int foreground);
+
   /// Wraps the top bar so the window can be dragged by it where the system
   /// title bar has been hidden; identity elsewhere.
   Widget windowDragRegion(Widget child);

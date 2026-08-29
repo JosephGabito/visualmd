@@ -1,66 +1,97 @@
 # Windows
 
-Implemented in source but not yet built, because native verification requires
-a Windows machine.
+Visual MD is a verified Windows desktop target. Flutter compiles the shared
+Dart application ahead of time, while the Win32 runner owns the native window,
+file dialogs, and atomic workspace replacement. Flutter owns the reader's
+workspace menu and keyboard shortcuts.
 
-## What exists
+## What is verified
 
-`flutter create --platforms windows` generated `windows/`. The native runner
-now carries the product name and the platform services Visual MD needs:
+The 1.0.0 x64 release was built with Flutter 3.47.1 and Visual Studio 2022 on a
+Windows 11 ARM virtual machine. Windows ran the x64 executable through its
+normal emulation layer. The app launched, opened the bundled sample library,
+retained the designed fonts and reading measure, used the native folder picker,
+scanned a local folder recursively, and rendered its Markdown.
 
-- The window title is `Visual MD`, opened at 1280 × 720
+That establishes the compiler, Flutter engine, native plugins, bundled assets,
+and core local-reading path. Drag/drop, external-link launch, live source
+refresh, saved-workspace restoration, installer upgrade, and uninstall remain
+explicit clean-machine checks rather than inferred claims.
+
+## Native host
+
+The runner carries the product name and the platform services the reader needs:
+
+- The window title is `Visual MD`, opened at 1280 × 800
   (`windows/runner/main.cpp`).
-- Version resource strings — company, description, product name, copyright —
-  read `Visual MD`; the internal name and executable stay `visualmd`
+- Version resources name the product and executable
   (`windows/runner/Runner.rc`, `windows/CMakeLists.txt`).
-- A native Win32 File menu sends workspace commands to Flutter
-  (`windows/runner/flutter_window.cpp`,
-  `windows/runner/flutter_window.cpp`).
+- The Visual MD wordmark opens the workspace menu in the reader top bar
+  (`lib/api/screens/reader_screen.dart`).
+- Windows 11's native caption takes the active Visual MD top-bar and ink
+  colours while retaining the real system controls
+  (`windows/runner/flutter_window.cpp`, `lib/api/app.dart`).
 - Workspace replacement uses `ReplaceFileW` with write-through and a backup,
   falling back to `MoveFileExW` for the first save
   (`windows/runner/flutter_window.cpp`).
 
-## Build
+## Build and audit
 
-On Windows, with Visual Studio and its **Desktop development with C++**
-workload installed:
+Install Visual Studio with **Desktop development with C++**, then run:
 
 ```powershell
-flutter doctor            # Visual Studio must show a check
-flutter run -d windows
-flutter build windows     # output under build\windows\x64\runner\Release
+flutter pub get --enforce-lockfile
+flutter analyze
+flutter test
+flutter build windows --release
+bin/tools/validate-windows-bundle.ps1 -ExpectedVersion 1.0.0
 ```
 
-Nothing in `lib/` is expected to change. The same `io/` adapter family that
-runs on macOS is selected on Windows by the conditional import
-(`lib/infrastructure/platform/platform.dart`), and every macOS-only behaviour
-is guarded:
+The output is `build\windows\x64\runner\Release`. `visualmd.exe` is only the
+entry point; the Flutter engine, plugin DLLs, AOT application, fonts, and data
+beside it are one inseparable bundle. The validator requires those files,
+licence notices, release metadata, and the absence of debug symbols.
 
-| Concern | Windows behaviour | Source |
-|---------|-------------------|--------|
+## Platform behavior
+
+| Concern | Windows behavior | Source |
+|---------|------------------|--------|
 | External links | `rundll32 url.dll,FileProtocolHandler <url>` | `lib/infrastructure/io/desktop_links.dart` |
 | Security-scoped access | skipped; reads directly | `lib/infrastructure/io/desktop_security_scope.dart` |
-| Top bar | plain 44 px bar, 8 px inset (`plainTopBar`) | `lib/infrastructure/platform/platform_io.dart`, `lib/infrastructure/platform/platform_adapters.dart` |
-| Window drag | identity — the system title bar stays | `lib/infrastructure/platform/platform_io.dart` |
-| Folder drop / picker | `desktop_drop` and `file_selector`, both with Windows implementations | `lib/infrastructure/platform/platform_io.dart`, `lib/infrastructure/platform/platform_io.dart` |
-| File commands | native Win32 menu and Ctrl shortcuts | `windows/runner/flutter_window.cpp` |
+| Top bar | plain 52 px bar, 8 px inset | `lib/infrastructure/platform/platform_io.dart` |
+| Window drag | identity; the system title bar stays | `lib/infrastructure/platform/platform_io.dart` |
+| Caption colour | active top-bar background and ink through DWM | `lib/api/app.dart`, `windows/runner/flutter_window.cpp` |
+| Folder drop / picker | Windows implementations of `desktop_drop` and `file_selector` | `lib/infrastructure/platform/platform_io.dart` |
+| Workspace commands | Visual MD wordmark menu and Ctrl shortcuts | `lib/api/screens/reader_screen.dart` |
 | Workspace writes | atomic replace with last-good backup | `windows/runner/flutter_window.cpp` |
+
+## Distribution
+
+The installer is an Inno Setup `.exe`. It installs per user under Local App
+Data, needs no administrator prompt, places the complete Flutter bundle in one
+directory, creates a Start Menu shortcut, and offers an optional desktop
+shortcut (`windows/installer/visualmd.iss`).
+
+Pull requests and `main` build an unsigned Windows bundle as a portability
+check. A manual **Release Windows** run creates an unsigned QA installer. A
+matching version tag takes the production path: it requires the repository's
+Azure Artifact Signing configuration, signs every executable and DLL without
+exporting a private key, validates the signatures, builds and signs the
+installer, writes a SHA-256 checksum, attests provenance, and publishes the
+files to the GitHub release
+(`.github/workflows/release-windows.yml`).
+
+See [Releasing for Windows](../09-contributing/07-releasing-for-windows.md) for
+the credential contract and exact release command.
 
 ## Window chrome
 
-Windows keeps its native title bar for now. Hiding it the way macOS does
-would also remove the minimise, maximise, and close buttons, which the app
-would then have to paint itself. Those painted controls are planned as a
-later **top bar actions** slot contributor under the
-[Plugin Architecture](../07-roadmap/01-plugin-architecture.md); until then
-the chrome stays native.
-
-## Status
-
-Unbuilt. Dart analysis, portable behavior tests, and the web/macOS builds are
-green, but they are not a substitute for a Windows build. The first Windows
-verification should cover launch, native File commands, folder and Markdown
-drop, pickers, link opening, workspace replacement, and restart restoration.
-If one of those paths fails, start with the native runner, the two desktop
-plugins, and the Windows branches in the IO adapters; the shared tests then
-help distinguish platform integration from portable behavior.
+Windows keeps its native title bar, preserving minimize, maximize, close,
+resizing, Snap Layouts, and the system accessibility contract. On Windows 11,
+`DwmSetWindowAttribute` tints that caption with the active Visual MD top-bar
+and ink colours, so the native controls belong to the same room without being
+reimplemented. Workspace commands live behind the Visual MD wordmark inside
+the designed top bar, so the generic Win32 File strip does not split the
+product chrome into two unrelated interfaces (`lib/api/app.dart`,
+`lib/infrastructure/io/desktop_commands.dart`,
+`windows/runner/flutter_window.cpp`).

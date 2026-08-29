@@ -4,7 +4,7 @@
 
 A small library bundled in source so the reader is never empty-handed: it
 is what **Open Sample Library** opens from the welcome screen, keyboard, or
-native File menu, and what
+desktop workspace menu, and what
 `?open=sample` opens on the web
 (`lib/infrastructure/memory/sample_folder_scanner.dart`,
 `lib/api/reader_controller.dart`, `lib/main.dart`,

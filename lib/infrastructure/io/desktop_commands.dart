@@ -58,4 +58,17 @@ final class DesktopCommands {
       // ordinary system title and menu validation.
     }
   }
+
+  /// Keeps Windows' real caption controls while tinting their surface to match
+  /// the active Visual MD top bar. Other desktop hosts ignore this call.
+  Future<void> syncWindowChrome(int background, int foreground) async {
+    try {
+      await _channel.invokeMethod<void>('updateWindowChrome', {
+        'background': background,
+        'foreground': foreground,
+      });
+    } on MissingPluginException {
+      // Older Windows and other embedders retain the system caption colours.
+    }
+  }
 }

@@ -91,8 +91,8 @@ least:
 - product name, bundle/application identity, and launcher artwork;
 - file-open, save, and drag/drop integration;
 - sandbox or filesystem permissions;
-- native File-menu commands and keyboard equivalents where the host supports
-  application menus;
+- workspace commands and keyboard equivalents, in native application menus
+  where the platform has a global menu bar or in the reader chrome otherwise;
 - window chrome and accessibility semantics.
 
 On macOS, user-selected read/write access and app-scoped bookmarks are declared
@@ -131,6 +131,8 @@ Before describing a platform as supported:
 5. Run `bin/tools/validate.sh` and record any host-specific check that CI cannot
    reproduce.
 
-The Windows target is currently scaffolded but has not completed this native
-verification on Windows. The source and portable tests are useful evidence;
-they are not a substitute for building and exercising the host.
+The Windows target completed its first native build and visual pass on Windows
+11. That work also exposed a Windows-separator defect in the architecture test,
+which now normalizes paths before classifying rings. The source and portable
+tests remain supporting evidence; the Windows CI job and clean-machine release
+check establish the host contract.

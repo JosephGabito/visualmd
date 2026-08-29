@@ -22,9 +22,10 @@ the portal and drives one `AnimationController` forward; closing reverses it,
 and a status listener hides the portal only once the surface has gone
 (`lib/api/widgets/anchored_menu.dart`).
 
-The surface hangs off the trigger with `CompositedTransformFollower`, its
-top-right corner pinned to the trigger's bottom-right
-(`lib/api/widgets/anchored_menu.dart`).
+The surface hangs off the trigger with `CompositedTransformFollower`. Trailing
+menus pin their top-right corner to the trigger's bottom-right; leading menus
+pin the two left corners instead. A caller near either window edge can
+therefore grow inward without clipping (`lib/api/widgets/anchored_menu.dart`).
 
 ### It opens on the press
 
@@ -54,7 +55,7 @@ from the trigger; it is not worth that today.
 
 | Principle | Here | Where |
 |---|---|---|
-| Staging — spatial continuity | The surface scales from its top-right corner, the corner it hangs from, so it reads as coming *from* the button rather than appearing beside it | `lib/api/widgets/anchored_menu.dart` |
+| Staging — spatial continuity | The surface scales from the leading or trailing top corner it hangs from, so it reads as coming *from* the button rather than appearing beside it | `lib/api/widgets/anchored_menu.dart` |
 | Slow in, slow out | `Easing.emphasizedDecelerate` entering, `Easing.emphasizedAccelerate` leaving — Material 3's asymmetric pair | `lib/api/widgets/anchored_menu.dart` |
 | Never from zero | Scale runs 0.94 → 1, not 0 → 1: a surface that starts at nothing reads as inflating | `lib/api/widgets/anchored_menu.dart` |
 | Follow-through | Rows arrive after the surface and after each other, each fading up 8 px | `lib/api/widgets/anchored_menu.dart` |
@@ -80,6 +81,7 @@ without asking for attention of its own.
 | `trigger` | `Widget Function(BuildContext, bool isOpen)` | The button; told whether the menu is open so it can respond |
 | `items` | `List<Widget> Function(BuildContext, VoidCallback close)` | The rows, in order; `close` dismisses |
 | `width` | `double` | Surface width, default 260 |
+| `alignment` | `AnchoredMenuAlignment` | Which trigger edge the surface follows; trailing by default |
 | `tooltip` | `String` | Visible help and the trigger's stable accessible name |
 
 Out: nothing. Rows report to their own callers; the menu only opens and closes.

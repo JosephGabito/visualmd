@@ -60,6 +60,15 @@ on macOS; other desktop systems and the web deliberately do nothing
 `lib/infrastructure/io/desktop_commands.dart`,
 `lib/infrastructure/platform/platform_io.dart`).
 
+Windows keeps its native caption and therefore its genuine minimize, maximize,
+close, resize, Snap Layout, keyboard, and accessibility behavior. A second
+host projection sends the active Flutter top-bar and ink colours whenever the
+Material theme changes. The Win32 runner applies those values through
+`DWMWA_CAPTION_COLOR` and `DWMWA_TEXT_COLOR`, available from Windows 11 build
+22000, so the caption blends with the reading room without replacing native
+controls (`lib/api/app.dart`, `lib/infrastructure/io/desktop_commands.dart`,
+`windows/runner/flutter_window.cpp`).
+
 **API.** `VisualMdApp` receives `topBar` and `windowDragRegion` from `main.dart`
 (`lib/main.dart`) and passes them to `ReaderScreen`, which sizes and
 insets the bar and applies the wrapper
@@ -74,11 +83,14 @@ UI. See [Shell](../../05-api/02-shell.md).
 | out | `({double height, double leadingInset}) topBar` | `lib/infrastructure/platform/platform_adapters.dart` |
 | out | `Widget windowDragRegion(Widget)` | `lib/infrastructure/platform/platform_adapters.dart` |
 | in | `NativeReaderState.documentTitle` | hidden AppKit window title (`macos/Runner/MainFlutterWindow.swift`) |
+| out (Windows) | active top-bar and ink ARGB values | native DWM caption (`lib/api/app.dart`, `windows/runner/flutter_window.cpp`) |
 
 ## Events
 
 Controller notifications project the current document title into AppKit. This
 is host-state synchronization, not domain activity.
+Material theme changes separately project the current caption colours to
+Windows; they are presentation synchronization, not domain activity.
 
 ## Lifecycle
 
@@ -109,8 +121,8 @@ The observers leave with the window (`macos/Runner/MainFlutterWindow.swift`,
 
 ## Transition
 
-- Windows and Linux keep the system title bar. Custom chrome there would also
-  need accessible minimise, maximise, and close controls before the native bar
-  could be hidden safely.
+- Windows and Linux keep the system title bar. Windows 11 tints its caption;
+  hiding it entirely would still require accessible minimise, maximise, and
+  close controls plus native Snap behavior before it could be done safely.
 - The 84 px inset is a constant; if the traffic-light geometry changes in a
   future macOS it is one number in `platform_io.dart`.

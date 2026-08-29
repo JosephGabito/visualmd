@@ -44,6 +44,7 @@ class ReaderScreen extends StatefulWidget {
   final Future<void> Function()? openReaderSources;
   final ShelfSourceActions? shelfSourceActions;
   final ({double height, double leadingInset}) topBar;
+  final bool showWorkspaceMenu;
   final Widget Function(Widget child) windowDragRegion;
   final Stream<ReaderUiCommand>? uiCommands;
 
@@ -61,6 +62,7 @@ class ReaderScreen extends StatefulWidget {
     this.openReaderSources,
     this.shelfSourceActions,
     this.topBar = (height: 52, leadingInset: 8),
+    this.showWorkspaceMenu = false,
     this.windowDragRegion = _identity,
     this.openThemesFolder,
     this.uiCommands,
@@ -716,6 +718,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           onFind: reading == null
                               ? null
                               : () => _openSearch(_SearchMode.document),
+                          workspaceMenu: widget.showWorkspaceMenu
+                              ? _WorkspaceMenu(controller: c)
+                              : null,
                           themePicker: ThemePicker(
                             menuController: _appearanceMenu,
                             registry: c.themes,
@@ -848,6 +853,7 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onToggleShelf;
   final VoidCallback onToggleOutline;
   final VoidCallback? onFind;
+  final Widget? workspaceMenu;
   final Widget themePicker;
 
   const _TopBar({
@@ -861,6 +867,7 @@ class _TopBar extends StatelessWidget {
     required this.onToggleShelf,
     required this.onToggleOutline,
     required this.onFind,
+    required this.workspaceMenu,
     required this.themePicker,
   });
 
@@ -899,17 +906,7 @@ class _TopBar extends StatelessWidget {
                     onPressed: hasLibrary ? onToggleShelf : null,
                   ),
                   const SizedBox(width: LibraryChromeScale.space4),
-                  const BrandMark(size: 18),
-                  const SizedBox(width: LibraryChromeScale.space2),
-                  Text(
-                    'Visual MD',
-                    style: context.type.serif(
-                      color: p.ink,
-                      size: 15,
-                      weight: FontWeight.w600,
-                      height: 1,
-                    ),
-                  ),
+                  workspaceMenu ?? const _VisualMdBrand(),
                 ],
               ),
             ),
@@ -979,6 +976,151 @@ class _TopBar extends StatelessWidget {
       ),
     );
   }
+}
+
+final class _WorkspaceMenu extends StatelessWidget {
+  final ReaderController controller;
+
+  const _WorkspaceMenu({required this.controller});
+
+  @override
+  Widget build(BuildContext context) => AnchoredMenu(
+    key: const ValueKey('workspace-menu'),
+    tooltip: 'Workspace menu',
+    width: 248,
+    alignment: AnchoredMenuAlignment.leading,
+    trigger: (context, isOpen) =>
+        _VisualMdBrand(menuOpen: isOpen, showMenuIndicator: true),
+    items: (context, close) {
+      void run(VoidCallback action) {
+        close();
+        action();
+      }
+
+      return [
+        _WorkspaceMenuRow(
+          label: 'New Workspace',
+          shortcut: 'Ctrl+N',
+          onTap: () => run(controller.newWorkspace),
+        ),
+        _WorkspaceMenuRow(
+          label: 'Open Workspace…',
+          shortcut: 'Ctrl+Shift+O',
+          onTap: () => run(() => unawaited(controller.openWorkspace())),
+        ),
+        const _WorkspaceMenuRule(),
+        _WorkspaceMenuRow(
+          label: 'Add Folder…',
+          shortcut: 'Ctrl+O',
+          onTap: () => run(() => unawaited(controller.pickAndAddFolder())),
+        ),
+        _WorkspaceMenuRow(
+          label: 'Add Markdown…',
+          onTap: () => run(() => unawaited(controller.pickAndAddMarkdown())),
+        ),
+        const _WorkspaceMenuRule(),
+        _WorkspaceMenuRow(
+          label: 'Save Workspace',
+          shortcut: 'Ctrl+S',
+          onTap: () => run(() => unawaited(controller.saveWorkspace())),
+        ),
+        _WorkspaceMenuRow(
+          label: 'Save Workspace As…',
+          shortcut: 'Ctrl+Shift+S',
+          onTap: () => run(() => unawaited(controller.saveWorkspaceAs())),
+        ),
+      ];
+    },
+  );
+}
+
+final class _VisualMdBrand extends StatelessWidget {
+  final bool menuOpen;
+  final bool showMenuIndicator;
+
+  const _VisualMdBrand({this.menuOpen = false, this.showMenuIndicator = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const BrandMark(size: 18),
+          const SizedBox(width: LibraryChromeScale.space2),
+          Text(
+            'Visual MD',
+            style: context.type.serif(
+              color: p.ink,
+              size: 15,
+              weight: FontWeight.w600,
+              height: 1,
+            ),
+          ),
+          if (showMenuIndicator) ...[
+            const SizedBox(width: 3),
+            Icon(
+              menuOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              size: 15,
+              color: p.muted,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+final class _WorkspaceMenuRow extends StatelessWidget {
+  final String label;
+  final String? shortcut;
+  final VoidCallback onTap;
+
+  const _WorkspaceMenuRow({
+    required this.label,
+    required this.onTap,
+    this.shortcut,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Pressable(
+      semanticLabel: label,
+      onPress: onTap,
+      expanded: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(label, style: context.chromeRow(color: p.ink)),
+            ),
+            if (shortcut != null)
+              Text(
+                shortcut!,
+                style: context.type.sans(color: p.muted, size: 11, height: 1),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final class _WorkspaceMenuRule extends StatelessWidget {
+  const _WorkspaceMenuRule();
+
+  @override
+  Widget build(BuildContext context) => Divider(
+    height: 9,
+    thickness: 1,
+    indent: 12,
+    endIndent: 12,
+    color: context.chrome.separator,
+  );
 }
 
 enum _TopBarSlot { leading, title, trailing }

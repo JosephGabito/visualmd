@@ -2,10 +2,11 @@
 
 ## Purpose and boundary
 
-Workspace actions expose the durable lifecycle through native application
-menus, keyboard shortcuts, and visible feedback. The Flutter API ring owns UI
-state and delegates every operation to an application use case. Desktop uses
-the host's File menu, while file I/O remains behind application ports.
+Workspace actions expose the durable lifecycle through application menus,
+keyboard shortcuts, and visible feedback. The Flutter API ring owns UI state
+and delegates every operation to an application use case. macOS uses the
+host's File menu; Windows uses the Visual MD wordmark menu in the reader top
+bar. File I/O remains behind application ports on both.
 
 ## Present wiring
 
@@ -43,8 +44,8 @@ the current UI on failure and display the error in the same notice
 (`lib/api/reader_controller.dart`).
 
 Flutter `CallbackShortcuts` provides Command shortcuts on macOS and Control
-shortcuts elsewhere, so keyboard behavior remains available on web while the
-desktop menu remains genuinely native.
+shortcuts elsewhere. The same callbacks back the Windows wordmark menu, while
+macOS continues to contribute a native global menu.
 
 The macOS menu is deliberately a reader menu rather than the editor template
 Flutter starts with. File includes Close Window; Edit retains Copy and Select
@@ -72,8 +73,8 @@ model (`macos/Runner/MainFlutterWindow.swift`,
 | Open Sample Library | Command-Option-O / Control-Alt-O | bundled sample opened or refreshed without duplicating its root |
 | Save | Command/Control-S | current workspace flushed or first file requested |
 | Save As | Command/Control-Shift-S | fork written with a new Workspace ID |
-| Add Folder | native File menu | folder appended to the current workspace |
-| Add Markdown | native File menu | standalone Markdown added or resolved |
+| Add Folder | desktop workspace menu | folder appended to the current workspace |
+| Add Markdown | desktop workspace menu | standalone Markdown added or resolved |
 
 The native macOS Open panel accepts folders and the supported Markdown
 extensions together, permits multiple selection, and reports whether each URL
@@ -84,18 +85,25 @@ native File menu expose those same commands
 (`lib/api/screens/reader_screen.dart`,
 `macos/Runner/MainFlutterWindow.swift`).
 
+Windows has separate folder and Markdown pickers. Its Visual MD wordmark menu
+exposes New, Open Workspace, Add Folder, Add Markdown, Save, and Save As; the
+native title bar remains responsible only for the operating-system window
+contract (`lib/api/screens/reader_screen.dart`,
+`windows/runner/flutter_window.cpp`).
+
 ## Events
 
 None. Native menu selections are commands, not domain events.
 
 ## Lifecycle
 
-The native menu is installed by the host window after its menu system exists.
-Its method channel lives for the process. The controller is constructed once,
-receives both menu commands and drops, and notifies widgets after each state
-transition. One composition-root listener then projects only the current title,
-library and document capabilities, and panel visibility to the host; browser
-and non-macOS adapters deliberately ignore that projection.
+The native macOS menu is installed after its menu system exists, and its method
+channel lives for the process. The Windows wordmark menu is rebuilt from the
+same long-lived controller as part of the Flutter top bar. The controller
+receives menu commands and drops, then notifies widgets after each state
+transition. One composition-root listener projects only the current title,
+library and document capabilities, and panel visibility to macOS; browser and
+Windows adapters deliberately ignore that native-state projection.
 
 ## Failure and recovery
 

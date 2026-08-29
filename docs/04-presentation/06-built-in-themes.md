@@ -42,9 +42,11 @@ invent a dark counterpart.
 
 Choosing a paired family creates a `FollowSystem` choice containing those two
 ids. The row's swatch changes with system brightness, but the family remains
-one choice. Proof appears only while the system is light and creates a fixed
-choice. Paper, Lamplight, Nord, and custom themes remain individual rows in the
-picker's Light and Dark sections (`lib/api/widgets/theme_picker.dart`).
+one adaptive choice. Each light and dark member also appears by its full name
+in the corresponding section so the reader can override system brightness.
+Proof appears only while the system is light and creates a fixed choice.
+Paper, Lamplight, Nord, and custom themes remain individual rows
+(`lib/api/widgets/theme_picker.dart`).
 
 Paper and Lamplight remain the defaults of their brightness. They form
 `systemPair` and receive every missing-theme fallback, so adding this collection
@@ -53,9 +55,8 @@ does not alter an existing reader's preference.
 ## Inputs and outputs
 
 There are no runtime inputs. All palettes and family records are constants.
-`BuiltInThemes.all` supplies the registry, `BuiltInThemes.families` supplies the
-family rows, and `BuiltInThemes.familyThemeIds` lets the picker avoid repeating
-family members as individual themes (`lib/presentation/theme/built_in_themes.dart`).
+`BuiltInThemes.all` supplies the registry and `BuiltInThemes.families` supplies
+the adaptive family rows (`lib/presentation/theme/built_in_themes.dart`).
 
 The house themes remain the reference values for a custom palette:
 

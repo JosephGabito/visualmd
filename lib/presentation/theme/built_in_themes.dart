@@ -65,10 +65,6 @@ abstract final class BuiltInThemes {
   /// Named light/dark pairs shown as one choice in the theme menu.
   static const List<ThemeFamily> families = CodexThemeCollection.families;
 
-  static Set<String> get familyThemeIds => {
-    for (final family in families) ...family.themeIds,
-  };
-
   static const defaultLight = paper;
   static const defaultDark = lamplight;
 }

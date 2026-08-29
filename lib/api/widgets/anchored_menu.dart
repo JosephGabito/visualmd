@@ -10,6 +10,8 @@ final class AnchoredMenuController extends ChangeNotifier {
   void open() => notifyListeners();
 }
 
+enum AnchoredMenuAlignment { leading, trailing }
+
 /// A menu that opens from the thing you clicked.
 ///
 /// The motion follows a few well-worn principles rather than the framework
@@ -45,6 +47,7 @@ class AnchoredMenu extends StatefulWidget {
   final double width;
   final String tooltip;
   final AnchoredMenuController? controller;
+  final AnchoredMenuAlignment alignment;
 
   const AnchoredMenu({
     super.key,
@@ -53,6 +56,7 @@ class AnchoredMenu extends StatefulWidget {
     required this.tooltip,
     this.controller,
     this.width = 260,
+    this.alignment = AnchoredMenuAlignment.trailing,
   });
 
   @override
@@ -166,6 +170,7 @@ class _AnchoredMenuState extends State<AnchoredMenu>
           focusScope: _menuScope,
           motion: _motion,
           width: widget.width,
+          alignment: widget.alignment,
           still: still,
           onDismiss: _close,
           items: widget.items(context, _close),
@@ -181,6 +186,7 @@ class _MenuOverlay extends StatefulWidget {
   final FocusScopeNode focusScope;
   final Animation<double> motion;
   final double width;
+  final AnchoredMenuAlignment alignment;
   final bool still;
   final VoidCallback onDismiss;
   final List<Widget> items;
@@ -190,6 +196,7 @@ class _MenuOverlay extends StatefulWidget {
     required this.focusScope,
     required this.motion,
     required this.width,
+    required this.alignment,
     required this.still,
     required this.onDismiss,
     required this.items,
@@ -211,6 +218,10 @@ class _MenuOverlayState extends State<_MenuOverlay> {
   @override
   Widget build(BuildContext context) {
     final chrome = context.chrome;
+    final leading = widget.alignment == AnchoredMenuAlignment.leading;
+    final targetAnchor = leading ? Alignment.bottomLeft : Alignment.bottomRight;
+    final followerAnchor = leading ? Alignment.topLeft : Alignment.topRight;
+    final growAlignment = leading ? Alignment.topLeft : Alignment.topRight;
 
     // Opacity leads and finishes early; the surface is fully visible while it
     // is still settling, which reads as faster than it is.
@@ -244,8 +255,8 @@ class _MenuOverlayState extends State<_MenuOverlay> {
             ),
             CompositedTransformFollower(
               link: widget.link,
-              targetAnchor: Alignment.bottomRight,
-              followerAnchor: Alignment.topRight,
+              targetAnchor: targetAnchor,
+              followerAnchor: followerAnchor,
               offset: const Offset(0, 8),
               // Sized to the menu, not to the screen: an oversized follower
               // paints in the right place but hit-tests in the wrong one.
@@ -276,7 +287,7 @@ class _MenuOverlayState extends State<_MenuOverlay> {
                             // Never from zero: a surface that starts at 0.94
                             // reads as arriving, not as being inflated.
                             scale: 0.94 + 0.06 * grow.value,
-                            alignment: Alignment.topRight,
+                            alignment: growAlignment,
                             child: child,
                           ),
                         ),
