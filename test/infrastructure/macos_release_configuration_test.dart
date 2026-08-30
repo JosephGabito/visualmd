@@ -89,7 +89,7 @@ void main() {
         contains('Copyright © 2026 Joseph Gabito. All rights reserved.'),
       );
       expect(menu, contains('selector="orderFrontStandardAboutPanel:"'));
-      expect(package, contains('version: 1.0.0+1'));
+      expect(package, contains('version: 1.0.0+2'));
     });
   });
 }
