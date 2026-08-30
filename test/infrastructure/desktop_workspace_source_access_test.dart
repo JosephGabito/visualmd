@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visualmd/application/ports/workspace_source_access.dart';
 import 'package:visualmd/domain/workspace/workspace.dart';
 import 'package:visualmd/domain/workspace/workspace_id.dart';
 import 'package:visualmd/domain/workspace/workspace_source.dart';
@@ -123,6 +124,36 @@ void main() {
 
       expect((folders.lookup(ref)! as LocalDirectory).path, storedPath);
       expect(scope.bookmarks.single, bookmark);
+    },
+  );
+
+  test(
+    'a native bookmark failure becomes a reconnectable unavailable source',
+    () async {
+      final bookmark = Uint8List.fromList([9, 10]);
+      await files.writeWorkspaceAccess(
+        'workspace',
+        'source',
+        path: '${root.path}/stored/notes',
+        bookmark: bookmark,
+      );
+      final access = DesktopWorkspaceSourceAccess(
+        folders,
+        markdowns,
+        files,
+        resolveBookmark: (_) async => throw StateError('native failure'),
+      );
+
+      await expectLater(
+        access.restoreFolder(_workspace(), _source()),
+        throwsA(
+          isA<WorkspaceSourceUnavailable>().having(
+            (error) => error.source,
+            'source',
+            _source(),
+          ),
+        ),
+      );
     },
   );
 }

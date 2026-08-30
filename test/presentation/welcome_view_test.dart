@@ -80,7 +80,7 @@ void main() {
     expect((opened, openedWorkspace, openedSample), (1, 1, 1));
   });
 
-  testWidgets('the elevated launch surface does not add a redundant border', (
+  testWidgets('the elevated launch surface needs neither border nor rules', (
     tester,
   ) async {
     await pumpWelcome(tester, const Size(1280, 716));
@@ -91,6 +91,7 @@ void main() {
     final decoration = surface.decoration! as BoxDecoration;
     expect(decoration.border, isNull);
     expect(decoration.boxShadow, isNotEmpty);
+    expect(find.byType(Divider), findsNothing);
   });
 
   testWidgets('non-macOS commands use Ctrl labels and truthful open copy', (

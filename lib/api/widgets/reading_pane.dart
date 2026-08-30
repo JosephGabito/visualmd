@@ -31,6 +31,7 @@ class ReadingPane extends StatefulWidget {
   final DocumentViewportGeometryFactory? viewportGeometry;
   final void Function(String href) onLink;
   final ValueChanged<Heading?> onActiveHeadingChanged;
+  final ValueChanged<bool>? onSelectionAvailabilityChanged;
   final List<TextMatch> matches;
   final int activeMatch;
 
@@ -52,6 +53,7 @@ class ReadingPane extends StatefulWidget {
     this.viewportGeometry,
     required this.onLink,
     required this.onActiveHeadingChanged,
+    this.onSelectionAvailabilityChanged,
     this.matches = const [],
     this.activeMatch = -1,
     this.debugOnNavigationBlocksIndexed,
@@ -71,6 +73,7 @@ class ReadingPaneState extends State<ReadingPane> {
 
   final _scroll = ScrollController();
   final _quietScrollbar = QuietScrollbarController();
+  final _selection = ModelBackedSelectionController();
   final _pageKey = GlobalKey();
   final _documentSliverKey = GlobalKey();
   DocumentViewportGeometry? _geometry;
@@ -90,6 +93,10 @@ class ReadingPaneState extends State<ReadingPane> {
   String? _activeAnchor;
   var _tailIntent = false;
   var _tailSettlementGeneration = 0;
+
+  void copySelection() => _selection.copy();
+
+  void selectAllText() => _selection.selectAll();
 
   @override
   void initState() {
@@ -515,6 +522,9 @@ class ReadingPaneState extends State<ReadingPane> {
           child: ModelBackedSelectionArea(
             selectionIdentity: reading.document.id,
             wholeText: () => reading.content.text,
+            controller: _selection,
+            onSelectionAvailabilityChanged:
+                widget.onSelectionAvailabilityChanged,
             child: CustomScrollView(
               key: _pageKey,
               controller: _scroll,

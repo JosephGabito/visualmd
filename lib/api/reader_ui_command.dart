@@ -6,6 +6,10 @@ enum ReaderUiCommand {
   openAppearance,
   findDocument,
   searchLibrary,
+  toggleShelf,
+  toggleOutline,
+  copySelection,
+  selectAllText,
   showKeyboardShortcuts,
   showLicenses,
 }

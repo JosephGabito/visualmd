@@ -22,9 +22,18 @@ final class ReaderFiles {
 
   static Future<ReaderFiles> locate() async {
     final support = await getApplicationSupportDirectory();
-    final root = Directory('${support.path}${Platform.pathSeparator}Visual MD');
+    final root = rootFor(
+      support,
+      uiTestProfile: Platform.environment[uiTestProfileEnvironment],
+      uiTestBase: Directory(
+        '${Directory.systemTemp.path}${Platform.pathSeparator}Visual MD UI Tests',
+      ),
+    );
     await root.create(recursive: true);
     final files = ReaderFiles(root);
+    if (Platform.environment[uiTestMalformedSessionEnvironment] == '1') {
+      await files.sessionJournal.writeAsString('{ malformed ui-test recovery');
+    }
     if (!await files.themesDirectory.exists()) {
       await files.themesDirectory.create(recursive: true);
       // A first-time note so the folder explains itself. Only `.json` files
@@ -34,6 +43,33 @@ final class ReaderFiles {
       ).writeAsString(themesReadme);
     }
     return files;
+  }
+
+  /// Keeps UI automation out of a reader's real preferences and recovery
+  /// journal while exercising the same on-disk adapters as the shipped app.
+  ///
+  /// A profile is a name, never a path. Refusing separators and punctuation
+  /// prevents a malformed test launch from escaping the dedicated directory.
+  static Directory rootFor(
+    Directory support, {
+    String? uiTestProfile,
+    Directory? uiTestBase,
+  }) {
+    final ordinary = Directory(
+      '${support.path}${Platform.pathSeparator}Visual MD',
+    );
+    if (uiTestProfile == null) return ordinary;
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,80}$').hasMatch(uiTestProfile)) {
+      throw ArgumentError.value(
+        uiTestProfile,
+        uiTestProfileEnvironment,
+        'must contain only letters, digits, underscores, or hyphens',
+      );
+    }
+    return Directory(
+      '${(uiTestBase ?? Directory('${ordinary.path}${Platform.pathSeparator}UI Tests')).path}'
+      '${Platform.pathSeparator}$uiTestProfile',
+    );
   }
 
   Directory get themesDirectory =>
@@ -153,6 +189,13 @@ final class ReaderFiles {
     ];
   }
 }
+
+/// Launch environment understood only as a storage-isolation profile name.
+const uiTestProfileEnvironment = 'VISUAL_MD_UI_TEST_PROFILE';
+
+/// Requests a corrupt recovery journal inside an already isolated UI-test
+/// profile. The profile requirement prevents ordinary launches from using it.
+const uiTestMalformedSessionEnvironment = 'VISUAL_MD_UI_TEST_MALFORMED_SESSION';
 
 /// Dropped into the themes folder the first time it is created.
 const themesReadme = '''

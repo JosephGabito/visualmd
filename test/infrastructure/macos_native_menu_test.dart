@@ -46,15 +46,31 @@ void main() {
     expect(runner, contains('NSObject, NSMenuItemValidation'));
     expect(runner, contains('return state.hasLibrary'));
     expect(runner, contains('return state.hasDocument'));
+    expect(runner, contains('return state.hasOutline'));
+    expect(runner, contains('return state.canCopy'));
+    expect(runner, contains('return state.canIncreaseText'));
+    expect(runner, contains('return state.canDecreaseText'));
+    expect(runner, contains('return state.canResetText'));
     expect(
       runner,
       contains('shelfItem?.state = state.shelfVisible ? .on : .off'),
     );
     expect(
       runner,
-      contains('outlineItem?.state = state.outlineVisible ? .on : .off'),
+      contains(
+        'outlineItem?.state = state.outlineVisible && state.hasOutline ? .on : .off',
+      ),
     );
     expect(runner, contains('self.nativeMenuController?.update(state)'));
+  });
+
+  test('native selection commands cross the Flutter method channel', () {
+    final runner = source('macos/Runner/MainFlutterWindow.swift');
+
+    expect(runner, contains('@objc func copySelection()'));
+    expect(runner, contains('@objc func selectAllText()'));
+    expect(runner, isNot(contains('#selector(NSText.copy(_:))')));
+    expect(runner, isNot(contains('#selector(NSText.selectAll(_:))')));
   });
 
   test(

@@ -45,16 +45,17 @@ void main() {
     expect(source, contains('toolbar?.isVisible = true'));
   });
 
-  test('closing the last macOS window does not quit the app', () {
+  test('closing the last macOS window terminates the single-window app', () {
     final source = File('macos/Runner/AppDelegate.swift').readAsStringSync();
 
     expect(
       source,
       contains(
-        'applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication)',
+        'applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {\n'
+        '    true\n'
+        '  }',
       ),
     );
-    expect(source, contains('false'));
   });
 
   test('clicking the Dock icon reopens the reader window', () {

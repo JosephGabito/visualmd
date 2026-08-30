@@ -7,6 +7,11 @@ final class NativeReaderState {
   final String? documentTitle;
   final bool hasLibrary;
   final bool hasDocument;
+  final bool hasOutline;
+  final bool canCopy;
+  final bool canIncreaseText;
+  final bool canDecreaseText;
+  final bool canResetText;
   final bool shelfVisible;
   final bool outlineVisible;
 
@@ -14,6 +19,11 @@ final class NativeReaderState {
     required this.documentTitle,
     required this.hasLibrary,
     required this.hasDocument,
+    required this.hasOutline,
+    required this.canCopy,
+    required this.canIncreaseText,
+    required this.canDecreaseText,
+    required this.canResetText,
     required this.shelfVisible,
     required this.outlineVisible,
   });

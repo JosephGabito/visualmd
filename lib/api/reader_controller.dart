@@ -177,7 +177,7 @@ final class ReaderController extends ChangeNotifier {
   static Future<void> _discard(String key, String value) async {}
 
   Library? library;
-  DocumentReading? reading;
+  DocumentReading? _reading;
   bool opening = false;
   var _sourcesOpening = 0;
   var _nextFolderTitleRevision = 0;
@@ -186,6 +186,7 @@ final class ReaderController extends ChangeNotifier {
   var _expandRevision = 0;
   ({DocumentId id, int revision})? expandRequest;
   bool dragging = false;
+  bool hasTextSelection = false;
   String? error;
   String? _sourceSyncError;
   String? _searchError;
@@ -196,6 +197,18 @@ final class ReaderController extends ChangeNotifier {
   bool shelfVisible;
   bool outlineVisible;
   WorkspaceSession? workspaceSession;
+
+  DocumentReading? get reading => _reading;
+
+  set reading(DocumentReading? value) {
+    if (identical(_reading, value)) return;
+    _reading = value;
+    // A selection belongs to one rendered document. Replacing or removing
+    // that document must not leave native Copy enabled for a dead selection.
+    hasTextSelection = false;
+  }
+
+  bool get canCopy => reading != null && hasTextSelection;
 
   String? get workspaceName => workspaceSession?.file?.name;
 
@@ -657,6 +670,12 @@ final class ReaderController extends ChangeNotifier {
   void setDragging(bool value) {
     if (dragging == value) return;
     dragging = value;
+    notifyListeners();
+  }
+
+  void setTextSelectionAvailable(bool value) {
+    if (hasTextSelection == value) return;
+    hasTextSelection = value;
     notifyListeners();
   }
 

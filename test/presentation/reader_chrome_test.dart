@@ -102,8 +102,12 @@ faces and text metrics.
 );
 
 final class _Scanner implements FolderScanner {
+  final ScannedFolder folder;
+
+  const _Scanner([this.folder = _library]);
+
   @override
-  Future<ScannedFolder> scan(FolderRef ref) async => _library;
+  Future<ScannedFolder> scan(FolderRef ref) async => folder;
 }
 
 final class _MarkdownScanner implements MarkdownScanner {
@@ -241,6 +245,7 @@ void main() {
     bool shelfVisible = true,
     bool outlineVisible = true,
     bool showWorkspaceMenu = false,
+    ScannedFolder sample = _library,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -251,7 +256,7 @@ void main() {
     const parser = MarkdownDocumentParser();
     controller = ReaderController(
       addFolder: AddFolder(
-        scanner: _Scanner(),
+        scanner: _Scanner(sample),
         repository: repository,
         mutations: mutations,
       ),
@@ -342,6 +347,85 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Keyboard Shortcuts'), findsOneWidget);
     expect(find.text('Search Library'), findsOneWidget);
+  });
+
+  testWidgets('native panel commands control the wide reader panels', (
+    tester,
+  ) async {
+    final commands = StreamController<ReaderUiCommand>.broadcast();
+    addTearDown(commands.close);
+    await pumpReader(tester, uiCommands: commands.stream);
+
+    expect(find.byType(ShelfPanel), findsOneWidget);
+    expect(find.byType(OutlinePanel), findsOneWidget);
+
+    commands.add(ReaderUiCommand.toggleShelf);
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsNothing);
+    expect(find.byType(OutlinePanel), findsOneWidget);
+
+    commands.add(ReaderUiCommand.toggleOutline);
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsNothing);
+    expect(find.byType(OutlinePanel), findsNothing);
+  });
+
+  testWidgets('native panel commands open the compact overlays', (
+    tester,
+  ) async {
+    final commands = StreamController<ReaderUiCommand>.broadcast();
+    addTearDown(commands.close);
+    await pumpReader(
+      tester,
+      size: const Size(720, 480),
+      uiCommands: commands.stream,
+    );
+
+    expect(find.byType(ShelfPanel), findsNothing);
+    expect(find.byType(OutlinePanel), findsNothing);
+
+    commands.add(ReaderUiCommand.toggleShelf);
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsOneWidget);
+    expect(find.byType(OutlinePanel), findsNothing);
+
+    commands.add(ReaderUiCommand.toggleOutline);
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsNothing);
+    expect(find.byType(OutlinePanel), findsOneWidget);
+
+    commands.add(ReaderUiCommand.toggleOutline);
+    await tester.pumpAndSettle();
+    expect(find.byType(ShelfPanel), findsNothing);
+    expect(find.byType(OutlinePanel), findsNothing);
+    expect(controller.shelfVisible, isTrue);
+    expect(controller.outlineVisible, isTrue);
+    expect(saved, isEmpty);
+  });
+
+  testWidgets('a document without headings offers no outline command', (
+    tester,
+  ) async {
+    const sample = ScannedFolder(
+      name: 'plain',
+      files: [FileEntry('plain.md', 'A document without headings.\n')],
+    );
+    final commands = StreamController<ReaderUiCommand>.broadcast();
+    addTearDown(commands.close);
+    await pumpReader(tester, sample: sample, uiCommands: commands.stream);
+
+    final outline = tester.widget<Pressable>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Pressable &&
+            (widget.tooltip?.startsWith('Show outline') ?? false),
+      ),
+    );
+    expect(outline.onPress, isNull);
+
+    commands.add(ReaderUiCommand.toggleOutline);
+    await tester.pumpAndSettle();
+    expect(find.byType(OutlinePanel), findsNothing);
   });
 
   /// The width the panel wrapping [panel] currently occupies.

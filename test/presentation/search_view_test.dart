@@ -58,4 +58,39 @@ void main() {
       expect(decoration.boxShadow, isNotEmpty);
     },
   );
+
+  testWidgets('document search exposes named fields and controls', (
+    tester,
+  ) async {
+    final registry = ThemeRegistry();
+    final paper = registry.resolve(const FixedTheme('paper'), Brightness.light);
+    final controller = TextEditingController();
+    final focus = FocusNode();
+    addTearDown(controller.dispose);
+    addTearDown(focus.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: libraryTheme(paper),
+        home: Scaffold(
+          body: DocumentFindBar(
+            controller: controller,
+            focusNode: focus,
+            onChanged: (_) {},
+            onNext: () {},
+            onPrevious: () {},
+            onClose: () {},
+            active: 0,
+            total: 1,
+            searching: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('Find in this document'), findsWidgets);
+    expect(find.bySemanticsLabel('Previous match  (⇧↩)'), findsOneWidget);
+    expect(find.bySemanticsLabel('Next match  (↩)'), findsOneWidget);
+    expect(find.bySemanticsLabel('Close  (Esc)'), findsOneWidget);
+  });
 }

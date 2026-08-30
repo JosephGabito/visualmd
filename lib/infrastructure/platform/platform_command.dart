@@ -13,6 +13,8 @@ enum PlatformCommand {
   searchLibrary,
   toggleShelf,
   toggleOutline,
+  copySelection,
+  selectAllText,
   enlargeText,
   shrinkText,
   resetText,

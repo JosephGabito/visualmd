@@ -15,6 +15,7 @@ import '../layout/panel_widths.dart';
 import '../render/reading_theme.dart';
 import '../reader_controller.dart';
 import '../reader_ui_command.dart';
+import 'licenses_screen.dart';
 import '../theme/library_theme.dart';
 import '../theme/library_chrome.dart';
 import '../widgets/brand_mark.dart';
@@ -130,10 +131,25 @@ class _ReaderScreenState extends State<ReaderScreen> {
         _openSearch(_SearchMode.document);
       case ReaderUiCommand.searchLibrary:
         _openLibrarySearch();
+      case ReaderUiCommand.toggleShelf:
+        _toggleShelf();
+      case ReaderUiCommand.toggleOutline:
+        _toggleOutline();
+      case ReaderUiCommand.copySelection:
+        _pane.currentState?.copySelection();
+      case ReaderUiCommand.selectAllText:
+        _pane.currentState?.selectAllText();
       case ReaderUiCommand.showKeyboardShortcuts:
         _showKeyboardShortcuts();
       case ReaderUiCommand.showLicenses:
-        showLicensePage(context: context, applicationName: 'Visual MD');
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => LicensesScreen(
+              topBar: widget.topBar,
+              windowDragRegion: widget.windowDragRegion,
+            ),
+          ),
+        );
     }
   }
 
@@ -147,6 +163,30 @@ class _ReaderScreenState extends State<ReaderScreen> {
     } else if (!c.shelfVisible) {
       c.toggleShelf();
     }
+  }
+
+  void _toggleShelf() {
+    if (MediaQuery.sizeOf(context).width >= _compactBreakpoint) {
+      c.toggleShelf();
+      return;
+    }
+    setState(() {
+      _compactShelfVisible = !_compactShelfVisible;
+      if (_compactShelfVisible) _compactOutlineVisible = false;
+    });
+  }
+
+  void _toggleOutline() {
+    final tableOfContents = c.reading?.outline.tableOfContents;
+    if (tableOfContents == null || tableOfContents.isEmpty) return;
+    if (MediaQuery.sizeOf(context).width >= _compactBreakpoint) {
+      c.toggleOutline();
+      return;
+    }
+    setState(() {
+      _compactOutlineVisible = !_compactOutlineVisible;
+      if (_compactOutlineVisible) _compactShelfVisible = false;
+    });
   }
 
   void _showKeyboardShortcuts() {
@@ -339,22 +379,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < _compactBreakpoint;
 
-    void toggleShelf() {
-      if (!compact) return c.toggleShelf();
-      setState(() {
-        _compactShelfVisible = !_compactShelfVisible;
-        if (_compactShelfVisible) _compactOutlineVisible = false;
-      });
-    }
-
-    void toggleOutline() {
-      if (!compact) return c.toggleOutline();
-      setState(() {
-        _compactOutlineVisible = !_compactOutlineVisible;
-        if (_compactOutlineVisible) _compactShelfVisible = false;
-      });
-    }
-
     void dismissTransient() {
       if (_searchMode != _SearchMode.closed) {
         _closeSearch();
@@ -370,9 +394,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyB, meta: true): toggleShelf,
+        const SingleActivator(LogicalKeyboardKey.keyB, meta: true):
+            _toggleShelf,
         const SingleActivator(LogicalKeyboardKey.keyB, control: true):
-            toggleShelf,
+            _toggleShelf,
         const SingleActivator(LogicalKeyboardKey.period, meta: true):
             dismissTransient,
         const SingleActivator(LogicalKeyboardKey.escape): dismissTransient,
@@ -547,6 +572,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     ? _activeMatch
                     : -1,
                 onLink: _followLink,
+                onSelectionAvailabilityChanged: c.setTextSelectionAvailable,
                 onActiveHeadingChanged: (Heading? h) {
                   _activeAnchor.value = h?.anchor;
                 },
@@ -709,12 +735,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           height: widget.topBar.height,
                           leadingInset: widget.topBar.leadingInset,
                           shelfVisible: shelfVisible,
-                          outlineVisible: outlineVisible,
+                          outlineVisible: showOutline,
                           hasLibrary: library != null,
                           documentTitle: reading?.document.title,
                           documentLocation: reading?.document.fileName,
-                          onToggleShelf: toggleShelf,
-                          onToggleOutline: toggleOutline,
+                          hasOutline: hasOutline,
+                          onToggleShelf: _toggleShelf,
+                          onToggleOutline: _toggleOutline,
                           onFind: reading == null
                               ? null
                               : () => _openSearch(_SearchMode.document),
@@ -848,6 +875,7 @@ class _TopBar extends StatelessWidget {
   final bool shelfVisible;
   final bool outlineVisible;
   final bool hasLibrary;
+  final bool hasOutline;
   final String? documentTitle;
   final String? documentLocation;
   final VoidCallback onToggleShelf;
@@ -862,6 +890,7 @@ class _TopBar extends StatelessWidget {
     required this.shelfVisible,
     required this.outlineVisible,
     required this.hasLibrary,
+    required this.hasOutline,
     required this.documentTitle,
     required this.documentLocation,
     required this.onToggleShelf,
@@ -966,7 +995,7 @@ class _TopBar extends StatelessWidget {
                     tooltip: outlineVisible ? 'Hide outline' : 'Show outline',
                     icon: outlineVisible ? Icons.toc : Icons.toc_outlined,
                     active: outlineVisible,
-                    onPressed: hasLibrary ? onToggleOutline : null,
+                    onPressed: hasOutline ? onToggleOutline : null,
                   ),
                 ],
               ),

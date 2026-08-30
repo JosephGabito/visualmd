@@ -336,17 +336,21 @@ final class _SearchField extends StatelessWidget {
       const SingleActivator(LogicalKeyboardKey.enter): ?onNext,
       const SingleActivator(LogicalKeyboardKey.enter, shift: true): ?onPrevious,
     },
-    child: TextField(
-      controller: controller,
-      focusNode: focusNode,
-      onChanged: onChanged,
-      style: context.type.sans(color: context.palette.ink, size: 13),
-      decoration: InputDecoration(
-        isDense: true,
-        border: InputBorder.none,
-        hintText: hint,
-        hintStyle: context.type.sans(color: context.palette.muted, size: 13),
-        contentPadding: EdgeInsets.zero,
+    child: Semantics(
+      label: hint,
+      textField: true,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        style: context.type.sans(color: context.palette.ink, size: 13),
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: context.type.sans(color: context.palette.muted, size: 13),
+          contentPadding: EdgeInsets.zero,
+        ),
       ),
     ),
   );
@@ -408,12 +412,18 @@ final class _SearchButton extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    icon: Icon(icon, size: 17),
-    visualDensity: VisualDensity.compact,
-    padding: const EdgeInsets.all(5),
-    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+  Widget build(BuildContext context) => Semantics(
+    label: tooltip,
+    button: true,
+    enabled: onPressed != null,
+    excludeSemantics: true,
+    child: IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 17),
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.all(5),
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+    ),
   );
 }
