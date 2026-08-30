@@ -9,6 +9,11 @@ import 'package:visualmd/application/ports/folder_document_scanner.dart';
 import 'package:visualmd/application/ports/folder_scanner.dart';
 import 'package:visualmd/application/ports/markdown_scanner.dart';
 import 'package:visualmd/application/ports/reader_source_picker.dart';
+import 'package:visualmd/application/ports/workspace_files.dart';
+import 'package:visualmd/application/ports/workspace_ids.dart';
+import 'package:visualmd/application/ports/workspace_restoration.dart';
+import 'package:visualmd/application/ports/workspace_session_repository.dart';
+import 'package:visualmd/application/use_cases/create_workspace.dart';
 import 'package:visualmd/application/use_cases/add_folder.dart';
 import 'package:visualmd/application/use_cases/add_markdown.dart';
 import 'package:visualmd/application/use_cases/enrich_folder_titles.dart';
@@ -17,13 +22,17 @@ import 'package:visualmd/application/use_cases/read_document.dart';
 import 'package:visualmd/application/use_cases/remove_folder.dart';
 import 'package:visualmd/application/use_cases/remove_markdown.dart';
 import 'package:visualmd/application/use_cases/search_documents.dart';
+import 'package:visualmd/application/workspace_autosave.dart';
 import 'package:visualmd/domain/library/document_id.dart';
 import 'package:visualmd/domain/library/document_source_id.dart';
 import 'package:visualmd/domain/library/library_builder.dart';
 import 'package:visualmd/domain/library/library_root_id.dart';
+import 'package:visualmd/domain/library/library.dart';
+import 'package:visualmd/domain/workspace/workspace_id.dart';
 import 'package:visualmd/infrastructure/markdown/markdown_document_parser.dart';
 import 'package:visualmd/infrastructure/memory/in_memory_library_repository.dart';
 import 'package:visualmd/infrastructure/search/literal_document_search.dart';
+import 'package:visualmd/infrastructure/workspace/workspace_json_codec.dart';
 import 'package:visualmd/presentation/theme/theme_registry.dart';
 
 final class _Scanner implements FolderScanner, FolderDocumentScanner {
@@ -138,6 +147,54 @@ final class _DeferredReaderSourcePicker implements ReaderSourcePicker {
   }
 }
 
+final class _WorkspaceSessions implements WorkspaceSessionRepository {
+  WorkspaceSession? value;
+
+  @override
+  Future<WorkspaceSession?> current() async => value;
+
+  @override
+  Future<void> save(WorkspaceSession session) async => value = session;
+}
+
+final class _WorkspaceRestoration implements WorkspaceRestoration {
+  final _WorkspaceSessions sessions;
+
+  const _WorkspaceRestoration(this.sessions);
+
+  @override
+  Future<void> replace(Library library, WorkspaceSession session) async {
+    sessions.value = session;
+  }
+}
+
+final class _WorkspaceIds implements WorkspaceIds {
+  const _WorkspaceIds();
+
+  @override
+  WorkspaceId workspaceId() => const WorkspaceId('new-workspace');
+
+  @override
+  WorkspaceSourceId sourceId() => const WorkspaceSourceId('new-source');
+}
+
+final class _WorkspaceFiles implements WorkspaceFiles {
+  const _WorkspaceFiles();
+
+  @override
+  Future<WorkspaceFileRef?> pickOpen() async => null;
+
+  @override
+  Future<WorkspaceFileRef?> pickSave({required String suggestedName}) async =>
+      null;
+
+  @override
+  Future<String> read(WorkspaceFileRef file) async => '';
+
+  @override
+  Future<void> write(WorkspaceFileRef file, String contents) async {}
+}
+
 void main() {
   const alpha = FolderRef(id: 'a', name: 'alpha');
   const beta = FolderRef(id: 'b', name: 'beta');
@@ -155,6 +212,7 @@ void main() {
     readerSourcePicker = _ReaderSourcePicker();
     final repository = InMemoryLibraryRepository();
     final mutations = LibraryMutationQueue();
+    final sessions = _WorkspaceSessions();
     const parser = MarkdownDocumentParser();
     final sources = DocumentSourceReader(
       folderDocuments: scanner,
@@ -187,11 +245,44 @@ void main() {
         search: LiteralDocumentSearch(parser: parser),
         sources: sources,
       ),
+      createWorkspace: CreateWorkspace(
+        ids: const _WorkspaceIds(),
+        restoration: _WorkspaceRestoration(sessions),
+        mutations: mutations,
+        autosave: WorkspaceAutosave(
+          sessions: sessions,
+          files: const _WorkspaceFiles(),
+          codec: const WorkspaceJsonCodec(),
+          mutations: mutations,
+          delay: Duration.zero,
+        ),
+      ),
       pickFolder: () async => null,
       sampleFolder: alpha,
       themes: ThemeRegistry(),
     );
   });
+
+  test(
+    'a new workspace invalidates Copy before any document can reopen',
+    () async {
+      await controller.openSampleLibrary();
+      controller.setTextSelectionAvailable(true);
+      expect(controller.canCopy, isTrue);
+
+      await controller.newWorkspace();
+
+      expect(controller.reading, isNull);
+      expect(controller.hasTextSelection, isFalse);
+      expect(controller.canCopy, isFalse);
+
+      await controller.openSampleLibrary();
+
+      expect(controller.reading, isNotNull);
+      expect(controller.hasTextSelection, isFalse);
+      expect(controller.canCopy, isFalse);
+    },
+  );
 
   test(
     'Open routes every selected source through its existing use case',

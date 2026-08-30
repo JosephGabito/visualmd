@@ -27,7 +27,7 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-    false
+    true
   }
 
   override func applicationShouldHandleReopen(

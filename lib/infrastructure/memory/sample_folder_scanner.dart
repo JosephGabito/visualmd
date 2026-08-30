@@ -46,7 +46,7 @@ outside the column, where it belongs.
 | `⇧⌘O` / `Ctrl+Shift+O` | Open a saved workspace |
 | `⌥⌘O` / `Ctrl+Alt+O` | Open this sample library |
 | `⌘` / `Ctrl` + `B` | Toggle the shelf |
-| `⌘` / `Ctrl` + `.` | Toggle the outline |
+| `⇧⌘B` / `Ctrl+Shift+B` | Toggle the outline |
 
 ## A bit of code, for good measure
 

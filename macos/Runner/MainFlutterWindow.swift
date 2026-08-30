@@ -6,6 +6,11 @@ private struct NativeReaderState {
   let documentTitle: String?
   let hasLibrary: Bool
   let hasDocument: Bool
+  let hasOutline: Bool
+  let canCopy: Bool
+  let canIncreaseText: Bool
+  let canDecreaseText: Bool
+  let canResetText: Bool
   let shelfVisible: Bool
   let outlineVisible: Bool
 
@@ -13,6 +18,11 @@ private struct NativeReaderState {
     documentTitle: nil,
     hasLibrary: false,
     hasDocument: false,
+    hasOutline: false,
+    canCopy: false,
+    canIncreaseText: false,
+    canDecreaseText: false,
+    canResetText: false,
     shelfVisible: true,
     outlineVisible: true
   )
@@ -22,12 +32,22 @@ private struct NativeReaderState {
       let values = arguments as? [String: Any],
       let hasLibrary = values["hasLibrary"] as? Bool,
       let hasDocument = values["hasDocument"] as? Bool,
+      let hasOutline = values["hasOutline"] as? Bool,
+      let canCopy = values["canCopy"] as? Bool,
+      let canIncreaseText = values["canIncreaseText"] as? Bool,
+      let canDecreaseText = values["canDecreaseText"] as? Bool,
+      let canResetText = values["canResetText"] as? Bool,
       let shelfVisible = values["shelfVisible"] as? Bool,
       let outlineVisible = values["outlineVisible"] as? Bool
     else { return nil }
     self.documentTitle = values["documentTitle"] as? String
     self.hasLibrary = hasLibrary
     self.hasDocument = hasDocument
+    self.hasOutline = hasOutline
+    self.canCopy = canCopy
+    self.canIncreaseText = canIncreaseText
+    self.canDecreaseText = canDecreaseText
+    self.canResetText = canResetText
     self.shelfVisible = shelfVisible
     self.outlineVisible = outlineVisible
   }
@@ -36,12 +56,22 @@ private struct NativeReaderState {
     documentTitle: String?,
     hasLibrary: Bool,
     hasDocument: Bool,
+    hasOutline: Bool,
+    canCopy: Bool,
+    canIncreaseText: Bool,
+    canDecreaseText: Bool,
+    canResetText: Bool,
     shelfVisible: Bool,
     outlineVisible: Bool
   ) {
     self.documentTitle = documentTitle
     self.hasLibrary = hasLibrary
     self.hasDocument = hasDocument
+    self.hasOutline = hasOutline
+    self.canCopy = canCopy
+    self.canIncreaseText = canIncreaseText
+    self.canDecreaseText = canDecreaseText
+    self.canResetText = canResetText
     self.shelfVisible = shelfVisible
     self.outlineVisible = outlineVisible
   }
@@ -70,6 +100,8 @@ private final class NativeMenuController: NSObject, NSMenuItemValidation {
   @objc func searchLibrary() { channel.invokeMethod("searchLibrary", arguments: nil) }
   @objc func toggleShelf() { channel.invokeMethod("toggleShelf", arguments: nil) }
   @objc func toggleOutline() { channel.invokeMethod("toggleOutline", arguments: nil) }
+  @objc func copySelection() { channel.invokeMethod("copySelection", arguments: nil) }
+  @objc func selectAllText() { channel.invokeMethod("selectAllText", arguments: nil) }
   @objc func enlargeText() { channel.invokeMethod("enlargeText", arguments: nil) }
   @objc func shrinkText() { channel.invokeMethod("shrinkText", arguments: nil) }
   @objc func resetText() { channel.invokeMethod("resetText", arguments: nil) }
@@ -85,7 +117,7 @@ private final class NativeMenuController: NSObject, NSMenuItemValidation {
   func update(_ state: NativeReaderState) {
     self.state = state
     shelfItem?.state = state.shelfVisible ? .on : .off
-    outlineItem?.state = state.outlineVisible ? .on : .off
+    outlineItem?.state = state.outlineVisible && state.hasOutline ? .on : .off
   }
 
   func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
@@ -93,9 +125,18 @@ private final class NativeMenuController: NSObject, NSMenuItemValidation {
     case #selector(saveWorkspace), #selector(saveWorkspaceAs),
       #selector(searchLibrary), #selector(toggleShelf):
       return state.hasLibrary
-    case #selector(findDocument), #selector(toggleOutline),
-      #selector(enlargeText), #selector(shrinkText), #selector(resetText):
+    case #selector(toggleOutline):
+      return state.hasOutline
+    case #selector(copySelection):
+      return state.canCopy
+    case #selector(selectAllText), #selector(findDocument):
       return state.hasDocument
+    case #selector(enlargeText):
+      return state.canIncreaseText
+    case #selector(shrinkText):
+      return state.canDecreaseText
+    case #selector(resetText):
+      return state.canResetText
     default:
       return true
     }
@@ -146,7 +187,35 @@ class MainFlutterWindow: NSWindow {
     // first-launch default.
     _ = self.setFrameAutosaveName("visualmd.main-window")
 
+    #if DEBUG
+      if ProcessInfo.processInfo.environment["VISUAL_MD_UI_TEST_PROFILE"] != nil,
+        let rawWidth = ProcessInfo.processInfo.environment["VISUAL_MD_UI_TEST_WINDOW_WIDTH"],
+        let width = Double(rawWidth),
+        let screen = NSScreen.main
+      {
+        let size = NSSize(width: min(max(width, 720), 1_800), height: 800)
+        let origin = NSPoint(
+          x: screen.visibleFrame.midX - size.width / 2,
+          y: screen.visibleFrame.midY - size.height / 2
+        )
+        self.setFrame(NSRect(origin: origin, size: size), display: true)
+      }
+    #endif
+
     RegisterGeneratedPlugins(registry: flutterViewController)
+
+    #if DEBUG
+      if ProcessInfo.processInfo.environment["VISUAL_MD_UI_TEST_PROFILE"] != nil {
+        // Flutter normally creates its semantics tree when macOS announces an
+        // assistive-technology client. XCTest does not reliably make that
+        // announcement for Flutter's virtual view, so debug UI-test launches
+        // explicitly enable the same engine bridge. This code is absent from
+        // the Release binary submitted to the App Store.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+          flutterViewController.engine.setValue(true, forKey: "semanticsEnabled")
+        }
+      }
+    #endif
 
     let commands = FlutterMethodChannel(
       name: "com.visualmd.visualmd/commands",
@@ -489,9 +558,13 @@ class MainFlutterWindow: NSWindow {
     let submenu = ensureMenu(named: "Edit", in: mainMenu, at: 2)
     submenu.removeAllItems()
     submenu.addItem(
-      item("Copy", key: "c", action: #selector(NSText.copy(_:)), target: nil))
+      item(
+        "Copy", key: "c", action: #selector(NativeMenuController.copySelection),
+        target: controller))
     submenu.addItem(
-      item("Select All", key: "a", action: #selector(NSText.selectAll(_:)), target: nil))
+      item(
+        "Select All", key: "a", action: #selector(NativeMenuController.selectAllText),
+        target: controller))
     submenu.addItem(.separator())
     submenu.addItem(
       item(

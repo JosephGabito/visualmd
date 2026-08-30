@@ -40,6 +40,12 @@ final class ReadingScale {
   /// change without being a jump.
   static const sizes = [15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 22.0, 24.0];
 
+  bool get canIncrease => base < sizes.last;
+
+  bool get canDecrease => base > sizes.first;
+
+  bool get isActualSize => base == comfortable.base;
+
   /// The scale one step larger, or this one at the top of the range.
   ReadingScale larger() => _step(1);
 

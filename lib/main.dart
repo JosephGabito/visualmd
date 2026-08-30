@@ -291,6 +291,16 @@ Future<void> main() async {
           documentTitle: controller.reading?.document.title,
           hasLibrary: controller.library != null,
           hasDocument: controller.reading != null,
+          hasOutline:
+              controller.reading?.outline.tableOfContents.isNotEmpty ?? false,
+          canCopy: controller.canCopy,
+          canIncreaseText:
+              controller.reading != null && controller.readingScale.canIncrease,
+          canDecreaseText:
+              controller.reading != null && controller.readingScale.canDecrease,
+          canResetText:
+              controller.reading != null &&
+              !controller.readingScale.isActualSize,
           shelfVisible: controller.shelfVisible,
           outlineVisible: controller.outlineVisible,
         ),
@@ -343,9 +353,13 @@ Future<void> main() async {
       case PlatformCommand.searchLibrary:
         readerUiCommands.add(ReaderUiCommand.searchLibrary);
       case PlatformCommand.toggleShelf:
-        controller.toggleShelf();
+        readerUiCommands.add(ReaderUiCommand.toggleShelf);
       case PlatformCommand.toggleOutline:
-        controller.toggleOutline();
+        readerUiCommands.add(ReaderUiCommand.toggleOutline);
+      case PlatformCommand.copySelection:
+        readerUiCommands.add(ReaderUiCommand.copySelection);
+      case PlatformCommand.selectAllText:
+        readerUiCommands.add(ReaderUiCommand.selectAllText);
       case PlatformCommand.enlargeText:
         controller.enlargeText();
       case PlatformCommand.shrinkText:

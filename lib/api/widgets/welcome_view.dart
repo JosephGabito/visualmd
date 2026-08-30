@@ -94,7 +94,6 @@ class WelcomeView extends StatelessWidget {
                             shortcut: shortcuts.open,
                             onPressed: opening ? null : onOpen,
                           ),
-                          const _ActionDivider(),
                           _LaunchAction(
                             icon: Icons.grid_view_outlined,
                             title: 'Open Workspace…',
@@ -102,7 +101,6 @@ class WelcomeView extends StatelessWidget {
                             shortcut: shortcuts.workspace,
                             onPressed: opening ? null : onOpenWorkspace,
                           ),
-                          const _ActionDivider(),
                           _LaunchAction(
                             icon: Icons.menu_book_outlined,
                             title: 'Open Sample Library',
@@ -235,18 +233,6 @@ class _LaunchAction extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ActionDivider extends StatelessWidget {
-  const _ActionDivider();
-
-  @override
-  Widget build(BuildContext context) => Divider(
-    height: 1,
-    thickness: 1,
-    indent: 54,
-    color: context.palette.border,
-  );
 }
 
 final class _ShortcutLabels {

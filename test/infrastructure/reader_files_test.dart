@@ -62,6 +62,31 @@ void main() {
     expect(await files.readPreference('theme'), 'again');
   });
 
+  test('UI test profiles live below an isolated application-support root', () {
+    final support = Directory('/Library/Application Support/example');
+
+    expect(
+      ReaderFiles.rootFor(support).path,
+      '/Library/Application Support/example/Visual MD',
+    );
+    expect(
+      ReaderFiles.rootFor(support, uiTestProfile: 'menu-test_42').path,
+      '/Library/Application Support/example/Visual MD/UI Tests/menu-test_42',
+    );
+  });
+
+  test('UI test profiles cannot become filesystem paths', () {
+    final support = Directory('/Library/Application Support/example');
+
+    for (final profile in ['', '../real-data', 'nested/profile', 'has space']) {
+      expect(
+        () => ReaderFiles.rootFor(support, uiTestProfile: profile),
+        throwsArgumentError,
+        reason: profile,
+      );
+    }
+  });
+
   test(
     'the folder feeds the registry: good themes load, bad ones are reported',
     () async {

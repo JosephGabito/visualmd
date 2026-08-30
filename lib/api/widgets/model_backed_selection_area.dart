@@ -8,6 +8,25 @@ import 'package:flutter/services.dart';
 /// Maps one displayed text boundary back to its authored source boundary.
 typedef SourceOffsetAt = int Function(int displayOffset);
 
+/// Lets native application menus invoke Flutter's document selection actions.
+///
+/// AppKit cannot discover the selection inside Flutter through its responder
+/// chain. The controller keeps that platform bridge explicit while selection
+/// ownership remains with this widget.
+final class ModelBackedSelectionController {
+  _ModelBackedSelectionAreaState? _state;
+
+  void _attach(_ModelBackedSelectionAreaState state) => _state = state;
+
+  void _detach(_ModelBackedSelectionAreaState state) {
+    if (identical(_state, state)) _state = null;
+  }
+
+  void copy() => _state?._copyFromHost();
+
+  void selectAll() => _state?._selectAllFromHost();
+}
+
 /// Extends Flutter selection with model-owned text for unmounted blocks.
 ///
 /// A lazy viewport cannot register unmounted text with [SelectionArea]. Select
@@ -19,12 +38,16 @@ typedef SourceOffsetAt = int Function(int displayOffset);
 final class ModelBackedSelectionArea extends StatefulWidget {
   final Object selectionIdentity;
   final String Function() wholeText;
+  final ModelBackedSelectionController? controller;
+  final ValueChanged<bool>? onSelectionAvailabilityChanged;
   final Widget child;
 
   const ModelBackedSelectionArea({
     super.key,
     required this.selectionIdentity,
     required this.wholeText,
+    this.controller,
+    this.onSelectionAvailabilityChanged,
     required this.child,
   });
 
@@ -42,14 +65,26 @@ final class _ModelBackedSelectionAreaState
     _copyModelSelection,
   );
   final _modelSelection = ModelSelectionSnapshot();
+  final _actionsKey = GlobalKey();
   String? _wholeDocumentSelection;
   var _forwardingSelectAll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller?._attach(this);
+  }
+
+  void _setSelectionAvailable(bool value) {
+    widget.onSelectionAvailabilityChanged?.call(value);
+  }
 
   void _rememberWholeDocument() {
     _modelSelection
       ..clear()
       ..suspended = true;
     _wholeDocumentSelection = widget.wholeText();
+    _setSelectionAvailable(_wholeDocumentSelection!.isNotEmpty);
     _forwardingSelectAll = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _forwardingSelectAll = false;
@@ -68,21 +103,49 @@ final class _ModelBackedSelectionAreaState
     if (_forwardingSelectAll) return;
     _wholeDocumentSelection = null;
     if (selection == null) _modelSelection.clear();
+    _setSelectionAvailable(selection?.plainText.isNotEmpty ?? false);
   }
 
   void _beginPointerSelection(PointerDownEvent event) {
     if (event.buttons & kPrimaryButton == 0) return;
     _wholeDocumentSelection = null;
     _modelSelection.clear();
+    _setSelectionAvailable(false);
+  }
+
+  void _copyFromHost() {
+    final context = _actionsKey.currentContext;
+    if (context == null) return;
+    Actions.invoke(context, CopySelectionTextIntent.copy);
+  }
+
+  void _selectAllFromHost() {
+    final context = _actionsKey.currentContext;
+    if (context == null) return;
+    Actions.invoke(
+      context,
+      const SelectAllTextIntent(SelectionChangedCause.keyboard),
+    );
   }
 
   @override
   void didUpdateWidget(ModelBackedSelectionArea oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      oldWidget.controller?._detach(this);
+      widget.controller?._attach(this);
+    }
     if (oldWidget.selectionIdentity != widget.selectionIdentity) {
       _wholeDocumentSelection = null;
       _modelSelection.clear();
+      _setSelectionAvailable(false);
     }
+  }
+
+  @override
+  void dispose() {
+    widget.controller?._detach(this);
+    super.dispose();
   }
 
   @override
@@ -91,13 +154,16 @@ final class _ModelBackedSelectionAreaState
       SelectAllTextIntent: _selectAll,
       CopySelectionTextIntent: _copy,
     },
-    child: _ModelSelectionScope(
-      snapshot: _modelSelection,
-      child: Listener(
-        onPointerDown: _beginPointerSelection,
-        child: SelectionArea(
-          onSelectionChanged: _nativeSelectionChanged,
-          child: widget.child,
+    child: KeyedSubtree(
+      key: _actionsKey,
+      child: _ModelSelectionScope(
+        snapshot: _modelSelection,
+        child: Listener(
+          onPointerDown: _beginPointerSelection,
+          child: SelectionArea(
+            onSelectionChanged: _nativeSelectionChanged,
+            child: widget.child,
+          ),
         ),
       ),
     ),

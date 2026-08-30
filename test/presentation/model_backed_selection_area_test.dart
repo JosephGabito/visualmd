@@ -46,6 +46,48 @@ void main() {
     expect(copied, whole);
   });
 
+  testWidgets('a host menu can select and copy the complete document', (
+    tester,
+  ) async {
+    const whole = 'opening\n\nunmounted middle\n\nending';
+    final controller = ModelBackedSelectionController();
+    final availability = <bool>[];
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map<Object?, Object?>)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ModelBackedSelectionArea(
+          selectionIdentity: 'document',
+          wholeText: _wholeText,
+          controller: controller,
+          onSelectionAvailabilityChanged: availability.add,
+          child: const Text('opening'),
+        ),
+      ),
+    );
+
+    controller.selectAll();
+    controller.copy();
+    await tester.pump();
+
+    expect(availability, contains(true));
+    expect(copied, whole);
+  });
+
   testWidgets('a streamed append does not move the selected document end', (
     tester,
   ) async {

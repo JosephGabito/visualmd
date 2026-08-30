@@ -30,6 +30,16 @@ void main() {
 
   const scale = ReadingScale.comfortable;
 
+  test('text-size capabilities describe the next available action', () {
+    expect(scale.canIncrease, isTrue);
+    expect(scale.canDecrease, isTrue);
+    expect(scale.isActualSize, isTrue);
+
+    expect(scale.copyWith(base: ReadingScale.sizes.first).canDecrease, isFalse);
+    expect(scale.copyWith(base: ReadingScale.sizes.last).canIncrease, isFalse);
+    expect(scale.copyWith(base: 19).isActualSize, isFalse);
+  });
+
   group('the scale holds its proportions', () {
     test('no heading is smaller than the text it heads', () {
       for (var level = 1; level <= 6; level++) {

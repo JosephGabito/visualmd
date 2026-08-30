@@ -104,6 +104,10 @@ small state projection keeps native reader actions enabled only when their
 library or document exists and gives Shelf and Outline native checkmarks
 (`lib/main.dart`, `lib/infrastructure/platform/native_reader_state.dart`,
 `macos/Runner/MainFlutterWindow.swift`).
+Copy additionally requires a live selection in the current document. Replacing
+or removing that document invalidates its selection before the projection
+reaches AppKit, so a native menu item cannot remain enabled for text that no
+longer exists (`lib/api/reader_controller.dart`, `lib/main.dart`).
 
 The permanent room uses [Library Chrome](28-library-chrome.md)'s three opaque
 planes. Page, side panels, and the unified top bar separate mostly by surface
@@ -151,9 +155,10 @@ desktop sizes. Below its preferred height it scrolls instead of overflowing,
 so deliberately compact windows remain usable
 (`lib/api/widgets/welcome_view.dart`, `lib/api/widgets/welcome_view.dart`).
 Its launch actions share one elevated surface and a restrained shadow. The
-surface deliberately has no perimeter stroke: elevation already separates the
-group from the page, so a border would add a second signal without adding
-structure (`lib/api/widgets/welcome_view.dart`).
+surface deliberately has no perimeter stroke or rules between rows: elevation,
+spacing, icons, and hover states already communicate the group and its actions,
+so lines would add another signal without adding structure
+(`lib/api/widgets/welcome_view.dart`).
 
 ## Events
 

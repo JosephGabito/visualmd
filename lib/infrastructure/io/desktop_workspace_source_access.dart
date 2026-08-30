@@ -208,7 +208,16 @@ final class DesktopWorkspaceSourceAccess implements WorkspaceSourceAccess {
   ) async {
     final bookmark = stored?.bookmark;
     if (bookmark != null) {
-      final resolution = await _resolveBookmark(bookmark);
+      BookmarkResolution? resolution;
+      try {
+        resolution = await _resolveBookmark(bookmark);
+      } on Object {
+        // A bookmark resolver crosses into the native sandbox and may fail
+        // before it can report an ordinary unavailable result. Recovery must
+        // preserve that source for reconnection rather than aborting the whole
+        // workspace and replacing its journal with an empty session.
+        throw WorkspaceSourceUnavailable(source);
+      }
       if (resolution != null) {
         if (resolution.refreshed || resolution.path != stored!.path) {
           await _files.writeWorkspaceAccess(
